@@ -28,7 +28,11 @@ Chronos se construit du bas vers le haut selon un DAG de dépendances strict : d
   1. Au lancement, une fenêtre sans bordure, transparente et sans entrée dans la barre des tâches apparaît sur le bureau.
   2. La fenêtre reste affichée au-dessus des autres fenêtres au fil du temps et ne prend pas le focus au démarrage (ShowActivated=false, Topmost réaffirmé sans vol de focus).
   3. L'application se lance et se ferme proprement en libérant ses ressources (cycle de vie DI possédé et disposé).
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold solution + composition root Generic Host + fenêtre overlay conforme (FEN-01, SC3), wave 1
+- [ ] 01-02-PLAN.md — P/Invoke + TopmostGuard : réaffirmation périodique du Topmost sans vol de focus (ROB-04), wave 2
+- [ ] 01-03-PLAN.md — Smoke test visuel de l'overlay (gate manuel FEN-01/ROB-04/SC3), wave 3
 **UI hint**: yes
 
 ### Phase 2 : Découverte des sources (bloquante)
@@ -104,7 +108,7 @@ Les phases s'exécutent dans l'ordre numérique : 1 → 2 → 3 → 4 → 5 → 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fondations architecture + squelette overlay | 0/TBD | Not started | - |
+| 1. Fondations architecture + squelette overlay | 0/3 | Planned | - |
 | 2. Découverte des sources (bloquante) | 0/TBD | Not started | - |
 | 3. Modèles + pipeline de données | 0/TBD | Not started | - |
 | 4. Orchestration refresh + ViewModel temps réel | 0/TBD | Not started | - |
