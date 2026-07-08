@@ -72,7 +72,10 @@ Plans:
   1. Une écriture sur une source déclenche une relecture débouncée ; un timer périodique garantit la fraîcheur en filet de sécurité (gestion de l'événement Error incluse).
   2. Le compte à rebours et la longueur des arcs progressent chaque seconde par interpolation, sans I/O disque.
   3. Toute mise à jour issue d'un thread de fond atteint l'UI via un point de marshaling unique (IUiDispatcher), sans InvalidOperationException.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 04-01-PLAN.md — RefreshOrchestrator neutre : watcher débouncé + PeriodicTimer + Channel, event SnapshotChanged (RAF-01, RAF-02), wave 1
+- [ ] 04-02-PLAN.md — MainViewModel temps réel (interpolation + marshaling) + formateur FR + câblage App/MainWindow (RAF-03, RAF-04), wave 2
 
 ### Phase 5 : Cadran (RingArc + converters) + câblage View
 **Goal**: L'utilisateur voit le cadran complet à deux anneaux refléter en temps réel l'état des quotas, branché sur le flux de données déjà éprouvé.
@@ -119,7 +122,7 @@ Les phases s'exécutent dans l'ordre numérique : 1 → 2 → 3 → 4 → 5 → 
 | 1. Fondations architecture + squelette overlay | 0/3 | Planned | - |
 | 2. Découverte des sources (bloquante) | 0/1 | Planned | - |
 | 3. Modèles + pipeline de données | 0/4 | Planned | - |
-| 4. Orchestration refresh + ViewModel temps réel | 0/TBD | Not started | - |
+| 4. Orchestration refresh + ViewModel temps réel | 0/2 | Planned | - |
 | 5. Cadran (RingArc + converters) + câblage View | 0/TBD | Not started | - |
 | 6. Comportements overlay (placement + interaction) | 0/TBD | Not started | - |
 | 7. Packaging + déploiement | 0/TBD | Not started | - |
