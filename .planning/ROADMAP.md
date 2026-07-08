@@ -56,7 +56,13 @@ Plans:
   2. Chaque snapshot porte sa provenance (Exact/Estimated), l'utilization, le resets_at et la fraction de temps restante des deux fenêtres.
   3. Le parsing tolère les lignes et champs invalides ainsi que la dernière ligne JSONL partielle, sans jamais échouer ni inventer de valeur.
   4. La couche Services ne référence aucun type WPF (contrat neutre partagé).
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 03-01-PLAN.md — Fondations neutres : modèles immuables + IClock + IUsageProvider + ChronosPaths + garde de pureté WPF (DAT-02, DAT-03, DAT-07), wave 1
+- [ ] 03-02-PLAN.md — Source primaire : pont Node non destructif + ClaudeUsageObjectProvider (usage.json) tolérant (DAT-04, ROB-02), wave 2
+- [ ] 03-03-PLAN.md — Repli JSONL + composite + enregistrement DI (DAT-05, DAT-06, ROB-02), wave 3
+- [ ] 03-04-PLAN.md — Installation idempotente du pont dans ~/.claude/settings.json + vérification humaine live (DAT-04), wave 3
+**UI hint**: no
 
 ### Phase 4 : Orchestration refresh + ViewModel temps réel
 **Goal**: Les données se rafraîchissent automatiquement (deux horloges distinctes) et alimentent un ViewModel qui interpole l'affichage à la seconde, tout franchissement de thread passant par un point de marshaling unique.
@@ -112,7 +118,7 @@ Les phases s'exécutent dans l'ordre numérique : 1 → 2 → 3 → 4 → 5 → 
 |-------|----------------|--------|-----------|
 | 1. Fondations architecture + squelette overlay | 0/3 | Planned | - |
 | 2. Découverte des sources (bloquante) | 0/1 | Planned | - |
-| 3. Modèles + pipeline de données | 0/TBD | Not started | - |
+| 3. Modèles + pipeline de données | 0/4 | Planned | - |
 | 4. Orchestration refresh + ViewModel temps réel | 0/TBD | Not started | - |
 | 5. Cadran (RingArc + converters) + câblage View | 0/TBD | Not started | - |
 | 6. Comportements overlay (placement + interaction) | 0/TBD | Not started | - |
