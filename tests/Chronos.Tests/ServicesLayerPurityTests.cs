@@ -20,8 +20,9 @@ public class ServicesLayerPurityTests
     // Adaptateurs WPF sanctionnés de Phase 1 (seule frontière WPF autorisée dans Chronos.Services).
     private static readonly string[] AdaptateursWpfAutorises =
     {
-        "WpfUiDispatcher", // implémentation WPF de IUiDispatcher (encapsule Dispatcher)
-        "TopmostGuard",    // réaffirmation topmost overlay (Window/DispatcherTimer), ROB-04
+        "WpfUiDispatcher",   // implémentation WPF de IUiDispatcher (encapsule Dispatcher)
+        "TopmostGuard",      // réaffirmation topmost overlay (Window/DispatcherTimer), ROB-04
+        "OverlayController", // adaptateur WPF de placement physique + arrière-plan (Window/HwndSource), FEN-03/04/05
     };
 
     [Fact]
