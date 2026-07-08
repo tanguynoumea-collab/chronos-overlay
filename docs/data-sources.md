@@ -233,3 +233,83 @@ Table de correspondance **source → modèle neutre** (guide direct pour `IUsage
 `<window>` désigne indifféremment `five_hour` (→ arc extérieur 5 h) ou `seven_day` (→ arc
 intérieur hebdo). Le repli hebdo dérive (~72 h, ancrage non documenté) : traiter `resets_at`
 tel que fourni, best-effort et recalibrable (voir [§4](#4-hypothèses--points-de-fragilité)).
+
+---
+
+## 4. Hypothèses & points de fragilité
+
+Chaque risque ci-dessous est un **guide direct pour la conception de `IUsageProvider`**
+(Phase 3) : l'abstraction doit isoler ces points de rupture du cadran.
+
+- **API privée de facto.** Le contrat statusLine est documenté, mais `rate_limits` n'est PAS
+  un contrat de données garanti : un champ peut être renommé ou déplacé à toute mise à jour de
+  Claude Code. *Recommandation* : **test de contrat** sur échantillon en Phase 3 ; dégradation
+  vers « indisponible » si un champ ou une fenêtre est absent, plutôt que du code défensif
+  exotique.
+
+- **Écart de version.** Binaire sur disque **2.1.87** vs runtime actif **2.1.202**
+  (`sessions/30656.json`). Le schéma est confirmé **identique** entre le binaire 2.1.87 et la
+  doc officielle courante, mais **2.1.202 n'a pas été vérifié champ par champ** (pas de binaire
+  2.1.202 sur disque) → confiance **MEDIUM** sur la stabilité inter-versions. *Recommandation* :
+  dater la capture (fait dans l'en-tête) et **revalider à chaque MAJ majeure**.
+
+- **Staleness hors session active.** `used_percentage` n'est rafraîchi que quand une session
+  Claude tourne et rend sa barre. Overlay ouvert **sans session** ⇒ valeur **figée** au dernier
+  connu (à marquer comme **potentiellement périmée**). Le `resets_at` (epoch) permet néanmoins
+  d'**interpoler le compte à rebours** localement (aligné RAF-03), sans dépendre d'un
+  rafraîchissement.
+
+- **Présence conditionnelle.** Rappel : `rate_limits` n'existe que pour **Pro / Max**, **après
+  la 1re réponse API**, et **chaque fenêtre peut être indépendamment absente**. Le provider doit
+  gérer l'absence **sans crash** (ROB-01) et **basculer sur le repli JSONL** (DAT-06).
+
+- **Reset hebdo dérivant.** La fenêtre 7 j dérive (~72 h, horaire d'ancrage non documenté) →
+  traiter `resets_at` **tel que fourni**, best-effort et **recalibrable** par l'utilisateur
+  (ROB-03).
+
+- **Faux positifs JSONL.** Les chaînes « five_hour » / « seven_day » trouvées dans les
+  transcripts sont de la **PROSE** (ce projet en discute), **PAS** un objet d'usage loggé.
+  Exiger un **objet structuré** (`"used_percentage": <nombre>`), jamais une chaîne dans un champ
+  `content` / `text`. Rappel : **aucun objet d'usage n'est matérialisé sur disque**.
+
+- **Sécurité.** Ne **jamais** lire ni logger `.credentials.json` (tokens OAuth), ni le
+  **contenu** des conversations. Ne compter que **tokens / métadonnées**. Lecture seule stricte
+  sous le profil utilisateur, aucun droit admin.
+
+---
+
+## 5. Reproductibilité — recapture (lecture seule stricte)
+
+Méthode pour **re-vérifier la source** à une future version de Claude Code, **sans écrire de
+code de provider** et **sans jamais modifier** un fichier sous `~/.claude` :
+
+1. **Vérifier la config statusLine active** : lire `~/.claude/settings.json`, clé
+   `statusLine.command` (constate quelle commande reçoit le JSON stdin).
+2. **Confirmer l'absence de persistance** : grep ciblé d'un objet **structuré**
+   `"used_percentage":` / `"utilization":` sous `~/.claude` et `~/.claude.json`
+   (attendu : **0 occurrence structurée**).
+3. **Confirmer le schéma courant** : doc officielle `code.claude.com/docs/en/statusline`
+   (table des champs) ; à défaut, extraire les **chaînes printables** du binaire
+   `~/.claude/downloads/claude-<ver>-win32-x64.exe` (section « How to use the statusLine
+   command »).
+4. **Ré-échantillonner le repli** : dernières lignes `type=assistant` d'un
+   `~/.claude/projects/<slug>/<uuid>.jsonl` pour `message.usage` + `timestamp` ; lister
+   `subagents/` pour le layout sous-agents.
+5. **Impératif** : NE MODIFIER aucun fichier de `~/.claude` ; **anonymiser** toute capture avant
+   de la coller dans ce document (valeurs synthétiques, placeholders `<slug>` / `<uuid>` /
+   `%USERPROFILE%`).
+
+### Traçabilité des sources & niveaux de confiance
+
+| Source consultée | Rôle | Confiance |
+|------------------|------|-----------|
+| Doc officielle `code.claude.com/docs/en/statusline` | Table des champs `rate_limits` (0-100, epoch s), conditions de présence | Localisation / schéma : **HIGH** |
+| Binaire local `claude-2.1.87-win32-x64.exe` (chaînes embarquées) | Schéma statusLine verbatim, confirme les noms de champs | **HIGH** |
+| Sondage filesystem `~/.claude` + `~/.claude.json` | Absence prouvée d'objet d'usage persisté | **HIGH** |
+| Échantillon réel `~/.claude/projects/<slug>/<uuid>.jsonl` + `subagents/*.meta.json` | Structure `usage`/tokens, timestamps ISO 8601, layout sous-agents v2.1.202 | Structure JSONL : **HIGH** |
+| Concordance exacte du schéma en runtime 2.1.202 | Non vérifié champ par champ | Stabilité inter-versions : **MEDIUM** |
+
+---
+
+*Fin du document — capturé le 2026-07-08, à revalider à chaque MAJ majeure de Claude Code
+(schéma = API privée de facto).*
