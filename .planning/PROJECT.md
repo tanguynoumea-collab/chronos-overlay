@@ -29,26 +29,17 @@ chiffre exact.
 - ✓ Provider composite avec bascule par fenêtre (DAT-06) — Phase 3
 - ✓ FractionTimeRemaining clampé depuis ResetsAt (DAT-07) — Phase 3
 - ✓ Parsing tolérant (ROB-02) — Phase 3
+- ✓ Rafraîchissement watcher débouncé + PeriodicTimer + tick 1 s sans I/O + marshaling unique (RAF-01..04) — Phase 4
+- ✓ Cadran complet : graduations, deux arcs temps/couleur, gris épuisé, countdown, badges « estimée » par fenêtre, état indisponible (CAD-01..07, DAT-08, ROB-01) — Phase 5
+- ✓ Drag + snap coins multi-écrans, menu contextuel, arrière-plan, persistance settings.json, recalibrage hebdo, autostart (FEN-02..07, ROB-03, DEP-02) — Phase 6
+- ✓ Exe self-contained mono-fichier win-x64 74 Mo publié et smoke-testé (DEP-01) — Phase 7
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Fenêtre déplaçable (drag + accroche coins)
-- [ ] Cadran circulaire sombre avec graduations (ticks mineurs/majeurs) rendu en XAML pur
-- [ ] Arc extérieur = fenêtre 5 h : longueur liée au temps restant avant reset
-- [ ] Arc intérieur = fenêtre hebdo : longueur liée au temps restant avant reset
-- [ ] Couleur des arcs = utilization (vert → ambre → rouge), gris si utilization ≥ 1 (épuisé)
-- [ ] Compte à rebours texte central des deux fenêtres (reset 5 h + reset hebdo)
-- [ ] Rafraîchissement sur écriture des sources (FileSystemWatcher) + périodique (PeriodicTimer)
-- [ ] Tick 1 s (DispatcherTimer) mettant à jour la longueur des arcs et le compte à rebours
-- [ ] Déplacement par glisser + accroche automatique au coin d'écran le plus proche (multi-écrans)
-- [ ] Bouton « arrière-plan » basculant Topmost / renvoyant la fenêtre au fond
-- [ ] Persistance position/coin/réglages dans %APPDATA%/Chronos/settings.json
-- [ ] État « données indisponibles » sans crash quand aucune source n'est lisible
-- [ ] Reset hebdo best-effort et recalibrable par l'utilisateur
-- [ ] Publication exe self-contained mono-fichier (win-x64, PublishSingleFile)
-- [ ] Lancement au démarrage Windows via raccourci shell:startup
+(Milestone v1.0 livré — validation humaine UAT en attente : voir les fichiers *-HUMAN-UAT.md)
+
 
 ### Out of Scope
 
@@ -101,9 +92,9 @@ chiffre exact.
 | Objet d'usage (utilization/resets_at) en source primaire, JSONL en repli | Chiffres fiables prioritaires sur estimation par tokens | ✓ Good — composite livré ; repli n'invente jamais d'utilization (null) |
 | Découverte de source (docs/data-sources.md) avant de coder les providers | Tout le pipeline données en dépend | ✓ Good — source localisée (Phase 2) |
 | Source primaire = bloc rate_limits du contrat statusLine (officiel), via pont statusLine→fichier | Rien n'est persisté sur disque ; le champ réel est used_percentage (0-100) et resets_at en epoch secondes | ✓ Good — pont installé avec backup (Phase 3) |
-| Rendu des arcs en XAML pur | Éviter dépendance native, simplifier le packaging mono-fichier | — Pending |
-| Pas de source Cowork séparée | Pool partagé compte : Cowork déjà inclus dans l'usage de Code | — Pending |
-| Reset hebdo traité comme best-effort recalibrable | Le reset 7 jours dérive (~72 h, ancrage non documenté) | — Pending |
+| Rendu des arcs en XAML pur | Éviter dépendance native, simplifier le packaging mono-fichier | ✓ Good — Phase 5 |
+| Pas de source Cowork séparée | Pool partagé compte : Cowork déjà inclus dans l'usage de Code | ✓ Good |
+| Reset hebdo traité comme best-effort recalibrable | Le reset 7 jours dérive (~72 h, ancrage non documenté) | ✓ Good — recalibrage livré Phase 6 |
 
 ## Evolution
 
@@ -123,4 +114,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 after Phase 3 completion*
+*Last updated: 2026-07-08 after Phase 7 completion (milestone v1.0 livré)*
