@@ -45,7 +45,7 @@ Plans:
   3. Les hypothèses et points de fragilité (source non documentée, susceptible de casser) sont consignés pour guider l'abstraction IUsageProvider.
 **Plans**: 1 plan
 Plans:
-- [ ] 02-01-PLAN.md — Rédiger docs/data-sources.md : source primaire rate_limits/statusLine + repli JSONL + mapping UsageSnapshot + hypothèses/fragilités (DAT-01), wave 1
+- [x] 02-01-PLAN.md — Rédiger docs/data-sources.md : source primaire rate_limits/statusLine + repli JSONL + mapping UsageSnapshot + hypothèses/fragilités (DAT-01), wave 1
 
 ### Phase 3 : Modèles + pipeline de données
 **Goal**: Un pipeline de données neutre produit des UsageSnapshot immuables — fiables depuis l'objet primaire ou estimés depuis les JSONL — entièrement isolé du cadran, sans aucun type WPF.

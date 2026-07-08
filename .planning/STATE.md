@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-07-08T13:42:05.159Z"
+status: verifying
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-07-08T14:02:48.572Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 01 — fondations-architecture-squelette-overlay
+**Current focus:** Phase 02 — d-couverte-des-sources-bloquante
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to execute
+Phase: 02 (d-couverte-des-sources-bloquante) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-fondations-architecture-squelette-overlay P01 | 4 | 3 tasks | 14 files |
 | Phase 01-fondations-architecture-squelette-overlay P02 | 3min | 2 tasks | 8 files |
+| Phase 02-d-couverte-des-sources-bloquante P01 | 3min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 1]: Overlay net8.0-windows, DI dans App.xaml.cs (pas de StartupUri), Topmost réaffirmé sans vol de focus.
 - [Phase 01-fondations-architecture-squelette-overlay]: Solution en format .sln classique (--format sln) : le SDK .NET 10 génère .slnx par défaut
 - [Phase 01-fondations-architecture-squelette-overlay]: [Phase 1]: ROB-04 livré — Topmost réaffirmé par SetWindowPos(HWND_TOPMOST, SWP_NOACTIVATE) sur DispatcherTimer 2s dédié, sans vol de focus.
+- [Phase 02-d-couverte-des-sources-bloquante]: Source primaire = bloc rate_limits du contrat statusLine (Fiable), consommé via un pont statusLine → fichier ; l'objet d'usage n'est persisté dans aucun fichier disque.
+- [Phase 02-d-couverte-des-sources-bloquante]: Champ réel used_percentage (0..100), PAS utilization (0..1) ; resets_at = epoch secondes → DateTimeOffset.FromUnixTimeSeconds. Repli JSONL marqué Estimé.
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T13:36:43.017Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-07-08T14:02:40.035Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None

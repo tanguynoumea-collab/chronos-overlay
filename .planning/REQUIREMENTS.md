@@ -24,7 +24,7 @@
 
 ### Données (DAT)
 
-- [ ] **DAT-01**: La méthode d'obtention de l'objet d'usage Claude Code (five_hour/seven_day : utilization + resets_at) est découverte et documentée dans docs/data-sources.md AVANT le code des providers
+- [x] **DAT-01**: La méthode d'obtention de l'objet d'usage Claude Code (five_hour/seven_day : utilization + resets_at) est découverte et documentée dans docs/data-sources.md AVANT le code des providers
 - [ ] **DAT-02**: L'interface IUsageProvider (GetAsync + événement SnapshotChanged) isole les sources du cadran — couche Services sans aucun type WPF
 - [ ] **DAT-03**: Les modèles UsageSnapshot (Utilization, ResetsAt, Exhausted, FractionTimeRemaining, SourceReliability) et WindowState sont définis, immuables et neutres
 - [ ] **DAT-04**: ClaudeUsageObjectProvider lit l'objet d'usage localisé (source primaire, fiable)
@@ -83,7 +83,7 @@
 |--------|-------|--------|
 | FEN-01 | Phase 1 | Complete |
 | ROB-04 | Phase 1 | Complete |
-| DAT-01 | Phase 2 | Pending |
+| DAT-01 | Phase 2 | Complete |
 | DAT-02 | Phase 3 | Pending |
 | DAT-03 | Phase 3 | Pending |
 | DAT-04 | Phase 3 | Pending |
