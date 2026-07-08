@@ -28,8 +28,8 @@
 - [x] **DAT-02**: L'interface IUsageProvider (GetAsync + événement SnapshotChanged) isole les sources du cadran — couche Services sans aucun type WPF
 - [x] **DAT-03**: Les modèles UsageSnapshot (Utilization, ResetsAt, Exhausted, FractionTimeRemaining, SourceReliability) et WindowState sont définis, immuables et neutres
 - [x] **DAT-04**: ClaudeUsageObjectProvider lit l'objet d'usage localisé (source primaire, fiable)
-- [ ] **DAT-05**: JsonlEstimationProvider estime l'usage par somme de tokens des transcripts JSONL (~/.claude/projects), lecture FileShare.ReadWrite en streaming
-- [ ] **DAT-06**: CompositeUsageProvider tente le primaire puis bascule sur le repli
+- [x] **DAT-05**: JsonlEstimationProvider estime l'usage par somme de tokens des transcripts JSONL (~/.claude/projects), lecture FileShare.ReadWrite en streaming
+- [x] **DAT-06**: CompositeUsageProvider tente le primaire puis bascule sur le repli
 - [x] **DAT-07**: FractionTimeRemaining des deux fenêtres est calculé à partir de ResetsAt
 - [ ] **DAT-08**: Toute donnée issue du repli JSONL est visuellement marquée « estimée » dans l'UI — jamais présentée comme exacte
 
@@ -87,8 +87,8 @@
 | DAT-02 | Phase 3 | Complete |
 | DAT-03 | Phase 3 | Complete |
 | DAT-04 | Phase 3 | Complete |
-| DAT-05 | Phase 3 | Pending |
-| DAT-06 | Phase 3 | Pending |
+| DAT-05 | Phase 3 | Complete |
+| DAT-06 | Phase 3 | Complete |
 | DAT-07 | Phase 3 | Complete |
 | ROB-02 | Phase 3 | Complete |
 | RAF-01 | Phase 4 | Pending |
