@@ -35,7 +35,7 @@
 Détails d'implémentation du pont (langage du script, nom du fichier de sortie sous `%USERPROFILE%\.claude` ou `%APPDATA%\Chronos`), organisation interne des parsers, structure exacte des tests.
 
 ### Deferred Ideas (OUT OF SCOPE)
-- Bande d'activité sous-agents (V2-01) — layout `subagents/` documenté, exploitation différée. **Ne PAS coder la lecture de `subagents/` dans cette phase.**
+- Bande d'activité sous-agents (V2-01) — layout `subagents/` documenté, exploitation STRUCTURÉE différée (pas de parsing des blocs/méta de sous-agents, pas d'UI d'activité). **Arbitrage orchestrateur (2026-07-08) : les tokens des transcripts `subagents/*.jsonl` consomment le même pool de quota compte — ils SONT inclus dans la somme brute de tokens du repli JSONL (scan récursif voulu). Seule l'exploitation structurée (bande d'activité) reste différée en V2-01.**
 </user_constraints>
 
 <phase_requirements>
@@ -528,7 +528,7 @@ internal sealed class FakeClock : IClock
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
 | Champ `utilization` 0..1 (modélisation initiale PROJECT.md) | `used_percentage` 0..100 → `/100.0` côté modèle | Découverte Phase 2 | Le champ `utilization` **n'existe pas** dans la source — normalisation côté modèle. |
-| Sous-agents `tool_use name=Task` inline | Dossier `subagents/agent-*.jsonl` | v2.1.202 | **Hors périmètre** (V2-01). Ne pas parser inline. |
+| Sous-agents `tool_use name=Task` inline | Dossier `subagents/agent-*.jsonl` | v2.1.202 | Tokens inclus dans la somme du repli (même pool). Exploitation structurée **hors périmètre** (V2-01). Ne pas parser inline. |
 | `context_window` tokens cumulés session | Tokens du **contexte courant** | v2.1.132 | N'affecte pas `rate_limits` (indépendant), mais à noter si on lisait `context_window`. |
 
 **Deprecated/outdated :**

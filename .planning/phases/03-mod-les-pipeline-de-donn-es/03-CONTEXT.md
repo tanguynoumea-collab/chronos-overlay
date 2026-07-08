@@ -68,5 +68,5 @@ Détails d'implémentation du pont (langage du script, nom du fichier de sortie 
 <deferred>
 ## Deferred Ideas
 
-- Bande d'activité sous-agents (V2-01) — layout subagents/ documenté, exploitation différée.
+- Bande d'activité sous-agents (V2-01) — exploitation STRUCTURÉE différée (UI d'activité). Les tokens des transcripts subagents/ sont en revanche inclus dans la somme du repli JSONL (même pool de quota compte) — arbitrage orchestrateur 2026-07-08.
 </deferred>
