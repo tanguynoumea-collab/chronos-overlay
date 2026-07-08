@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-07-08T19:56:43.289Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-07-08T20:05:27.188Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 06 (comportements-overlay-placement-interaction) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-08
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-cadran-ringarc-converters-c-blage-view P03 | 9 min | 3 tasks | 4 files |
 | Phase 06 P02 | 4 min | 3 tasks | 6 files |
 | Phase 06-comportements-overlay-placement-interaction P01 | 4min | 3 tasks | 10 files |
+| Phase 06-comportements-overlay-placement-interaction P03 | 4min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 06]: Autostart .lnk cible Environment.ProcessPath (single-file-safe, jamais Assembly.Location) via COM late-bound WScript.Shell sans NuGet ; dossier startup injectable pour tests
 - [Phase 06]: TopmostGuard.Suspend=_timer.Stop / Resume=_timer.Start+Reassert (pas de toggle Topmost, evite scintillement) ; NativeMethods etendu au placement physique multi-ecrans (MonitorFromWindow/GetMonitorInfo rcWork)
 - [Phase 06]: Placement persiste coin+device comme verite (X/Y indicatifs) ; RefreshIntervalSeconds sans UI applique au demarrage 06-03 ; recalibrage hebdo au repli seulement restant Estimated (badge estimee conserve).
+- [Phase 06]: Placement physique via SetWindowPos (rcWork moniteur courant) dans OverlayController — contourne bug WPF Window.Left/Top PerMonitorV2 ; snap au retour de DragMove ; restauration coin+device en SourceInitialized (avant 1er rendu), repli primaire si device disparu.
 
 ### Pending Todos
 
@@ -108,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T19:56:14.972Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-07-08T20:05:27.184Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None

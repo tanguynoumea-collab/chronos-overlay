@@ -5,9 +5,9 @@
 ### Fenêtre overlay (FEN)
 
 - [x] **FEN-01**: L'utilisateur voit une fenêtre borderless transparente always-on-top (WindowStyle=None, AllowsTransparency=True, Topmost=True, ShowInTaskbar=False)
-- [ ] **FEN-02**: L'utilisateur peut déplacer l'overlay par glisser (DragMove)
+- [x] **FEN-02**: L'utilisateur peut déplacer l'overlay par glisser (DragMove)
 - [x] **FEN-03**: L'overlay s'accroche automatiquement au coin d'écran le plus proche au relâchement (WorkingArea, pas Bounds)
-- [ ] **FEN-04**: L'accroche aux coins fonctionne sur tous les moniteurs en multi-écrans (coordonnées Per-Monitor, repli si l'écran persisté disparaît)
+- [x] **FEN-04**: L'accroche aux coins fonctionne sur tous les moniteurs en multi-écrans (coordonnées Per-Monitor, repli si l'écran persisté disparaît)
 - [x] **FEN-05**: L'utilisateur peut basculer l'overlay en arrière-plan (toggle Topmost, renvoi au fond) et le ramener au premier plan
 - [ ] **FEN-06**: L'utilisateur accède à un menu contextuel clic droit (arrière-plan, recalibrer, quitter) — seul point d'accès d'une fenêtre sans barre de titre ni barre des tâches
 - [x] **FEN-07**: La position, le coin et les réglages sont persistés dans %APPDATA%/Chronos/settings.json et restaurés au lancement
@@ -104,9 +104,9 @@
 | CAD-07 | Phase 5 | Complete |
 | DAT-08 | Phase 5 | Complete |
 | ROB-01 | Phase 5 | Complete |
-| FEN-02 | Phase 6 | Pending |
+| FEN-02 | Phase 6 | Complete |
 | FEN-03 | Phase 6 | Complete |
-| FEN-04 | Phase 6 | Pending |
+| FEN-04 | Phase 6 | Complete |
 | FEN-05 | Phase 6 | Complete |
 | FEN-06 | Phase 6 | Pending |
 | FEN-07 | Phase 6 | Complete |
