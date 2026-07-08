@@ -45,7 +45,7 @@
 - [ ] **ROB-01**: Aucune source disponible n'entraîne de crash : l'overlay affiche un état « données indisponibles »
 - [ ] **ROB-02**: Le parsing est tolérant : lignes ou champs invalides ignorés, dernière ligne JSONL partielle ignorée
 - [ ] **ROB-03**: Le compte à rebours hebdo est traité en best-effort et recalibrable par l'utilisateur (réglage)
-- [ ] **ROB-04**: Le Topmost est réaffirmé périodiquement (SetWindowPos HWND_TOPMOST, SWP_NOACTIVATE) sans vol de focus
+- [x] **ROB-04**: Le Topmost est réaffirmé périodiquement (SetWindowPos HWND_TOPMOST, SWP_NOACTIVATE) sans vol de focus
 
 ### Déploiement (DEP)
 
@@ -82,7 +82,7 @@
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
 | FEN-01 | Phase 1 | Complete |
-| ROB-04 | Phase 1 | Pending |
+| ROB-04 | Phase 1 | Complete |
 | DAT-01 | Phase 2 | Pending |
 | DAT-02 | Phase 3 | Pending |
 | DAT-03 | Phase 3 | Pending |
