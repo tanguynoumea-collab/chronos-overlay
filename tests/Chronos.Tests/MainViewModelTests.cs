@@ -8,14 +8,17 @@ using Xunit;
 namespace Chronos.Tests;
 
 /// <summary>
-/// Prouve la couche présentation temps réel :
+/// Prouve la couche présentation temps réel + les commandes du menu contextuel (06-04) :
 /// - RAF-04 : un snapshot poussé HORS thread UI est appliqué via IUiDispatcher.Post EXACTEMENT une fois
 ///   (frontière de thread unique), et les sous-VM reflètent le snapshot ; DataUnavailable = deux fenêtres Unavailable.
 /// - RAF-03 : Interpolate(now) est PUR (recalcule fraction d'arc + compte à rebours) SANS aucun I/O
 ///   (GetAsync jamais appelé au tick) ; staleness dérivée de SourceCapturedAt.
+/// - FEN-05/06, DEP-02, ROB-03 : ToggleBackground/ToggleAutostart/Recalibrate/Quit pilotent bien les
+///   collaborateurs (IWindowController/IAutostartService/IRecalibrationPrompt) et le recalibrage recale
+///   le repli hebdo EN CONSERVANT le badge « estimée » (honnêteté des chiffres).
 ///
 /// Tests en [Fact] SIMPLE (pas [WpfFact]) : preuve que le DispatcherTimer n'est PAS créé dans le ctor
-/// (il est créé côté UI via StartClock, Pitfall 4). FakeUiDispatcher + FakeClock + FakeUsageProvider.
+/// (il est créé côté UI via StartClock, Pitfall 4). Fakes déterministes (aucun écran/registre réel).
 /// </summary>
 public class MainViewModelTests
 {
@@ -46,19 +49,41 @@ public class MainViewModelTests
             ResetsAt = now + (remaining ?? TimeSpan.FromHours(2)),
         };
 
+    // Fenêtre hebdo en REPLI (estimée) sans resets_at : cas où le recalibrage best-effort s'applique (ROB-03).
+    private static WindowState EstimatedWeekly() =>
+        new() { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated };
+
     private static readonly DateTimeOffset Now = new(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
 
-    // Orchestrateur non démarré : sert de source d'abonnement pour construire un VM déterministe
-    // (les tests d'application/interpolation appellent ApplySnapshot/Interpolate directement).
-    private static MainViewModel NewVm(out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider, bool onUiThread = true)
+    // Cœur de construction : orchestrateur non démarré (source d'abonnement) + ctor complet 06-04.
+    private static MainViewModel Build(
+        FakeUiDispatcher ui, FakeClock clock, FakeUsageProvider provider,
+        FakeWindowController controller, FakeAutostartService autostart,
+        FakeRecalibrationPrompt prompt, SettingsService settings)
     {
-        provider = new FakeUsageProvider();
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         var orch = new RefreshOrchestrator(provider, TempPaths(), options);
+        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings);
+    }
+
+    private static MainViewModel NewVmFull(
+        out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider,
+        out FakeWindowController controller, out FakeAutostartService autostart,
+        out FakeRecalibrationPrompt prompt, out SettingsService settings, bool onUiThread = true)
+    {
         ui = new FakeUiDispatcher { OnUiThread = onUiThread };
         clock = new FakeClock(Now);
-        return new MainViewModel(orch, ui, clock);
+        provider = new FakeUsageProvider();
+        controller = new FakeWindowController();
+        autostart = new FakeAutostartService();
+        prompt = new FakeRecalibrationPrompt();
+        settings = new SettingsService(TempPaths());
+        return Build(ui, clock, provider, controller, autostart, prompt, settings);
     }
+
+    // Surcharge minimale conservée pour les tests RAF (fakes par défaut, non observés).
+    private static MainViewModel NewVm(out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider)
+        => NewVmFull(out ui, out clock, out provider, out _, out _, out _, out _);
 
     // --- RAF-04 : franchissement de thread unique via IUiDispatcher.Post (exactement une fois) ---
 
@@ -76,7 +101,9 @@ public class MainViewModelTests
         var orch = new RefreshOrchestrator(provider, TempPaths(), options);
         var ui = new FakeUiDispatcher { OnUiThread = false };  // simule le thread pool de l'orchestrateur
         var clock = new FakeClock(Now);
-        var vm = new MainViewModel(orch, ui, clock);
+        var vm = new MainViewModel(orch, ui, clock,
+            new FakeWindowController(), new FakeAutostartService(),
+            new FakeRecalibrationPrompt(), new SettingsService(TempPaths()));
         try
         {
             await orch.StartAsync(CancellationToken.None); // charge initiale → SnapshotChanged (thread pool)
@@ -160,5 +187,138 @@ public class MainViewModelTests
             SourceCapturedAt = Now, // frais
         });
         Assert.False(vm.IsStale);
+    }
+
+    // --- FEN-05 : ToggleBackground bascule l'état ET pilote le controller (arrière-plan / premier plan) ---
+
+    [Fact]
+    public void ToggleBackground_bascule_IsBackground_et_pilote_le_controller()
+    {
+        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _);
+        Assert.False(vm.IsBackground);
+
+        vm.ToggleBackgroundCommand.Execute(null);
+        Assert.True(vm.IsBackground);
+        Assert.Equal(1, controller.SendToBackgroundCount);
+        Assert.Equal(0, controller.BringToForegroundCount);
+
+        vm.ToggleBackgroundCommand.Execute(null);
+        Assert.False(vm.IsBackground);
+        Assert.Equal(1, controller.BringToForegroundCount);
+    }
+
+    // --- DEP-02 : ToggleAutostart appelle Enable/Disable et reflète l'état réel (IsEnabled) ---
+
+    [Fact]
+    public void ToggleAutostart_appelle_Enable_Disable_et_reflete_IsEnabled()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out var autostart, out _, out _);
+        Assert.False(vm.IsAutostart);
+
+        vm.ToggleAutostartCommand.Execute(null);
+        Assert.True(vm.IsAutostart);
+        Assert.Equal(1, autostart.EnableCount);
+        Assert.True(autostart.Enabled);
+
+        vm.ToggleAutostartCommand.Execute(null);
+        Assert.False(vm.IsAutostart);
+        Assert.Equal(1, autostart.DisableCount);
+        Assert.False(autostart.Enabled);
+    }
+
+    // --- DEP-02 : à l'initialisation, IsAutostart reflète l'état réel du service ---
+
+    [Fact]
+    public void Initialisation_reflete_l_etat_reel_de_l_autostart()
+    {
+        var vm = Build(
+            new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), new FakeUsageProvider(),
+            new FakeWindowController(), new FakeAutostartService { Enabled = true },
+            new FakeRecalibrationPrompt(), new SettingsService(TempPaths()));
+
+        Assert.True(vm.IsAutostart);
+        Assert.False(vm.IsBackground); // Background par défaut faux (settings absents)
+    }
+
+    // --- FEN-06 : Quit ferme l'application via le controller (seul point de sortie) ---
+
+    [Fact]
+    public void Quit_appelle_le_controller()
+    {
+        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _);
+        vm.QuitCommand.Execute(null);
+        Assert.Equal(1, controller.QuitCount);
+    }
+
+    // --- ROB-03 : Recalibrate recale le repli hebdo, persiste l'ancre ET conserve le badge « estimée » ---
+
+    [Fact]
+    public void Recalibrate_recale_le_repli_hebdo_en_conservant_le_badge_estimee()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+            SevenDay = EstimatedWeekly(),           // repli, ResetsAt inconnu → countdown "—"
+            SourceCapturedAt = Now,
+        });
+        var avant = vm.SevenDay.CountdownText;
+        Assert.True(vm.SevenDay.IsEstimated);
+
+        var ancre = Now - TimeSpan.FromDays(3);     // prochain reset synthétisé strictement futur
+        prompt.Result = ancre;
+        vm.RecalibrateCommand.Execute(null);
+
+        Assert.Equal(1, prompt.AskCount);
+        Assert.NotEqual(avant, vm.SevenDay.CountdownText);      // arc/compte à rebours recalé
+        Assert.True(vm.SevenDay.IsEstimated);                  // badge « estimée » CONSERVÉ (honnêteté)
+        Assert.Equal(ancre, settings.Load().WeeklyAnchor);     // ancre persistée dans settings.json
+    }
+
+    // --- ROB-03 : annulation du dialogue → aucun changement, aucune persistance ---
+
+    [Fact]
+    public void Recalibrate_annule_ne_change_rien()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+            SevenDay = EstimatedWeekly(),
+            SourceCapturedAt = Now,
+        });
+        var avant = vm.SevenDay.CountdownText;
+
+        prompt.Result = null; // l'utilisateur annule
+        vm.RecalibrateCommand.Execute(null);
+
+        Assert.Equal(1, prompt.AskCount);
+        Assert.Equal(avant, vm.SevenDay.CountdownText);
+        Assert.Null(settings.Load().WeeklyAnchor);
+    }
+
+    // --- ROB-03 : le recalibrage NE TOUCHE PAS une source hebdo exacte (les chiffres exacts priment) ---
+
+    [Fact]
+    public void Recalibrate_ne_touche_pas_une_source_hebdo_exacte()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+            SevenDay = Readable(WindowKind.SevenDay, Now, remaining: TimeSpan.FromDays(3)), // Exact + ResetsAt
+            SourceCapturedAt = Now,
+        });
+        var avant = vm.SevenDay.CountdownText;
+        Assert.False(vm.SevenDay.IsEstimated);
+
+        prompt.Result = Now - TimeSpan.FromDays(3);
+        vm.RecalibrateCommand.Execute(null);
+
+        Assert.Equal(avant, vm.SevenDay.CountdownText); // inchangé : la valeur exacte prime
+        Assert.False(vm.SevenDay.IsEstimated);
     }
 }
