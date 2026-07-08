@@ -53,6 +53,18 @@ chiffre exact.
 - ClickOnce / SharePoint — déploiement exe mono-fichier uniquement
 - Bande d'activité des sous-agents (blocs Task JSONL) — optionnelle, différée après le cœur fonctionnel
 
+## Current State (v1.0 — SHIPPED 2026-07-08)
+
+Chronos v1.0 est livré : exe self-contained mono-fichier (74 Mo), cadran fonctionnel branché sur le
+pont statusLine (installé avec backup dans ~/.claude/settings.json) avec repli JSONL honnête,
+comportements overlay complets, 107 tests verts. Reste : validation humaine UAT (fichiers
+*-HUMAN-UAT.md), dette mineure DT-1/2/3 (v1.0-MILESTONE-AUDIT.md).
+
+## Next Milestone Goals
+
+À définir (/gsd:new-milestone). Candidats : V2-01..06 (survol, tooltip, sous-agents, tray, opacité,
+clic-traversant) + nettoyage dette.
+
 ## Context
 
 - **Écosystème :** app desktop Windows mono-utilisateur, .NET 8 / WPF / MVVM. SDK .NET 10 installé sur la machine, cible net8.0.
