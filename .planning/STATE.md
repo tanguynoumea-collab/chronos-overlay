@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-07-08T16:01:42.427Z"
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-07-08T16:36:35.950Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 13
+  completed_plans: 11
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 04 — orchestration-refresh-viewmodel-temps-r-el
+**Current focus:** Phase 05 — cadran-ringarc-converters-c-blage-view
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 05 (cadran-ringarc-converters-c-blage-view) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P03 | 6min | 3 tasks | 9 files |
 | Phase 04-orchestration-refresh-viewmodel-temps-r-el P01 | 18min | 2 tasks | 5 files |
 | Phase 04-orchestration-refresh-viewmodel-temps-r-el P02 | 5min | 3 tasks | 9 files |
+| Phase 05 P01 | 3 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: RefreshOrchestrator (BackgroundService neutre) expose SnapshotChanged ; watcher débouncé + PeriodicTimer alimentent un Channel(1, DropWrite) à consommateur unique sérialisant GetAsync.
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: await Task.Yield() en tête d'ExecuteAsync : évite que StartAsync bloque quand la boucle traite le 1er déclencheur inline.
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: MainViewModel : marshaling unique via IUiDispatcher.Post (RAF-04) + Interpolate(now) pur sans I/O (RAF-03) ; DispatcherTimer cree cote UI (StartClock) hors ctor.
+- [Phase 05]: ArcGeometry: fraction >= 1 -> EllipseGeometry (anneau plein sans micro-fente) au lieu de clamp 359.9 ; isLargeArc = sweep > 180.0 stricte ; RampColor AmberStop = 0.55 (constante unique ajustable UAT). Math pure isolee dans Rendering/, testee en [WpfFact]/[Fact].
 
 ### Pending Todos
 
@@ -97,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T15:57:50.485Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-07-08T16:36:27.734Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
