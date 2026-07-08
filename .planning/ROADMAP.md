@@ -86,7 +86,11 @@ Plans:
   2. La couleur de chaque arc passe du vert à l'ambre au rouge selon l'utilization, et au gris « quota épuisé » quand utilization ≥ 1.
   3. Un compte à rebours texte des deux fenêtres s'affiche au centre du cadran.
   4. Les données issues du repli sont marquées visuellement « estimée » ; un état « données indisponibles » s'affiche sans crash quand aucune source n'est lisible.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 05-01-PLAN.md — Primitives de rendu pures : ArcGeometry (angle→arc, cas limites) + RampColor (rampe 3 stops) + tests (CAD-04, CAD-07), wave 1
+- [ ] 05-02-PLAN.md — Enveloppes WPF : RingArc (Shape), TickRing (graduations), UtilizationToBrushConverter + tests (CAD-01, CAD-04, CAD-05, CAD-07), wave 2
+- [ ] 05-03-PLAN.md — Composition MainWindow.xaml (tokens, 2 arcs, countdown, badges) + smoke + checkpoint visuel (CAD-01/02/03/05/06, DAT-08, ROB-01), wave 3
 **UI hint**: yes
 
 ### Phase 6 : Comportements overlay (placement + interaction)
@@ -123,6 +127,6 @@ Les phases s'exécutent dans l'ordre numérique : 1 → 2 → 3 → 4 → 5 → 
 | 2. Découverte des sources (bloquante) | 0/1 | Planned | - |
 | 3. Modèles + pipeline de données | 0/4 | Planned | - |
 | 4. Orchestration refresh + ViewModel temps réel | 0/2 | Planned | - |
-| 5. Cadran (RingArc + converters) + câblage View | 0/TBD | Not started | - |
+| 5. Cadran (RingArc + converters) + câblage View | 0/3 | Planned | - |
 | 6. Comportements overlay (placement + interaction) | 0/TBD | Not started | - |
 | 7. Packaging + déploiement | 0/TBD | Not started | - |
