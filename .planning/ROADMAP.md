@@ -119,7 +119,9 @@ Plans:
   1. La publication produit un exe self-contained mono-fichier win-x64 (PublishSingleFile, natives auto-extraites, PublishTrimmed=false).
   2. L'exe se lance et fonctionne sur une machine propre sans runtime .NET préinstallé.
   3. Le lancement au démarrage reste fonctionnel (chemin stable) après déplacement de l'exe.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 07-01-PLAN.md — Finaliser csproj + profil publish, publier + smoke exe publié + non-régression, doc publish/autostart (DEP-01), wave 1
 
 ## Progress
 
