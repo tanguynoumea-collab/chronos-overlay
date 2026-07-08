@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using Chronos.Models;
+using Chronos.Placement;
 using Chronos.Services;
 using Chronos.ViewModels;
 using Xunit;
@@ -274,6 +275,35 @@ public class MainViewModelTests
         Assert.NotEqual(avant, vm.SevenDay.CountdownText);      // arc/compte à rebours recalé
         Assert.True(vm.SevenDay.IsEstimated);                  // badge « estimée » CONSERVÉ (honnêteté)
         Assert.Equal(ancre, settings.Load().WeeklyAnchor);     // ancre persistée dans settings.json
+    }
+
+    // --- GAP-1 (audit intégration) : le recalibrage ne doit PAS écraser les réglages écrits sur disque
+    // par un autre writer (OverlayController : coin/écran/arrière-plan) après la construction du VM ---
+
+    [Fact]
+    public void Recalibrate_n_ecrase_pas_les_reglages_persistes_par_un_autre_writer()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+
+        // Simule l'OverlayController : APRÈS la construction du VM, un drag persiste un nouveau coin.
+        var externe = settings.Load() with { Corner = OverlayCorner.BottomLeft, Background = true };
+        settings.Save(externe);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+            SevenDay = EstimatedWeekly(),
+            SourceCapturedAt = Now,
+        });
+
+        var ancre = Now - TimeSpan.FromDays(3);
+        prompt.Result = ancre;
+        vm.RecalibrateCommand.Execute(null);
+
+        var apres = settings.Load();
+        Assert.Equal(ancre, apres.WeeklyAnchor);                    // l'ancre est bien persistée…
+        Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);       // …SANS écraser le coin du drag
+        Assert.True(apres.Background);                              // …ni le mode arrière-plan
     }
 
     // --- ROB-03 : annulation du dialogue → aucun changement, aucune persistance ---

@@ -125,7 +125,9 @@ public sealed partial class MainViewModel : ObservableObject
         var anchor = _prompt.Ask(_settings.WeeklyAnchor);
         if (anchor is null) return;
 
-        _settings = _settings with { WeeklyAnchor = anchor };
+        // GAP-1 : relire l'état DISQUE avant d'écrire — l'OverlayController persiste coin/écran/arrière-plan
+        // indépendamment ; sauvegarder la copie du constructeur écraserait ces réglages plus récents.
+        _settings = _settingsService.Load() with { WeeklyAnchor = anchor };
         _settingsService.Save(_settings);
         if (_last is { } s) ApplySnapshot(s); // ré-applique → arc hebdo recalé, badge « estimée » conservé
     }
