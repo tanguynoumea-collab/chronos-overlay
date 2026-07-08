@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-07-08T16:36:35.950Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-07-08T16:42:06.608Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (cadran-ringarc-converters-c-blage-view) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-08
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-orchestration-refresh-viewmodel-temps-r-el P01 | 18min | 2 tasks | 5 files |
 | Phase 04-orchestration-refresh-viewmodel-temps-r-el P02 | 5min | 3 tasks | 9 files |
 | Phase 05 P01 | 3 min | 2 tasks | 4 files |
+| Phase 05 P02 | 2 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: await Task.Yield() en tête d'ExecuteAsync : évite que StartAsync bloque quand la boucle traite le 1er déclencheur inline.
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: MainViewModel : marshaling unique via IUiDispatcher.Post (RAF-04) + Interpolate(now) pur sans I/O (RAF-03) ; DispatcherTimer cree cote UI (StartClock) hors ctor.
 - [Phase 05]: ArcGeometry: fraction >= 1 -> EllipseGeometry (anneau plein sans micro-fente) au lieu de clamp 359.9 ; isLargeArc = sweep > 180.0 stricte ; RampColor AmberStop = 0.55 (constante unique ajustable UAT). Math pure isolee dans Rendering/, testee en [WpfFact]/[Fact].
+- [Phase 05]: RingArc/TickRing derivent de Shape (pas UserControl) : geometrie = pur produit des DP AffectsRender, redessin auto au tick 1s sans animation ; DP Fraction 0..1 (pas EndAngle) pour binding direct. UtilizationToBrushConverter mono-entree : null -> neutre #2A2932 (jamais de couleur inventee), >=1 -> gris epuise #5A5960, [0,1[ -> rampe.
 
 ### Pending Todos
 
@@ -99,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:36:27.734Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-07-08T16:41:56.545Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None

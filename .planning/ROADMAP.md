@@ -89,7 +89,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 05-01-PLAN.md — Primitives de rendu pures : ArcGeometry (angle→arc, cas limites) + RampColor (rampe 3 stops) + tests (CAD-04, CAD-07), wave 1
-- [ ] 05-02-PLAN.md — Enveloppes WPF : RingArc (Shape), TickRing (graduations), UtilizationToBrushConverter + tests (CAD-01, CAD-04, CAD-05, CAD-07), wave 2
+- [x] 05-02-PLAN.md — Enveloppes WPF : RingArc (Shape), TickRing (graduations), UtilizationToBrushConverter + tests (CAD-01, CAD-04, CAD-05, CAD-07), wave 2
 - [ ] 05-03-PLAN.md — Composition MainWindow.xaml (tokens, 2 arcs, countdown, badges) + smoke + checkpoint visuel (CAD-01/02/03/05/06, DAT-08, ROB-01), wave 3
 **UI hint**: yes
 

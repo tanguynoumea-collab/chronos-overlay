@@ -14,11 +14,11 @@
 
 ### Cadran (CAD)
 
-- [ ] **CAD-01**: L'utilisateur voit un cadran circulaire sombre avec graduations (ticks mineurs/majeurs), rendu en XAML pur selon les tokens de design validés
+- [x] **CAD-01**: L'utilisateur voit un cadran circulaire sombre avec graduations (ticks mineurs/majeurs), rendu en XAML pur selon les tokens de design validés
 - [ ] **CAD-02**: L'arc extérieur encode la fenêtre 5 h : sa longueur reflète le temps restant avant reset (plein en début de fenêtre, vide à l'approche du reset)
 - [ ] **CAD-03**: L'arc intérieur encode la fenêtre hebdomadaire : sa longueur reflète le temps restant avant reset
 - [x] **CAD-04**: La couleur de chaque arc reflète l'utilization (vert #7BB13C → ambre #EFA23A → rouge #D8503A) via un converter dédié
-- [ ] **CAD-05**: Un arc passe en gris #5A5960 avec mention « quota épuisé » quand utilization ≥ 1
+- [x] **CAD-05**: Un arc passe en gris #5A5960 avec mention « quota épuisé » quand utilization ≥ 1
 - [ ] **CAD-06**: L'utilisateur voit au centre un compte à rebours texte des deux fenêtres (temps avant reset 5 h et hebdo)
 - [x] **CAD-07**: Le contrôle RingArc est réutilisable, paramétré par angle et couleur (dérivé de Shape, DefiningGeometry, DP AffectsRender)
 
@@ -95,11 +95,11 @@
 | RAF-02 | Phase 4 | Complete |
 | RAF-03 | Phase 4 | Complete |
 | RAF-04 | Phase 4 | Complete |
-| CAD-01 | Phase 5 | Pending |
+| CAD-01 | Phase 5 | Complete |
 | CAD-02 | Phase 5 | Pending |
 | CAD-03 | Phase 5 | Pending |
 | CAD-04 | Phase 5 | Complete |
-| CAD-05 | Phase 5 | Pending |
+| CAD-05 | Phase 5 | Complete |
 | CAD-06 | Phase 5 | Pending |
 | CAD-07 | Phase 5 | Complete |
 | DAT-08 | Phase 5 | Pending |
