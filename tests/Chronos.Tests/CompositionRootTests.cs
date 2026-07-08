@@ -41,6 +41,11 @@ public class CompositionRootTests
         services.AddSingleton(RefreshOptions.Default);
         services.AddSingleton<RefreshOrchestrator>();
 
+        // Phase 6 : le ctor de MainWindow dépend désormais de OverlayController (placement),
+        // lui-même de SettingsService (ChronosPaths déjà enregistré ci-dessus).
+        services.AddSingleton<SettingsService>();
+        services.AddSingleton<OverlayController>();
+
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition

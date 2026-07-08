@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using Chronos.Services;
 using Chronos.ViewModels;
 
@@ -7,24 +8,48 @@ namespace Chronos.Views;
 public partial class MainWindow : Window
 {
     private readonly TopmostGuard _topmostGuard;
+    private readonly OverlayController _controller;
 
-    public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard)
+    // État persisté à restaurer AVANT le premier rendu (fourni par App avant Show).
+    private ChronosSettings? _restored;
+
+    public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard, OverlayController controller)
     {
         InitializeComponent();
         DataContext = viewModel;          // MVVM : la vue reçoit son VM par injection
         _topmostGuard = topmostGuard;
-        SourceInitialized += (_, _) => _topmostGuard.Attach(this);  // HWND garanti ici
-        Loaded += PlacerCoinSuperieurDroit;
+        _controller = controller;
+
+        // HWND garanti ici : on attache le guard puis le controller, et on restaure le placement
+        // AVANT le premier rendu (pas de flash), remplaçant l'ancien PlacerCoinSuperieurDroit (Loaded).
+        SourceInitialized += (_, _) =>
+        {
+            _topmostGuard.Attach(this);
+            _controller.Attach(this);
+            if (_restored is not null) _controller.RestorePlacement(_restored);
+        };
+
+        // FEN-02 : glisser via DragMove (bloquant), snap au RETOUR (Pattern 1 / Pitfall 3).
+        MouseLeftButtonDown += Cadran_MouseLeftButtonDown;
+
+        // Pattern 3 : re-caler le coin après un franchissement de moniteur DPI mixte (taille physique change).
+        DpiChanged += (_, _) => _controller.SnapToNearestCorner();
+
         // Démarre l'horloge UI 1 s côté vue (RAF-03) : le DispatcherTimer est créé sur le thread UI,
-        // jamais dans le ctor du VM (Pitfall 4). Les deux handlers Loaded coexistent.
+        // jamais dans le ctor du VM (Pitfall 4).
         Loaded += (_, _) => viewModel.StartClock();
     }
 
-    // Placement de départ observable, non persisté (la persistance/snap = Phase 6).
-    private void PlacerCoinSuperieurDroit(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Fournit l'état persisté à restaurer. Appelé par App AVANT <see cref="Window.Show"/> :
+    /// SourceInitialized appliquera <see cref="OverlayController.RestorePlacement"/> avant le 1er rendu.
+    /// </summary>
+    public void ApplyRestoredState(ChronosSettings settings) => _restored = settings;
+
+    private void Cadran_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        var zone = SystemParameters.WorkArea;
-        Left = zone.Right - Width - 24;
-        Top = zone.Top + 24;
+        if (e.ButtonState != MouseButtonState.Pressed) return;
+        DragMove();                          // BLOQUE jusqu'au relâchement (consomme le MouseUp)
+        _controller.SnapToNearestCorner();   // snap AU RETOUR de DragMove (pas de handler MouseUp — Pitfall 3)
     }
 }

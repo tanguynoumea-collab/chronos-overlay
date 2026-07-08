@@ -18,7 +18,9 @@ public class OverlayWindowConfigTests
         // l'orchestrateur n'est PAS démarré ici (aucun I/O) — le VM sert juste de DataContext.
         var orchestrator = new RefreshOrchestrator(new FakeUsageProvider(), ChronosPaths.Default(), RefreshOptions.Default);
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow));
-        var fenetre = new MainWindow(vm, new TopmostGuard());
+        var guard = new TopmostGuard();
+        var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
+        var fenetre = new MainWindow(vm, guard, controller);
 
         // Chaque propriété FEN-01 : l'oubli d'une seule casse ou dénature l'overlay.
         Assert.Equal(WindowStyle.None, fenetre.WindowStyle);

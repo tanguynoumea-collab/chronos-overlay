@@ -31,7 +31,9 @@ public class CadranBindingTests
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now));
         vm.ApplySnapshot(snap);
 
-        var fenetre = new MainWindow(vm, new TopmostGuard());
+        var guard = new TopmostGuard();
+        var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
+        var fenetre = new MainWindow(vm, guard, controller);
         fenetre.Measure(new Size(220, 220));
         fenetre.Arrange(new Rect(0, 0, 220, 220));
         return fenetre;
