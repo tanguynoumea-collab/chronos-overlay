@@ -27,6 +27,7 @@ public class CompositionRootTests
         // Sur STA, CurrentDispatcher fournit un Dispatcher valide pour WpfUiDispatcher.
         var services = new ServiceCollection();
         services.AddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
+        services.AddSingleton<TopmostGuard>();          // requis par le ctor de MainWindow (ROB-04)
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition

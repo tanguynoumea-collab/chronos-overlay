@@ -19,6 +19,10 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
+  <!-- Le projet de tests accède aux types internes (ex. Interop.NativeMethods) pour vérifier les flags P/Invoke (ROB-04). -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Chronos.Tests" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />

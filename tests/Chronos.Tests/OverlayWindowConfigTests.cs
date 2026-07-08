@@ -1,4 +1,5 @@
 using System.Windows;
+using Chronos.Services;
 using Chronos.ViewModels;
 using Chronos.Views;
 using Xunit;
@@ -12,7 +13,8 @@ public class OverlayWindowConfigTests
     public void Fenetre_expose_les_proprietes_overlay()
     {
         // La fenêtre WPF doit être construite sur un thread STA — fourni par [WpfFact].
-        var fenetre = new MainWindow(new MainViewModel());
+        // Le ctor exige désormais un TopmostGuard (ROB-04) ; non attaché ici, on teste FEN-01.
+        var fenetre = new MainWindow(new MainViewModel(), new TopmostGuard());
 
         // Chaque propriété FEN-01 : l'oubli d'une seule casse ou dénature l'overlay.
         Assert.Equal(WindowStyle.None, fenetre.WindowStyle);

@@ -1,14 +1,19 @@
 using System.Windows;
+using Chronos.Services;
 using Chronos.ViewModels;
 
 namespace Chronos.Views;
 
 public partial class MainWindow : Window
 {
-    public MainWindow(MainViewModel viewModel)
+    private readonly TopmostGuard _topmostGuard;
+
+    public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard)
     {
         InitializeComponent();
         DataContext = viewModel;          // MVVM : la vue reçoit son VM par injection
+        _topmostGuard = topmostGuard;
+        SourceInitialized += (_, _) => _topmostGuard.Attach(this);  // HWND garanti ici
         Loaded += PlacerCoinSuperieurDroit;
     }
 
