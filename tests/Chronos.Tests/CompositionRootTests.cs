@@ -28,6 +28,19 @@ public class CompositionRootTests
         var services = new ServiceCollection();
         services.AddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
         services.AddSingleton<TopmostGuard>();          // requis par le ctor de MainWindow (ROB-04)
+
+        // Pipeline de données Phase 3 + orchestrateur Phase 4 (miroir de App.xaml.cs) :
+        // le MainViewModel dépend désormais de RefreshOrchestrator + IClock (04-02).
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(ChronosPaths.Default());
+        services.AddSingleton<ClaudeUsageObjectProvider>();
+        services.AddSingleton<JsonlEstimationProvider>();
+        services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
+            primary: sp.GetRequiredService<ClaudeUsageObjectProvider>(),
+            fallback: sp.GetRequiredService<JsonlEstimationProvider>()));
+        services.AddSingleton(RefreshOptions.Default);
+        services.AddSingleton<RefreshOrchestrator>();
+
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition

@@ -14,7 +14,11 @@ public class OverlayWindowConfigTests
     {
         // La fenêtre WPF doit être construite sur un thread STA — fourni par [WpfFact].
         // Le ctor exige désormais un TopmostGuard (ROB-04) ; non attaché ici, on teste FEN-01.
-        var fenetre = new MainWindow(new MainViewModel(), new TopmostGuard());
+        // Le MainViewModel prend désormais l'orchestrateur + IUiDispatcher + IClock (04-02) ;
+        // l'orchestrateur n'est PAS démarré ici (aucun I/O) — le VM sert juste de DataContext.
+        var orchestrator = new RefreshOrchestrator(new FakeUsageProvider(), ChronosPaths.Default(), RefreshOptions.Default);
+        var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow));
+        var fenetre = new MainWindow(vm, new TopmostGuard());
 
         // Chaque propriété FEN-01 : l'oubli d'une seule casse ou dénature l'overlay.
         Assert.Equal(WindowStyle.None, fenetre.WindowStyle);
