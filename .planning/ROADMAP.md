@@ -59,7 +59,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [x] 03-01-PLAN.md — Fondations neutres : modèles immuables + IClock + IUsageProvider + ChronosPaths + garde de pureté WPF (DAT-02, DAT-03, DAT-07), wave 1
-- [ ] 03-02-PLAN.md — Source primaire : pont Node non destructif + ClaudeUsageObjectProvider (usage.json) tolérant (DAT-04, ROB-02), wave 2
+- [x] 03-02-PLAN.md — Source primaire : pont Node non destructif + ClaudeUsageObjectProvider (usage.json) tolérant (DAT-04, ROB-02), wave 2
 - [ ] 03-03-PLAN.md — Repli JSONL + composite + enregistrement DI (DAT-05, DAT-06, ROB-02), wave 3
 - [ ] 03-04-PLAN.md — Installation idempotente du pont dans ~/.claude/settings.json + vérification humaine live (DAT-04), wave 3
 **UI hint**: no

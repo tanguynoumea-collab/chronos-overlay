@@ -27,7 +27,7 @@
 - [x] **DAT-01**: La méthode d'obtention de l'objet d'usage Claude Code (five_hour/seven_day : utilization + resets_at) est découverte et documentée dans docs/data-sources.md AVANT le code des providers
 - [x] **DAT-02**: L'interface IUsageProvider (GetAsync + événement SnapshotChanged) isole les sources du cadran — couche Services sans aucun type WPF
 - [x] **DAT-03**: Les modèles UsageSnapshot (Utilization, ResetsAt, Exhausted, FractionTimeRemaining, SourceReliability) et WindowState sont définis, immuables et neutres
-- [ ] **DAT-04**: ClaudeUsageObjectProvider lit l'objet d'usage localisé (source primaire, fiable)
+- [x] **DAT-04**: ClaudeUsageObjectProvider lit l'objet d'usage localisé (source primaire, fiable)
 - [ ] **DAT-05**: JsonlEstimationProvider estime l'usage par somme de tokens des transcripts JSONL (~/.claude/projects), lecture FileShare.ReadWrite en streaming
 - [ ] **DAT-06**: CompositeUsageProvider tente le primaire puis bascule sur le repli
 - [x] **DAT-07**: FractionTimeRemaining des deux fenêtres est calculé à partir de ResetsAt
@@ -43,7 +43,7 @@
 ### Robustesse (ROB)
 
 - [ ] **ROB-01**: Aucune source disponible n'entraîne de crash : l'overlay affiche un état « données indisponibles »
-- [ ] **ROB-02**: Le parsing est tolérant : lignes ou champs invalides ignorés, dernière ligne JSONL partielle ignorée
+- [x] **ROB-02**: Le parsing est tolérant : lignes ou champs invalides ignorés, dernière ligne JSONL partielle ignorée
 - [ ] **ROB-03**: Le compte à rebours hebdo est traité en best-effort et recalibrable par l'utilisateur (réglage)
 - [x] **ROB-04**: Le Topmost est réaffirmé périodiquement (SetWindowPos HWND_TOPMOST, SWP_NOACTIVATE) sans vol de focus
 
@@ -86,11 +86,11 @@
 | DAT-01 | Phase 2 | Complete |
 | DAT-02 | Phase 3 | Complete |
 | DAT-03 | Phase 3 | Complete |
-| DAT-04 | Phase 3 | Pending |
+| DAT-04 | Phase 3 | Complete |
 | DAT-05 | Phase 3 | Pending |
 | DAT-06 | Phase 3 | Pending |
 | DAT-07 | Phase 3 | Complete |
-| ROB-02 | Phase 3 | Pending |
+| ROB-02 | Phase 3 | Complete |
 | RAF-01 | Phase 4 | Pending |
 | RAF-02 | Phase 4 | Pending |
 | RAF-03 | Phase 4 | Pending |
