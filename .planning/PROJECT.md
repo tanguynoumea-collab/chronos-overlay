@@ -21,10 +21,6 @@ chiffre exact.
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
-
-### Validated (shipped)
-
 - ✓ Fenêtre WPF borderless, transparente, always-on-top, sans barre des tâches (FEN-01) — Phase 1
 - ✓ Topmost réaffirmé périodiquement sans vol de focus (ROB-04) — Phase 1
 
