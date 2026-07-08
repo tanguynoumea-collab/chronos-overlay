@@ -18,6 +18,8 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
   <!-- Le projet de tests accède aux types internes (ex. Interop.NativeMethods) pour vérifier les flags P/Invoke (ROB-04). -->
   <ItemGroup>
