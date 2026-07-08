@@ -9,7 +9,7 @@
 - [x] **FEN-03**: L'overlay s'accroche automatiquement au coin d'écran le plus proche au relâchement (WorkingArea, pas Bounds)
 - [x] **FEN-04**: L'accroche aux coins fonctionne sur tous les moniteurs en multi-écrans (coordonnées Per-Monitor, repli si l'écran persisté disparaît)
 - [x] **FEN-05**: L'utilisateur peut basculer l'overlay en arrière-plan (toggle Topmost, renvoi au fond) et le ramener au premier plan
-- [ ] **FEN-06**: L'utilisateur accède à un menu contextuel clic droit (arrière-plan, recalibrer, quitter) — seul point d'accès d'une fenêtre sans barre de titre ni barre des tâches
+- [x] **FEN-06**: L'utilisateur accède à un menu contextuel clic droit (arrière-plan, recalibrer, quitter) — seul point d'accès d'une fenêtre sans barre de titre ni barre des tâches
 - [x] **FEN-07**: La position, le coin et les réglages sont persistés dans %APPDATA%/Chronos/settings.json et restaurés au lancement
 
 ### Cadran (CAD)
@@ -108,7 +108,7 @@
 | FEN-03 | Phase 6 | Complete |
 | FEN-04 | Phase 6 | Complete |
 | FEN-05 | Phase 6 | Complete |
-| FEN-06 | Phase 6 | Pending |
+| FEN-06 | Phase 6 | Complete |
 | FEN-07 | Phase 6 | Complete |
 | ROB-03 | Phase 6 | Complete |
 | DEP-02 | Phase 6 | Complete |
