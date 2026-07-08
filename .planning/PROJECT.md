@@ -23,6 +23,12 @@ chiffre exact.
 
 - ✓ Fenêtre WPF borderless, transparente, always-on-top, sans barre des tâches (FEN-01) — Phase 1
 - ✓ Topmost réaffirmé périodiquement sans vol de focus (ROB-04) — Phase 1
+- ✓ Abstraction IUsageProvider + modèles UsageSnapshot immuables neutres (DAT-02, DAT-03) — Phase 3
+- ✓ Provider primaire via pont statusLine→usage.json installé (DAT-04) — Phase 3
+- ✓ Provider de repli JSONL honnête, utilization=null jamais inventée (DAT-05) — Phase 3
+- ✓ Provider composite avec bascule par fenêtre (DAT-06) — Phase 3
+- ✓ FractionTimeRemaining clampé depuis ResetsAt (DAT-07) — Phase 3
+- ✓ Parsing tolérant (ROB-02) — Phase 3
 
 ### Active
 
@@ -34,10 +40,6 @@ chiffre exact.
 - [ ] Arc intérieur = fenêtre hebdo : longueur liée au temps restant avant reset
 - [ ] Couleur des arcs = utilization (vert → ambre → rouge), gris si utilization ≥ 1 (épuisé)
 - [ ] Compte à rebours texte central des deux fenêtres (reset 5 h + reset hebdo)
-- [ ] Abstraction IUsageProvider (sources interchangeables sans toucher au cadran)
-- [ ] Provider primaire : objet d'usage Claude Code (five_hour/seven_day : utilization + resets_at)
-- [ ] Provider de repli : estimation par tokens des transcripts JSONL, toujours marquée « estimée »
-- [ ] Provider composite : primaire puis repli automatique
 - [ ] Rafraîchissement sur écriture des sources (FileSystemWatcher) + périodique (PeriodicTimer)
 - [ ] Tick 1 s (DispatcherTimer) mettant à jour la longueur des arcs et le compte à rebours
 - [ ] Déplacement par glisser + accroche automatique au coin d'écran le plus proche (multi-écrans)
@@ -95,10 +97,10 @@ chiffre exact.
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Abstraction IUsageProvider entre sources et cadran | Sources locales non documentées susceptibles de casser ; isoler le point de rupture | — Pending |
-| Objet d'usage (utilization/resets_at) en source primaire, JSONL en repli | Chiffres fiables prioritaires sur estimation par tokens | — Pending |
+| Abstraction IUsageProvider entre sources et cadran | Sources locales non documentées susceptibles de casser ; isoler le point de rupture | ✓ Good — Phase 3 |
+| Objet d'usage (utilization/resets_at) en source primaire, JSONL en repli | Chiffres fiables prioritaires sur estimation par tokens | ✓ Good — composite livré ; repli n'invente jamais d'utilization (null) |
 | Découverte de source (docs/data-sources.md) avant de coder les providers | Tout le pipeline données en dépend | ✓ Good — source localisée (Phase 2) |
-| Source primaire = bloc rate_limits du contrat statusLine (officiel), via pont statusLine→fichier | Rien n'est persisté sur disque ; le champ réel est used_percentage (0-100) et resets_at en epoch secondes | — Pending (pont à coder en Phase 3) |
+| Source primaire = bloc rate_limits du contrat statusLine (officiel), via pont statusLine→fichier | Rien n'est persisté sur disque ; le champ réel est used_percentage (0-100) et resets_at en epoch secondes | ✓ Good — pont installé avec backup (Phase 3) |
 | Rendu des arcs en XAML pur | Éviter dépendance native, simplifier le packaging mono-fichier | — Pending |
 | Pas de source Cowork séparée | Pool partagé compte : Cowork déjà inclus dans l'usage de Code | — Pending |
 | Reset hebdo traité comme best-effort recalibrable | Le reset 7 jours dérive (~72 h, ancrage non documenté) | — Pending |
@@ -121,4 +123,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 after Phase 1 completion*
+*Last updated: 2026-07-08 after Phase 3 completion*
