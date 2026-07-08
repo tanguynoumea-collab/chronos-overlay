@@ -41,5 +41,11 @@ public sealed class TopmostGuard : IDisposable
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
     }
 
+    /// <summary>Suspend la réaffirmation topmost (mode arrière-plan) — sinon re-force le topmost toutes les 2 s.</summary>
+    public void Suspend() => _timer.Stop();
+
+    /// <summary>Reprend la réaffirmation et repose HWND_TOPMOST immédiatement (retour premier plan).</summary>
+    public void Resume() { _timer.Start(); Reassert(); }
+
     public void Dispose() => _timer.Stop();
 }
