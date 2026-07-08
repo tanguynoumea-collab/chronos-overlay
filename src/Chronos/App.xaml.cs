@@ -57,6 +57,10 @@ public partial class App : Application
         services.AddSingleton<OverlayController>();
         services.AddSingleton<IWindowController>(sp => sp.GetRequiredService<OverlayController>());
 
+        // Menu contextuel 06-04 (FEN-06) : autostart shell:startup (DEP-02, service neutre de 06-02).
+        // IRecalibrationPrompt (dialogue WPF) est enregistré en Task 2.
+        services.AddSingleton<IAutostartService>(_ => new AutostartService());
+
         // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
         // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).
         services.AddSingleton<IClock, SystemClock>();

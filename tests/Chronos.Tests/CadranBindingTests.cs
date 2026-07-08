@@ -28,7 +28,9 @@ public class CadranBindingTests
     private static MainWindow BuildWindow(UsageSnapshot snap, out MainViewModel vm)
     {
         var orch = new RefreshOrchestrator(new FakeUsageProvider(), ChronosPaths.Default(), RefreshOptions.Default);
-        vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now));
+        vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
+            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
+            new SettingsService(ChronosPaths.Default()));
         vm.ApplySnapshot(snap);
 
         var guard = new TopmostGuard();

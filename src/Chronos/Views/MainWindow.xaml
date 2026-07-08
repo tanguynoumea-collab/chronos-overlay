@@ -15,6 +15,24 @@
         <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
     </Window.Resources>
     <Grid>
+        <!-- Menu contextuel = SEUL point d'accès/sortie (FEN-06). Attaché à la Grid racine dont le
+             DataContext est le VM → les 4 MenuItem héritent du DataContext (Pattern 4 / Pitfall 5).
+             Clic gauche = drag (code-behind), clic droit = ce menu → aucun conflit. -->
+        <Grid.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Arrière-plan" IsCheckable="True"
+                          IsChecked="{Binding IsBackground}"
+                          Command="{Binding ToggleBackgroundCommand}"/>
+                <MenuItem Header="Recalibrer le reset hebdo…"
+                          Command="{Binding RecalibrateCommand}"/>
+                <MenuItem Header="Lancer au démarrage" IsCheckable="True"
+                          IsChecked="{Binding IsAutostart}"
+                          Command="{Binding ToggleAutostartCommand}"/>
+                <Separator/>
+                <MenuItem Header="Quitter" Command="{Binding QuitCommand}"/>
+            </ContextMenu>
+        </Grid.ContextMenu>
+
         <!-- Fond + rim -->
         <Ellipse Width="200" Height="200"
                  Fill="{StaticResource FondCadran}"
