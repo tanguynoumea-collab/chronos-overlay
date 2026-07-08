@@ -35,8 +35,8 @@
 
 ### Rafraîchissement (RAF)
 
-- [ ] **RAF-01**: Un FileSystemWatcher débouncé déclenche la relecture sur écriture des sources
-- [ ] **RAF-02**: Un PeriodicTimer relit les données à intervalle configurable (filet de sécurité du watcher)
+- [x] **RAF-01**: Un FileSystemWatcher débouncé déclenche la relecture sur écriture des sources
+- [x] **RAF-02**: Un PeriodicTimer relit les données à intervalle configurable (filet de sécurité du watcher)
 - [ ] **RAF-03**: Un DispatcherTimer 1 s interpole arcs et compte à rebours à partir du dernier snapshot, sans I/O
 - [ ] **RAF-04**: Tout franchissement thread pool → UI passe par un point de marshaling unique (IUiDispatcher)
 
@@ -91,8 +91,8 @@
 | DAT-06 | Phase 3 | Complete |
 | DAT-07 | Phase 3 | Complete |
 | ROB-02 | Phase 3 | Complete |
-| RAF-01 | Phase 4 | Pending |
-| RAF-02 | Phase 4 | Pending |
+| RAF-01 | Phase 4 | Complete |
+| RAF-02 | Phase 4 | Complete |
 | RAF-03 | Phase 4 | Pending |
 | RAF-04 | Phase 4 | Pending |
 | CAD-01 | Phase 5 | Pending |

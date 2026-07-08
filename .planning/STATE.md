@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-07-08T15:06:45.145Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-07-08T15:49:06.932Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 03 — mod-les-pipeline-de-donn-es
+**Current focus:** Phase 04 — orchestration-refresh-viewmodel-temps-r-el
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 04 (orchestration-refresh-viewmodel-temps-r-el) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P02 | 4min | 2 tasks | 7 files |
 | Phase 03 P04 | 5min | 2 tasks | 3 files |
 | Phase 03 P03 | 6min | 3 tasks | 9 files |
+| Phase 04-orchestration-refresh-viewmodel-temps-r-el P01 | 18min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 03]: Pont statusLine DEPLOYE via installeur idempotent non destructif (install-bridge.mjs) : backup .chronos.bak non ecrasant, chainage verifie de gsd-statusline.js, ecriture atomique de la seule cle statusLine, --uninstall reversible. Deploiement verifie programmatiquement (usage.json alimente + barre re-emise intacte).
 - [Phase 03]: Repli JSONL : scan recursif AllDirectories inclut subagents/ dans la somme de tokens (meme pool de quota, arbitrage phase 3, aucun filtre) ; estimation toujours Estimated, Utilization/ResetsAt null (jamais invente).
 - [Phase 03]: CompositeUsageProvider bascule PAR FENETRE (Exact>Estimated>Unavailable) ; IUsageProvider resout le composite en DI Singleton (App.xaml.cs) sans casser Phase 1.
+- [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: RefreshOrchestrator (BackgroundService neutre) expose SnapshotChanged ; watcher débouncé + PeriodicTimer alimentent un Channel(1, DropWrite) à consommateur unique sérialisant GetAsync.
+- [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: await Task.Yield() en tête d'ExecuteAsync : évite que StartAsync bloque quand la boucle traite le 1er déclencheur inline.
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T15:02:35.695Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-07-08T15:49:06.928Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
