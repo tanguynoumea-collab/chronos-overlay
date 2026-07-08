@@ -31,6 +31,8 @@ public partial class App : Application
         var settings = _host.Services.GetRequiredService<ChronosSettings>();
         var window = _host.Services.GetRequiredService<MainWindow>();
         window.ApplyRestoredState(settings);
+        MainWindow = window;                         // Application.MainWindow AVANT Show → le dialogue de
+                                                     // recalibrage se centre sur l'overlay (Owner), ROB-03/FEN-07
         window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
     }
 
@@ -57,9 +59,10 @@ public partial class App : Application
         services.AddSingleton<OverlayController>();
         services.AddSingleton<IWindowController>(sp => sp.GetRequiredService<OverlayController>());
 
-        // Menu contextuel 06-04 (FEN-06) : autostart shell:startup (DEP-02, service neutre de 06-02).
-        // IRecalibrationPrompt (dialogue WPF) est enregistré en Task 2.
+        // Menu contextuel 06-04 (FEN-06) : autostart shell:startup (DEP-02, service neutre de 06-02)
+        // + dialogue de recalibrage hebdo (ROB-03) via le prompt WPF (namespace Views, hors pureté Services).
         services.AddSingleton<IAutostartService>(_ => new AutostartService());
+        services.AddSingleton<IRecalibrationPrompt, RecalibrationPrompt>();
 
         // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
         // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).
