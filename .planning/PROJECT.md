@@ -23,11 +23,16 @@ chiffre exact.
 
 (None yet — ship to validate)
 
+### Validated (shipped)
+
+- ✓ Fenêtre WPF borderless, transparente, always-on-top, sans barre des tâches (FEN-01) — Phase 1
+- ✓ Topmost réaffirmé périodiquement sans vol de focus (ROB-04) — Phase 1
+
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Fenêtre WPF borderless, transparente, always-on-top, sans barre des tâches, déplaçable
+- [ ] Fenêtre déplaçable (drag + accroche coins)
 - [ ] Cadran circulaire sombre avec graduations (ticks mineurs/majeurs) rendu en XAML pur
 - [ ] Arc extérieur = fenêtre 5 h : longueur liée au temps restant avant reset
 - [ ] Arc intérieur = fenêtre hebdo : longueur liée au temps restant avant reset
@@ -119,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 after initialization*
+*Last updated: 2026-07-08 after Phase 1 completion*
