@@ -25,12 +25,12 @@
 ### Données (DAT)
 
 - [x] **DAT-01**: La méthode d'obtention de l'objet d'usage Claude Code (five_hour/seven_day : utilization + resets_at) est découverte et documentée dans docs/data-sources.md AVANT le code des providers
-- [ ] **DAT-02**: L'interface IUsageProvider (GetAsync + événement SnapshotChanged) isole les sources du cadran — couche Services sans aucun type WPF
-- [ ] **DAT-03**: Les modèles UsageSnapshot (Utilization, ResetsAt, Exhausted, FractionTimeRemaining, SourceReliability) et WindowState sont définis, immuables et neutres
+- [x] **DAT-02**: L'interface IUsageProvider (GetAsync + événement SnapshotChanged) isole les sources du cadran — couche Services sans aucun type WPF
+- [x] **DAT-03**: Les modèles UsageSnapshot (Utilization, ResetsAt, Exhausted, FractionTimeRemaining, SourceReliability) et WindowState sont définis, immuables et neutres
 - [ ] **DAT-04**: ClaudeUsageObjectProvider lit l'objet d'usage localisé (source primaire, fiable)
 - [ ] **DAT-05**: JsonlEstimationProvider estime l'usage par somme de tokens des transcripts JSONL (~/.claude/projects), lecture FileShare.ReadWrite en streaming
 - [ ] **DAT-06**: CompositeUsageProvider tente le primaire puis bascule sur le repli
-- [ ] **DAT-07**: FractionTimeRemaining des deux fenêtres est calculé à partir de ResetsAt
+- [x] **DAT-07**: FractionTimeRemaining des deux fenêtres est calculé à partir de ResetsAt
 - [ ] **DAT-08**: Toute donnée issue du repli JSONL est visuellement marquée « estimée » dans l'UI — jamais présentée comme exacte
 
 ### Rafraîchissement (RAF)
@@ -84,12 +84,12 @@
 | FEN-01 | Phase 1 | Complete |
 | ROB-04 | Phase 1 | Complete |
 | DAT-01 | Phase 2 | Complete |
-| DAT-02 | Phase 3 | Pending |
-| DAT-03 | Phase 3 | Pending |
+| DAT-02 | Phase 3 | Complete |
+| DAT-03 | Phase 3 | Complete |
 | DAT-04 | Phase 3 | Pending |
 | DAT-05 | Phase 3 | Pending |
 | DAT-06 | Phase 3 | Pending |
-| DAT-07 | Phase 3 | Pending |
+| DAT-07 | Phase 3 | Complete |
 | ROB-02 | Phase 3 | Pending |
 | RAF-01 | Phase 4 | Pending |
 | RAF-02 | Phase 4 | Pending |
