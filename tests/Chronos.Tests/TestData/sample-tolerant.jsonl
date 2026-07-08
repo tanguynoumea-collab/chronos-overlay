@@ -1,0 +1,4 @@
+{"type":"assistant","timestamp":"2026-07-08T11:00:00.000Z","message":{"role":"assistant","usage":{"input_tokens":400,"output_tokens":100,"cache_creation_input_tokens":100,"cache_read_input_tokens":100}}}
+{ "type":"assistant", broken
+{"type":"user","timestamp":"2026-07-08T11:00:00.000Z","message":{"role":"user","content":"parlons de five_hour et seven_day"}}
+{"type":"assistant","timestamp":"2026-07-08T11:5
