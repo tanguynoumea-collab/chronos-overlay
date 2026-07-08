@@ -105,8 +105,8 @@ Plans:
   5. L'utilisateur active le lancement au démarrage Windows (shell:startup) et recalibre le reset hebdo best-effort.
 **Plans**: 4 plans
 Plans:
-- [ ] 06-01-PLAN.md — Fondations neutres : CornerSnap pur + SettingsService atomique + WeeklyRecalibration (FEN-03, FEN-07, ROB-03), wave 1
-- [ ] 06-02-PLAN.md — Interop moniteur/DPI + TopmostGuard Suspend/Resume + AutostartService .lnk (FEN-05, DEP-02), wave 1
+- [x] 06-01-PLAN.md — Fondations neutres : CornerSnap pur + SettingsService atomique + WeeklyRecalibration (FEN-03, FEN-07, ROB-03), wave 1
+- [x] 06-02-PLAN.md — Interop moniteur/DPI + TopmostGuard Suspend/Resume + AutostartService .lnk (FEN-05, DEP-02), wave 1
 - [ ] 06-03-PLAN.md — OverlayController (placement physique) + drag/snap + hook écran + restauration au lancement (FEN-02, FEN-03, FEN-04, FEN-05, FEN-07), wave 2
 - [ ] 06-04-PLAN.md — Menu contextuel + commandes VM + dialogue recalibrage + autostart + checkpoint UAT (FEN-05, FEN-06, FEN-07, ROB-03, DEP-02), wave 3
 **UI hint**: yes

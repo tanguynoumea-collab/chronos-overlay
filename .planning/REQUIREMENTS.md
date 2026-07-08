@@ -6,11 +6,11 @@
 
 - [x] **FEN-01**: L'utilisateur voit une fenêtre borderless transparente always-on-top (WindowStyle=None, AllowsTransparency=True, Topmost=True, ShowInTaskbar=False)
 - [ ] **FEN-02**: L'utilisateur peut déplacer l'overlay par glisser (DragMove)
-- [ ] **FEN-03**: L'overlay s'accroche automatiquement au coin d'écran le plus proche au relâchement (WorkingArea, pas Bounds)
+- [x] **FEN-03**: L'overlay s'accroche automatiquement au coin d'écran le plus proche au relâchement (WorkingArea, pas Bounds)
 - [ ] **FEN-04**: L'accroche aux coins fonctionne sur tous les moniteurs en multi-écrans (coordonnées Per-Monitor, repli si l'écran persisté disparaît)
-- [ ] **FEN-05**: L'utilisateur peut basculer l'overlay en arrière-plan (toggle Topmost, renvoi au fond) et le ramener au premier plan
+- [x] **FEN-05**: L'utilisateur peut basculer l'overlay en arrière-plan (toggle Topmost, renvoi au fond) et le ramener au premier plan
 - [ ] **FEN-06**: L'utilisateur accède à un menu contextuel clic droit (arrière-plan, recalibrer, quitter) — seul point d'accès d'une fenêtre sans barre de titre ni barre des tâches
-- [ ] **FEN-07**: La position, le coin et les réglages sont persistés dans %APPDATA%/Chronos/settings.json et restaurés au lancement
+- [x] **FEN-07**: La position, le coin et les réglages sont persistés dans %APPDATA%/Chronos/settings.json et restaurés au lancement
 
 ### Cadran (CAD)
 
@@ -44,13 +44,13 @@
 
 - [x] **ROB-01**: Aucune source disponible n'entraîne de crash : l'overlay affiche un état « données indisponibles »
 - [x] **ROB-02**: Le parsing est tolérant : lignes ou champs invalides ignorés, dernière ligne JSONL partielle ignorée
-- [ ] **ROB-03**: Le compte à rebours hebdo est traité en best-effort et recalibrable par l'utilisateur (réglage)
+- [x] **ROB-03**: Le compte à rebours hebdo est traité en best-effort et recalibrable par l'utilisateur (réglage)
 - [x] **ROB-04**: Le Topmost est réaffirmé périodiquement (SetWindowPos HWND_TOPMOST, SWP_NOACTIVATE) sans vol de focus
 
 ### Déploiement (DEP)
 
 - [ ] **DEP-01**: L'app se publie en exe self-contained mono-fichier win-x64 (PublishSingleFile, PublishTrimmed=false, IncludeNativeLibrariesForSelfExtract=true)
-- [ ] **DEP-02**: L'utilisateur peut activer le lancement au démarrage Windows via un raccourci shell:startup
+- [x] **DEP-02**: L'utilisateur peut activer le lancement au démarrage Windows via un raccourci shell:startup
 
 ## v2 Requirements
 
@@ -105,13 +105,13 @@
 | DAT-08 | Phase 5 | Complete |
 | ROB-01 | Phase 5 | Complete |
 | FEN-02 | Phase 6 | Pending |
-| FEN-03 | Phase 6 | Pending |
+| FEN-03 | Phase 6 | Complete |
 | FEN-04 | Phase 6 | Pending |
-| FEN-05 | Phase 6 | Pending |
+| FEN-05 | Phase 6 | Complete |
 | FEN-06 | Phase 6 | Pending |
-| FEN-07 | Phase 6 | Pending |
-| ROB-03 | Phase 6 | Pending |
-| DEP-02 | Phase 6 | Pending |
+| FEN-07 | Phase 6 | Complete |
+| ROB-03 | Phase 6 | Complete |
+| DEP-02 | Phase 6 | Complete |
 | DEP-01 | Phase 7 | Pending |
 
 ---

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-07-08T16:58:31.219Z"
+status: executing
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-07-08T19:56:43.289Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 15
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 05 — cadran-ringarc-converters-c-blage-view
+**Current focus:** Phase 06 — comportements-overlay-placement-interaction
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 06 (comportements-overlay-placement-interaction) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -64,6 +64,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P01 | 3 min | 2 tasks | 4 files |
 | Phase 05 P02 | 2 min | 3 tasks | 4 files |
 | Phase 05-cadran-ringarc-converters-c-blage-view P03 | 9 min | 3 tasks | 4 files |
+| Phase 06 P02 | 4 min | 3 tasks | 6 files |
+| Phase 06-comportements-overlay-placement-interaction P01 | 4min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -91,6 +93,9 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 05]: ArcGeometry: fraction >= 1 -> EllipseGeometry (anneau plein sans micro-fente) au lieu de clamp 359.9 ; isLargeArc = sweep > 180.0 stricte ; RampColor AmberStop = 0.55 (constante unique ajustable UAT). Math pure isolee dans Rendering/, testee en [WpfFact]/[Fact].
 - [Phase 05]: RingArc/TickRing derivent de Shape (pas UserControl) : geometrie = pur produit des DP AffectsRender, redessin auto au tick 1s sans animation ; DP Fraction 0..1 (pas EndAngle) pour binding direct. UtilizationToBrushConverter mono-entree : null -> neutre #2A2932 (jamais de couleur inventee), >=1 -> gris epuise #5A5960, [0,1[ -> rampe.
 - [Phase 05-cadran-ringarc-converters-c-blage-view]: [Phase 05]: Cadran compose en XAML pur (bindings + converters, zero code-behind) ; tokens/converters dans Resources/DesignTokens.xaml autonome, merge par App.xaml ET Window.Resources (vue auto-suffisante et testable). Signaux estimee/epuise PAR FENETRE (FiveHour/SevenDay independants), staleness globale en texte secondaire ; deux nuances #C7C6D0 (countdown hebdo) et #A9A8B2 (badges) chacune utilisee.
+- [Phase 06]: Autostart .lnk cible Environment.ProcessPath (single-file-safe, jamais Assembly.Location) via COM late-bound WScript.Shell sans NuGet ; dossier startup injectable pour tests
+- [Phase 06]: TopmostGuard.Suspend=_timer.Stop / Resume=_timer.Start+Reassert (pas de toggle Topmost, evite scintillement) ; NativeMethods etendu au placement physique multi-ecrans (MonitorFromWindow/GetMonitorInfo rcWork)
+- [Phase 06]: Placement persiste coin+device comme verite (X/Y indicatifs) ; RefreshIntervalSeconds sans UI applique au demarrage 06-03 ; recalibrage hebdo au repli seulement restant Estimated (badge estimee conserve).
 
 ### Pending Todos
 
@@ -103,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:53:47.404Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-07-08T19:56:14.972Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
