@@ -9,6 +9,11 @@
     <!-- Cadran complet (Pattern 6 : empilement du fond vers le premier plan).
          Aucune Storyboard/blur/shadow : AllowsTransparency force le rendu logiciel.
          Aucun code-behind : uniquement des bindings + converters. Centre = 110,110 (Grid 220×220). -->
+    <Window.Resources>
+        <!-- Tokens de design + converters, au niveau fenêtre : la vue est autonome (les StaticResource
+             résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
+        <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
+    </Window.Resources>
     <Grid>
         <!-- Fond + rim -->
         <Ellipse Width="200" Height="200"
