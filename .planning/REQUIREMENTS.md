@@ -77,11 +77,42 @@
 
 ## Traceability
 
-*Rempli par la roadmap.*
+*Rempli par la roadmap. Couverture : 32/32 requirements v1 mappées, aucun orphelin.*
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| — | — | — |
+| FEN-01 | Phase 1 | Pending |
+| ROB-04 | Phase 1 | Pending |
+| DAT-01 | Phase 2 | Pending |
+| DAT-02 | Phase 3 | Pending |
+| DAT-03 | Phase 3 | Pending |
+| DAT-04 | Phase 3 | Pending |
+| DAT-05 | Phase 3 | Pending |
+| DAT-06 | Phase 3 | Pending |
+| DAT-07 | Phase 3 | Pending |
+| ROB-02 | Phase 3 | Pending |
+| RAF-01 | Phase 4 | Pending |
+| RAF-02 | Phase 4 | Pending |
+| RAF-03 | Phase 4 | Pending |
+| RAF-04 | Phase 4 | Pending |
+| CAD-01 | Phase 5 | Pending |
+| CAD-02 | Phase 5 | Pending |
+| CAD-03 | Phase 5 | Pending |
+| CAD-04 | Phase 5 | Pending |
+| CAD-05 | Phase 5 | Pending |
+| CAD-06 | Phase 5 | Pending |
+| CAD-07 | Phase 5 | Pending |
+| DAT-08 | Phase 5 | Pending |
+| ROB-01 | Phase 5 | Pending |
+| FEN-02 | Phase 6 | Pending |
+| FEN-03 | Phase 6 | Pending |
+| FEN-04 | Phase 6 | Pending |
+| FEN-05 | Phase 6 | Pending |
+| FEN-06 | Phase 6 | Pending |
+| FEN-07 | Phase 6 | Pending |
+| ROB-03 | Phase 6 | Pending |
+| DEP-02 | Phase 6 | Pending |
+| DEP-01 | Phase 7 | Pending |
 
 ---
-*Last updated: 2026-07-08 after initialization*
+*Last updated: 2026-07-08 after roadmap creation*
