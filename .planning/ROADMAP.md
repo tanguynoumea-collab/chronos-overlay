@@ -43,7 +43,9 @@ Plans:
   1. Le fichier docs/data-sources.md existe et localise précisément l'objet d'usage (five_hour/seven_day) avec un échantillon réel capturé.
   2. Le schéma des champs utilization/resets_at et la structure des transcripts JSONL (~/.claude/projects) y sont documentés.
   3. Les hypothèses et points de fragilité (source non documentée, susceptible de casser) sont consignés pour guider l'abstraction IUsageProvider.
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Rédiger docs/data-sources.md : source primaire rate_limits/statusLine + repli JSONL + mapping UsageSnapshot + hypothèses/fragilités (DAT-01), wave 1
 
 ### Phase 3 : Modèles + pipeline de données
 **Goal**: Un pipeline de données neutre produit des UsageSnapshot immuables — fiables depuis l'objet primaire ou estimés depuis les JSONL — entièrement isolé du cadran, sans aucun type WPF.
@@ -109,7 +111,7 @@ Les phases s'exécutent dans l'ordre numérique : 1 → 2 → 3 → 4 → 5 → 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Fondations architecture + squelette overlay | 0/3 | Planned | - |
-| 2. Découverte des sources (bloquante) | 0/TBD | Not started | - |
+| 2. Découverte des sources (bloquante) | 0/1 | Planned | - |
 | 3. Modèles + pipeline de données | 0/TBD | Not started | - |
 | 4. Orchestration refresh + ViewModel temps réel | 0/TBD | Not started | - |
 | 5. Cadran (RingArc + converters) + câblage View | 0/TBD | Not started | - |
