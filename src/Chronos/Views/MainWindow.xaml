@@ -1,13 +1,84 @@
 <Window x:Class="Chronos.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="clr-namespace:Chronos.Controls"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" SizeToContent="Manual"
         Width="220" Height="220" WindowStartupLocation="Manual">
-    <!-- Placeholder visible de l'empreinte du cadran (remplacé en Phase 5).
-         Pas d'ombre/blur/animation : AllowsTransparency force le rendu logiciel. -->
+    <!-- Cadran complet (Pattern 6 : empilement du fond vers le premier plan).
+         Aucune Storyboard/blur/shadow : AllowsTransparency force le rendu logiciel.
+         Aucun code-behind : uniquement des bindings + converters. Centre = 110,110 (Grid 220×220). -->
     <Grid>
-        <Ellipse Width="200" Height="200" Fill="#CC1E1E1E"/>
+        <!-- Fond + rim -->
+        <Ellipse Width="200" Height="200"
+                 Fill="{StaticResource FondCadran}"
+                 Stroke="{StaticResource Rim}" StrokeThickness="2"/>
+
+        <!-- Graduations : mineures (60) puis majeures (12) -->
+        <ctrl:TickRing Count="60" Radius="96" TickLength="5"
+                       Stroke="{StaticResource TickMineur}" StrokeThickness="1"/>
+        <ctrl:TickRing Count="12" Radius="96" TickLength="9"
+                       Stroke="{StaticResource TickMajeur}" StrokeThickness="2"/>
+
+        <!-- Pistes (arcs pleins de fond) : 5 h extérieur, hebdo intérieur -->
+        <ctrl:RingArc Fraction="1" Radius="90"
+                      Stroke="{StaticResource Piste5h}" StrokeThickness="11"/>
+        <ctrl:RingArc Fraction="1" Radius="70"
+                      Stroke="{StaticResource PisteHebdo}" StrokeThickness="11"/>
+
+        <!-- Arc valeur 5 h (extérieur, CAD-02) : longueur = temps restant, couleur = utilization -->
+        <ctrl:RingArc x:Name="ArcCinqHeures" Radius="90" StrokeThickness="11"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Fraction="{Binding FiveHour.FractionRemaining}"
+                      Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
+
+        <!-- Arc valeur hebdo (intérieur, CAD-03) -->
+        <ctrl:RingArc x:Name="ArcHebdo" Radius="70" StrokeThickness="11"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Fraction="{Binding SevenDay.FractionRemaining}"
+                      Stroke="{Binding SevenDay.Utilization, Converter={StaticResource UtilBrush}}"/>
+
+        <!-- Bloc central : signaux PAR FENÊTRE (fiabilité/épuisement diffèrent entre 5 h et hebdo) + mentions globales -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+
+            <!-- Groupe 5 h -->
+            <TextBlock x:Name="TexteCinqHeures" HorizontalAlignment="Center"
+                       FontSize="26" FontWeight="SemiBold"
+                       Text="{Binding FiveHour.CountdownText}"
+                       Foreground="{StaticResource TextePrincipal}"/>
+            <TextBlock x:Name="BadgeEstimeeCinqHeures" HorizontalAlignment="Center"
+                       FontSize="10" Text="estimée"
+                       Visibility="{Binding FiveHour.IsEstimated, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+            <TextBlock x:Name="TexteEpuiseCinqHeures" HorizontalAlignment="Center"
+                       FontSize="10" Text="quota épuisé"
+                       Visibility="{Binding FiveHour.Exhausted, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+
+            <!-- Groupe hebdo (countdown en nuance secondaire claire #C7C6D0) -->
+            <TextBlock x:Name="TexteHebdo" HorizontalAlignment="Center" Margin="0,4,0,0"
+                       FontSize="15"
+                       Text="{Binding SevenDay.CountdownText}"
+                       Foreground="{StaticResource TexteSecondaireClair}"/>
+            <TextBlock x:Name="BadgeEstimeeHebdo" HorizontalAlignment="Center"
+                       FontSize="10" Text="estimée"
+                       Visibility="{Binding SevenDay.IsEstimated, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+            <TextBlock x:Name="TexteEpuiseHebdo" HorizontalAlignment="Center"
+                       FontSize="10" Text="quota épuisé"
+                       Visibility="{Binding SevenDay.Exhausted, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+
+            <!-- Mentions globales : staleness (texte secondaire) puis indisponible -->
+            <TextBlock x:Name="TexteStale" HorizontalAlignment="Center" Margin="0,4,0,0"
+                       FontSize="10" Text="données périmées"
+                       Visibility="{Binding IsStale, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+            <TextBlock x:Name="TexteIndisponible" HorizontalAlignment="Center"
+                       FontSize="11" Text="données indisponibles"
+                       Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+        </StackPanel>
     </Grid>
 </Window>

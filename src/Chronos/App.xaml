@@ -1,6 +1,25 @@
 <Application x:Class="Chronos.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Chronos.Converters">
     <!-- Aucun démarrage automatique par URI : la fenêtre est résolue par la composition root. -->
-    <Application.Resources/>
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Tokens couleur VERROUILLÉS (maquette / 05-CONTEXT) — source unique de vérité (CAD-01). -->
+            <SolidColorBrush x:Key="FondCadran"          Color="#E616151B"/>  <!-- fond cadran semi-transparent -->
+            <SolidColorBrush x:Key="Rim"                 Color="#2C2B34"/>    <!-- liseré extérieur -->
+            <SolidColorBrush x:Key="TickMineur"          Color="#34333D"/>    <!-- graduations mineures -->
+            <SolidColorBrush x:Key="TickMajeur"          Color="#46454F"/>    <!-- graduations majeures -->
+            <SolidColorBrush x:Key="Piste5h"             Color="#2A2932"/>    <!-- piste de l'arc 5 h -->
+            <SolidColorBrush x:Key="PisteHebdo"          Color="#26252E"/>    <!-- piste de l'arc hebdo -->
+            <SolidColorBrush x:Key="TextePrincipal"      Color="#F4F2EC"/>    <!-- countdown 5 h (principal) -->
+            <!-- Deux nuances secondaires verrouillées, chacune un usage distinct (aucun token orphelin) : -->
+            <SolidColorBrush x:Key="TexteSecondaireClair" Color="#C7C6D0"/>   <!-- countdown hebdo (vivant mais secondaire) -->
+            <SolidColorBrush x:Key="TexteSecondaire"      Color="#A9A8B2"/>   <!-- badges/mentions annexes (estimée, épuisé, indisponible, périmée) -->
+
+            <!-- Converters : rampe d'utilization (05-02) + BooleanToVisibility intégré WPF. -->
+            <conv:UtilizationToBrushConverter x:Key="UtilBrush"/>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>
