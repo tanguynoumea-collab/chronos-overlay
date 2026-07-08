@@ -1,0 +1,16 @@
+# Gabarit VisualStudio / .NET — artefacts de build et fichiers utilisateur
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Résultats de test
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Fichiers de publication
+publish/
+*.pubxml.user
