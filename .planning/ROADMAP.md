@@ -30,7 +30,7 @@ Chronos se construit du bas vers le haut selon un DAG de dépendances strict : d
   3. L'application se lance et se ferme proprement en libérant ses ressources (cycle de vie DI possédé et disposé).
 **Plans**: 3 plans
 Plans:
-- [ ] 01-01-PLAN.md — Scaffold solution + composition root Generic Host + fenêtre overlay conforme (FEN-01, SC3), wave 1
+- [x] 01-01-PLAN.md — Scaffold solution + composition root Generic Host + fenêtre overlay conforme (FEN-01, SC3), wave 1
 - [ ] 01-02-PLAN.md — P/Invoke + TopmostGuard : réaffirmation périodique du Topmost sans vol de focus (ROB-04), wave 2
 - [ ] 01-03-PLAN.md — Smoke test visuel de l'overlay (gate manuel FEN-01/ROB-04/SC3), wave 3
 **UI hint**: yes

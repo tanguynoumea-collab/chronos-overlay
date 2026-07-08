@@ -4,7 +4,7 @@
 
 ### Fenêtre overlay (FEN)
 
-- [ ] **FEN-01**: L'utilisateur voit une fenêtre borderless transparente always-on-top (WindowStyle=None, AllowsTransparency=True, Topmost=True, ShowInTaskbar=False)
+- [x] **FEN-01**: L'utilisateur voit une fenêtre borderless transparente always-on-top (WindowStyle=None, AllowsTransparency=True, Topmost=True, ShowInTaskbar=False)
 - [ ] **FEN-02**: L'utilisateur peut déplacer l'overlay par glisser (DragMove)
 - [ ] **FEN-03**: L'overlay s'accroche automatiquement au coin d'écran le plus proche au relâchement (WorkingArea, pas Bounds)
 - [ ] **FEN-04**: L'accroche aux coins fonctionne sur tous les moniteurs en multi-écrans (coordonnées Per-Monitor, repli si l'écran persisté disparaît)
@@ -81,7 +81,7 @@
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| FEN-01 | Phase 1 | Pending |
+| FEN-01 | Phase 1 | Complete |
 | ROB-04 | Phase 1 | Pending |
 | DAT-01 | Phase 2 | Pending |
 | DAT-02 | Phase 3 | Pending |
