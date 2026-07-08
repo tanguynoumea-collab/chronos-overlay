@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-07-08T16:42:06.608Z"
+status: verifying
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-07-08T16:53:47.408Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 05 (cadran-ringarc-converters-c-blage-view) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-orchestration-refresh-viewmodel-temps-r-el P02 | 5min | 3 tasks | 9 files |
 | Phase 05 P01 | 3 min | 2 tasks | 4 files |
 | Phase 05 P02 | 2 min | 3 tasks | 4 files |
+| Phase 05-cadran-ringarc-converters-c-blage-view P03 | 9 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: MainViewModel : marshaling unique via IUiDispatcher.Post (RAF-04) + Interpolate(now) pur sans I/O (RAF-03) ; DispatcherTimer cree cote UI (StartClock) hors ctor.
 - [Phase 05]: ArcGeometry: fraction >= 1 -> EllipseGeometry (anneau plein sans micro-fente) au lieu de clamp 359.9 ; isLargeArc = sweep > 180.0 stricte ; RampColor AmberStop = 0.55 (constante unique ajustable UAT). Math pure isolee dans Rendering/, testee en [WpfFact]/[Fact].
 - [Phase 05]: RingArc/TickRing derivent de Shape (pas UserControl) : geometrie = pur produit des DP AffectsRender, redessin auto au tick 1s sans animation ; DP Fraction 0..1 (pas EndAngle) pour binding direct. UtilizationToBrushConverter mono-entree : null -> neutre #2A2932 (jamais de couleur inventee), >=1 -> gris epuise #5A5960, [0,1[ -> rampe.
+- [Phase 05-cadran-ringarc-converters-c-blage-view]: [Phase 05]: Cadran compose en XAML pur (bindings + converters, zero code-behind) ; tokens/converters dans Resources/DesignTokens.xaml autonome, merge par App.xaml ET Window.Resources (vue auto-suffisante et testable). Signaux estimee/epuise PAR FENETRE (FiveHour/SevenDay independants), staleness globale en texte secondaire ; deux nuances #C7C6D0 (countdown hebdo) et #A9A8B2 (badges) chacune utilisee.
 
 ### Pending Todos
 
@@ -101,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:41:56.545Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-07-08T16:53:47.404Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
