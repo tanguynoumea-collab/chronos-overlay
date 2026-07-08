@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-07-08T14:53:50.396Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-07-08T15:01:38.638Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 03 (mod-les-pipeline-de-donn-es) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-08
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-d-couverte-des-sources-bloquante P01 | 3min | 2 tasks | 1 files |
 | Phase 03 P01 | 5min | 3 tasks | 11 files |
 | Phase 03 P02 | 4min | 2 tasks | 7 files |
+| Phase 03 P04 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 03]: Garde de pureté WPF (ServicesLayerPurityTests) avec allow-list nominative des adaptateurs Phase 1 (WpfUiDispatcher, TopmostGuard) — Models/Services partagent l'assembly de l'app WPF donc contrôle par signature de type, pas au niveau assembly.
 - [Phase 03]: Pont statusLine non destructif : ecriture usage.json atomique (renameSync) AVANT de relancer gsd-statusline.js ; capturedAt en epoch ms, resets_at en epoch s.
 - [Phase 03]: ClaudeUsageObjectProvider = source primaire Exact, lecture tolerante (fichier absent/corrompu -> Empty, fenetre/champ absent -> Unavailable/null, jamais d'exception).
+- [Phase 03]: Pont statusLine DEPLOYE via installeur idempotent non destructif (install-bridge.mjs) : backup .chronos.bak non ecrasant, chainage verifie de gsd-statusline.js, ecriture atomique de la seule cle statusLine, --uninstall reversible. Deploiement verifie programmatiquement (usage.json alimente + barre re-emise intacte).
 
 ### Pending Todos
 
@@ -87,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T14:53:40.892Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-07-08T15:01:38.631Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
