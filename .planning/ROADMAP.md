@@ -121,7 +121,7 @@ Plans:
   3. Le lancement au démarrage reste fonctionnel (chemin stable) après déplacement de l'exe.
 **Plans**: 1 plan
 Plans:
-- [ ] 07-01-PLAN.md — Finaliser csproj + profil publish, publier + smoke exe publié + non-régression, doc publish/autostart (DEP-01), wave 1
+- [x] 07-01-PLAN.md — Finaliser csproj + profil publish, publier + smoke exe publié + non-régression, doc publish/autostart (DEP-01), wave 1
 
 ## Progress
 

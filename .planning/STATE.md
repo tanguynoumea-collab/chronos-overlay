@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-07-08T20:21:47.275Z"
+status: verifying
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-07-08T20:35:42.210Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 17
-  completed_plans: 17
+  completed_phases: 7
+  total_plans: 18
+  completed_plans: 18
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 06 — comportements-overlay-placement-interaction
+**Current focus:** Phase 07 — packaging-d-ploiement
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
-Status: Ready to execute
+Phase: 07 (packaging-d-ploiement) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-comportements-overlay-placement-interaction P01 | 4min | 3 tasks | 10 files |
 | Phase 06-comportements-overlay-placement-interaction P03 | 4min | 3 tasks | 9 files |
 | Phase 06-comportements-overlay-placement-interaction P04 | 8min | 3 tasks | 16 files |
+| Phase 07 P01 | 3min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 06]: Placement physique via SetWindowPos (rcWork moniteur courant) dans OverlayController — contourne bug WPF Window.Left/Top PerMonitorV2 ; snap au retour de DragMove ; restauration coin+device en SourceInitialized (avant 1er rendu), repli primaire si device disparu.
 - [Phase 06-comportements-overlay-placement-interaction]: Menu contextuel = SEUL point d'acces/sortie : ContextMenu 4 items sur la Grid racine (DataContext herite) + 4 [RelayCommand] VM (ToggleBackground/Recalibrate/ToggleAutostart/Quit).
 - [Phase 06-comportements-overlay-placement-interaction]: Recalibrage hebdo applique dans ApplySnapshot (re-application du dernier snapshot memorise), badge estimee conserve ; IRecalibrationPrompt neutre en Services, impl WPF (dialogue DatePicker + caler sur maintenant) en Views hors garde de purete.
+- [Phase 07]: Packaging DEP-01 : exe self-contained mono-fichier win-x64 (~74 Mo), 8 props publish conditionnées au publish (build/debug restent normaux), PublishTrimmed=false non négociable (WPF non trim-safe), autostart Environment.ProcessPath avec limite déplacement documentée.
 
 ### Pending Todos
 
@@ -113,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T20:17:37.312Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-07-08T20:35:36.277Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

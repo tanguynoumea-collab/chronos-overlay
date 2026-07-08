@@ -49,7 +49,7 @@
 
 ### Déploiement (DEP)
 
-- [ ] **DEP-01**: L'app se publie en exe self-contained mono-fichier win-x64 (PublishSingleFile, PublishTrimmed=false, IncludeNativeLibrariesForSelfExtract=true)
+- [x] **DEP-01**: L'app se publie en exe self-contained mono-fichier win-x64 (PublishSingleFile, PublishTrimmed=false, IncludeNativeLibrariesForSelfExtract=true)
 - [x] **DEP-02**: L'utilisateur peut activer le lancement au démarrage Windows via un raccourci shell:startup
 
 ## v2 Requirements
@@ -112,7 +112,7 @@
 | FEN-07 | Phase 6 | Complete |
 | ROB-03 | Phase 6 | Complete |
 | DEP-02 | Phase 6 | Complete |
-| DEP-01 | Phase 7 | Pending |
+| DEP-01 | Phase 7 | Complete |
 
 ---
 *Last updated: 2026-07-08 after roadmap creation*
