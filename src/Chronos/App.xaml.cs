@@ -19,7 +19,12 @@ public partial class App : Application
         ConfigureServices(builder.Services);
         _host = builder.Build();
 
-        await _host.StartAsync();                    // démarre les IHostedService (aucun en Phase 1)
+        // Ordre de démarrage (Pitfall 3) : résoudre le VM AVANT StartAsync pour forcer son abonnement
+        // à RefreshOrchestrator.SnapshotChanged. Sinon la charge initiale (émise pendant StartAsync)
+        // partirait avant tout abonné → overlay vide jusqu'au prochain tick périodique (~60 s).
+        _ = _host.Services.GetRequiredService<MainViewModel>();
+
+        await _host.StartAsync();                    // charge initiale → atteint le VM (Post mis en file via BeginInvoke)
 
         var window = _host.Services.GetRequiredService<MainWindow>();
         window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
@@ -50,5 +55,11 @@ public partial class App : Application
         services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
             primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
             fallback: sp.GetRequiredService<JsonlEstimationProvider>()));
+
+        // Horloge DONNÉES Phase 4 : l'orchestrateur est enregistré UNE fois (Singleton, pour l'abonnement
+        // du VM) et réexposé comme IHostedService via la MÊME instance (cycle de vie Start/Stop du host).
+        services.AddSingleton(RefreshOptions.Default);
+        services.AddSingleton<RefreshOrchestrator>();
+        services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
     }
 }
