@@ -1,0 +1,47 @@
+using System.Windows.Threading;
+using Chronos.Services;
+using Chronos.ViewModels;
+using Chronos.Views;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace Chronos.Tests;
+
+/// <summary>
+/// Preuve du success criterion 3 : le conteneur résout MainWindow/MainViewModel par DI
+/// et dispose les Singletons IDisposable à la fermeture (contexte STA pour construire la Window).
+/// </summary>
+public class CompositionRootTests
+{
+    /// <summary>Marqueur IDisposable enregistré comme Singleton pour observer la disposition du conteneur.</summary>
+    private sealed class MarqueurDisposable : IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Dispose() => Disposed = true;
+    }
+
+    [WpfFact]
+    public void Host_resout_et_dispose_les_singletons()
+    {
+        // Reproduit ConfigureServices (App.xaml.cs) dans un conteneur de test.
+        // Sur STA, CurrentDispatcher fournit un Dispatcher valide pour WpfUiDispatcher.
+        var services = new ServiceCollection();
+        services.AddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<MainWindow>();
+        services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition
+
+        var provider = services.BuildServiceProvider();
+
+        // Résolution sans exception → preuve que le graphe DI est câblé (partie « lance »).
+        Assert.NotNull(provider.GetRequiredService<MainWindow>());
+        Assert.NotNull(provider.GetRequiredService<MainViewModel>());
+
+        var marqueur = provider.GetRequiredService<MarqueurDisposable>();
+        Assert.False(marqueur.Disposed);
+
+        // Disposition du conteneur → dispose les Singletons IDisposable (partie « ferme proprement »).
+        provider.Dispose();
+        Assert.True(marqueur.Disposed);
+    }
+}
