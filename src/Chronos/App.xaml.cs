@@ -40,5 +40,15 @@ public partial class App : Application
         services.AddSingleton<TopmostGuard>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
+
+        // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
+        // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(ChronosPaths.Default());
+        services.AddSingleton<ClaudeUsageObjectProvider>();
+        services.AddSingleton<JsonlEstimationProvider>();
+        services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
+            primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
+            fallback: sp.GetRequiredService<JsonlEstimationProvider>()));
     }
 }
