@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-07-08T15:49:06.932Z"
+status: verifying
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-07-08T15:57:58.364Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 04 (orchestration-refresh-viewmodel-temps-r-el) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-08
 
 Progress: [░░░░░░░░░░] 0%
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P04 | 5min | 2 tasks | 3 files |
 | Phase 03 P03 | 6min | 3 tasks | 9 files |
 | Phase 04-orchestration-refresh-viewmodel-temps-r-el P01 | 18min | 2 tasks | 5 files |
+| Phase 04-orchestration-refresh-viewmodel-temps-r-el P02 | 5min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Décisions consignées dans PROJECT.md Key Decisions. Affectant le travail actue
 - [Phase 03]: CompositeUsageProvider bascule PAR FENETRE (Exact>Estimated>Unavailable) ; IUsageProvider resout le composite en DI Singleton (App.xaml.cs) sans casser Phase 1.
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: RefreshOrchestrator (BackgroundService neutre) expose SnapshotChanged ; watcher débouncé + PeriodicTimer alimentent un Channel(1, DropWrite) à consommateur unique sérialisant GetAsync.
 - [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: await Task.Yield() en tête d'ExecuteAsync : évite que StartAsync bloque quand la boucle traite le 1er déclencheur inline.
+- [Phase 04-orchestration-refresh-viewmodel-temps-r-el]: MainViewModel : marshaling unique via IUiDispatcher.Post (RAF-04) + Interpolate(now) pur sans I/O (RAF-03) ; DispatcherTimer cree cote UI (StartClock) hors ctor.
 
 ### Pending Todos
 
@@ -95,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-08T15:49:06.928Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-07-08T15:57:50.485Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

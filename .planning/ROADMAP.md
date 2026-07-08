@@ -75,7 +75,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 04-01-PLAN.md — RefreshOrchestrator neutre : watcher débouncé + PeriodicTimer + Channel, event SnapshotChanged (RAF-01, RAF-02), wave 1
-- [ ] 04-02-PLAN.md — MainViewModel temps réel (interpolation + marshaling) + formateur FR + câblage App/MainWindow (RAF-03, RAF-04), wave 2
+- [x] 04-02-PLAN.md — MainViewModel temps réel (interpolation + marshaling) + formateur FR + câblage App/MainWindow (RAF-03, RAF-04), wave 2
 
 ### Phase 5 : Cadran (RingArc + converters) + câblage View
 **Goal**: L'utilisateur voit le cadran complet à deux anneaux refléter en temps réel l'état des quotas, branché sur le flux de données déjà éprouvé.

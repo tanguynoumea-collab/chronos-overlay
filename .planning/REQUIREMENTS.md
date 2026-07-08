@@ -37,8 +37,8 @@
 
 - [x] **RAF-01**: Un FileSystemWatcher débouncé déclenche la relecture sur écriture des sources
 - [x] **RAF-02**: Un PeriodicTimer relit les données à intervalle configurable (filet de sécurité du watcher)
-- [ ] **RAF-03**: Un DispatcherTimer 1 s interpole arcs et compte à rebours à partir du dernier snapshot, sans I/O
-- [ ] **RAF-04**: Tout franchissement thread pool → UI passe par un point de marshaling unique (IUiDispatcher)
+- [x] **RAF-03**: Un DispatcherTimer 1 s interpole arcs et compte à rebours à partir du dernier snapshot, sans I/O
+- [x] **RAF-04**: Tout franchissement thread pool → UI passe par un point de marshaling unique (IUiDispatcher)
 
 ### Robustesse (ROB)
 
@@ -93,8 +93,8 @@
 | ROB-02 | Phase 3 | Complete |
 | RAF-01 | Phase 4 | Complete |
 | RAF-02 | Phase 4 | Complete |
-| RAF-03 | Phase 4 | Pending |
-| RAF-04 | Phase 4 | Pending |
+| RAF-03 | Phase 4 | Complete |
+| RAF-04 | Phase 4 | Complete |
 | CAD-01 | Phase 5 | Pending |
 | CAD-02 | Phase 5 | Pending |
 | CAD-03 | Phase 5 | Pending |
