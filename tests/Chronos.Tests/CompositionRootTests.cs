@@ -55,6 +55,18 @@ public class CompositionRootTests
             new AutostartService(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosStartup_" + System.Guid.NewGuid().ToString("N"))));
         services.AddSingleton<IRecalibrationPrompt>(_ => new FakeRecalibrationPrompt());
 
+        // 09-02 : le ctor de MainViewModel dépend désormais aussi de IBudgetPrompt (dialogue de
+        // calibration manuelle des plafonds, CAL-01). Prompt neutre programmé (aucun dialogue WPF en test).
+        services.AddSingleton<IBudgetPrompt>(_ => new FakeBudgetPrompt());
+
+        // 09-02 : le calibrateur auto (CAL-02) est résolu eager au démarrage (abonnement à
+        // SnapshotChanged) ; on l'enregistre ici pour prouver que le graphe DI le câble et le dispose.
+        services.AddSingleton(sp => new BudgetAutoCalibrator(
+            sp.GetRequiredService<RefreshOrchestrator>(),
+            sp.GetRequiredService<JsonlEstimationProvider>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<IClock>()));
+
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition
@@ -64,6 +76,7 @@ public class CompositionRootTests
         // Résolution sans exception → preuve que le graphe DI est câblé (partie « lance »).
         Assert.NotNull(provider.GetRequiredService<MainWindow>());
         Assert.NotNull(provider.GetRequiredService<MainViewModel>());
+        Assert.NotNull(provider.GetRequiredService<BudgetAutoCalibrator>());
 
         var marqueur = provider.GetRequiredService<MarqueurDisposable>();
         Assert.False(marqueur.Disposed);

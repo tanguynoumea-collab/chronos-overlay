@@ -24,6 +24,10 @@ public partial class App : Application
         // partirait avant tout abonné → overlay vide jusqu'au prochain tick périodique (~60 s).
         _ = _host.Services.GetRequiredService<MainViewModel>();
 
+        // CAL-02 : même raison — résoudre le calibrateur AVANT StartAsync pour forcer son abonnement
+        // à SnapshotChanged avant la charge initiale (sinon il raterait le premier snapshot Exact).
+        _ = _host.Services.GetRequiredService<BudgetAutoCalibrator>();
+
         await _host.StartAsync();                    // charge initiale → atteint le VM (Post mis en file via BeginInvoke)
 
         // Restauration AVANT Show (FEN-07) : on fournit l'état persisté à la fenêtre ; SourceInitialized
@@ -64,6 +68,9 @@ public partial class App : Application
         services.AddSingleton<IAutostartService>(_ => new AutostartService());
         services.AddSingleton<IRecalibrationPrompt, RecalibrationPrompt>();
 
+        // CAL-01 : dialogue de calibration manuelle des plafonds (namespace Views, hors pureté Services).
+        services.AddSingleton<IBudgetPrompt, BudgetPrompt>();
+
         // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
         // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).
         services.AddSingleton<IClock, SystemClock>();
@@ -85,5 +92,14 @@ public partial class App : Application
         });
         services.AddSingleton<RefreshOrchestrator>();
         services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
+
+        // CAL-02 : calibrateur auto opportuniste. tokenSource = JsonlEstimationProvider CONCRET
+        // (porte toujours EstimatedTokens ; le composite les perd sur une fenêtre Exact). Singleton
+        // IDisposable → disposé par le host à l'arrêt (aucune disposition manuelle requise).
+        services.AddSingleton(sp => new BudgetAutoCalibrator(
+            sp.GetRequiredService<RefreshOrchestrator>(),
+            sp.GetRequiredService<JsonlEstimationProvider>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<IClock>()));
     }
 }

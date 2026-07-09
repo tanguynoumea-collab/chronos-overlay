@@ -25,6 +25,8 @@
                           Command="{Binding ToggleBackgroundCommand}"/>
                 <MenuItem Header="Recalibrer le reset hebdo…"
                           Command="{Binding RecalibrateCommand}"/>
+                <MenuItem Header="Calibrer les plafonds…"
+                          Command="{Binding CalibrateBudgetsCommand}"/>
                 <MenuItem Header="Lancer au démarrage" IsCheckable="True"
                           IsChecked="{Binding IsAutostart}"
                           Command="{Binding ToggleAutostartCommand}"/>
