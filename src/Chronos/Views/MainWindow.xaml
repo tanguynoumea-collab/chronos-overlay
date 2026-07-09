@@ -40,19 +40,18 @@
             </ContextMenu>
         </Grid.ContextMenu>
 
-        <!-- Fond + rim (cadran 156 px pour laisser respirer l'anneau 24 h externe à 170 px) -->
-        <Ellipse Width="156" Height="156"
-                 Fill="{StaticResource FondCadran}"
-                 Stroke="{StaticResource Rim}" StrokeThickness="2"/>
+        <!-- Fond TRANSPARENT : plus de grand disque — les anneaux flottent sur le bureau.
+             Seul un petit disque CENTRAL (dans le trou de l'anneau interne, R38) soutient les %
+             pour qu'ils restent lisibles quel que soit le fond d'écran. -->
+        <Ellipse Width="64" Height="64" Fill="{StaticResource FondCadran}"/>
 
         <!-- Pistes (arcs pleins de fond), ordre centre → extérieur (VIS-02). Deux jauges de quota
-             ÉPAISSES (hebdo R38, 5 h R54) bien séparées, puis un anneau timeline 24 h FIN (R70) qui
-             se lit comme un cadre de contexte distinct — évite le « bloc rouge » quand tout est saturé. -->
+             ÉPAISSES (hebdo R38, 5 h R54), puis l'anneau timeline 24 h RAPPROCHÉ (R64) et FIN. -->
         <ctrl:RingArc Fraction="1" Radius="38"
                       Stroke="{StaticResource PisteHebdo}" StrokeThickness="8"/>
         <ctrl:RingArc Fraction="1" Radius="54"
                       Stroke="{StaticResource Piste5h}" StrokeThickness="8"/>
-        <ctrl:RingArc Fraction="1" Radius="70"
+        <ctrl:RingArc Fraction="1" Radius="64"
                       Stroke="{StaticResource Piste24h}" StrokeThickness="4"/>
 
         <!-- Arc valeur hebdo (interne, R38) : remplissage INVERSÉ (VIS-01) → FractionElapsed,
@@ -68,83 +67,51 @@
                       Fraction="{Binding FiveHour.FractionElapsed}"
                       Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
 
-        <!-- Anneau timeline 24 h (externe, R70, FIN) : rempli selon la fraction du jour (JOUR-01),
-             couleur = utilization 5 h (JOUR-03). Fin volontairement pour se distinguer des jauges. -->
-        <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="70" StrokeThickness="4"
+        <!-- Marques HORAIRES sur l'anneau 5 h : 1 par heure sur une fenêtre de 5 h → Count=5 (tous les 72°).
+             Bien visibles (nuance claire, épaisses). Rayon = bord externe de l'anneau 5 h. -->
+        <ctrl:TickRing Count="5" Radius="59" TickLength="7"
+                       Stroke="{StaticResource TickVisible}" StrokeThickness="2.5"/>
+
+        <!-- Anneau timeline 24 h (externe, R64, FIN, RAPPROCHÉ) : rempli selon la fraction du jour (JOUR-01),
+             couleur = utilization 5 h (JOUR-03). -->
+        <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="64" StrokeThickness="4"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding DayFraction}"
                       Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
 
-        <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe de l'anneau 24 h. -->
-        <ctrl:TickRing Radius="74" TickLength="5"
+        <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe de l'anneau 24 h.
+             Bien visibles (nuance claire, plus longs/épais). -->
+        <ctrl:TickRing Radius="68" TickLength="7"
                        Angles="{Binding DayResetAngles}"
-                       Stroke="{StaticResource TickMajeur}" StrokeThickness="2"/>
+                       Stroke="{StaticResource TickVisible}" StrokeThickness="2.5"/>
 
-        <!-- Bloc central : signaux PAR FENÊTRE (fiabilité/épuisement diffèrent entre 5 h et hebdo) + mentions globales -->
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-
-            <!-- Groupe 5 h : « countdown · % » sur une ligne (VIS-05). Le séparateur « · » et le %
-                 ne s'affichent que si l'utilization est connue (honnêteté : rien si null). -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <TextBlock Text="{Binding FiveHour.CountdownText}"
-                           FontSize="15" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextePrincipal}"/>
-                <TextBlock Text=" · " FontSize="15"
-                           Visibility="{Binding FiveHour.HasUtilizationText, Converter={StaticResource BoolToVis}}"
-                           Foreground="{StaticResource TexteSecondaire}"/>
-                <TextBlock Text="{Binding FiveHour.UtilizationText}" FontSize="15"
-                           Foreground="{StaticResource TexteSecondaire}"/>
-            </StackPanel>
-            <TextBlock x:Name="BadgeEstimeeCinqHeures" HorizontalAlignment="Center"
-                       FontSize="8" Text="estimée"
-                       Visibility="{Binding FiveHour.IsEstimated, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-            <TextBlock x:Name="TexteEpuiseCinqHeures" HorizontalAlignment="Center"
-                       FontSize="8" Text="quota épuisé"
-                       Visibility="{Binding FiveHour.Exhausted, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-            <!-- NET-02 : tokens estimés (matière première), texte discret, visible seulement si estimée -->
-            <TextBlock x:Name="TokensCinqHeures" HorizontalAlignment="Center"
-                       FontSize="8"
-                       Text="{Binding FiveHour.TokensText}"
-                       Visibility="{Binding FiveHour.HasTokens, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-
-            <!-- Groupe hebdo : « countdown · % » (VIS-05), countdown en nuance secondaire claire #C7C6D0 -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                <TextBlock Text="{Binding SevenDay.CountdownText}"
-                           FontSize="11"
-                           Foreground="{StaticResource TexteSecondaireClair}"/>
-                <TextBlock Text=" · " FontSize="11"
-                           Visibility="{Binding SevenDay.HasUtilizationText, Converter={StaticResource BoolToVis}}"
-                           Foreground="{StaticResource TexteSecondaire}"/>
-                <TextBlock Text="{Binding SevenDay.UtilizationText}" FontSize="11"
-                           Foreground="{StaticResource TexteSecondaire}"/>
-            </StackPanel>
-            <TextBlock x:Name="BadgeEstimeeHebdo" HorizontalAlignment="Center"
-                       FontSize="8" Text="estimée"
-                       Visibility="{Binding SevenDay.IsEstimated, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-            <TextBlock x:Name="TexteEpuiseHebdo" HorizontalAlignment="Center"
-                       FontSize="8" Text="quota épuisé"
-                       Visibility="{Binding SevenDay.Exhausted, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-            <!-- NET-02 : tokens estimés hebdo, même traitement discret -->
-            <TextBlock x:Name="TokensHebdo" HorizontalAlignment="Center"
-                       FontSize="8"
-                       Text="{Binding SevenDay.TokensText}"
-                       Visibility="{Binding SevenDay.HasTokens, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-
-            <!-- Mentions globales : staleness (texte secondaire) puis indisponible -->
-            <TextBlock x:Name="TexteStale" HorizontalAlignment="Center" Margin="0,4,0,0"
-                       FontSize="8" Text="données périmées"
-                       Visibility="{Binding IsStale, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
-            <TextBlock x:Name="TexteIndisponible" HorizontalAlignment="Center"
-                       FontSize="9" Text="données indisponibles"
-                       Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}"
-                       Foreground="{StaticResource TexteSecondaire}"/>
+        <!-- Bloc central : deux modes alternés par un clic au centre (ToggleCenterMode).
+             Mode POURCENTAGES (défaut) : UtilizationText (« ~ » si estimé, vide si inconnu).
+             Mode TEMPS : CountdownText (temps avant reset). 5 h en gros/blanc, hebdo plus petit/clair. -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding FiveHour.UtilizationText}"
+                       FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center"
+                       Foreground="{StaticResource TextePrincipal}"/>
+            <TextBlock Text="{Binding SevenDay.UtilizationText}"
+                       FontSize="15" HorizontalAlignment="Center" Margin="0,1,0,0"
+                       Foreground="{StaticResource TexteSecondaireClair}"/>
         </StackPanel>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding FiveHour.CountdownText}"
+                       FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"
+                       Foreground="{StaticResource TextePrincipal}"/>
+            <TextBlock Text="{Binding SevenDay.CountdownText}"
+                       FontSize="13" HorizontalAlignment="Center" Margin="0,1,0,0"
+                       Foreground="{StaticResource TexteSecondaireClair}"/>
+        </StackPanel>
+
+        <!-- Zone de CLIC au centre (transparente, au-dessus du texte) : bascule %/temps.
+             MouseLeftButtonDown marqué Handled dans le code-behind → n'entraîne PAS le DragMove
+             de la fenêtre (le drag reste possible en saisissant les anneaux). -->
+        <Ellipse x:Name="CentreHit" Width="66" Height="66" Fill="Transparent" Cursor="Hand"
+                 ToolTip="Cliquer : basculer pourcentage / temps avant reset"
+                 MouseLeftButtonDown="CentreHit_MouseLeftButtonDown"/>
     </Grid>
 </Window>

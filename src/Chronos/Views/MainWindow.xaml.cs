@@ -52,4 +52,12 @@ public partial class MainWindow : Window
         DragMove();                          // BLOQUE jusqu'au relâchement (consomme le MouseUp)
         _controller.SnapToNearestCorner();   // snap AU RETOUR de DragMove (pas de handler MouseUp — Pitfall 3)
     }
+
+    // Clic au CENTRE : bascule pourcentages ↔ temps avant reset. On marque l'événement Handled pour
+    // qu'il ne remonte PAS au handler de fenêtre (Cadran_MouseLeftButtonDown) → pas de DragMove parasite.
+    private void CentreHit_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        (DataContext as MainViewModel)?.ToggleCenterMode();
+        e.Handled = true;
+    }
 }

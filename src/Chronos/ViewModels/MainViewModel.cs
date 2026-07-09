@@ -50,6 +50,15 @@ public sealed partial class MainViewModel : ObservableObject
     // État reflété dans l'item « Usage exact (OAuth) » du menu (INT-03).
     [ObservableProperty] private bool _isOAuthUsageEnabled;
 
+    // Mode d'affichage du centre : false = pourcentages (défaut), true = temps avant reset.
+    // Un clic au centre bascule via ToggleCenterMode(). ShowPercent est l'inverse (pour le binding XAML).
+    [ObservableProperty] private bool _showCountdown;
+    public bool ShowPercent => !ShowCountdown;
+    partial void OnShowCountdownChanged(bool value) => OnPropertyChanged(nameof(ShowPercent));
+
+    /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic au centre du cadran).</summary>
+    public void ToggleCenterMode() => ShowCountdown = !ShowCountdown;
+
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,

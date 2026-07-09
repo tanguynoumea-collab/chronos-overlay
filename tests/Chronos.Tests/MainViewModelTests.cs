@@ -279,6 +279,24 @@ public class MainViewModelTests
         Assert.Equal(ancre, settings.Load().WeeklyAnchor);     // ancre persistée dans settings.json
     }
 
+    // --- Clic au centre : bascule pourcentages ↔ temps avant reset (ShowPercent = inverse) ---
+    [Fact]
+    public void ToggleCenterMode_bascule_pourcentages_et_temps_et_notifie_ShowPercent()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        Assert.False(vm.ShowCountdown);   // défaut = pourcentages
+        Assert.True(vm.ShowPercent);
+
+        vm.ToggleCenterMode();
+        Assert.True(vm.ShowCountdown);    // → temps avant reset
+        Assert.False(vm.ShowPercent);
+
+        vm.ToggleCenterMode();
+        Assert.False(vm.ShowCountdown);   // → retour aux pourcentages
+        Assert.True(vm.ShowPercent);
+    }
+
     // --- GAP-1 (audit intégration) : le recalibrage ne doit PAS écraser les réglages écrits sur disque
     // par un autre writer (OverlayController : coin/écran/arrière-plan) après la construction du VM ---
 
