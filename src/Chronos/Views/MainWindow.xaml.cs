@@ -60,4 +60,18 @@ public partial class MainWindow : Window
         (DataContext as MainViewModel)?.ToggleCenterMode();
         e.Handled = true;
     }
+
+    // Menu « Diagnostic… » : affiche le rapport dans une POP-UP (facile à screenshoter), pas un fichier.
+    private async void OnDiagnosticClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var report = await ((MainViewModel)DataContext).BuildDiagnosticReportAsync();
+            MessageBox.Show(this, report, "Chronos — Diagnostic", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (System.Exception ex)
+        {
+            MessageBox.Show(this, "Le diagnostic a échoué : " + ex.Message, "Chronos — Diagnostic");
+        }
+    }
 }

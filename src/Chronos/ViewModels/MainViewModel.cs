@@ -201,10 +201,9 @@ public sealed partial class MainViewModel : ObservableObject
         _orchestrator.RequestRefresh();   // application immédiate (le gated Load() frais à chaque GetAsync)
     }
 
-    /// <summary>Diagnostic : écrit et ouvre un rapport expliquant l'état réel (token, appel OAuth,
-    /// sources, plafonds) — pour comprendre pourquoi l'affichage n'a pas de couleurs sur une machine.</summary>
-    [RelayCommand]
-    private Task Diagnostic() => _diagnostic.RunAsync();
+    /// <summary>Construit le rapport de diagnostic (token, appel OAuth, sources, plafonds, résultat)
+    /// pour affichage à l'écran (pop-up, screenshot-able). Le token n'y figure jamais.</summary>
+    public Task<string> BuildDiagnosticReportAsync() => _diagnostic.BuildReportAsync();
 
     /// <summary>FEN-06 : ferme l'application (seul point de sortie d'une fenêtre sans barre de titre ni des tâches).</summary>
     [RelayCommand]

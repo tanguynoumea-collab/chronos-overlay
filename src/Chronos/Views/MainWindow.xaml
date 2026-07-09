@@ -36,7 +36,7 @@
                           IsChecked="{Binding IsOAuthUsageEnabled}"
                           Command="{Binding ToggleOAuthUsageCommand}"/>
                 <Separator/>
-                <MenuItem Header="Diagnostic…" Command="{Binding DiagnosticCommand}"/>
+                <MenuItem Header="Diagnostic…" Click="OnDiagnosticClick"/>
                 <MenuItem Header="Quitter" Command="{Binding QuitCommand}"/>
             </ContextMenu>
         </Grid.ContextMenu>
