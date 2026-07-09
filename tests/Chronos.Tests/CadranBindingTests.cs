@@ -71,37 +71,46 @@ public class CadranBindingTests
 
         var fenetre = BuildWindow(snap, out var vm);
 
-        Assert.True(vm.FiveHour.IsEstimated);                     // badge « estimée » 5 h attendu
-        Assert.NotNull(fenetre.FindName("BadgeEstimeeCinqHeures")); // le converter sur Utilization null n'a pas levé
+        // Centre épuré (v1.3) : plus de badge « estimée » — l'honnêteté passe par le « ~ » du %.
+        // Utilization null → PAS de % (texte vide), et le converter sur null n'a pas levé (fenêtre construite).
+        Assert.True(vm.FiveHour.IsEstimated);
+        Assert.Equal("", vm.FiveHour.UtilizationText);           // aucune valeur inventée
+        Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc); // la fenêtre s'est construite sans crash
     }
 
     [WpfFact]
-    public void Etat_indisponible_deux_fenetres_Unavailable_affiche_texte_sans_crash()
+    public void Etat_indisponible_deux_fenetres_Unavailable_ne_crashe_pas_et_centre_vide()
     {
         var fenetre = BuildWindow(UsageSnapshot.Empty, out var vm);
 
         Assert.True(vm.DataUnavailable);                          // ROB-01
-        Assert.NotNull(fenetre.FindName("TexteIndisponible") as TextBlock);
+        // Centre épuré : aucune donnée → aucun % affiché (textes vides), fenêtre construite sans crash.
+        Assert.Equal("", vm.FiveHour.UtilizationText);
+        Assert.Equal("", vm.SevenDay.UtilizationText);
+        Assert.NotNull(fenetre.FindName("ArcHebdo") as RingArc);
     }
 
     [WpfFact]
-    public void Etat_fiabilite_mixte_badges_estimee_sont_par_fenetre()
+    public void Etat_fiabilite_mixte_le_tilde_du_pourcentage_est_par_fenetre()
     {
         var snap = new UsageSnapshot
         {
             FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.4, ResetsAt = Now + TimeSpan.FromHours(2) },
-            SevenDay = new WindowState { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated, Utilization = null, ResetsAt = Now + TimeSpan.FromDays(3) },
+            SevenDay = new WindowState { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated, Utilization = 0.9, ResetsAt = Now + TimeSpan.FromDays(3) },
             SourceCapturedAt = Now,
         };
 
         var fenetre = BuildWindow(snap, out var vm);
 
-        // Preuve que le signal « estimée » est INDÉPENDANT par fenêtre (le composite choisit la
-        // meilleure source par fenêtre) : 5 h exacte, hebdo estimée.
+        // Honnêteté INDÉPENDANTE par fenêtre, désormais portée par le « ~ » du pourcentage central :
+        // 5 h exacte → « 40 % » SANS tilde ; hebdo estimée → « ~90 % » AVEC tilde.
         Assert.False(vm.FiveHour.IsEstimated);
         Assert.True(vm.SevenDay.IsEstimated);
-        Assert.NotNull(fenetre.FindName("BadgeEstimeeCinqHeures") as TextBlock);
-        Assert.NotNull(fenetre.FindName("BadgeEstimeeHebdo") as TextBlock);
+        Assert.DoesNotContain("~", vm.FiveHour.UtilizationText);
+        Assert.Contains("40", vm.FiveHour.UtilizationText);
+        Assert.StartsWith("~", vm.SevenDay.UtilizationText);
+        Assert.Contains("90", vm.SevenDay.UtilizationText);
+        Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc);
     }
 
     // NET-02 : tokens estimés surfacés en texte secondaire discret, dérivés dans WindowGaugeViewModel.Apply.
