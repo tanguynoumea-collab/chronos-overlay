@@ -10,6 +10,7 @@
     <SolidColorBrush x:Key="TickMajeur"          Color="#46454F"/>    <!-- graduations majeures -->
     <SolidColorBrush x:Key="Piste5h"             Color="#2A2932"/>    <!-- piste de l'arc 5 h -->
     <SolidColorBrush x:Key="PisteHebdo"          Color="#26252E"/>    <!-- piste de l'arc hebdo -->
+    <SolidColorBrush x:Key="Piste24h"            Color="#242330"/>    <!-- piste de l'anneau timeline 24 h (nuance sombre proche des autres pistes) -->
     <SolidColorBrush x:Key="TextePrincipal"      Color="#F4F2EC"/>    <!-- countdown 5 h (principal) -->
     <!-- Deux nuances secondaires verrouillées, chacune un usage distinct (aucun token orphelin) : -->
     <SolidColorBrush x:Key="TexteSecondaireClair" Color="#C7C6D0"/>   <!-- countdown hebdo (vivant mais secondaire) -->

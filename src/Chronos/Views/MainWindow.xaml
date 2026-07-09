@@ -5,10 +5,12 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" SizeToContent="Manual"
-        Width="220" Height="220" WindowStartupLocation="Manual">
+        Width="170" Height="170" WindowStartupLocation="Manual">
     <!-- Cadran complet (Pattern 6 : empilement du fond vers le premier plan).
          Aucune Storyboard/blur/shadow : AllowsTransparency force le rendu logiciel.
-         Aucun code-behind : uniquement des bindings + converters. Centre = 110,110 (Grid 220×220). -->
+         Aucun code-behind : uniquement des bindings + converters. Centre = 85,85 (Grid 170×170).
+         Refonte v1.3 : 3 anneaux réordonnés (hebdo interne → 5 h milieu → 24 h externe),
+         remplissage inversé (FractionElapsed), anneau timeline 24 h + % au centre. -->
     <Window.Resources>
         <!-- Tokens de design + converters, au niveau fenêtre : la vue est autonome (les StaticResource
              résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
@@ -38,34 +40,44 @@
             </ContextMenu>
         </Grid.ContextMenu>
 
-        <!-- Fond + rim -->
-        <Ellipse Width="200" Height="200"
+        <!-- Fond + rim (cadran 156 px pour laisser respirer l'anneau 24 h externe à 170 px) -->
+        <Ellipse Width="156" Height="156"
                  Fill="{StaticResource FondCadran}"
                  Stroke="{StaticResource Rim}" StrokeThickness="2"/>
 
-        <!-- Graduations : mineures (60) puis majeures (12) -->
-        <ctrl:TickRing Count="60" Radius="96" TickLength="5"
-                       Stroke="{StaticResource TickMineur}" StrokeThickness="1"/>
-        <ctrl:TickRing Count="12" Radius="96" TickLength="9"
-                       Stroke="{StaticResource TickMajeur}" StrokeThickness="2"/>
+        <!-- Pistes (arcs pleins de fond), ordre centre → extérieur (VIS-02) :
+             hebdo (interne, R44) → 5 h (milieu, R58) → 24 h (externe, R72). -->
+        <ctrl:RingArc Fraction="1" Radius="44"
+                      Stroke="{StaticResource PisteHebdo}" StrokeThickness="9"/>
+        <ctrl:RingArc Fraction="1" Radius="58"
+                      Stroke="{StaticResource Piste5h}" StrokeThickness="9"/>
+        <ctrl:RingArc Fraction="1" Radius="72"
+                      Stroke="{StaticResource Piste24h}" StrokeThickness="9"/>
 
-        <!-- Pistes (arcs pleins de fond) : 5 h extérieur, hebdo intérieur -->
-        <ctrl:RingArc Fraction="1" Radius="90"
-                      Stroke="{StaticResource Piste5h}" StrokeThickness="11"/>
-        <ctrl:RingArc Fraction="1" Radius="70"
-                      Stroke="{StaticResource PisteHebdo}" StrokeThickness="11"/>
-
-        <!-- Arc valeur 5 h (extérieur, CAD-02) : longueur = temps restant, couleur = utilization -->
-        <ctrl:RingArc x:Name="ArcCinqHeures" Radius="90" StrokeThickness="11"
+        <!-- Arc valeur hebdo (interne, R44) : remplissage INVERSÉ (VIS-01) → FractionElapsed,
+             se remplit à mesure qu'on approche du reset. Couleur = utilization hebdo. -->
+        <ctrl:RingArc x:Name="ArcHebdo" Radius="44" StrokeThickness="9"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                      Fraction="{Binding FiveHour.FractionRemaining}"
+                      Fraction="{Binding SevenDay.FractionElapsed}"
+                      Stroke="{Binding SevenDay.Utilization, Converter={StaticResource UtilBrush}}"/>
+
+        <!-- Arc valeur 5 h (milieu, R58) : remplissage inversé (VIS-01) → FractionElapsed. -->
+        <ctrl:RingArc x:Name="ArcCinqHeures" Radius="58" StrokeThickness="9"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Fraction="{Binding FiveHour.FractionElapsed}"
                       Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
 
-        <!-- Arc valeur hebdo (intérieur, CAD-03) -->
-        <ctrl:RingArc x:Name="ArcHebdo" Radius="70" StrokeThickness="11"
+        <!-- Anneau timeline 24 h (externe, R72) : rempli selon la fraction du jour (JOUR-01),
+             couleur = utilization 5 h (JOUR-03, même rampe que l'anneau 5 h). -->
+        <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="72" StrokeThickness="9"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                      Fraction="{Binding SevenDay.FractionRemaining}"
-                      Stroke="{Binding SevenDay.Utilization, Converter={StaticResource UtilBrush}}"/>
+                      Fraction="{Binding DayFraction}"
+                      Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
+
+        <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe de l'anneau 24 h. -->
+        <ctrl:TickRing Radius="76" TickLength="6"
+                       Angles="{Binding DayResetAngles}"
+                       Stroke="{StaticResource TickMajeur}" StrokeThickness="2"/>
 
         <!-- Bloc central : signaux PAR FENÊTRE (fiabilité/épuisement diffèrent entre 5 h et hebdo) + mentions globales -->
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
