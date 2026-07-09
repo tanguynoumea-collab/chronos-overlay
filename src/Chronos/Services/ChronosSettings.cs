@@ -56,4 +56,12 @@ public sealed record ChronosSettings
     /// <summary>Active la source EXACTE OAuth (INT-03). Défaut TRUE : vrais chiffres dès l'installation.
     /// false → comportement v1.1 strict, AUCUN accès au token (le portillon gated court-circuite).</summary>
     public bool OAuthUsageEnabled { get; init; } = true;
+
+    /// <summary>Commande statusLine préexistante de l'utilisateur, mémorisée lors de l'installation du
+    /// pont Chronos pour le chaînage non destructif et la restauration à la désinstallation. null = aucune.</summary>
+    public string? InnerStatusLineCommand { get; init; }
+
+    /// <summary>L'utilisateur a-t-il déjà répondu à la proposition d'activer la source exacte (pont
+    /// statusLine) ? true → ne plus reproposer au démarrage (qu'il ait accepté ou refusé).</summary>
+    public bool StatusLinePromptDismissed { get; init; }
 }

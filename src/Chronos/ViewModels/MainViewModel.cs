@@ -27,6 +27,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly RefreshOrchestrator _orchestrator;
     private readonly SettingsService _settingsService;
     private readonly DiagnosticService _diagnostic;
+    private readonly IStatusLineSetup _statusLineSetup;
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
     private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
@@ -51,6 +52,9 @@ public sealed partial class MainViewModel : ObservableObject
     // État reflété dans l'item « Usage exact (OAuth) » du menu (INT-03).
     [ObservableProperty] private bool _isOAuthUsageEnabled;
 
+    // État reflété dans l'item « Source exacte (Claude Code) » : le pont statusLine est-il installé ?
+    [ObservableProperty] private bool _isStatusLineSourceEnabled;
+
     // Mode d'affichage du centre : false = pourcentages (défaut), true = temps avant reset.
     // Un clic au centre bascule via ToggleCenterMode(). ShowPercent est l'inverse (pour le binding XAML).
     [ObservableProperty] private bool _showCountdown;
@@ -64,7 +68,7 @@ public sealed partial class MainViewModel : ObservableObject
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
         IRecalibrationPrompt prompt, IBudgetPrompt budgetPrompt, SettingsService settings,
-        DiagnosticService diagnostic)
+        DiagnosticService diagnostic, IStatusLineSetup statusLineSetup)
     {
         _ui = ui;
         _clock = clock;
@@ -75,12 +79,14 @@ public sealed partial class MainViewModel : ObservableObject
         _orchestrator = orchestrator; // mémorisé pour re-déclencher un recalcul après calibration (CAL-01)
         _settingsService = settings;
         _diagnostic = diagnostic;
+        _statusLineSetup = statusLineSetup;
         _settings = settings.Load();
 
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
         IsBackground = _settings.Background;
         IsAutostart = _autostart.IsEnabled();
         IsOAuthUsageEnabled = _settings.OAuthUsageEnabled;
+        IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
 
         orchestrator.SnapshotChanged += OnSnapshotChanged; // callback thread pool (horloge données)
     }
@@ -199,6 +205,16 @@ public sealed partial class MainViewModel : ObservableObject
         _settings = _settingsService.Load() with { OAuthUsageEnabled = IsOAuthUsageEnabled };
         _settingsService.Save(_settings);
         _orchestrator.RequestRefresh();   // application immédiate (le gated Load() frais à chaque GetAsync)
+    }
+
+    /// <summary>Active/désactive la SOURCE EXACTE via le pont statusLine de Claude Code (installe ou
+    /// retire l'intégration dans ~/.claude/settings.json) et reflète l'état RÉEL dans le menu.</summary>
+    [RelayCommand]
+    private void ToggleStatusLineSource()
+    {
+        if (_statusLineSetup.IsEnabled()) _statusLineSetup.Disable();
+        else _statusLineSetup.Enable();
+        IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
     }
 
     /// <summary>Construit le rapport de diagnostic (token, appel OAuth, sources, plafonds, résultat)

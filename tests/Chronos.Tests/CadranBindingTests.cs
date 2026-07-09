@@ -33,7 +33,8 @@ public class CadranBindingTests
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             new FakeBudgetPrompt(), settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(Now)));
+            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(Now)),
+            new FakeStatusLineSetup());
         vm.ApplySnapshot(snap);
 
         var guard = new TopmostGuard();

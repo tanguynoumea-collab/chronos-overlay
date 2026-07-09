@@ -22,7 +22,8 @@ public class OverlayWindowConfigTests
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             new FakeBudgetPrompt(), settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(DateTimeOffset.UtcNow)));
+            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(DateTimeOffset.UtcNow)),
+            new FakeStatusLineSetup());
         var guard = new TopmostGuard();
         var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
         var fenetre = new MainWindow(vm, guard, controller);

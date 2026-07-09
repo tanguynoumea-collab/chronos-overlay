@@ -84,8 +84,56 @@ public sealed class DiagnosticService
         sb.AppendLine("  Usage exact (OAuth) : " + (s.OAuthUsageEnabled ? "ACTIVÉ" : "DÉSACTIVÉ (menu)"));
         sb.AppendLine();
 
-        // 2) Source exacte — OAuth
-        sb.AppendLine("[Source exacte — endpoint OAuth]");
+        // 2) Source exacte PRIMAIRE : pont statusLine Claude Code (usage.json). Voie universelle recommandée.
+        sb.AppendLine("[Source exacte — pont statusLine Claude Code]");
+        var claudeSettings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
+        bool bridgeInstalled = false;
+        string? statusLineCmd = null;
+        try
+        {
+            if (File.Exists(claudeSettings))
+            {
+                using var sd = JsonDocument.Parse(File.ReadAllText(claudeSettings));
+                if (sd.RootElement.TryGetProperty("statusLine", out var slNode)
+                    && slNode.TryGetProperty("command", out var cmdEl) && cmdEl.ValueKind == JsonValueKind.String)
+                {
+                    statusLineCmd = cmdEl.GetString();
+                    bridgeInstalled = statusLineCmd is not null
+                        && statusLineCmd.Contains("--statusline", StringComparison.OrdinalIgnoreCase)
+                        && statusLineCmd.Contains("Chronos", StringComparison.OrdinalIgnoreCase);
+                }
+            }
+        }
+        catch { }
+        sb.AppendLine("  Intégration Claude Code : " + (bridgeInstalled ? "INSTALLÉE (statusLine → Chronos)"
+            : File.Exists(claudeSettings) ? "non installée (menu « Source exacte (Claude Code) »)"
+            : "settings.json Claude absent (Claude Code jamais lancé ?)"));
+
+        // Fraîcheur de usage.json (le fichier que le pont écrit et que l'overlay lit).
+        try
+        {
+            if (File.Exists(_paths.UsageFile))
+            {
+                using var ud = JsonDocument.Parse(File.ReadAllText(_paths.UsageFile));
+                var r = ud.RootElement;
+                string W(string w) => r.TryGetProperty(w, out var o) && o.TryGetProperty("used_percentage", out var p) && p.TryGetDouble(out var v)
+                    ? v.ToString("F0", CultureInfo.InvariantCulture) + " %" : "absent";
+                string age = "inconnu";
+                if (r.TryGetProperty("capturedAt", out var ca) && ca.TryGetInt64(out var ms))
+                {
+                    var mins = (_clock.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(ms)).TotalMinutes;
+                    age = mins < 1 ? "à l'instant" : $"il y a {mins:F0} min";
+                }
+                sb.AppendLine($"  usage.json : présent — 5 h {W("five_hour")}, hebdo {W("seven_day")} (maj {age})");
+            }
+            else
+                sb.AppendLine("  usage.json : ABSENT (le pont n'a pas encore reçu de données — lance un message dans Claude Code)");
+        }
+        catch { sb.AppendLine("  usage.json : illisible"); }
+        sb.AppendLine();
+
+        // 3) Source exacte — OAuth (repli historique, désormais secondaire)
+        sb.AppendLine("[Source exacte — endpoint OAuth (repli)]");
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var cfg = Path.Combine(appData, "Claude", "config.json");
         var ls = Path.Combine(appData, "Claude", "Local State");
@@ -241,9 +289,13 @@ public sealed class DiagnosticService
 
         // 5) Conseil
         sb.AppendLine("[Conseil]");
-        if (token is null)
-            sb.AppendLine("  Pas de token → pas de chiffres exacts. Installe et connecte l'app bureau Claude sur cette machine,");
-        sb.AppendLine("  ou renseigne tes plafonds via le menu « Calibrer les plafonds… » pour colorer l'estimation.");
+        if (!bridgeInstalled)
+            sb.AppendLine("  → Active « Source exacte (Claude Code) » dans le menu (clic droit). Chronos s'intègre à\n" +
+                          "    Claude Code : les vrais pourcentages 5 h/hebdo s'affichent dès ton prochain message.");
+        else
+            sb.AppendLine("  → Intégration active. Si usage.json est absent, envoie un message dans Claude Code :\n" +
+                          "    la barre de statut se met à jour à ce moment-là et alimente le cadran.");
+        sb.AppendLine("  (Repli : « Calibrer les plafonds… » colore une estimation quand aucune source exacte n'est là.)");
 
         return sb.ToString();
     }

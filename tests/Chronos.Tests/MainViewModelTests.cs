@@ -65,7 +65,7 @@ public class MainViewModelTests
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         var orch = new RefreshOrchestrator(provider, TempPaths(), options);
         var diag = new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock);
-        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, budgetPrompt, settings, diag);
+        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, budgetPrompt, settings, diag, new FakeStatusLineSetup());
     }
 
     private static MainViewModel NewVmFull(
@@ -109,7 +109,8 @@ public class MainViewModelTests
         var vm = new MainViewModel(orch, ui, clock,
             new FakeWindowController(), new FakeAutostartService(),
             new FakeRecalibrationPrompt(), new FakeBudgetPrompt(), settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock));
+            new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
+            new FakeStatusLineSetup());
         try
         {
             await orch.StartAsync(CancellationToken.None); // charge initiale → SnapshotChanged (thread pool)

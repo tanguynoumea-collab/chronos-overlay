@@ -14,6 +14,16 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // MODE PONT statusLine (--statusline) : court-circuit AVANT toute initialisation WPF/host.
+        // Claude Code invoque « Chronos.exe --statusline » à chaque rendu de sa barre : on lit stdin,
+        // on matérialise usage.json, on chaîne l'éventuelle barre préexistante, puis on sort tout de suite.
+        if (e.Args.Any(a => string.Equals(a, "--statusline", StringComparison.OrdinalIgnoreCase)))
+        {
+            RunStatusLineBridge();
+            Environment.Exit(0);   // sortie immédiate : ne charge jamais l'overlay (rapidité de la barre)
+            return;
+        }
+
         base.OnStartup(e);
 
         var builder = Host.CreateApplicationBuilder();
@@ -43,6 +53,38 @@ public partial class App : Application
         MainWindow = window;                         // Application.MainWindow AVANT Show → le dialogue de
                                                      // recalibrage se centre sur l'overlay (Owner), ROB-03/FEN-07
         window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
+
+        // Première exécution : proposer d'activer la SOURCE EXACTE (pont statusLine Claude Code).
+        // Une seule fois (StatusLinePromptDismissed), non bloquant pour le rendu de l'overlay.
+        _host.Services.GetRequiredService<IStatusLineSetup>().OfferOnFirstRun();
+    }
+
+    // Exécuté en mode --statusline : neutre, sans WPF ni DI. Ne lève jamais (ne doit pas casser la barre).
+    // Lecture stdin / écriture stdout en UTF-8 STRICT (Claude Code parle UTF-8) — pas via Console.In/Out,
+    // dont l'encodage OEM par défaut mutilerait les caractères non-ASCII de la barre.
+    private static void RunStatusLineBridge()
+    {
+        try
+        {
+            var utf8 = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+            var paths = ChronosPaths.Default();
+            var settings = new SettingsService(paths).Load();
+
+            string input;
+            using (var sr = new System.IO.StreamReader(Console.OpenStandardInput(), utf8))
+                input = sr.ReadToEnd();
+
+            var sb = new System.Text.StringBuilder();
+            using (var sw = new System.IO.StringWriter(sb))
+                StatusLineBridge.Run(paths, settings.InnerStatusLineCommand,
+                    new System.IO.StringReader(input), sw, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+            var bytes = utf8.GetBytes(sb.ToString());
+            using var stdout = Console.OpenStandardOutput();
+            stdout.Write(bytes, 0, bytes.Length);
+            stdout.Flush();
+        }
+        catch { /* jamais casser la barre de statut de Claude Code */ }
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -75,6 +117,13 @@ public partial class App : Application
 
         // CAL-01 : dialogue de calibration manuelle des plafonds (namespace Views, hors pureté Services).
         services.AddSingleton<IBudgetPrompt, BudgetPrompt>();
+
+        // Source EXACTE via pont statusLine Claude Code : installateur (édite ~/.claude/settings.json)
+        // + setup WPF (menu + proposition au 1er lancement). C'est la voie universelle recommandée.
+        services.AddSingleton<StatusLineInstaller>(_ => new StatusLineInstaller());
+        services.AddSingleton<IStatusLineSetup>(sp => new Views.StatusLineSetup(
+            sp.GetRequiredService<StatusLineInstaller>(),
+            sp.GetRequiredService<SettingsService>()));
 
         // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
         // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).

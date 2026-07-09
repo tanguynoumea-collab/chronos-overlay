@@ -76,6 +76,9 @@ public class CompositionRootTests
             sp.GetRequiredService<IUsageProvider>(),
             sp.GetRequiredService<IClock>()));
 
+        // Source exacte via pont statusLine : le ctor de MainViewModel dépend d'IStatusLineSetup.
+        services.AddSingleton<IStatusLineSetup>(_ => new FakeStatusLineSetup());
+
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition
