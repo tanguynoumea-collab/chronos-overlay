@@ -45,9 +45,19 @@ public sealed class CompositeUsageProvider : IUsageProvider
         };
     }
 
-    // Meilleure source pour UNE fenetre : Exact du primaire, sinon Estimated du repli, sinon Unavailable.
+    // Meilleure source pour UNE fenetre : on classe par fiabilite (Exact > Estimated > Unavailable) et
+    // on retient le repli SEULEMENT s'il est STRICTEMENT plus fiable (egalite -> primaire prioritaire).
+    // Generalise le choix pour l'IMBRICATION (INT-01) : un repli qui produit lui-meme un Exact (composite
+    // interne statusLine) doit primer sur un primaire Unavailable — l'ancien code ne promouvait que
+    // l'Estimated du repli et ratait ce cas. Les 6 cas d'origine restent inchanges (primaire prioritaire
+    // a fiabilite egale ou superieure).
     private static WindowState Best(WindowState primary, WindowState fallback) =>
-        primary.Reliability == SourceReliability.Exact ? primary
-        : fallback.Reliability == SourceReliability.Estimated ? fallback
-        : primary; // reste Unavailable
+        Rank(fallback.Reliability) > Rank(primary.Reliability) ? fallback : primary;
+
+    private static int Rank(SourceReliability r) => r switch
+    {
+        SourceReliability.Exact => 2,
+        SourceReliability.Estimated => 1,
+        _ => 0, // Unavailable
+    };
 }

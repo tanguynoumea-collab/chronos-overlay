@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Windows;
 using Chronos.Services;
 using Chronos.ViewModels;
@@ -77,9 +78,26 @@ public partial class App : Application
         services.AddSingleton(ChronosPaths.Default());
         services.AddSingleton<ClaudeUsageObjectProvider>();
         services.AddSingleton<JsonlEstimationProvider>();
+
+        // v1.2 (INT-01/03) : source EXACTE OAuth en tête de chaîne. Le reader cible le coffre de l'app
+        // bureau (%APPDATA%/Claude) ; il n'est JAMAIS sollicité tant que le portillon gated est fermé.
+        services.AddSingleton<IClaudeTokenReader>(_ => ClaudeTokenReader.Default());
+        services.AddSingleton(sp => new ClaudeOAuthUsageProvider(
+            sp.GetRequiredService<IClaudeTokenReader>(),
+            new HttpClient(),                                    // long-lived, une seule destination (constante)
+            sp.GetRequiredService<IClock>()));
+        // Portillon gated : OAuthUsageEnabled==false → Empty sans toucher au token (INT-03).
+        services.AddSingleton(sp => new GatedOAuthUsageProvider(
+            sp.GetRequiredService<ClaudeOAuthUsageProvider>(),
+            sp.GetRequiredService<SettingsService>()));
+
+        // Chaîne à 3 par imbrication (INT-01) : OAuth (exact, gated) → pont statusLine (exact) → JSONL (estimé).
+        // Le CompositeUsageProvider gère déjà « meilleure source PAR FENÊTRE » + staleness → aucune réécriture.
         services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
-            primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
-            fallback: sp.GetRequiredService<JsonlEstimationProvider>()));
+            primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
+            fallback: new CompositeUsageProvider(
+                primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
+                fallback: sp.GetRequiredService<JsonlEstimationProvider>())));
 
         // Horloge DONNÉES Phase 4 : l'orchestrateur est enregistré UNE fois (Singleton, pour l'abonnement
         // du VM) et réexposé comme IHostedService via la MÊME instance (cycle de vie Start/Stop du host).

@@ -148,4 +148,46 @@ public class CompositeUsageProviderTests
 
         Assert.Equal(tPrimaire, snap.SourceCapturedAt);
     }
+
+    // --- Cas 7 (INT-01) : chaîne imbriquée à 3 (OAuth gated → statusLine → JSONL) prime PAR FENÊTRE ---
+
+    [Fact]
+    public async Task Chaine_imbriquee_OAuth_prime_puis_statusLine_puis_JSONL_par_fenetre()
+    {
+        // OAuth : 5h Exact, 7j Unavailable ; statusLine : 5h Unavailable, 7j Exact ; JSONL : tout Estimated.
+        var oauth      = Snap(Win(WindowKind.FiveHour, SourceReliability.Exact),
+                              Win(WindowKind.SevenDay, SourceReliability.Unavailable));
+        var statusLine = Snap(Win(WindowKind.FiveHour, SourceReliability.Unavailable),
+                              Win(WindowKind.SevenDay, SourceReliability.Exact));
+        var jsonl      = Snap(Win(WindowKind.FiveHour, SourceReliability.Estimated),
+                              Win(WindowKind.SevenDay, SourceReliability.Estimated));
+
+        var chaine = new CompositeUsageProvider(
+            new FakeProvider(oauth),
+            new CompositeUsageProvider(new FakeProvider(statusLine), new FakeProvider(jsonl)));
+
+        var snap = await chaine.GetAsync();
+
+        Assert.Same(oauth.FiveHour, snap.FiveHour);       // 5h : OAuth Exact prime
+        Assert.Same(statusLine.SevenDay, snap.SevenDay);  // 7j : OAuth indispo → bascule statusLine Exact
+    }
+
+    [Fact]
+    public async Task Chaine_imbriquee_OAuth_indispo_bascule_sur_JSONL_estime()
+    {
+        var oauth      = Snap(Win(WindowKind.FiveHour, SourceReliability.Unavailable),
+                              Win(WindowKind.SevenDay, SourceReliability.Unavailable));
+        var statusLine = Snap(Win(WindowKind.FiveHour, SourceReliability.Unavailable),
+                              Win(WindowKind.SevenDay, SourceReliability.Unavailable));
+        var jsonl      = Snap(Win(WindowKind.FiveHour, SourceReliability.Estimated),
+                              Win(WindowKind.SevenDay, SourceReliability.Estimated));
+
+        var chaine = new CompositeUsageProvider(
+            new FakeProvider(oauth),
+            new CompositeUsageProvider(new FakeProvider(statusLine), new FakeProvider(jsonl)));
+
+        var snap = await chaine.GetAsync();
+        Assert.Same(jsonl.FiveHour, snap.FiveHour);       // repli ultime : JSONL estimé
+        Assert.Same(jsonl.SevenDay, snap.SevenDay);
+    }
 }
