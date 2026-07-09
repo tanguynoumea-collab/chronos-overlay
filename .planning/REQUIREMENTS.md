@@ -32,6 +32,17 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 - [x] **TAILLE-01**: L'overlay est réduit à ~170 px (fenêtre et cadran mis à l'échelle proportionnellement),
   le texte central restant lisible ; les 3 anneaux et les % tiennent sans chevauchement.
 
+### Ajouts en cours d'itération (demandés après la roadmap initiale)
+
+- [x] **VIS-06**: Centre épuré — uniquement les deux pourcentages (countdowns/badges/tokens retirés) ;
+  marques horaires visibles sur l'anneau 5 h + marques de reset visibles sur le 24 h (nuance claire).
+- [x] **VIS-07**: Fond transparent — le grand disque sombre est retiré, les anneaux flottent sur le bureau,
+  seul un petit disque central subsiste derrière les pourcentages pour la lisibilité.
+- [x] **VIS-08**: Un clic au centre du cadran bascule l'affichage central entre pourcentages et temps
+  avant reset (et inversement), sans déclencher le déplacement de la fenêtre.
+- [x] **ROB-05**: Résilience anti-429 du provider OAuth (throttle 2 min, backoff 5 min sur 429,
+  conservation de la dernière valeur exacte) — corrige le clignotement exact↔estimé.
+
 ## Out of Scope (v1.3)
 
 - Changement des sources de données ou du pipeline (v1.0/1.1/1.2 inchangés).
@@ -49,8 +60,12 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 | JOUR-02 | Phase 12 | Complete |
 | JOUR-03 | Phase 12 | Complete |
 | TAILLE-01 | Phase 12 | Complete |
+| VIS-06 | Phase 12 | Complete |
+| VIS-07 | Phase 12 | Complete |
+| VIS-08 | Phase 12 | Complete |
+| ROB-05 | Phase 12 | Complete |
 
-**Couverture : 7/7 requirements mappés → Phase 12 (aucun orphelin, aucun doublon).**
+**Couverture : 11/11 requirements complétés (7 roadmap + 4 ajouts d'itération).**
 
 ---
-*Last updated: 2026-07-09 — milestone v1.3 : roadmap créée, Phase 12 mappée (7/7)*
+*Last updated: 2026-07-09 — milestone v1.3 livré (11 requirements, 215 tests verts)*
