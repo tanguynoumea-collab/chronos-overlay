@@ -412,4 +412,44 @@ public class MainViewModelTests
         Assert.Equal(50_000_000, apres.WeeklyTokenBudget);
         Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);        // …SANS écraser le coin du drag (GAP-1)
     }
+
+    // --- INT-03 : à l'init, IsOAuthUsageEnabled reflète le setting (défaut true) ---
+    [Fact]
+    public void Initialisation_IsOAuthUsageEnabled_reflete_le_setting_par_defaut_true()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out _, out _);
+        Assert.True(vm.IsOAuthUsageEnabled);   // défaut ChronosSettings = true
+    }
+
+    // --- INT-03 : le toggle bascule l'état ET persiste le flag dans settings.json ---
+    [Fact]
+    public void ToggleOAuthUsage_bascule_et_persiste_le_flag()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out _, out var settings);
+        Assert.True(vm.IsOAuthUsageEnabled);
+
+        vm.ToggleOAuthUsageCommand.Execute(null);
+        Assert.False(vm.IsOAuthUsageEnabled);
+        Assert.False(settings.Load().OAuthUsageEnabled);   // persisté off
+
+        vm.ToggleOAuthUsageCommand.Execute(null);
+        Assert.True(vm.IsOAuthUsageEnabled);
+        Assert.True(settings.Load().OAuthUsageEnabled);     // persisté on
+    }
+
+    // --- GAP-1 : le toggle n'écrase pas un réglage écrit sur disque par un autre writer ---
+    [Fact]
+    public void ToggleOAuthUsage_n_ecrase_pas_les_reglages_persistes_par_un_autre_writer()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out _, out var settings);
+
+        // Simule l'OverlayController : APRÈS construction du VM, un drag persiste un nouveau coin.
+        settings.Save(settings.Load() with { Corner = OverlayCorner.BottomLeft });
+
+        vm.ToggleOAuthUsageCommand.Execute(null);   // passe OAuthUsageEnabled à false
+
+        var apres = settings.Load();
+        Assert.False(apres.OAuthUsageEnabled);                 // flag bien persisté…
+        Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);  // …SANS écraser le coin du drag (GAP-1)
+    }
 }
