@@ -45,6 +45,8 @@ public sealed class SettingsServiceTests : IDisposable
             Background = true,
             RefreshIntervalSeconds = 30,
             WeeklyAnchor = new DateTimeOffset(2026, 07, 06, 10, 00, 00, TimeSpan.Zero),
+            FiveHourTokenBudget = 88_000,
+            WeeklyTokenBudget = 1_200_000,
         };
 
         _service.Save(original);
@@ -63,6 +65,8 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(s.Background);
         Assert.Null(s.MonitorDeviceName);
         Assert.Null(s.WeeklyAnchor);
+        Assert.Null(s.FiveHourTokenBudget);
+        Assert.Null(s.WeeklyTokenBudget);
     }
 
     [Fact]
