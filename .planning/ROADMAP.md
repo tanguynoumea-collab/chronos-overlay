@@ -45,7 +45,9 @@ v1.1 enrichit, ne réécrit pas.
   3. Quand un plafond (FiveHourTokenBudget / WeeklyTokenBudget) est défini, l'arc correspondant prend une couleur — utilization = tokens sommés dans la fenêtre / plafond ; sans plafond, l'utilization reste null (couleur neutre), comme en v1.0.
   4. Le reset hebdo estimé utilise WeeklyAnchor s'il est défini (mécanique v1.0) ; sans ancre, le countdown hebdo reste « — » (jamais inventé).
   5. Le contrat de données est nettoyé : l'événement mort IUsageProvider.SnapshotChanged est retiré et le champ UsageSnapshot.Age est retiré ou consommé, suite de tests toujours verte.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 08-01-PLAN.md — Logique pure d'inférence (FiveHourWindowInference, WeeklyWindow) + plafonds de settings (round-trip)
+- [ ] 08-02-PLAN.md — Enrichissement JsonlEstimationProvider (arcs longueur+couleur) + nettoyage contrat NET-01
 **UI hint**: yes
 
 ### Phase 9 : Calibration des plafonds + surfaçage de l'estimation
@@ -67,5 +69,5 @@ Les phases s'exécutent dans l'ordre numérique : 8 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Inférence des fenêtres + estimation depuis JSONL | 0/TBD | Not started | - |
+| 8. Inférence des fenêtres + estimation depuis JSONL | 0/2 | Not started | - |
 | 9. Calibration des plafonds + surfaçage de l'estimation | 0/TBD | Not started | - |
