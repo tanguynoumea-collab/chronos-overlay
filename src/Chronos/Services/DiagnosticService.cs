@@ -145,6 +145,44 @@ public sealed class DiagnosticService
             }
         }
 
+        // Clés de premier niveau de .credentials.json (dit si le jeton principal « claudeAiOauth » y est,
+        // ou seulement les jetons MCP « mcpOAuth »). On n'affiche QUE les noms de clés, jamais les valeurs.
+        if (File.Exists(creds))
+        {
+            try
+            {
+                using var cd = JsonDocument.Parse(File.ReadAllText(creds));
+                var keys = cd.RootElement.ValueKind == JsonValueKind.Object
+                    ? string.Join(", ", cd.RootElement.EnumerateObject().Select(p => p.Name))
+                    : "(pas un objet)";
+                sb.AppendLine("    .credentials.json clés : " + keys);
+                var hasMain = cd.RootElement.TryGetProperty("claudeAiOauth", out var cao)
+                              && cao.ValueKind == JsonValueKind.Object
+                              && cao.TryGetProperty("accessToken", out var caoTok)
+                              && caoTok.ValueKind == JsonValueKind.String
+                              && !string.IsNullOrEmpty(caoTok.GetString());
+                sb.AppendLine("    jeton principal (claudeAiOauth.accessToken) : " + (hasMain ? "PRÉSENT" : "absent"));
+            }
+            catch { sb.AppendLine("    .credentials.json : illisible/JSON invalide"); }
+        }
+
+        // Gestionnaire d'identifiants Windows : où Claude Code range souvent le jeton sous Windows.
+        // On liste les cibles « claude/anthropic », la taille du blob et sa forme (clés JSON), + si un
+        // jeton en a été extrait. JAMAIS la valeur du jeton.
+        sb.AppendLine("  Gestionnaire d'identifiants Windows (cibles claude/anthropic) :");
+        try
+        {
+            var entries = WindowsCredentialStore.ReadClaudeEntries();
+            if (entries.Count == 0) sb.AppendLine("    (aucune cible claude/anthropic)");
+            foreach (var en in entries)
+            {
+                var shape = DescribeBlobShape(en.Blob);
+                var parsed = ClaudeTokenReader.ParseCredentialBlob(en.Blob, out _) is not null;
+                sb.AppendLine($"    ✓ {en.TargetName} — {en.Blob.Length} o — {shape} — jeton: {(parsed ? "OUI" : "non")}");
+            }
+        }
+        catch (Exception ex) { sb.AppendLine("    (lecture impossible : " + ex.GetType().Name + ")"); }
+
         var token = _tokenReader.TryReadAccessToken(out var exp);
         sb.AppendLine("  Token déchiffré : " + (token is null ? "NON (pas de token lisible → pas de chiffres exacts)" : "OUI"));
         if (exp is { } e) sb.AppendLine("  Expiration token : " + e.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
@@ -245,6 +283,29 @@ public sealed class DiagnosticService
         }
         Scan(root, 0);
         return results;
+    }
+
+    // Forme d'un blob d'identifiant SANS révéler son contenu : encodage probable + clés JSON de 1er niveau.
+    private static string DescribeBlobShape(byte[] blob)
+    {
+        if (blob is null || blob.Length == 0) return "vide";
+        foreach (var enc in new[] { Encoding.UTF8, Encoding.Unicode })
+        {
+            string text;
+            try { text = enc.GetString(blob).Trim(); } catch { continue; }
+            if (text.StartsWith("{"))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(text);
+                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                        return enc.WebName + " JSON {" + string.Join(", ", doc.RootElement.EnumerateObject().Select(p => p.Name).Take(8)) + "}";
+                }
+                catch { }
+            }
+            else if (text.StartsWith("sk-ant-")) return enc.WebName + " jeton brut sk-ant-…";
+        }
+        return "binaire/opaque";
     }
 
     private static string Pct(JsonElement root, string name)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -65,7 +66,16 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
         var desktop = TryDecryptVault(_configJsonPath, _localStatePath, out expiresAt);
         if (!string.IsNullOrEmpty(desktop)) return desktop;
 
-        // 2) DÉCOUVERTE GÉNÉRIQUE (prod uniquement) : n'importe quelle variante de l'app bureau (Claude,
+        // 2) GESTIONNAIRE D'IDENTIFIANTS WINDOWS (prod uniquement) : Claude Code sous Windows y range
+        //    souvent le jeton de compte (cible « Claude Code-credentials » ou variante). On énumère les
+        //    cibles « claude/anthropic » et on parse leur blob (JSON claudeAiOauth OU jeton brut).
+        if (_discoverAcrossVariants)
+        {
+            var cred = TryReadWindowsCredentialToken(out expiresAt);
+            if (!string.IsNullOrEmpty(cred)) return cred;
+        }
+
+        // 3) DÉCOUVERTE GÉNÉRIQUE (prod uniquement) : n'importe quelle variante de l'app bureau (Claude,
         //    Claude Nest-3p, Claude-3p, Cowork…) rangée sous %APPDATA%/%LOCALAPPDATA%. On cherche un couple
         //    (Local State + fichier JSON contenant « oauth:tokenCache ») et on tente le même schéma v10.
         if (_discoverAcrossVariants)
@@ -74,7 +84,7 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
             if (!string.IsNullOrEmpty(discovered)) return discovered;
         }
 
-        // 3) Repli : token de Claude Code CLI (~/.claude/.credentials.json, clé claudeAiOauth, EN CLAIR).
+        // 4) Repli : token de Claude Code CLI (~/.claude/.credentials.json, clé claudeAiOauth, EN CLAIR).
         //    Couvre les machines qui utilisent le CLI sans l'app bureau (config.json absent).
         return TryReadCliToken(out expiresAt);
     }
@@ -172,6 +182,91 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
             return token; // token en mémoire seulement — jamais logué/écrit
         }
         catch (Exception) { expiresAt = null; return null; }
+    }
+
+    // Gestionnaire d'identifiants Windows : parcourt les cibles « claude/anthropic » et parse le 1er blob
+    // qui livre un jeton exploitable. Le blob peut être du JSON (claudeAiOauth) ou un jeton brut.
+    private static string? TryReadWindowsCredentialToken(out DateTimeOffset? expiresAt)
+    {
+        expiresAt = null;
+        try
+        {
+            foreach (var entry in WindowsCredentialStore.ReadClaudeEntries())
+            {
+                var token = ParseCredentialBlob(entry.Blob, out expiresAt);
+                if (!string.IsNullOrEmpty(token)) return token;
+            }
+        }
+        catch { /* tolérance totale */ }
+        expiresAt = null;
+        return null;
+    }
+
+    // Décode un blob d'identifiant (UTF-8 puis UTF-16) et en extrait un access token :
+    //   • JSON { "claudeAiOauth": { "accessToken", "expiresAt" } }  (forme .credentials.json)
+    //   • JSON { "accessToken", "expiresAt" }                        (objet OAuth nu)
+    //   • jeton brut « sk-ant-… »                                   (dernier recours, sans expiresAt)
+    // Le secret ne vit qu'en mémoire ; aucune trace journalisée.
+    internal static string? ParseCredentialBlob(byte[] blob, out DateTimeOffset? expiresAt)
+    {
+        expiresAt = null;
+        if (blob is null || blob.Length == 0) return null;
+
+        foreach (var text in DecodeCandidates(blob))
+        {
+            if (string.IsNullOrWhiteSpace(text)) continue;
+            var trimmed = text.Trim();
+
+            if (trimmed.StartsWith("{"))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(trimmed);
+                    var root = doc.RootElement;
+                    // Objet OAuth soit à la racine, soit sous « claudeAiOauth ».
+                    var oauth = root;
+                    if (root.TryGetProperty("claudeAiOauth", out var nested) && nested.ValueKind == JsonValueKind.Object)
+                        oauth = nested;
+                    if (oauth.TryGetProperty("accessToken", out var at) && at.ValueKind == JsonValueKind.String)
+                    {
+                        var token = at.GetString();
+                        if (!string.IsNullOrEmpty(token))
+                        {
+                            if (oauth.TryGetProperty("expiresAt", out var e)) expiresAt = ParseExpiry(e);
+                            return token;
+                        }
+                    }
+                }
+                catch { /* pas ce candidat */ }
+            }
+            else if (trimmed.StartsWith("sk-ant-") && trimmed.Length is > 20 and < 4096 && !trimmed.Contains(' '))
+            {
+                return trimmed; // jeton brut, pas d'expiration connue
+            }
+        }
+        return null;
+    }
+
+    // Le blob peut être encodé en UTF-8 ou en UTF-16LE selon l'écrivain (keytar/Node/Electron).
+    private static IEnumerable<string> DecodeCandidates(byte[] blob)
+    {
+        string? utf8 = null, utf16 = null;
+        try { utf8 = Encoding.UTF8.GetString(blob); } catch { }
+        try { utf16 = Encoding.Unicode.GetString(blob); } catch { }
+        if (utf8 is not null) yield return utf8;
+        if (utf16 is not null) yield return utf16;
+    }
+
+    // expiresAt tolérant : nombre (epoch ms) OU chaîne ISO 8601.
+    private static DateTimeOffset? ParseExpiry(JsonElement e)
+    {
+        if (e.ValueKind == JsonValueKind.Number && e.TryGetInt64(out var ms))
+            return DateTimeOffset.FromUnixTimeMilliseconds(ms);
+        if (e.ValueKind == JsonValueKind.String
+            && DateTimeOffset.TryParse(e.GetString(), CultureInfo.InvariantCulture,
+                 DateTimeStyles.RoundtripKind, out var d))
+            return d;
+        return null;
     }
 
     // Coffre app bureau (schéma safeStorage v10 / DPAPI), sur un couple de chemins EXPLICITE

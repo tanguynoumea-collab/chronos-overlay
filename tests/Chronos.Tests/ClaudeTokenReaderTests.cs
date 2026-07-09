@@ -161,6 +161,51 @@ public class ClaudeTokenReaderTests
         Assert.Null(exp);
     }
 
+    // --- Blob du Gestionnaire d'identifiants Windows (Claude Code) : parsing tolérant ---
+
+    [Fact]
+    public void Cred_Json_claudeAiOauth_utf8_retourne_token_et_expiry_ms()
+    {
+        // Forme .credentials.json : { claudeAiOauth: { accessToken, expiresAt(ms) } }, encodée UTF-8.
+        long ms = 1893456000000; // 2030-01-01T00:00:00Z
+        var json = $$"""{ "claudeAiOauth": { "accessToken": "sk-ant-oat-XYZ", "expiresAt": {{ms}} } }""";
+        var blob = System.Text.Encoding.UTF8.GetBytes(json);
+
+        var token = ClaudeTokenReader.ParseCredentialBlob(blob, out var exp);
+
+        Assert.Equal("sk-ant-oat-XYZ", token);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(ms), exp);
+    }
+
+    [Fact]
+    public void Cred_Json_accessToken_racine_utf16_retourne_token()
+    {
+        // Objet OAuth nu à la racine, encodé UTF-16LE (cas keytar/Electron).
+        var json = """{ "accessToken": "sk-ant-oat-RACINE", "expiresAt": "2030-01-01T00:00:00+00:00" }""";
+        var blob = System.Text.Encoding.Unicode.GetBytes(json);
+
+        var token = ClaudeTokenReader.ParseCredentialBlob(blob, out var exp);
+
+        Assert.Equal("sk-ant-oat-RACINE", token);
+        Assert.NotNull(exp);
+    }
+
+    [Fact]
+    public void Cred_Jeton_brut_sk_ant_retourne_le_jeton_sans_expiry()
+    {
+        var blob = System.Text.Encoding.UTF8.GetBytes("sk-ant-oat-BRUT-0123456789ABCDEF");
+        var token = ClaudeTokenReader.ParseCredentialBlob(blob, out var exp);
+        Assert.Equal("sk-ant-oat-BRUT-0123456789ABCDEF", token);
+        Assert.Null(exp);
+    }
+
+    [Fact]
+    public void Cred_Blob_vide_ou_binaire_retourne_null()
+    {
+        Assert.Null(ClaudeTokenReader.ParseCredentialBlob(System.Array.Empty<byte>(), out _));
+        Assert.Null(ClaudeTokenReader.ParseCredentialBlob(new byte[] { 0x00, 0x01, 0xFF, 0xFE, 0x7A }, out _));
+    }
+
     // --- TOK-02 (fichiers) : chemins inexistants → null, aucune exception ---
 
     [Fact]
