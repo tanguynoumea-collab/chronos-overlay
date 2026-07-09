@@ -20,7 +20,7 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
   (setting FiveHourTokenBudget). Sans plafond défini : utilization reste null (couleur neutre) — comportement v1.0.
 - [x] **EST-04**: L'utilization hebdo estimée = tokens sommés sur la fenêtre hebdo (ancrée sur WeeklyAnchor
   si défini, sinon 7 jours glissants) / plafond calibrable (WeeklyTokenBudget). Sans plafond : null.
-- [ ] **EST-05**: Le reset hebdo estimé utilise WeeklyAnchor (mécanique v1.0) ; sans ancre, il reste
+- [x] **EST-05**: Le reset hebdo estimé utilise WeeklyAnchor (mécanique v1.0) ; sans ancre, il reste
   inconnu (countdown « — ») — jamais inventé.
 
 ### Calibration (CAL)
@@ -36,7 +36,7 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 
 ### Nettoyage dette v1.0 (NET)
 
-- [ ] **NET-01**: L'événement mort IUsageProvider.SnapshotChanged est retiré du contrat (DT-1) ; le champ
+- [x] **NET-01**: L'événement mort IUsageProvider.SnapshotChanged est retiré du contrat (DT-1) ; le champ
   UsageSnapshot.Age inutilisé est retiré ou consommé (DT-2).
 - [ ] **NET-02**: Les tokens estimés (EstimatedTokens) sont surfacés dans l'UI en texte secondaire discret
   quand la source est Estimated (DT-3) — l'utilisateur voit la matière première de l'estimation.
@@ -55,8 +55,8 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 | EST-02 | Phase 8 | Complete |
 | EST-03 | Phase 8 | Complete |
 | EST-04 | Phase 8 | Complete |
-| EST-05 | Phase 8 | Pending |
-| NET-01 | Phase 8 | Pending |
+| EST-05 | Phase 8 | Complete |
+| NET-01 | Phase 8 | Complete |
 | CAL-01 | Phase 9 | Pending |
 | CAL-02 | Phase 9 | Pending |
 | CAL-03 | Phase 9 | Pending |

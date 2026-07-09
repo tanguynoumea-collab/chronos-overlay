@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Estimation utile en mode app bureau
-status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-07-09T05:23:44.432Z"
+status: verifying
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-07-09T05:33:48.686Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Milestone: v1.1 — Estimation utile en mode app bureau
 Phase: 08 (inf-rence-des-fen-tres-estimation-depuis-jsonl) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 
 *Updated after each plan completion*
 | Phase 08 P01 | 4 min | 3 tasks | 6 files |
+| Phase 08 P02 | 6 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,8 @@ Contexte technique v1.0 conditionnant v1.1 (v1.1 enrichit, ne réécrit pas) :
 - [v1.0/Phase 6]: WeeklyRecalibration / WeeklyAnchor existent ; SettingsService atomique (Load disque avant écriture, cf. GAP-1) ; menu contextuel = seul point d'accès — v1.1 y ajoute « Calibrer les plafonds… ».
 - [v1.0/audit]: Dette DT-1 (SnapshotChanged mort), DT-2 (UsageSnapshot.Age inerte), DT-3 (EstimatedTokens non surfacé) — adressées par NET-01 (Phase 8) et NET-02 (Phase 9).
 - [Phase 08]: Algorithme « A » verrouillé : activité continue > 5 h ⇒ fenêtre 5 h inactive (null). Raffinement « B » différé v1.2, à valider empiriquement.
+- [Phase 08]: Repli JSONL enrichi : somme 5 h bornée à la fenêtre inférée [start, now] (ancien glissant brut retiré), utilization = tokens/plafond sans clamp haut (>=1 = gris épuisé déjà géré), SevenDay.ResetsAt laissé null (rempli par WeeklyRecalibration côté VM — EST-05 non régressé).
+- [Phase 08]: NET-01 soldé : IUsageProvider.SnapshotChanged et UsageSnapshot.Age retirés (dette DT-1/DT-2) ; RefreshOrchestrator.SnapshotChanged (event distinct) conservé. SettingsService injecté dans le provider (Load frais à chaque GetAsync) pour calibration Phase 9 sans redémarrage.
 
 ### Décisions v1.1 (roadmap)
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T05:23:38.752Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-07-09T05:33:26.708Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

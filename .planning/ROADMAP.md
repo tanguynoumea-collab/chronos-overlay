@@ -47,7 +47,7 @@ v1.1 enrichit, ne réécrit pas.
   5. Le contrat de données est nettoyé : l'événement mort IUsageProvider.SnapshotChanged est retiré et le champ UsageSnapshot.Age est retiré ou consommé, suite de tests toujours verte.
 **Plans**: 2 plans
 - [x] 08-01-PLAN.md — Logique pure d'inférence (FiveHourWindowInference, WeeklyWindow) + plafonds de settings (round-trip)
-- [ ] 08-02-PLAN.md — Enrichissement JsonlEstimationProvider (arcs longueur+couleur) + nettoyage contrat NET-01
+- [x] 08-02-PLAN.md — Enrichissement JsonlEstimationProvider (arcs longueur+couleur) + nettoyage contrat NET-01
 **UI hint**: yes
 
 ### Phase 9 : Calibration des plafonds + surfaçage de l'estimation
