@@ -12,7 +12,7 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 
 - [x] **VIS-01**: Les arcs se REMPLISSENT à l'approche du reset (longueur = fraction de temps ÉCOULÉE
   dans la fenêtre, = 1 − FractionRemaining), au lieu de se vider. Vide en début de fenêtre, plein au reset.
-- [ ] **VIS-02**: Ordre des anneaux du centre vers l'extérieur : **hebdomadaire** (le plus interne),
+- [x] **VIS-02**: Ordre des anneaux du centre vers l'extérieur : **hebdomadaire** (le plus interne),
   **5 h courant** (milieu), **timeline 24 h** (le plus externe).
 - [x] **VIS-05**: Le pourcentage d'utilization de chaque fenêtre est affiché au centre À CÔTÉ de son
   countdown (ex. « 50 min · 80 % », « 1 j 13 h · 93 % »). En source estimée : « ~80 % » ; sans plafond
@@ -24,12 +24,12 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
   l'heure du jour (de minuit local jusqu'à maintenant → à 18 h, ~75 % rempli).
 - [x] **JOUR-02**: Des graduations toutes les 5 h marquent, sur cet anneau, la position des resets de la
   fenêtre 5 h (projetés sur l'axe des 24 h à partir du resets_at 5 h courant).
-- [ ] **JOUR-03**: La couleur de l'anneau 24 h suit l'utilization de la fenêtre 5 h courante (même rampe
+- [x] **JOUR-03**: La couleur de l'anneau 24 h suit l'utilization de la fenêtre 5 h courante (même rampe
   vert→ambre→rouge, gris si épuisé/neutre si inconnue) — cohérence visuelle avec l'anneau 5 h.
 
 ### Compacité (TAILLE)
 
-- [ ] **TAILLE-01**: L'overlay est réduit à ~170 px (fenêtre et cadran mis à l'échelle proportionnellement),
+- [x] **TAILLE-01**: L'overlay est réduit à ~170 px (fenêtre et cadran mis à l'échelle proportionnellement),
   le texte central restant lisible ; les 3 anneaux et les % tiennent sans chevauchement.
 
 ## Out of Scope (v1.3)
@@ -43,12 +43,12 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
 | VIS-01 | Phase 12 | Complete |
-| VIS-02 | Phase 12 | Pending |
+| VIS-02 | Phase 12 | Complete |
 | VIS-05 | Phase 12 | Complete |
 | JOUR-01 | Phase 12 | Complete |
 | JOUR-02 | Phase 12 | Complete |
-| JOUR-03 | Phase 12 | Pending |
-| TAILLE-01 | Phase 12 | Pending |
+| JOUR-03 | Phase 12 | Complete |
+| TAILLE-01 | Phase 12 | Complete |
 
 **Couverture : 7/7 requirements mappés → Phase 12 (aucun orphelin, aucun doublon).**
 

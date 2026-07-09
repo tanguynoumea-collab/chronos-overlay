@@ -46,7 +46,7 @@ Un seul découpage cohérent → une phase.
 - Phases entières (…, 11, 12) : travail de milestone planifié — continue après la Phase 11 (v1.2)
 - Phases décimales (12.1, 12.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 12 : Refonte du cadran — 3 anneaux, remplissage, compacité** - Les arcs se remplissent vers le reset, 3 anneaux réordonnés (hebdo → 5 h → timeline 24 h), un nouvel anneau 24 h coloré et gradué aux resets, le % affiché à côté de chaque countdown, l'overlay réduit à ~170 px — sans toucher aux sources de données
+- [x] **Phase 12 : Refonte du cadran — 3 anneaux, remplissage, compacité** - Les arcs se remplissent vers le reset, 3 anneaux réordonnés (hebdo → 5 h → timeline 24 h), un nouvel anneau 24 h coloré et gradué aux resets, le % affiché à côté de chaque countdown, l'overlay réduit à ~170 px — sans toucher aux sources de données (completed 2026-07-09)
 
 ### Phase Details
 
@@ -75,7 +75,7 @@ l'overlay tient dans ~170 px sans chevauchement — le tout **sans modifier aucu
      et les 3 anneaux comme les % tiennent sans chevauchement (TAILLE-01).
 **Plans**: 2 plans
 - [x] 12-01-PLAN.md — Logique pure + tests (FractionElapsed, DayTimeline fraction/angles, UtilizationText, TickRing.Angles)
-- [ ] 12-02-PLAN.md — Recomposition XAML (3 anneaux réordonnés + anneau 24 h + resize 170 + % au centre) + checkpoint visuel
+- [x] 12-02-PLAN.md — Recomposition XAML (3 anneaux réordonnés + anneau 24 h + resize 170 + % au centre) + checkpoint visuel
 **UI hint**: yes
 
 ### Progress
@@ -85,4 +85,4 @@ Une seule phase : 12
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Refonte du cadran — 3 anneaux, remplissage, compacité | 1/2 | In Progress|  |
+| 12. Refonte du cadran — 3 anneaux, remplissage, compacité | 2/2 | Complete   | 2026-07-09 |

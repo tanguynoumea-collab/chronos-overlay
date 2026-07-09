@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: "— Refonte du cadran : 3 anneaux, remplissage, compacité"
-status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-07-09T09:31:14.907Z"
+status: verifying
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-07-09T09:37:42.847Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Milestone: v1.3 — Refonte du cadran : 3 anneaux, remplissage, compacité
 Phase: 12 (refonte-du-cadran-3-anneaux-remplissage-compacit) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/1 phases)
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0% (0/1 phases)
 
 *Updated after each plan completion*
 | Phase 12 P01 | 6 min | 3 tasks | 9 files |
+| Phase 12 P02 | 3 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ n'est modifié (v1.0/1.1/1.2 inchangés). Le code v1.2 est en place et fournit t
   - Décomposition suggérée pour le planner : 2-3 plans (logique pure d'abord, composition XAML + checkpoint visuel ensuite).
 - [Phase 12]: TickRing.Angles = angles explicites (resets 5 h projetés), pas grille régulière : 24h/5h=4,8 non entier
 - [Phase 12]: Grille resets 5 h dérive de +4h/jour (honnête) ; DayTimeline normalise puis rembobine au 1er reset du jour
+- [Phase 12]: 12-02 XAML : graduations décoratives (Count 60/12) supprimées à 170 px ; seuls les ticks resets 5 h (DayResetAngles) conservés (sens).
+- [Phase 12]: 12-02 : géométrie 170 px = rayons 44/58/72, épaisseur 9, ellipse 156 — ajustable en UAT sans toucher la logique.
 
 ### Décisions v1.3 (roadmap)
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T09:31:05.541Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-07-09T09:37:25.949Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
