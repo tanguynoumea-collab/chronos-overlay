@@ -53,18 +53,18 @@ chiffre exact.
 - ClickOnce / SharePoint — déploiement exe mono-fichier uniquement
 - Bande d'activité des sous-agents (blocs Task JSONL) — optionnelle, différée après le cœur fonctionnel
 
-## Current State (v1.2 — SHIPPED 2026-07-09)
+## Current State (v1.3 — SHIPPED 2026-07-09)
 
-Chronos affiche les quotas EXACTS des deux fenêtres, automatiquement, via l'endpoint OAuth officiel
-(token déchiffré localement du coffre app bureau, jamais logué/écrit). 3 milestones livrés (v1.0 overlay
-complet, v1.1 estimation JSONL, v1.2 usage exact OAuth), 188 tests, exe mono-fichier ~76 Mo.
-Sources en cascade : OAuth exact → pont statusLine → repli JSONL estimé. Toggle « Usage exact (OAuth) »
-dans le menu. Reste : UAT humains (fichiers *-HUMAN-UAT.md), dette mineure DT-2/3.
+Chronos affiche les quotas Claude (exact via OAuth, sinon estimé JSONL) dans un cadran compact 170 px à
+fond transparent : 3 anneaux (hebdo/5h/timeline 24h) qui se remplissent vers le reset, marques horaires
+et de reset, centre cliquable basculant pourcentages ↔ temps avant reset. 4 milestones livrés (v1.0→v1.3),
+215 tests, exe mono-fichier. Robustesse : anti-429 OAuth (throttle+backoff+cache). Reste : UAT humains,
+refresh du token OAuth (candidat v1.4).
 
 ## Next Milestone Goals
 
-À définir (/gsd:new-milestone). Candidats : refresh token (v1.3), sous-fenêtres opus/sonnet/cowork,
-survol/tooltip (V2), tray, opacité.
+À définir (/gsd:new-milestone). Candidats : refresh token OAuth, sous-fenêtres opus/sonnet/cowork,
+survol/tooltip, tray, taille réglable.
 
 ## Context
 
