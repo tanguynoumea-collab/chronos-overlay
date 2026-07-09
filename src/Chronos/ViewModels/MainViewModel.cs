@@ -23,6 +23,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IWindowController _controller;
     private readonly IAutostartService _autostart;
     private readonly IRecalibrationPrompt _prompt;
+    private readonly IBudgetPrompt _budgetPrompt;
+    private readonly RefreshOrchestrator _orchestrator;
     private readonly SettingsService _settingsService;
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
@@ -42,13 +44,15 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
-        IRecalibrationPrompt prompt, SettingsService settings)
+        IRecalibrationPrompt prompt, IBudgetPrompt budgetPrompt, SettingsService settings)
     {
         _ui = ui;
         _clock = clock;
         _controller = controller;
         _autostart = autostart;
         _prompt = prompt;
+        _budgetPrompt = budgetPrompt;
+        _orchestrator = orchestrator; // mémorisé pour re-déclencher un recalcul après calibration (CAL-01)
         _settingsService = settings;
         _settings = settings.Load();
 
@@ -130,6 +134,31 @@ public sealed partial class MainViewModel : ObservableObject
         _settings = _settingsService.Load() with { WeeklyAnchor = anchor };
         _settingsService.Save(_settings);
         if (_last is { } s) ApplySnapshot(s); // ré-applique → arc hebdo recalé, badge « estimée » conservé
+    }
+
+    /// <summary>CAL-01 : demande les deux plafonds, les persiste (GAP-1 : Load DISQUE frais avant Save)
+    /// en marquant source=Manual pour les champs saisis (None si laissé vide), puis redéclenche
+    /// l'orchestrateur → couleur des arcs recalculée aussitôt avec les nouveaux plafonds. Annulation →
+    /// aucun changement persisté.</summary>
+    [RelayCommand]
+    private void CalibrateBudgets()
+    {
+        var courant = _settingsService.Load();
+        var sel = _budgetPrompt.Ask(courant.FiveHourTokenBudget, courant.WeeklyTokenBudget);
+        if (sel is null) return;
+
+        var now = _clock.UtcNow;
+        _settings = _settingsService.Load() with   // GAP-1 : relire l'état disque le plus récent avant Save
+        {
+            FiveHourTokenBudget = sel.FiveHour,
+            FiveHourBudgetSource = sel.FiveHour is not null ? BudgetSource.Manual : BudgetSource.None,
+            FiveHourBudgetCalibratedAt = sel.FiveHour is not null ? now : null,
+            WeeklyTokenBudget = sel.Weekly,
+            WeeklyBudgetSource = sel.Weekly is not null ? BudgetSource.Manual : BudgetSource.None,
+            WeeklyBudgetCalibratedAt = sel.Weekly is not null ? now : null,
+        };
+        _settingsService.Save(_settings);
+        _orchestrator.RequestRefresh(); // application immédiate (le provider Load() frais à chaque GetAsync)
     }
 
     /// <summary>FEN-06 : ferme l'application (seul point de sortie d'une fenêtre sans barre de titre ni des tâches).</summary>

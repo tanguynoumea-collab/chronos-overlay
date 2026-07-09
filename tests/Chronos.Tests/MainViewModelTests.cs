@@ -56,21 +56,22 @@ public class MainViewModelTests
 
     private static readonly DateTimeOffset Now = new(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
 
-    // Cœur de construction : orchestrateur non démarré (source d'abonnement) + ctor complet 06-04.
+    // Cœur de construction : orchestrateur non démarré (source d'abonnement) + ctor complet 06-04/09-02.
     private static MainViewModel Build(
         FakeUiDispatcher ui, FakeClock clock, FakeUsageProvider provider,
         FakeWindowController controller, FakeAutostartService autostart,
-        FakeRecalibrationPrompt prompt, SettingsService settings)
+        FakeRecalibrationPrompt prompt, FakeBudgetPrompt budgetPrompt, SettingsService settings)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         var orch = new RefreshOrchestrator(provider, TempPaths(), options);
-        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings);
+        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, budgetPrompt, settings);
     }
 
     private static MainViewModel NewVmFull(
         out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider,
         out FakeWindowController controller, out FakeAutostartService autostart,
-        out FakeRecalibrationPrompt prompt, out SettingsService settings, bool onUiThread = true)
+        out FakeRecalibrationPrompt prompt, out FakeBudgetPrompt budgetPrompt,
+        out SettingsService settings, bool onUiThread = true)
     {
         ui = new FakeUiDispatcher { OnUiThread = onUiThread };
         clock = new FakeClock(Now);
@@ -78,13 +79,14 @@ public class MainViewModelTests
         controller = new FakeWindowController();
         autostart = new FakeAutostartService();
         prompt = new FakeRecalibrationPrompt();
+        budgetPrompt = new FakeBudgetPrompt();
         settings = new SettingsService(TempPaths());
-        return Build(ui, clock, provider, controller, autostart, prompt, settings);
+        return Build(ui, clock, provider, controller, autostart, prompt, budgetPrompt, settings);
     }
 
     // Surcharge minimale conservée pour les tests RAF (fakes par défaut, non observés).
     private static MainViewModel NewVm(out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider)
-        => NewVmFull(out ui, out clock, out provider, out _, out _, out _, out _);
+        => NewVmFull(out ui, out clock, out provider, out _, out _, out _, out _, out _);
 
     // --- RAF-04 : franchissement de thread unique via IUiDispatcher.Post (exactement une fois) ---
 
@@ -104,7 +106,7 @@ public class MainViewModelTests
         var clock = new FakeClock(Now);
         var vm = new MainViewModel(orch, ui, clock,
             new FakeWindowController(), new FakeAutostartService(),
-            new FakeRecalibrationPrompt(), new SettingsService(TempPaths()));
+            new FakeRecalibrationPrompt(), new FakeBudgetPrompt(), new SettingsService(TempPaths()));
         try
         {
             await orch.StartAsync(CancellationToken.None); // charge initiale → SnapshotChanged (thread pool)
@@ -195,7 +197,7 @@ public class MainViewModelTests
     [Fact]
     public void ToggleBackground_bascule_IsBackground_et_pilote_le_controller()
     {
-        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _);
+        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _, out _);
         Assert.False(vm.IsBackground);
 
         vm.ToggleBackgroundCommand.Execute(null);
@@ -213,7 +215,7 @@ public class MainViewModelTests
     [Fact]
     public void ToggleAutostart_appelle_Enable_Disable_et_reflete_IsEnabled()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out var autostart, out _, out _);
+        var vm = NewVmFull(out _, out _, out _, out _, out var autostart, out _, out _, out _);
         Assert.False(vm.IsAutostart);
 
         vm.ToggleAutostartCommand.Execute(null);
@@ -235,7 +237,7 @@ public class MainViewModelTests
         var vm = Build(
             new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), new FakeUsageProvider(),
             new FakeWindowController(), new FakeAutostartService { Enabled = true },
-            new FakeRecalibrationPrompt(), new SettingsService(TempPaths()));
+            new FakeRecalibrationPrompt(), new FakeBudgetPrompt(), new SettingsService(TempPaths()));
 
         Assert.True(vm.IsAutostart);
         Assert.False(vm.IsBackground); // Background par défaut faux (settings absents)
@@ -246,7 +248,7 @@ public class MainViewModelTests
     [Fact]
     public void Quit_appelle_le_controller()
     {
-        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _);
+        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _, out _);
         vm.QuitCommand.Execute(null);
         Assert.Equal(1, controller.QuitCount);
     }
@@ -256,7 +258,7 @@ public class MainViewModelTests
     [Fact]
     public void Recalibrate_recale_le_repli_hebdo_en_conservant_le_badge_estimee()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _, out var settings);
 
         vm.ApplySnapshot(new UsageSnapshot
         {
@@ -283,7 +285,7 @@ public class MainViewModelTests
     [Fact]
     public void Recalibrate_n_ecrase_pas_les_reglages_persistes_par_un_autre_writer()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _, out var settings);
 
         // Simule l'OverlayController : APRÈS la construction du VM, un drag persiste un nouveau coin.
         var externe = settings.Load() with { Corner = OverlayCorner.BottomLeft, Background = true };
@@ -311,7 +313,7 @@ public class MainViewModelTests
     [Fact]
     public void Recalibrate_annule_ne_change_rien()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _, out var settings);
 
         vm.ApplySnapshot(new UsageSnapshot
         {
@@ -334,7 +336,7 @@ public class MainViewModelTests
     [Fact]
     public void Recalibrate_ne_touche_pas_une_source_hebdo_exacte()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _);
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _, out _);
 
         vm.ApplySnapshot(new UsageSnapshot
         {
@@ -350,5 +352,64 @@ public class MainViewModelTests
 
         Assert.Equal(avant, vm.SevenDay.CountdownText); // inchangé : la valeur exacte prime
         Assert.False(vm.SevenDay.IsEstimated);
+    }
+
+    // --- CAL-01 : saisie d'un plafond 5 h seul → persisté avec source=Manual ; hebdo laissé vide → None ---
+
+    [Fact]
+    public void CalibrateBudgets_persiste_le_plafond_saisi_en_Manual_et_None_pour_le_champ_vide()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out var budgetPrompt, out var settings);
+
+        budgetPrompt.Result = new BudgetSelection(FiveHour: 2_000_000, Weekly: null);
+        vm.CalibrateBudgetsCommand.Execute(null);
+
+        Assert.Equal(1, budgetPrompt.AskCount);
+        var apres = settings.Load();
+        Assert.Equal(2_000_000, apres.FiveHourTokenBudget);
+        Assert.Equal(BudgetSource.Manual, apres.FiveHourBudgetSource);
+        Assert.NotNull(apres.FiveHourBudgetCalibratedAt);
+        Assert.Null(apres.WeeklyTokenBudget);
+        Assert.Equal(BudgetSource.None, apres.WeeklyBudgetSource);
+        Assert.Null(apres.WeeklyBudgetCalibratedAt);
+    }
+
+    // --- CAL-01 : annulation du dialogue → aucune persistance (les plafonds restent null) ---
+
+    [Fact]
+    public void CalibrateBudgets_annule_ne_persiste_rien()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out var budgetPrompt, out var settings);
+
+        budgetPrompt.Result = null; // l'utilisateur annule
+        vm.CalibrateBudgetsCommand.Execute(null);
+
+        Assert.Equal(1, budgetPrompt.AskCount);
+        var apres = settings.Load();
+        Assert.Null(apres.FiveHourTokenBudget);
+        Assert.Null(apres.WeeklyTokenBudget);
+        Assert.Equal(BudgetSource.None, apres.FiveHourBudgetSource);
+        Assert.Equal(BudgetSource.None, apres.WeeklyBudgetSource);
+    }
+
+    // --- GAP-1 : la calibration ne doit PAS écraser un réglage écrit sur disque par un autre writer
+    // (OverlayController : coin/écran) APRÈS la construction du VM ---
+
+    [Fact]
+    public void CalibrateBudgets_n_ecrase_pas_les_reglages_persistes_par_un_autre_writer()
+    {
+        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out var budgetPrompt, out var settings);
+
+        // Simule l'OverlayController : APRÈS la construction du VM, un drag persiste un nouveau coin.
+        var externe = settings.Load() with { Corner = OverlayCorner.BottomLeft };
+        settings.Save(externe);
+
+        budgetPrompt.Result = new BudgetSelection(FiveHour: 3_500_000, Weekly: 50_000_000);
+        vm.CalibrateBudgetsCommand.Execute(null);
+
+        var apres = settings.Load();
+        Assert.Equal(3_500_000, apres.FiveHourTokenBudget);          // plafond bien enregistré…
+        Assert.Equal(50_000_000, apres.WeeklyTokenBudget);
+        Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);        // …SANS écraser le coin du drag (GAP-1)
     }
 }

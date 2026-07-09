@@ -19,7 +19,7 @@ public class OverlayWindowConfigTests
         var orchestrator = new RefreshOrchestrator(new FakeUsageProvider(), ChronosPaths.Default(), RefreshOptions.Default);
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            new SettingsService(ChronosPaths.Default()));
+            new FakeBudgetPrompt(), new SettingsService(ChronosPaths.Default()));
         var guard = new TopmostGuard();
         var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
         var fenetre = new MainWindow(vm, guard, controller);
