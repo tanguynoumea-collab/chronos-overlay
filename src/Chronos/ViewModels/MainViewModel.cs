@@ -41,6 +41,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isBackground;
     [ObservableProperty] private bool _isAutostart;
 
+    // État reflété dans l'item « Usage exact (OAuth) » du menu (INT-03).
+    [ObservableProperty] private bool _isOAuthUsageEnabled;
+
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
@@ -59,6 +62,7 @@ public sealed partial class MainViewModel : ObservableObject
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
         IsBackground = _settings.Background;
         IsAutostart = _autostart.IsEnabled();
+        IsOAuthUsageEnabled = _settings.OAuthUsageEnabled;
 
         orchestrator.SnapshotChanged += OnSnapshotChanged; // callback thread pool (horloge données)
     }
@@ -159,6 +163,18 @@ public sealed partial class MainViewModel : ObservableObject
         };
         _settingsService.Save(_settings);
         _orchestrator.RequestRefresh(); // application immédiate (le provider Load() frais à chaque GetAsync)
+    }
+
+    /// <summary>INT-03 : active/désactive la source EXACTE OAuth. Persiste le flag (GAP-1 : Load DISQUE
+    /// frais avant Save, pour ne pas écraser un réglage écrit par l'OverlayController) puis redéclenche
+    /// l'orchestrateur → le portillon gated relit le flag frais au prochain GetAsync et bascule aussitôt.</summary>
+    [RelayCommand]
+    private void ToggleOAuthUsage()
+    {
+        IsOAuthUsageEnabled = !IsOAuthUsageEnabled;
+        _settings = _settingsService.Load() with { OAuthUsageEnabled = IsOAuthUsageEnabled };
+        _settingsService.Save(_settings);
+        _orchestrator.RequestRefresh();   // application immédiate (le gated Load() frais à chaque GetAsync)
     }
 
     /// <summary>FEN-06 : ferme l'application (seul point de sortie d'une fenêtre sans barre de titre ni des tâches).</summary>
