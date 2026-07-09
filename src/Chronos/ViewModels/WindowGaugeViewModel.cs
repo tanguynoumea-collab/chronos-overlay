@@ -15,8 +15,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     private readonly TimeSpan _windowLength;
     private WindowState _state; // dernier snapshot de cette fenêtre (immuable)
 
-    [ObservableProperty] private double _fractionRemaining;                    // 0..1 → longueur d'arc
+    [ObservableProperty] private double _fractionRemaining;                    // 0..1 → longueur d'arc restante
+    [ObservableProperty] private double _fractionElapsed;                       // 0..1 → longueur d'arc ÉCOULÉE (VIS-01)
     [ObservableProperty] private double? _utilization;                          // 0..1 ou null → couleur (Phase 5)
+    [ObservableProperty] private string _utilizationText = "";                  // « 80 % » / « ~80 % » / «» (VIS-05)
+    [ObservableProperty] private bool _hasUtilizationText;                      // vrai SSI utilization connue (pilote le séparateur « · »)
     [ObservableProperty] private string _countdownText = "—";
     [ObservableProperty] private bool _exhausted;
     [ObservableProperty] private SourceReliability _reliability = SourceReliability.Unavailable;
@@ -39,6 +42,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         Reliability = s.Reliability;
         IsEstimated = s.Reliability == SourceReliability.Estimated; // pré-câble DAT-08 (Phase 5)
 
+        // VIS-05 : % honnête au centre du cadran. « ~ » si estimé, «» si utilization null (jamais de plafond inventé).
+        // HasUtilizationText pilote la visibilité du séparateur « · » côté XAML (même pattern que HasTokens).
+        UtilizationText = PercentFormatter.Format(s.Utilization, IsEstimated);
+        HasUtilizationText = s.Utilization is not null;
+
         // NET-02 : surfacer les tokens estimés (matière première) UNIQUEMENT en source Estimated avec tokens>0.
         // Jamais en Exact (les pourcentages exacts suffisent) ni sans donnée — honnêteté préservée.
         HasTokens = s.Reliability == SourceReliability.Estimated && s.EstimatedTokens is > 0;
@@ -49,6 +57,8 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     public void Interpolate(DateTimeOffset now)
     {
         FractionRemaining = WindowState.FractionRemaining(_state.ResetsAt, now, _windowLength) ?? 0.0;
+        // VIS-01 : inversion du remplissage — l'arc est VIDE en début de fenêtre, PLEIN au reset.
+        FractionElapsed = System.Math.Clamp(1.0 - FractionRemaining, 0.0, 1.0);
         CountdownText = _state.ResetsAt is { } r
             ? CountdownFormatter.Format(r - now)
             : "—";
