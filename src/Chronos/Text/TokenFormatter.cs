@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Chronos.Text;
 
 /// <summary>
@@ -8,5 +10,17 @@ namespace Chronos.Text;
 public static class TokenFormatter
 {
     public static string Format(long tokens)
-        => "STUB"; // implémenté en phase GREEN
+    {
+        if (tokens < 0) tokens = 0; // borne : jamais de valeur négative affichée
+
+        if (tokens >= 1_000_000)
+            return $"≈ {Abbrev(tokens / 1_000_000d)} M tokens";
+        if (tokens >= 1_000)
+            return $"≈ {Abbrev(tokens / 1_000d)} k tokens";
+        return $"≈ {tokens} tokens"; // cas brut : nombre entier, pas d'unité
+    }
+
+    // 1 décimale max, virgule française, « ,0 » supprimé ; culture invariante puis '.' -> ',' (déterministe).
+    private static string Abbrev(double value)
+        => value.ToString("0.#", CultureInfo.InvariantCulture).Replace('.', ',');
 }
