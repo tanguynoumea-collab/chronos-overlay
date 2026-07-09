@@ -52,4 +52,8 @@ public sealed record ChronosSettings
 
     /// <summary>Horodatage de la dernière calibration du plafond hebdo. null = jamais calibré.</summary>
     public DateTimeOffset? WeeklyBudgetCalibratedAt { get; init; }
+
+    /// <summary>Active la source EXACTE OAuth (INT-03). Défaut TRUE : vrais chiffres dès l'installation.
+    /// false → comportement v1.1 strict, AUCUN accès au token (le portillon gated court-circuite).</summary>
+    public bool OAuthUsageEnabled { get; init; } = true;
 }
