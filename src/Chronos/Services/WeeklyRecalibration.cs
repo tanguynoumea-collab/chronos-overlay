@@ -40,13 +40,16 @@ public static class WeeklyRecalibration
     }
 
     /// <summary>
-    /// Premier reset STRICTEMENT futur aligné sur l'ancre : ancre + ceil((now-ancre)/7j)×7j,
-    /// avec un minimum d'un cycle (jamais l'ancre elle-même ni un reset passé).
+    /// Unique reset aligné sur l'ancre tombant dans l'intervalle ]now ; now+7j] — c.-à-d. le
+    /// prochain reset strictement futur, que l'ancre soit passée OU future.
+    /// L'utilisateur saisit naturellement la PROCHAINE date de reset (future, vue dans /usage) :
+    /// dans ce cas l'ancre elle-même est le bon reset, il ne faut donc PAS forcer « +1 semaine ».
     /// </summary>
     private static DateTimeOffset NextReset(DateTimeOffset anchor, DateTimeOffset now)
     {
-        var cycles = Math.Ceiling((now - anchor) / Week);
-        if (cycles < 1) cycles = 1;
-        return anchor + cycles * Week;
+        var next = anchor;
+        while (next <= now) next += Week;      // ancre passée → avancer jusqu'au futur
+        while (next - Week > now) next -= Week; // ancre trop loin dans le futur → ramener au 1er cycle > now
+        return next;
     }
 }
