@@ -26,11 +26,22 @@ public sealed class CompositeUsageProvider : IUsageProvider
         // raffinement Phase 4 ; ici, appeler les deux GetAsync suffit et reste teste.
         var f = await _fallback.GetAsync(ct);
 
+        var fiveHour = Best(p.FiveHour, f.FiveHour);
+        var sevenDay = Best(p.SevenDay, f.SevenDay);
+
+        // Honnêteté du staleness : SourceCapturedAt doit refléter la source qui ALIMENTE réellement
+        // l'affichage. Si au moins une fenêtre vient du primaire (Exact), son horodatage prime ;
+        // sinon (tout vient du repli JSONL, calculé à l'instant), c'est celui du repli — un usage.json
+        // périmé ne doit pas marquer « données périmées » une estimation fraîche.
+        var primaryUsed = ReferenceEquals(fiveHour, p.FiveHour) && fiveHour.Reliability == SourceReliability.Exact
+                       || ReferenceEquals(sevenDay, p.SevenDay) && sevenDay.Reliability == SourceReliability.Exact;
+
         return new UsageSnapshot
         {
-            FiveHour = Best(p.FiveHour, f.FiveHour),
-            SevenDay = Best(p.SevenDay, f.SevenDay),
-            SourceCapturedAt = p.SourceCapturedAt ?? f.SourceCapturedAt,
+            FiveHour = fiveHour,
+            SevenDay = sevenDay,
+            SourceCapturedAt = primaryUsed ? (p.SourceCapturedAt ?? f.SourceCapturedAt)
+                                           : (f.SourceCapturedAt ?? p.SourceCapturedAt),
         };
     }
 

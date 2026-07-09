@@ -104,4 +104,48 @@ public class CompositeUsageProviderTests
         Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
         Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
     }
+
+    // --- Cas 5 (fix staleness) : tout vient du repli -> SourceCapturedAt = celui du REPLI (frais),
+    // pas celui d'un usage.json perime. Un fichier pont vieux ne doit pas marquer « donnees perimees »
+    // une estimation JSONL calculee a l'instant. ---
+
+    [Fact]
+    public async Task Tout_en_repli_prend_le_capturedAt_du_repli_pas_du_primaire_perime()
+    {
+        var vieux = new DateTimeOffset(2026, 7, 8, 18, 0, 0, TimeSpan.Zero);   // usage.json d'hier
+        var frais = new DateTimeOffset(2026, 7, 9, 8, 0, 0, TimeSpan.Zero);    // scan JSONL a l'instant
+
+        var primaire = Snap(
+            Win(WindowKind.FiveHour, SourceReliability.Unavailable),
+            Win(WindowKind.SevenDay, SourceReliability.Unavailable)) with { SourceCapturedAt = vieux };
+        var repli = Snap(
+            Win(WindowKind.FiveHour, SourceReliability.Estimated),
+            Win(WindowKind.SevenDay, SourceReliability.Estimated)) with { SourceCapturedAt = frais };
+
+        var composite = new CompositeUsageProvider(new FakeProvider(primaire), new FakeProvider(repli));
+        var snap = await composite.GetAsync();
+
+        Assert.Equal(frais, snap.SourceCapturedAt);
+    }
+
+    // --- Cas 6 (fix staleness) : au moins une fenetre Exact du primaire -> capturedAt du primaire prime ---
+
+    [Fact]
+    public async Task Fenetre_exacte_du_primaire_conserve_le_capturedAt_du_primaire()
+    {
+        var tPrimaire = new DateTimeOffset(2026, 7, 9, 7, 0, 0, TimeSpan.Zero);
+        var tRepli = new DateTimeOffset(2026, 7, 9, 8, 0, 0, TimeSpan.Zero);
+
+        var primaire = Snap(
+            Win(WindowKind.FiveHour, SourceReliability.Exact),
+            Win(WindowKind.SevenDay, SourceReliability.Unavailable)) with { SourceCapturedAt = tPrimaire };
+        var repli = Snap(
+            Win(WindowKind.FiveHour, SourceReliability.Estimated),
+            Win(WindowKind.SevenDay, SourceReliability.Estimated)) with { SourceCapturedAt = tRepli };
+
+        var composite = new CompositeUsageProvider(new FakeProvider(primaire), new FakeProvider(repli));
+        var snap = await composite.GetAsync();
+
+        Assert.Equal(tPrimaire, snap.SourceCapturedAt);
+    }
 }
