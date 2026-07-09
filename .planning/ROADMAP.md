@@ -46,11 +46,14 @@ via le menu, la source OAuth n'accède jamais au token — Chronos retombe au co
 **Depends on**: Phase 3 (modèles UsageSnapshot immuables + abstraction IUsageProvider existants) — première phase du milestone v1.2
 **Requirements**: TOK-01, TOK-02, TOK-03, API-01, API-02, API-03
 **Success Criteria** (what must be TRUE):
-  1. **Test décisif de bout en bout (première étape de la phase)** : sur le vrai poste, le service déchiffre une fois le token réel, effectue un appel réel à `/api/oauth/usage` et affiche les pourcentages exacts des fenêtres 5 h et 7 j — le token n'apparaissant à aucun moment en clair ailleurs qu'en en-tête `Authorization`. Si ce test échoue, la phase le documente comme **bloquant** (mécanisme de coffre/endpoint invalidé) plutôt que de poursuivre à l'aveugle.
-  2. Le lecteur déchiffre le token : `config.json['oauth:tokenCache']` (base64 `v10`) + clé AES depuis `Local State['os_crypt']['encrypted_key']` (préfixe DPAPI → CryptUnprotectData) → AES-256-GCM (nonce 12 o + tag 16 o) → `accessToken` en mémoire ; fichier/clé absents, format inattendu ou déchiffrement échoué ⇒ retourne « pas de token » **sans exception** (TOK-01, TOK-02).
-  3. Le client appelle l'endpoint avec `Authorization: Bearer <accessToken>`, `anthropic-beta: oauth-2025-04-20` et timeout court (5 s), puis mappe `rate_limits.five_hour/seven_day` (`used_percentage` 0..100 → Utilization 0..1 via `/100`, `resets_at` epoch s → ResetsAt) vers un UsageSnapshot **Exact** ; 401/403, réseau/timeout et réponse malformée dégradent en « indisponible » + bascule repli, **jamais** d'exception non gérée (API-01, API-02).
+  1. **Test décisif de bout en bout (première étape de la phase)** : sur le vrai poste, le service déchiffre une fois le token réel, effectue un appel réel à `/api/oauth/usage` et affiche les pourcentages exacts des fenêtres 5 h et 7 j — le token n'apparaissant à aucun moment en clair ailleurs qu'en en-tête `Authorization`. Si ce test échoue, la phase le documente comme **bloquant** (mécanisme de coffre/endpoint invalidé) plutôt que de poursuivre à l'aveugle. *(DÉJÀ RÉUSSI en recherche 2026-07-09 : déchiffrement réel + HTTP 200, cf. 10-RESEARCH.md ; schéma prouvé, re-confirmé en app en Phase 11.)*
+  2. Le lecteur déchiffre le token : `config.json['oauth:tokenCache']` (base64 `v10`) + clé AES depuis `Local State['os_crypt']['encrypted_key']` (préfixe DPAPI → CryptUnprotectData) → AES-256-GCM (nonce 12 o + tag 16 o) → champ `token` de l'entrée `claude_code` (MAP), en mémoire ; fichier/clé absents, format inattendu ou déchiffrement échoué ⇒ retourne « pas de token » **sans exception** (TOK-01, TOK-02).
+  3. Le client appelle l'endpoint avec `Authorization: Bearer <accessToken>`, `anthropic-beta: oauth-2025-04-20` et timeout court (5 s), puis mappe `five_hour/seven_day` (racine ; `utilization` 0..100 → Utilization 0..1 via `/100`, `resets_at` ISO 8601 → ResetsAt) vers un UsageSnapshot **Exact** ; 401/403, réseau/timeout et réponse malformée dégradent en « indisponible » + bascule repli, **jamais** d'exception non gérée (API-01, API-02).
   4. **Sécurité vérifiée par test** : le token en clair n'apparaît dans **aucun** log ni fichier (un test asserte que le lecteur ne persiste rien) ; le coffre est ouvert en **lecture seule** (aucune réécriture) ; le provider est asynchrone, respecte le CancellationToken, reste inerte hors ligne et n'impacte pas le tick 1 s d'interpolation (TOK-03, API-03).
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 10-01-PLAN.md — ClaudeTokenReader : déchiffrement DPAPI + AES-256-GCM v10 → champ `token` claude_code, tolérant, lecture seule prouvée (TOK-01/02/03)
+- [ ] 10-02-PLAN.md — ClaudeOAuthUsageProvider : GET /api/oauth/usage → UsageSnapshot Exact, tolérance erreurs, inertie token absent/expiré (API-01/02/03)
 
 ### Phase 11 : Intégration composite + réglage
 **Goal**: Brancher le provider OAuth comme source **primaire** du composite existant, faire disparaître le badge « estimée » sur les fenêtres servies par l'endpoint, et donner à l'utilisateur un réglage menu on/off persisté qui gouverne l'accès au token (désactivé = comportement v1.1 strict, aucune lecture du coffre).
@@ -70,5 +73,5 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 10. Lecture du token + client endpoint | 0/TBD | Not started | - |
+| 10. Lecture du token + client endpoint | 0/2 | Planned | - |
 | 11. Intégration composite + réglage | 0/TBD | Not started | - |
