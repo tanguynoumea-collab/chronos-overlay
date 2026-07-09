@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: — Usage exact via l'endpoint OAuth
-status: verifying
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-07-09T08:52:14.143Z"
+milestone: v1.3
+milestone_name: — Refonte du cadran : 3 anneaux, remplissage, compacité
+status: roadmapped
+stopped_at: Roadmap v1.3 créée (Phase 12)
+last_updated: "2026-07-09T00:00:00.000Z"
 last_activity: 2026-07-09
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 11 — int-gration-composite-r-glage
+**Current focus:** Phase 12 — Refonte du cadran (3 anneaux, remplissage, compacité)
 
 ## Current Position
 
-Milestone: v1.2 — Usage exact via l'endpoint OAuth
-Phase: 11
+Milestone: v1.3 — Refonte du cadran : 3 anneaux, remplissage, compacité
+Phase: 12
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Roadmap créée — prête pour `/gsd:plan-phase 12`
 Last activity: 2026-07-09
 
-Progress: [░░░░░░░░░░] 0% (0/2 phases)
+Progress: [░░░░░░░░░░] 0% (0/1 phases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.2): 0
+- Total plans completed (v1.3): 0
 - Average duration: —
 - Total execution time: 0 h
 
@@ -45,36 +45,41 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 10 | 0/TBD | - | - |
-| 11 | 0/TBD | - | - |
+| 12 | 0/TBD | - | - |
 
 *Updated after each plan completion*
-| Phase 10 P01 | 3min | 2 tasks | 5 files |
-| Phase 10 P02 | 3min | 2 tasks | 4 files |
-| Phase 11 P01 | 4min | 3 tasks | 7 files |
-| Phase 11 P02 | 5min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-Contexte technique v1.0/v1.1 conditionnant v1.2 (v1.2 enrichit le composite, ne réécrit pas) :
+Milestone v1.3 = **pur rendu / ViewModel**. Aucune source de données, aucun provider, aucun pipeline
+n'est modifié (v1.0/1.1/1.2 inchangés). Le code v1.2 est en place et fournit toute la matière.
 
-- [v1.0/Phase 3]: Abstraction IUsageProvider + UsageSnapshot immuables neutres en place ; le nouveau ClaudeOAuthUsageProvider s'y conforme (Exact) sans toucher au cadran.
-- [v1.0/Phase 3]: CompositeUsageProvider bascule PAR FENÊTRE (Exact > Estimated > Unavailable) — v1.2 insère l'OAuth en tête de priorité Exact, devant le pont statusLine et le repli JSONL.
-- [v1.0/Phase 6]: SettingsService atomique + menu contextuel = seul point d'accès UI — v1.2 y ajoute le toggle « Usage exact (OAuth) ».
-- [source docs/data-sources.md]: le champ réel est `used_percentage` (0..100) et `resets_at` en epoch SECONDES ; normalisation `Utilization = used_percentage / 100` côté modèle. L'endpoint OAuth `/api/oauth/usage` renvoie la même structure `rate_limits.five_hour/seven_day` — mapping réutilisable.
-- [Phase 10]: ClaudeTokenReader : dechiffrement DPAPI + AES-256-GCM v10, coeur internal static testable, lecture seule prouvee (grep + snapshot), tolerance totale -> null
-- [Phase 10]: ClaudeOAuthUsageProvider : mapping OAuth dedie (utilization/100 + resets_at ISO 8601 via DateTimeOffset.Parse RoundtripKind), token uniquement en en-tete Authorization, inertie prouvee (SendCount==0) si token null/expire, timeout 5s via CancellationTokenSource lie. 13 tests API-01/02/03 verts, suite 178/178.
-- [Phase 11]: OAuthUsageEnabled défaut true : overlay exact dès l'install ; false = v1.1 strict, coffre jamais ouvert (portillon gated, ReadCount==0/SendCount==0)
-- [Phase 11]: CompositeUsageProvider.Best généralisé au rang de fiabilité (Exact>Estimated>Unavailable) pour supporter la chaîne à 3 par imbrication (OAuth gated → statusLine → JSONL)
-- [Phase 11]: ToggleOAuthUsage réutilise le pattern GAP-1 (Load disque frais avant Save) + RequestRefresh → bascule à chaud sans écraser un autre writer ; INT-02 prouvé au niveau VM (WindowGaugeViewModel.Apply), ctor MainViewModel inchangé (zéro régression DI)
+- [v1.3/roadmap]: Une seule phase (Phase 12) — les 5 ajustements demandés forment un geste de refonte
+  cohérent et purement présentation ; pas de découpage artificiel.
+- [Contexte technique — briques existantes réutilisées]:
+  - `RingArc` : Shape, DP `Fraction` (0..1), `EllipseGeometry` si Fraction ≥ 1, `StartAngle`/`Radius`, AffectsRender.
+  - `ArcGeometry` : math pure (PointAt Y-inversé 0°=12 h, Build avec IsLargeArc/cas vide/plein) — testée.
+  - `TickRing` : Shape, GeometryGroup de segments en une passe (réutiliser `ArcGeometry.PointAt`).
+  - `UtilizationToBrushConverter` : double? → Brush (rampe / gris épuisé / neutre si null) — réutilisable pour l'anneau 24 h.
+  - `WindowGaugeViewModel` : `FractionRemaining` (0..1), `Utilization` (double?), `CountdownText` (FR), `IsEstimated`, `Exhausted`.
+- [v1.3/Phase 12 — travail à faire]:
+  - **Inversion** : longueur d'arc = `1 − FractionRemaining` (arc vide en début de fenêtre, plein au reset).
+  - **Anneau 24 h** : nouvelle math pure d'angles — fraction du jour = (now − minuit local) / 24 h ; ticks
+    aux resets 5 h projetés toutes les 5 h à partir du `resets_at` 5 h courant, sur l'axe des 24 h ;
+    couleur via `UtilizationToBrushConverter` alimenté par l'utilization 5 h.
+  - **% au centre** : formatage honnête « countdown · % » (`~` si estimé, rien si `Utilization` null).
+  - **Réordonnancement + resize** : dans MainWindow.xaml, hebdo (interne) → 5 h (milieu) → 24 h (externe),
+    fenêtre/cadran mis à l'échelle à ~170 px, texte lisible, pas de chevauchement.
+  - Décomposition suggérée pour le planner : 2-3 plans (logique pure d'abord, composition XAML + checkpoint visuel ensuite).
 
-### Décisions v1.2 (roadmap)
+### Décisions v1.3 (roadmap)
 
-- Découpage 2 phases avec la **sécurité isolée** : Phase 10 concentre toute la surface sensible (lecture/déchiffrement du token, appel réseau) et la teste de bout en bout AVANT de brancher l'UI en Phase 11.
-- Phase 10 démarre par un **test décisif E2E** (déchiffrer le vrai token une fois + appel réel + afficher les % exacts) : s'il échoue, la phase le documente comme bloquant plutôt que de coder à l'aveugle.
-- Contrainte sécurité transverse à honorer dans les critères Phase 10 : token jamais logué/écrit, transmis uniquement à api.anthropic.com, lecture seule du coffre, tolérance totale aux erreurs (jamais de crash, bascule repli).
+- Découpage 1 phase : milestone cohérent, purement présentation, aucune surface sensible ni I/O.
+- Garder toute nouvelle math (inversion, angles 24 h, projection resets, formatage %) en **fonctions/logique
+  pures testables** (cohérent avec le pattern `ArcGeometry`/`RampColor` de Phase 5), avant la composition XAML.
+- Honnêteté préservée sur le % : « ~ » si estimé, pas de % si utilization null (VIS-05) — même règle que le badge « estimée ».
 
 ### Pending Todos
 
@@ -82,11 +87,13 @@ None yet.
 
 ### Blockers/Concerns
 
-- Faisabilité du mécanisme coffre → endpoint : à valider par le test décisif E2E en tout début de Phase 10 (safeStorage v10, clé DPAPI via Local State, AES-256-GCM). Si le déchiffrement ou l'appel échoue sur le vrai poste, la phase remonte le blocage.
-- Token potentiellement expiré (refreshToken hors scope v1.2) : comportement attendu = 401 → « indisponible » + bascule repli, pas un bug.
+- Compacité (TAILLE-01) : à 170 px, valider en checkpoint visuel que les 3 anneaux + les 2 lignes de %
+  restent lisibles et sans chevauchement (ajuster rayons/épaisseurs/tailles de police en UAT).
+- Projection des resets 5 h sur l'axe 24 h (JOUR-02) : caler le sens (les resets 5 h tombent toutes les 5 h,
+  à vérifier que la projection depuis `resets_at` produit des graduations cohérentes avec l'anneau 5 h).
 
 ## Session Continuity
 
-Last session: 2026-07-09T08:48:03.176Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-07-09
+Stopped at: Roadmap v1.3 créée (Phase 12)
 Resume file: None

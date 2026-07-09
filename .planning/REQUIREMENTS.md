@@ -42,7 +42,15 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| — | — | — |
+| VIS-01 | Phase 12 | Pending |
+| VIS-02 | Phase 12 | Pending |
+| VIS-05 | Phase 12 | Pending |
+| JOUR-01 | Phase 12 | Pending |
+| JOUR-02 | Phase 12 | Pending |
+| JOUR-03 | Phase 12 | Pending |
+| TAILLE-01 | Phase 12 | Pending |
+
+**Couverture : 7/7 requirements mappés → Phase 12 (aucun orphelin, aucun doublon).**
 
 ---
-*Last updated: 2026-07-09 — milestone v1.3 initialisé*
+*Last updated: 2026-07-09 — milestone v1.3 : roadmap créée, Phase 12 mappée (7/7)*
