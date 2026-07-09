@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Estimation utile en mode app bureau
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-07-09T06:06:45.572Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-07-09T06:18:45.113Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 5
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Milestone: v1.1 — Estimation utile en mode app bureau
 Phase: 09 (calibration-des-plafonds-surfa-age) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-09
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 | Phase 08 P01 | 4 min | 3 tasks | 6 files |
 | Phase 08 P02 | 6 min | 2 tasks | 10 files |
 | Phase 09 P01 | 6 min | 3 tasks | 9 files |
+| Phase 09 P03 | 2 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,7 @@ Contexte technique v1.0 conditionnant v1.1 (v1.1 enrichit, ne réécrit pas) :
 - [Phase 08]: NET-01 soldé : IUsageProvider.SnapshotChanged et UsageSnapshot.Age retirés (dette DT-1/DT-2) ; RefreshOrchestrator.SnapshotChanged (event distinct) conservé. SettingsService injecté dans le provider (Load frais à chaque GetAsync) pour calibration Phase 9 sans redémarrage.
 - [Phase 09]: Calibrateur tokenSource = JsonlEstimationProvider concret (porte toujours EstimatedTokens), pas le composite
 - [Phase 09]: Priorité Manual > Auto/None : ApplyAuto n'écrase jamais une saisie manuelle
+- [Phase 09]: [Phase 09] NET-02 soldé : tokens estimés surfacés en texte discret (TokensText/HasTokens dans WindowGaugeViewModel.Apply + 2 TextBlocks), UNIQUEMENT en source Estimated avec tokens>0 — jamais en Exact ni sans donnée (honnêteté préservée)
 
 ### Décisions v1.1 (roadmap)
 
@@ -85,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T06:06:35.316Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-07-09T06:18:33.449Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
