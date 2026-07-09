@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: "— Refonte du cadran : 3 anneaux, remplissage, compacité"
 status: verifying
 stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-07-09T09:37:42.847Z"
+last_updated: "2026-07-09T13:03:47.242Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 1
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Milestone: v1.3 — Refonte du cadran : 3 anneaux, remplissage, compacité
-Phase: 12 (refonte-du-cadran-3-anneaux-remplissage-compacit) — EXECUTING
-Plan: 2 of 2
+Phase: 12
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-09
 
