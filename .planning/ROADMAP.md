@@ -74,7 +74,7 @@ l'overlay tient dans ~170 px sans chevauchement — le tout **sans modifier aucu
   5. **Compacité** : l'overlay et le cadran sont mis à l'échelle à ~170 px ; le texte central reste lisible
      et les 3 anneaux comme les % tiennent sans chevauchement (TAILLE-01).
 **Plans**: 2 plans
-- [ ] 12-01-PLAN.md — Logique pure + tests (FractionElapsed, DayTimeline fraction/angles, UtilizationText, TickRing.Angles)
+- [x] 12-01-PLAN.md — Logique pure + tests (FractionElapsed, DayTimeline fraction/angles, UtilizationText, TickRing.Angles)
 - [ ] 12-02-PLAN.md — Recomposition XAML (3 anneaux réordonnés + anneau 24 h + resize 170 + % au centre) + checkpoint visuel
 **UI hint**: yes
 
@@ -85,4 +85,4 @@ Une seule phase : 12
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 12. Refonte du cadran — 3 anneaux, remplissage, compacité | 0/2 | Not started | - |
+| 12. Refonte du cadran — 3 anneaux, remplissage, compacité | 1/2 | In Progress|  |

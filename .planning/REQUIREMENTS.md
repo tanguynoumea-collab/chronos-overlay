@@ -10,19 +10,19 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 
 ### Remplissage (VIS)
 
-- [ ] **VIS-01**: Les arcs se REMPLISSENT à l'approche du reset (longueur = fraction de temps ÉCOULÉE
+- [x] **VIS-01**: Les arcs se REMPLISSENT à l'approche du reset (longueur = fraction de temps ÉCOULÉE
   dans la fenêtre, = 1 − FractionRemaining), au lieu de se vider. Vide en début de fenêtre, plein au reset.
 - [ ] **VIS-02**: Ordre des anneaux du centre vers l'extérieur : **hebdomadaire** (le plus interne),
   **5 h courant** (milieu), **timeline 24 h** (le plus externe).
-- [ ] **VIS-05**: Le pourcentage d'utilization de chaque fenêtre est affiché au centre À CÔTÉ de son
+- [x] **VIS-05**: Le pourcentage d'utilization de chaque fenêtre est affiché au centre À CÔTÉ de son
   countdown (ex. « 50 min · 80 % », « 1 j 13 h · 93 % »). En source estimée : « ~80 % » ; sans plafond
   (utilization null) : pas de %, comportement honnête inchangé.
 
 ### Anneau timeline 24 h (JOUR)
 
-- [ ] **JOUR-01**: Un nouvel anneau externe représente 24 h (cercle complet = 24 h) et se remplit selon
+- [x] **JOUR-01**: Un nouvel anneau externe représente 24 h (cercle complet = 24 h) et se remplit selon
   l'heure du jour (de minuit local jusqu'à maintenant → à 18 h, ~75 % rempli).
-- [ ] **JOUR-02**: Des graduations toutes les 5 h marquent, sur cet anneau, la position des resets de la
+- [x] **JOUR-02**: Des graduations toutes les 5 h marquent, sur cet anneau, la position des resets de la
   fenêtre 5 h (projetés sur l'axe des 24 h à partir du resets_at 5 h courant).
 - [ ] **JOUR-03**: La couleur de l'anneau 24 h suit l'utilization de la fenêtre 5 h courante (même rampe
   vert→ambre→rouge, gris si épuisé/neutre si inconnue) — cohérence visuelle avec l'anneau 5 h.
@@ -42,11 +42,11 @@ la taille de l'overlay. Aucun changement de source de données — pur rendu/Vie
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| VIS-01 | Phase 12 | Pending |
+| VIS-01 | Phase 12 | Complete |
 | VIS-02 | Phase 12 | Pending |
-| VIS-05 | Phase 12 | Pending |
-| JOUR-01 | Phase 12 | Pending |
-| JOUR-02 | Phase 12 | Pending |
+| VIS-05 | Phase 12 | Complete |
+| JOUR-01 | Phase 12 | Complete |
+| JOUR-02 | Phase 12 | Complete |
 | JOUR-03 | Phase 12 | Pending |
 | TAILLE-01 | Phase 12 | Pending |
 
