@@ -13,7 +13,7 @@ namespace Chronos.Converters;
 /// </summary>
 public sealed class UtilizationToBrushConverter : IValueConverter
 {
-    private static readonly SolidColorBrush Neutre = Frozen(0x2A, 0x29, 0x32); // teinte piste douce
+    private static readonly SolidColorBrush Neutre = Frozen(0x6E, 0x6D, 0x7A); // gris ardoise VISIBLE : la longueur (temps restant) est fiable même sans utilization — l'arc doit se voir sur la piste, sans emprunter ni la rampe ni le gris « épuisé »
     private static readonly SolidColorBrush Epuise = Frozen(0x5A, 0x59, 0x60); // #5A5960
 
     public object Convert(object? value, Type t, object? p, CultureInfo c)

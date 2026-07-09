@@ -15,7 +15,7 @@ public class UtilizationToBrushConverterTests
 {
     private static readonly Color Vert    = Color.FromRgb(0x7B, 0xB1, 0x3C); // borne rampe 0
     private static readonly Color Epuise  = Color.FromRgb(0x5A, 0x59, 0x60); // gris épuisé (CAD-05)
-    private static readonly Color Neutre  = Color.FromRgb(0x2A, 0x29, 0x32); // piste douce (donnée absente)
+    private static readonly Color Neutre  = Color.FromRgb(0x6E, 0x6D, 0x7A); // gris ardoise visible (donnée absente : longueur affichée, couleur non inventée)
 
     private static SolidColorBrush Convert(object? value)
     {
