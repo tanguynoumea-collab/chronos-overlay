@@ -8,9 +8,10 @@ namespace Chronos.Tests;
 
 /// <summary>
 /// Prouve DAT-04 (lecture de l'objet d'usage primaire, mapping used_percentage/100 -> Utilization,
-/// resets_at epoch SECONDES -> DateTimeOffset, capturedAt epoch MILLISECONDES -> Age via IClock,
+/// resets_at epoch SECONDES -> DateTimeOffset, capturedAt epoch MILLISECONDES -> SourceCapturedAt,
 /// Reliability = Exact) et ROB-02 (parsing tolerant : fenetre/champ absent, fichier corrompu/absent
-/// -> jamais d'exception, jamais de valeur inventee).
+/// -> jamais d'exception, jamais de valeur inventee). La staleness derive de SourceCapturedAt cote VM
+/// (aucun champ Age materialise).
 ///
 /// Les fixtures vivent dans TestData/ a cote de ce fichier ; le chemin est resolu via
 /// [CallerFilePath] (compile-time) plutot que par copie MSBuild -> aucun couplage au csproj.
@@ -27,12 +28,12 @@ public class ClaudeUsageObjectProviderTests
     private static ClaudeUsageObjectProvider ProviderFor(string usageFile, IClock clock)
         => new(new ChronosPaths(UsageFile: usageFile, ProjectsRoot: "N/A"), clock);
 
-    // --- DAT-04 : fichier valide -> mapping complet (utilization, reset epoch s, age) ---
+    // --- DAT-04 : fichier valide -> mapping complet (utilization, reset epoch s, capturedAt) ---
 
     [Fact]
-    public async Task Valide_mappe_utilization_reset_et_age()
+    public async Task Valide_mappe_utilization_reset_et_capturedAt()
     {
-        // Horloge = capturedAt + 30 s -> Age attendu = 30 s.
+        // Horloge = capturedAt + 30 s (staleness derivee de SourceCapturedAt cote VM).
         var clock = new FakeClock(DateTimeOffset.FromUnixTimeMilliseconds(CapturedAtMs) + TimeSpan.FromSeconds(30));
         var provider = ProviderFor(TestDataPath("usage-valid.json"), clock);
 
@@ -52,8 +53,7 @@ public class ClaudeUsageObjectProviderTests
         Assert.Equal(0.412, snap.SevenDay.Utilization!.Value, 9);
         Assert.Equal(SourceReliability.Exact, snap.SevenDay.Reliability);
 
-        // Staleness : Age = now - capturedAt = 30 s.
-        Assert.Equal(TimeSpan.FromSeconds(30), snap.Age);
+        // Staleness : SourceCapturedAt = capturedAt (le VM en derive l'age, aucun champ Age materialise).
         Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(CapturedAtMs), snap.SourceCapturedAt);
 
         // FractionTimeRemaining calcule (fenetre 5 h) -> non null meme si reset passe (clamp 0).

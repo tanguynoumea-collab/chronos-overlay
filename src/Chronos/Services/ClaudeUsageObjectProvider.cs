@@ -25,9 +25,6 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
         _clock = clock;
     }
 
-    /// <summary>Emis en fin de GetAsync reussi (le declenchement par watcher arrive en Phase 4).</summary>
-    public event EventHandler<UsageSnapshot>? SnapshotChanged;
-
     // Options tolerantes : casse insensible, commentaires ignores, virgules trainantes, nombres en chaine.
     private static readonly JsonSerializerOptions Tolerant = new()
     {
@@ -54,15 +51,12 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
             var five = ReadWindow(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5));
             var week = ReadWindow(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7));
 
-            var snap = new UsageSnapshot
+            return new UsageSnapshot
             {
                 FiveHour = five,
                 SevenDay = week,
                 SourceCapturedAt = capturedAt,
-                Age = capturedAt is null ? null : _clock.UtcNow - capturedAt,
             };
-            SnapshotChanged?.Invoke(this, snap);
-            return snap;
         }
         catch (Exception ex) when (ex is IOException or JsonException or FileNotFoundException or DirectoryNotFoundException)
         {

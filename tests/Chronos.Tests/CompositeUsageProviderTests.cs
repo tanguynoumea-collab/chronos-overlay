@@ -6,20 +6,16 @@ namespace Chronos.Tests;
 
 /// <summary>
 /// Prouve DAT-06 : le composite selectionne la MEILLEURE source PAR FENETRE
-/// (Exact prioritaire, sinon Estimated, sinon Unavailable) et emet SnapshotChanged une fois
-/// par GetAsync avec le snapshot final. Deux fakes IUsageProvider renvoient des snapshots fabriques.
-/// Tests PURS -> [Fact] classiques.
+/// (Exact prioritaire, sinon Estimated, sinon Unavailable). Deux fakes IUsageProvider renvoient
+/// des snapshots fabriques. Tests PURS -> [Fact] classiques.
 /// </summary>
 public class CompositeUsageProviderTests
 {
-    // Fake provider retournant un snapshot preconfigure (l'event n'est pas utilise ici).
+    // Fake provider retournant un snapshot preconfigure.
     private sealed class FakeProvider : IUsageProvider
     {
         private readonly UsageSnapshot _snap;
         public FakeProvider(UsageSnapshot snap) => _snap = snap;
-#pragma warning disable CS0067 // event non declenche par le fake (le composite emet le sien)
-        public event EventHandler<UsageSnapshot>? SnapshotChanged;
-#pragma warning restore CS0067
         public Task<UsageSnapshot> GetAsync(CancellationToken ct = default) => Task.FromResult(_snap);
     }
 
@@ -107,28 +103,5 @@ public class CompositeUsageProviderTests
 
         Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
         Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
-    }
-
-    // --- Cas 5 : SnapshotChanged emis une fois par GetAsync avec le snapshot final ---
-
-    [Fact]
-    public async Task SnapshotChanged_emis_une_fois_avec_le_snapshot_final()
-    {
-        var pFive = Win(WindowKind.FiveHour, SourceReliability.Exact);
-        var pSeven = Win(WindowKind.SevenDay, SourceReliability.Exact);
-        var fFive = Win(WindowKind.FiveHour, SourceReliability.Estimated);
-        var fSeven = Win(WindowKind.SevenDay, SourceReliability.Estimated);
-
-        var composite = new CompositeUsageProvider(
-            new FakeProvider(Snap(pFive, pSeven)),
-            new FakeProvider(Snap(fFive, fSeven)));
-
-        var received = new List<UsageSnapshot>();
-        composite.SnapshotChanged += (_, s) => received.Add(s);
-
-        var snap = await composite.GetAsync();
-
-        Assert.Single(received);
-        Assert.Same(snap, received[0]);
     }
 }

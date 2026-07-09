@@ -7,7 +7,4 @@ public interface IUsageProvider
 {
     /// <summary>Lit la meilleure source disponible et produit un snapshot neutre.</summary>
     Task<UsageSnapshot> GetAsync(CancellationToken ct = default);
-
-    /// <summary>Émis quand un nouveau snapshot est produit (thread pool — marshaling côté VM en Phase 4).</summary>
-    event EventHandler<UsageSnapshot>? SnapshotChanged;
 }

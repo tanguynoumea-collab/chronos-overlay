@@ -31,9 +31,6 @@ public sealed class JsonlEstimationProvider : IUsageProvider
         _settings = settings;
     }
 
-    /// <summary>Emis en fin de GetAsync (le declenchement par watcher arrive en Phase 4).</summary>
-    public event EventHandler<UsageSnapshot>? SnapshotChanged;
-
     public async Task<UsageSnapshot> GetAsync(CancellationToken ct = default)
     {
         var now = _clock.UtcNow;
@@ -77,15 +74,12 @@ public sealed class JsonlEstimationProvider : IUsageProvider
         var tsAsc = entries.Select(e => e.Ts).ToList();
         var start = FiveHourWindowInference.InferWindowStart(tsAsc, now); // debut de la fenetre 5 h courante, ou null si inactive
 
-        var snap = new UsageSnapshot
+        return new UsageSnapshot
         {
             FiveHour = BuildFiveHour(entries, start, now, settings.FiveHourTokenBudget),
             SevenDay = BuildSevenDay(entries, settings.WeeklyAnchor, now, settings.WeeklyTokenBudget),
             SourceCapturedAt = now,
-            Age = TimeSpan.Zero,
         };
-        SnapshotChanged?.Invoke(this, snap);
-        return snap;
     }
 
     // Fenetre 5 h INFEREE (EST-01/02/03) : somme bornee a [start, now], reset = start + 5 h, utilization

@@ -13,9 +13,6 @@ public sealed class CompositeUsageProvider : IUsageProvider
     private readonly IUsageProvider _primary;   // ClaudeUsageObjectProvider (Exact)
     private readonly IUsageProvider _fallback;  // JsonlEstimationProvider (Estimated)
 
-    /// <summary>Emis en fin de GetAsync avec le snapshot final (branche par l'orchestrateur en Phase 4).</summary>
-    public event EventHandler<UsageSnapshot>? SnapshotChanged;
-
     public CompositeUsageProvider(IUsageProvider primary, IUsageProvider fallback)
     {
         _primary = primary;
@@ -29,15 +26,12 @@ public sealed class CompositeUsageProvider : IUsageProvider
         // raffinement Phase 4 ; ici, appeler les deux GetAsync suffit et reste teste.
         var f = await _fallback.GetAsync(ct);
 
-        var snap = new UsageSnapshot
+        return new UsageSnapshot
         {
             FiveHour = Best(p.FiveHour, f.FiveHour),
             SevenDay = Best(p.SevenDay, f.SevenDay),
             SourceCapturedAt = p.SourceCapturedAt ?? f.SourceCapturedAt,
-            Age = p.Age ?? f.Age,
         };
-        SnapshotChanged?.Invoke(this, snap);
-        return snap;
     }
 
     // Meilleure source pour UNE fenetre : Exact du primaire, sinon Estimated du repli, sinon Unavailable.
