@@ -111,6 +111,14 @@ public partial class App : Application
         services.AddSingleton<RefreshOrchestrator>();
         services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
 
+        // Diagnostic auto-explicatif (menu « Diagnostic… ») : consomme le lecteur de token + le composite réel.
+        services.AddSingleton(sp => new DiagnosticService(
+            sp.GetRequiredService<IClaudeTokenReader>(),
+            sp.GetRequiredService<ChronosPaths>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<IUsageProvider>(),
+            sp.GetRequiredService<IClock>()));
+
         // CAL-02 : calibrateur auto opportuniste. tokenSource = JsonlEstimationProvider CONCRET
         // (porte toujours EstimatedTokens ; le composite les perd sur une fenêtre Exact). Singleton
         // IDisposable → disposé par le host à l'arrêt (aucune disposition manuelle requise).

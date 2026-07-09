@@ -26,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IBudgetPrompt _budgetPrompt;
     private readonly RefreshOrchestrator _orchestrator;
     private readonly SettingsService _settingsService;
+    private readonly DiagnosticService _diagnostic;
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
     private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
@@ -62,7 +63,8 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
-        IRecalibrationPrompt prompt, IBudgetPrompt budgetPrompt, SettingsService settings)
+        IRecalibrationPrompt prompt, IBudgetPrompt budgetPrompt, SettingsService settings,
+        DiagnosticService diagnostic)
     {
         _ui = ui;
         _clock = clock;
@@ -72,6 +74,7 @@ public sealed partial class MainViewModel : ObservableObject
         _budgetPrompt = budgetPrompt;
         _orchestrator = orchestrator; // mémorisé pour re-déclencher un recalcul après calibration (CAL-01)
         _settingsService = settings;
+        _diagnostic = diagnostic;
         _settings = settings.Load();
 
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
@@ -197,6 +200,11 @@ public sealed partial class MainViewModel : ObservableObject
         _settingsService.Save(_settings);
         _orchestrator.RequestRefresh();   // application immédiate (le gated Load() frais à chaque GetAsync)
     }
+
+    /// <summary>Diagnostic : écrit et ouvre un rapport expliquant l'état réel (token, appel OAuth,
+    /// sources, plafonds) — pour comprendre pourquoi l'affichage n'a pas de couleurs sur une machine.</summary>
+    [RelayCommand]
+    private Task Diagnostic() => _diagnostic.RunAsync();
 
     /// <summary>FEN-06 : ferme l'application (seul point de sortie d'une fenêtre sans barre de titre ni des tâches).</summary>
     [RelayCommand]

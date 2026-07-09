@@ -27,10 +27,13 @@ public class CadranBindingTests
     // le snapshot voulu, puis construit + met en page la fenêtre (Measure/Arrange déclenche les bindings).
     private static MainWindow BuildWindow(UsageSnapshot snap, out MainViewModel vm)
     {
-        var orch = new RefreshOrchestrator(new FakeUsageProvider(), ChronosPaths.Default(), RefreshOptions.Default);
+        var prov = new FakeUsageProvider();
+        var orch = new RefreshOrchestrator(prov, ChronosPaths.Default(), RefreshOptions.Default);
+        var settings = new SettingsService(ChronosPaths.Default());
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            new FakeBudgetPrompt(), new SettingsService(ChronosPaths.Default()));
+            new FakeBudgetPrompt(), settings,
+            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(Now)));
         vm.ApplySnapshot(snap);
 
         var guard = new TopmostGuard();

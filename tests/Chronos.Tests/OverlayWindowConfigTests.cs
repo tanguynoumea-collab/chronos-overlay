@@ -16,10 +16,13 @@ public class OverlayWindowConfigTests
         // Le ctor exige désormais un TopmostGuard (ROB-04) ; non attaché ici, on teste FEN-01.
         // Le MainViewModel prend désormais l'orchestrateur + IUiDispatcher + IClock (04-02) ;
         // l'orchestrateur n'est PAS démarré ici (aucun I/O) — le VM sert juste de DataContext.
-        var orchestrator = new RefreshOrchestrator(new FakeUsageProvider(), ChronosPaths.Default(), RefreshOptions.Default);
+        var prov = new FakeUsageProvider();
+        var orchestrator = new RefreshOrchestrator(prov, ChronosPaths.Default(), RefreshOptions.Default);
+        var settings = new SettingsService(ChronosPaths.Default());
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            new FakeBudgetPrompt(), new SettingsService(ChronosPaths.Default()));
+            new FakeBudgetPrompt(), settings,
+            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(DateTimeOffset.UtcNow)));
         var guard = new TopmostGuard();
         var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
         var fenetre = new MainWindow(vm, guard, controller);

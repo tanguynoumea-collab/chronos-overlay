@@ -67,6 +67,15 @@ public class CompositionRootTests
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IClock>()));
 
+        // v1.4 : le ctor de MainViewModel dépend désormais aussi de DiagnosticService (menu « Diagnostic… »).
+        services.AddSingleton<IClaudeTokenReader>(_ => new FakeClaudeTokenReader());
+        services.AddSingleton(sp => new DiagnosticService(
+            sp.GetRequiredService<IClaudeTokenReader>(),
+            sp.GetRequiredService<ChronosPaths>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<IUsageProvider>(),
+            sp.GetRequiredService<IClock>()));
+
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition
