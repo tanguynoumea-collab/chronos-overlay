@@ -38,7 +38,7 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 
 - [x] **INT-01**: ClaudeOAuthUsageProvider devient la source PRIMAIRE du composite (avant le pont
   statusLine et le repli JSONL) : Exact prioritaire par fenêtre, bascule automatique si indisponible.
-- [ ] **INT-02**: Quand une fenêtre vient de l'endpoint (Exact), le badge « estimée » disparaît et les
+- [x] **INT-02**: Quand une fenêtre vient de l'endpoint (Exact), le badge « estimée » disparaît et les
   arcs prennent leur vraie couleur (utilization exacte) — l'honnêteté joue dans les deux sens.
 - [x] **INT-03**: Un réglage menu « Usage exact (OAuth) » permet d'activer/désactiver la source OAuth
   (persisté settings.json) ; désactivé → comportement v1.1 strict (aucun accès au token).
@@ -61,7 +61,7 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 | API-02 | Phase 10 | Complete |
 | API-03 | Phase 10 | Complete |
 | INT-01 | Phase 11 | Complete |
-| INT-02 | Phase 11 | Pending |
+| INT-02 | Phase 11 | Complete |
 | INT-03 | Phase 11 | Complete |
 
 **Couverture : 9/9 requirements mappés — aucun orphelin, aucun doublon.**

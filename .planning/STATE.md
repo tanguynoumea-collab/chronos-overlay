@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: — Usage exact via l'endpoint OAuth
-status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-07-09T08:40:41.987Z"
+status: verifying
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-07-09T08:48:10.770Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Milestone: v1.2 — Usage exact via l'endpoint OAuth
 Phase: 11 (int-gration-composite-r-glage) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 | Phase 10 P01 | 3min | 2 tasks | 5 files |
 | Phase 10 P02 | 3min | 2 tasks | 4 files |
 | Phase 11 P01 | 4min | 3 tasks | 7 files |
+| Phase 11 P02 | 5min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Contexte technique v1.0/v1.1 conditionnant v1.2 (v1.2 enrichit le composite, ne 
 - [Phase 10]: ClaudeOAuthUsageProvider : mapping OAuth dedie (utilization/100 + resets_at ISO 8601 via DateTimeOffset.Parse RoundtripKind), token uniquement en en-tete Authorization, inertie prouvee (SendCount==0) si token null/expire, timeout 5s via CancellationTokenSource lie. 13 tests API-01/02/03 verts, suite 178/178.
 - [Phase 11]: OAuthUsageEnabled défaut true : overlay exact dès l'install ; false = v1.1 strict, coffre jamais ouvert (portillon gated, ReadCount==0/SendCount==0)
 - [Phase 11]: CompositeUsageProvider.Best généralisé au rang de fiabilité (Exact>Estimated>Unavailable) pour supporter la chaîne à 3 par imbrication (OAuth gated → statusLine → JSONL)
+- [Phase 11]: ToggleOAuthUsage réutilise le pattern GAP-1 (Load disque frais avant Save) + RequestRefresh → bascule à chaud sans écraser un autre writer ; INT-02 prouvé au niveau VM (WindowGaugeViewModel.Apply), ctor MainViewModel inchangé (zéro régression DI)
 
 ### Décisions v1.2 (roadmap)
 
@@ -85,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T08:40:34.332Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-07-09T08:48:03.176Z
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None

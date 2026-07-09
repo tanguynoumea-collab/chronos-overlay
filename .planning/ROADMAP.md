@@ -37,7 +37,7 @@ via le menu, la source OAuth n'accède jamais au token — Chronos retombe au co
 - Phases décimales (10.1, 10.2) : insertions urgentes (marquées INSERTED)
 
 - [x] **Phase 10 : Lecture du token + client endpoint** - La partie sensible, isolée et testée à fond : un service produit à la demande un UsageSnapshot Exact depuis `/api/oauth/usage` (ou « indisponible » proprement), sans jamais logger, persister ni exposer le token (completed 2026-07-09)
-- [ ] **Phase 11 : Intégration composite + réglage** - Le provider OAuth devient source primaire, le badge « estimée » disparaît sur les fenêtres exactes, et un réglage menu on/off (persisté) gouverne l'accès au token
+- [x] **Phase 11 : Intégration composite + réglage** - Le provider OAuth devient source primaire, le badge « estimée » disparaît sur les fenêtres exactes, et un réglage menu on/off (persisté) gouverne l'accès au token (completed 2026-07-09)
 
 ### Phase Details
 
@@ -67,7 +67,7 @@ Plans:
 
 Plans:
 - [x] 11-01-PLAN.md — Chaîne composite à 3 (OAuth gated → statusLine → JSONL) + réglage OAuthUsageEnabled + portillon gated zéro-accès-token (INT-01/03)
-- [ ] 11-02-PLAN.md — Toggle menu « Usage exact (OAuth) » persisté + badge « estimée » masqué en Exact + validation app réelle (INT-02/03)
+- [x] 11-02-PLAN.md — Toggle menu « Usage exact (OAuth) » persisté + badge « estimée » masqué en Exact + validation app réelle (INT-02/03)
 **UI hint**: yes
 
 ### Progress
@@ -78,4 +78,4 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 10. Lecture du token + client endpoint | 2/2 | Complete    | 2026-07-09 |
-| 11. Intégration composite + réglage | 1/2 | In Progress|  |
+| 11. Intégration composite + réglage | 2/2 | Complete   | 2026-07-09 |
