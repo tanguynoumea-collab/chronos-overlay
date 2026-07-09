@@ -63,7 +63,11 @@ Plans:
   1. `ClaudeOAuthUsageProvider` est la source **primaire** du composite (avant le pont statusLine et le repli JSONL) : par fenêtre, l'Exact est prioritaire et la bascule vers les sources v1.0/v1.1 est automatique quand l'endpoint est indisponible (INT-01).
   2. Quand une fenêtre provient de l'endpoint (Exact), le badge « estimée » **disparaît** et l'arc prend sa vraie couleur (utilization exacte) — l'honnêteté joue dans les deux sens (INT-02).
   3. Un réglage menu « Usage exact (OAuth) » active/désactive la source OAuth, persisté dans settings.json ; désactivé, Chronos se comporte comme en v1.1 strict et **n'accède jamais** au token (INT-03).
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Chaîne composite à 3 (OAuth gated → statusLine → JSONL) + réglage OAuthUsageEnabled + portillon gated zéro-accès-token (INT-01/03)
+- [ ] 11-02-PLAN.md — Toggle menu « Usage exact (OAuth) » persisté + badge « estimée » masqué en Exact + validation app réelle (INT-02/03)
 **UI hint**: yes
 
 ### Progress
@@ -74,4 +78,4 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 10. Lecture du token + client endpoint | 2/2 | Complete    | 2026-07-09 |
-| 11. Intégration composite + réglage | 0/TBD | Not started | - |
+| 11. Intégration composite + réglage | 0/2 | Not started | - |
