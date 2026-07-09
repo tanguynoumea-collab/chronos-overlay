@@ -30,6 +30,9 @@
                 <MenuItem Header="Lancer au démarrage" IsCheckable="True"
                           IsChecked="{Binding IsAutostart}"
                           Command="{Binding ToggleAutostartCommand}"/>
+                <MenuItem Header="Usage exact (OAuth)" IsCheckable="True"
+                          IsChecked="{Binding IsOAuthUsageEnabled}"
+                          Command="{Binding ToggleOAuthUsageCommand}"/>
                 <Separator/>
                 <MenuItem Header="Quitter" Command="{Binding QuitCommand}"/>
             </ContextMenu>
