@@ -59,7 +59,10 @@ v1.1 enrichit, ne réécrit pas.
   2. Quand un snapshot Exact (rate_limits réel, used_percentage > 0) coïncide avec des tokens JSONL mesurables sur la même fenêtre, Chronos déduit et mémorise le plafond (tokens / (used_percentage/100)) dans settings.json — visible et modifiable, sans écraser une valeur manuelle plus récente saisie par l'utilisateur.
   3. Toute valeur dérivée d'un plafond calibré reste badgée « estimée » ; seul un snapshot Exact (rate_limits) supprime le badge.
   4. En source Estimated, les tokens estimés (EstimatedTokens) sont affichés en texte secondaire discret — l'utilisateur voit la matière première de l'estimation.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 09-01-PLAN.md — Fondations neutres : méta source des plafonds + BudgetCalibration (déduction + priorité manuel/auto) + TokenFormatter fr + BudgetAutoCalibrator (CAL-02/CAL-03/NET-02)
+- [ ] 09-02-PLAN.md — Calibration manuelle : dialogue plafonds + CalibrateBudgetsCommand (GAP-1) + RequestRefresh + câblage DI du calibrateur (CAL-01/CAL-02)
+- [ ] 09-03-PLAN.md — Surfaçage des tokens estimés : WindowGaugeViewModel.TokensText + TextBlocks discrets (NET-02)
 **UI hint**: yes
 
 ### Progress
@@ -70,4 +73,4 @@ Les phases s'exécutent dans l'ordre numérique : 8 → 9
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Inférence des fenêtres + estimation depuis JSONL | 0/2 | Not started | - |
-| 9. Calibration des plafonds + surfaçage de l'estimation | 0/TBD | Not started | - |
+| 9. Calibration des plafonds + surfaçage de l'estimation | 0/3 | Not started | - |
