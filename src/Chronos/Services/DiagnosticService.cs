@@ -90,8 +90,36 @@ public sealed class DiagnosticService
         var cfg = Path.Combine(appData, "Claude", "config.json");
         var ls = Path.Combine(appData, "Claude", "Local State");
         sb.AppendLine("  Coffre app bureau Claude :");
-        sb.AppendLine("    config.json  : " + (File.Exists(cfg) ? "présent" : "ABSENT → app bureau Claude non installée/connectée ?"));
+        sb.AppendLine("    config.json  : " + (File.Exists(cfg) ? "présent" : "ABSENT (app bureau non installée ?)"));
         sb.AppendLine("    Local State  : " + (File.Exists(ls) ? "présent" : "ABSENT"));
+        var creds = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", ".credentials.json");
+        sb.AppendLine("  Repli Claude Code CLI :");
+        sb.AppendLine("    .credentials.json : " + (File.Exists(creds) ? "présent" : "ABSENT"));
+
+        // Découverte : OÙ l'app range-t-elle réellement son coffre ? (le chemin varie selon l'app/version)
+        sb.AppendLine("  Recherche du coffre (config.json contenant « oauth:tokenCache ») :");
+        int found = 0;
+        foreach (var (label, root) in new[]
+        {
+            ("%APPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
+            ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
+        })
+        {
+            foreach (var hit in FindTokenVaults(root))
+            {
+                sb.AppendLine("    ✓ " + hit.Replace(root, label));
+                found++;
+            }
+            // liste aussi les dossiers « Claude/Cowork/Anthropic » présents (même sans tokenCache)
+            try
+            {
+                foreach (var d in Directory.EnumerateDirectories(root)
+                             .Where(d => { var n = Path.GetFileName(d).ToLowerInvariant(); return n.Contains("claude") || n.Contains("cowork") || n.Contains("anthropic"); }))
+                    sb.AppendLine("    · dossier : " + d.Replace(root, label));
+            }
+            catch { }
+        }
+        if (found == 0) sb.AppendLine("    (aucun coffre oauth:tokenCache trouvé sous %APPDATA%/%LOCALAPPDATA%)");
 
         var token = _tokenReader.TryReadAccessToken(out var exp);
         sb.AppendLine("  Token déchiffré : " + (token is null ? "NON (pas de token lisible → pas de chiffres exacts)" : "OUI"));
@@ -156,6 +184,43 @@ public sealed class DiagnosticService
         sb.AppendLine("  ou renseigne tes plafonds via le menu « Calibrer les plafonds… » pour colorer l'estimation.");
 
         return sb.ToString();
+    }
+
+    // Cherche (profondeur bornée, dossiers volumineux ignorés) les fichiers config.json contenant
+    // « oauth:tokenCache » → révèle où l'app bureau range son coffre, quel que soit son nom/emplacement.
+    private static IEnumerable<string> FindTokenVaults(string root)
+    {
+        var results = new List<string>();
+        void Scan(string dir, int depth)
+        {
+            if (depth > 3 || results.Count >= 5) return;
+            string[] subdirs;
+            try { subdirs = Directory.GetDirectories(dir); } catch { return; }
+            try
+            {
+                foreach (var f in Directory.EnumerateFiles(dir, "config.json"))
+                {
+                    try
+                    {
+                        var fi = new FileInfo(f);
+                        if (fi.Length > 2_000_000) continue;                 // pas un config.json d'app
+                        if (File.ReadAllText(f).Contains("oauth:tokenCache")) { results.Add(f); if (results.Count >= 5) return; }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            foreach (var sub in subdirs)
+            {
+                var n = Path.GetFileName(sub).ToLowerInvariant();
+                if (n is "cache" or "gpucache" or "code cache" or "node_modules" or "blob_storage"
+                      or "logs" or "crashpad" or "dawncache" or "service worker") continue; // bruit volumineux
+                Scan(sub, depth + 1);
+                if (results.Count >= 5) return;
+            }
+        }
+        Scan(root, 0);
+        return results;
     }
 
     private static string Pct(JsonElement root, string name)

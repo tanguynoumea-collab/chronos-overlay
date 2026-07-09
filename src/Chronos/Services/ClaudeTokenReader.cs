@@ -24,15 +24,19 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
 {
     private readonly string _configJsonPath;
     private readonly string _localStatePath;
+    private readonly string _credentialsPath;   // repli Claude Code CLI (~/.claude/.credentials.json)
 
-    /// <summary>Construit un reader sur des chemins explicites (injectables pour la testabilité).</summary>
-    public ClaudeTokenReader(string configJsonPath, string localStatePath)
+    /// <summary>Construit un reader sur des chemins explicites (injectables pour la testabilité).
+    /// <paramref name="credentialsPath"/> = coffre du CLI (repli) ; si null, ~/.claude/.credentials.json.</summary>
+    public ClaudeTokenReader(string configJsonPath, string localStatePath, string? credentialsPath = null)
     {
         _configJsonPath = configJsonPath;
         _localStatePath = localStatePath;
+        _credentialsPath = credentialsPath ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", ".credentials.json");
     }
 
-    /// <summary>Reader par défaut ciblant %APPDATA%/Claude/config.json et Local State.</summary>
+    /// <summary>Reader par défaut : coffre app bureau (config.json/Local State) + repli CLI (.credentials.json).</summary>
     public static ClaudeTokenReader Default()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -41,8 +45,52 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
             Path.Combine(appData, "Claude", "Local State"));
     }
 
+    /// <summary>Le fichier de credentials CLI existe-t-il ? (pour le diagnostic — pas le token).</summary>
+    public bool HasCliCredentials => File.Exists(_credentialsPath);
+
     /// <inheritdoc/>
     public string? TryReadAccessToken(out DateTimeOffset? expiresAt)
+    {
+        // 1) Coffre de l'app BUREAU Claude (safeStorage v10 / DPAPI).
+        var desktop = TryReadDesktopToken(out expiresAt);
+        if (!string.IsNullOrEmpty(desktop)) return desktop;
+
+        // 2) Repli : token de Claude Code CLI (~/.claude/.credentials.json, clé claudeAiOauth, EN CLAIR).
+        //    Couvre les machines qui utilisent le CLI sans l'app bureau (config.json absent).
+        return TryReadCliToken(out expiresAt);
+    }
+
+    // Repli CLI : claudeAiOauth.accessToken (chaîne en clair) + expiresAt (epoch ms OU ISO). Mémoire seule.
+    private string? TryReadCliToken(out DateTimeOffset? expiresAt)
+    {
+        expiresAt = null;
+        try
+        {
+            if (!File.Exists(_credentialsPath)) return null;
+            using var fs = new FileStream(_credentialsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var doc = JsonDocument.Parse(fs);
+            if (!doc.RootElement.TryGetProperty("claudeAiOauth", out var o) || o.ValueKind != JsonValueKind.Object)
+                return null;
+            if (!o.TryGetProperty("accessToken", out var at) || at.ValueKind != JsonValueKind.String)
+                return null;
+            var token = at.GetString();
+            if (string.IsNullOrEmpty(token)) return null;
+            if (o.TryGetProperty("expiresAt", out var e))
+            {
+                if (e.ValueKind == JsonValueKind.Number && e.TryGetInt64(out var ms))
+                    expiresAt = DateTimeOffset.FromUnixTimeMilliseconds(ms);
+                else if (e.ValueKind == JsonValueKind.String
+                         && DateTimeOffset.TryParse(e.GetString(), CultureInfo.InvariantCulture,
+                              DateTimeStyles.RoundtripKind, out var d))
+                    expiresAt = d;
+            }
+            return token; // token en mémoire seulement — jamais logué/écrit
+        }
+        catch (Exception) { expiresAt = null; return null; }
+    }
+
+    // Coffre app bureau (schéma safeStorage v10 / DPAPI) — inchangé.
+    private string? TryReadDesktopToken(out DateTimeOffset? expiresAt)
     {
         expiresAt = null;
         try
