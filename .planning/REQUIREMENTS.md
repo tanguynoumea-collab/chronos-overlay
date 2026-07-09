@@ -51,7 +51,18 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| — | — | — |
+| EST-01 | Phase 8 | Pending |
+| EST-02 | Phase 8 | Pending |
+| EST-03 | Phase 8 | Pending |
+| EST-04 | Phase 8 | Pending |
+| EST-05 | Phase 8 | Pending |
+| NET-01 | Phase 8 | Pending |
+| CAL-01 | Phase 9 | Pending |
+| CAL-02 | Phase 9 | Pending |
+| CAL-03 | Phase 9 | Pending |
+| NET-02 | Phase 9 | Pending |
+
+**Couverture : 10/10 requirements v1.1 mappés — aucun orphelin.**
 
 ---
-*Last updated: 2026-07-09 — milestone v1.1 initialisé*
+*Last updated: 2026-07-09 — roadmap v1.1 créé (phases 8-9)*
