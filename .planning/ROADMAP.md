@@ -36,7 +36,7 @@ via le menu, la source OAuth n'accède jamais au token — Chronos retombe au co
 - Phases entières (…, 10, 11) : travail de milestone planifié — continue après la Phase 9 (v1.1)
 - Phases décimales (10.1, 10.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 10 : Lecture du token + client endpoint** - La partie sensible, isolée et testée à fond : un service produit à la demande un UsageSnapshot Exact depuis `/api/oauth/usage` (ou « indisponible » proprement), sans jamais logger, persister ni exposer le token
+- [x] **Phase 10 : Lecture du token + client endpoint** - La partie sensible, isolée et testée à fond : un service produit à la demande un UsageSnapshot Exact depuis `/api/oauth/usage` (ou « indisponible » proprement), sans jamais logger, persister ni exposer le token (completed 2026-07-09)
 - [ ] **Phase 11 : Intégration composite + réglage** - Le provider OAuth devient source primaire, le badge « estimée » disparaît sur les fenêtres exactes, et un réglage menu on/off (persisté) gouverne l'accès au token
 
 ### Phase Details
@@ -53,7 +53,7 @@ via le menu, la source OAuth n'accède jamais au token — Chronos retombe au co
 **Plans**: 2 plans
 Plans:
 - [x] 10-01-PLAN.md — ClaudeTokenReader : déchiffrement DPAPI + AES-256-GCM v10 → champ `token` claude_code, tolérant, lecture seule prouvée (TOK-01/02/03)
-- [ ] 10-02-PLAN.md — ClaudeOAuthUsageProvider : GET /api/oauth/usage → UsageSnapshot Exact, tolérance erreurs, inertie token absent/expiré (API-01/02/03)
+- [x] 10-02-PLAN.md — ClaudeOAuthUsageProvider : GET /api/oauth/usage → UsageSnapshot Exact, tolérance erreurs, inertie token absent/expiré (API-01/02/03)
 
 ### Phase 11 : Intégration composite + réglage
 **Goal**: Brancher le provider OAuth comme source **primaire** du composite existant, faire disparaître le badge « estimée » sur les fenêtres servies par l'endpoint, et donner à l'utilisateur un réglage menu on/off persisté qui gouverne l'accès au token (désactivé = comportement v1.1 strict, aucune lecture du coffre).
@@ -73,5 +73,5 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 10. Lecture du token + client endpoint | 1/2 | In Progress|  |
+| 10. Lecture du token + client endpoint | 2/2 | Complete   | 2026-07-09 |
 | 11. Intégration composite + réglage | 0/TBD | Not started | - |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: — Usage exact via l'endpoint OAuth
-status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-07-09T08:12:14.249Z"
+status: verifying
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-07-09T08:18:19.416Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Milestone: v1.2 — Usage exact via l'endpoint OAuth
 Phase: 10 (lecture-du-token-client-endpoint) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 
 *Updated after each plan completion*
 | Phase 10 P01 | 3min | 2 tasks | 5 files |
+| Phase 10 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,7 @@ Contexte technique v1.0/v1.1 conditionnant v1.2 (v1.2 enrichit le composite, ne 
 - [v1.0/Phase 6]: SettingsService atomique + menu contextuel = seul point d'accès UI — v1.2 y ajoute le toggle « Usage exact (OAuth) ».
 - [source docs/data-sources.md]: le champ réel est `used_percentage` (0..100) et `resets_at` en epoch SECONDES ; normalisation `Utilization = used_percentage / 100` côté modèle. L'endpoint OAuth `/api/oauth/usage` renvoie la même structure `rate_limits.five_hour/seven_day` — mapping réutilisable.
 - [Phase 10]: ClaudeTokenReader : dechiffrement DPAPI + AES-256-GCM v10, coeur internal static testable, lecture seule prouvee (grep + snapshot), tolerance totale -> null
+- [Phase 10]: ClaudeOAuthUsageProvider : mapping OAuth dedie (utilization/100 + resets_at ISO 8601 via DateTimeOffset.Parse RoundtripKind), token uniquement en en-tete Authorization, inertie prouvee (SendCount==0) si token null/expire, timeout 5s via CancellationTokenSource lie. 13 tests API-01/02/03 verts, suite 178/178.
 
 ### Décisions v1.2 (roadmap)
 
@@ -80,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T08:12:14.245Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-07-09T08:18:19.411Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None

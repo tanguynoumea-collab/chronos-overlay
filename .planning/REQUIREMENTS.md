@@ -25,13 +25,13 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 
 ### Client endpoint (API)
 
-- [ ] **API-01**: Un client appelle `GET https://api.anthropic.com/api/oauth/usage` avec
+- [x] **API-01**: Un client appelle `GET https://api.anthropic.com/api/oauth/usage` avec
   `Authorization: Bearer <accessToken>`, `anthropic-beta: oauth-2025-04-20`, timeout court (5 s),
   et mappe `rate_limits.five_hour/seven_day` (`used_percentage` 0..100 → Utilization, `resets_at`
   epoch s → ResetsAt) vers un UsageSnapshot **Exact**.
-- [ ] **API-02**: Erreurs gérées sans crash : 401/403 (token expiré/refusé) → source indisponible +
+- [x] **API-02**: Erreurs gérées sans crash : 401/403 (token expiré/refusé) → source indisponible +
   bascule repli ; réseau/timeout → repli ; réponse malformée → repli. Jamais d'exception non gérée.
-- [ ] **API-03**: Le provider est **inerte hors ligne** et ne bloque jamais l'UI (appel asynchrone,
+- [x] **API-03**: Le provider est **inerte hors ligne** et ne bloque jamais l'UI (appel asynchrone,
   respecte le CancellationToken, n'impacte pas le tick 1 s d'interpolation).
 
 ### Intégration (INT)
@@ -57,9 +57,9 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 | TOK-01 | Phase 10 | Complete |
 | TOK-02 | Phase 10 | Complete |
 | TOK-03 | Phase 10 | Complete |
-| API-01 | Phase 10 | Pending |
-| API-02 | Phase 10 | Pending |
-| API-03 | Phase 10 | Pending |
+| API-01 | Phase 10 | Complete |
+| API-02 | Phase 10 | Complete |
+| API-03 | Phase 10 | Complete |
 | INT-01 | Phase 11 | Pending |
 | INT-02 | Phase 11 | Pending |
 | INT-03 | Phase 11 | Pending |
