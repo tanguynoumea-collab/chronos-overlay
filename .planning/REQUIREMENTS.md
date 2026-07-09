@@ -11,14 +11,14 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 
 ### Estimation (EST)
 
-- [ ] **EST-01**: Le reset de la fenêtre 5 h est inféré des JSONL : début de fenêtre = premier message
+- [x] **EST-01**: Le reset de la fenêtre 5 h est inféré des JSONL : début de fenêtre = premier message
   (timestamp) dont l'antériorité est < 5 h après un trou d'inactivité ≥ 5 h ; reset estimé = début + 5 h.
   L'arc extérieur retrouve ainsi une longueur (temps restant) en mode repli, marquée estimée.
-- [ ] **EST-02**: Si aucune activité dans la fenêtre courante (trou ≥ 5 h), la fenêtre 5 h est affichée
+- [x] **EST-02**: Si aucune activité dans la fenêtre courante (trou ≥ 5 h), la fenêtre 5 h est affichée
   « pleine » (fraction = 1, aucun quota entamé) plutôt que vide — sans inventer d'utilization.
-- [ ] **EST-03**: L'utilization 5 h estimée = tokens sommés dans la fenêtre courante / plafond calibrable
+- [x] **EST-03**: L'utilization 5 h estimée = tokens sommés dans la fenêtre courante / plafond calibrable
   (setting FiveHourTokenBudget). Sans plafond défini : utilization reste null (couleur neutre) — comportement v1.0.
-- [ ] **EST-04**: L'utilization hebdo estimée = tokens sommés sur la fenêtre hebdo (ancrée sur WeeklyAnchor
+- [x] **EST-04**: L'utilization hebdo estimée = tokens sommés sur la fenêtre hebdo (ancrée sur WeeklyAnchor
   si défini, sinon 7 jours glissants) / plafond calibrable (WeeklyTokenBudget). Sans plafond : null.
 - [ ] **EST-05**: Le reset hebdo estimé utilise WeeklyAnchor (mécanique v1.0) ; sans ancre, il reste
   inconnu (countdown « — ») — jamais inventé.
@@ -51,10 +51,10 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| EST-01 | Phase 8 | Pending |
-| EST-02 | Phase 8 | Pending |
-| EST-03 | Phase 8 | Pending |
-| EST-04 | Phase 8 | Pending |
+| EST-01 | Phase 8 | Complete |
+| EST-02 | Phase 8 | Complete |
+| EST-03 | Phase 8 | Complete |
+| EST-04 | Phase 8 | Complete |
 | EST-05 | Phase 8 | Pending |
 | NET-01 | Phase 8 | Pending |
 | CAL-01 | Phase 9 | Pending |

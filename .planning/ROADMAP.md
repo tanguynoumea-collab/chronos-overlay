@@ -46,7 +46,7 @@ v1.1 enrichit, ne réécrit pas.
   4. Le reset hebdo estimé utilise WeeklyAnchor s'il est défini (mécanique v1.0) ; sans ancre, le countdown hebdo reste « — » (jamais inventé).
   5. Le contrat de données est nettoyé : l'événement mort IUsageProvider.SnapshotChanged est retiré et le champ UsageSnapshot.Age est retiré ou consommé, suite de tests toujours verte.
 **Plans**: 2 plans
-- [ ] 08-01-PLAN.md — Logique pure d'inférence (FiveHourWindowInference, WeeklyWindow) + plafonds de settings (round-trip)
+- [x] 08-01-PLAN.md — Logique pure d'inférence (FiveHourWindowInference, WeeklyWindow) + plafonds de settings (round-trip)
 - [ ] 08-02-PLAN.md — Enrichissement JsonlEstimationProvider (arcs longueur+couleur) + nettoyage contrat NET-01
 **UI hint**: yes
 

@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Estimation utile en mode app bureau
-status: planned
-stopped_at: Roadmap v1.1 créé (phases 8-9)
-last_updated: "2026-07-09T00:00:00.000Z"
+milestone_name: — Estimation utile en mode app bureau
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-07-09T05:23:44.432Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Milestone v1.1 — rendre le repli JSONL réellement utile en mode app bureau (statusline vide), sans trahir l'honnêteté.
+**Current focus:** Phase 08 — inf-rence-des-fen-tres-estimation-depuis-jsonl
 
 ## Current Position
 
 Milestone: v1.1 — Estimation utile en mode app bureau
-Phase: 8 — Inférence des fenêtres + estimation depuis JSONL
-Plan: Not started
-Status: Roadmap approuvé — prêt pour `/gsd:plan-phase 8`
+Phase: 08 (inf-rence-des-fen-tres-estimation-depuis-jsonl) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 | 9 | 0/TBD | - | - |
 
 *Updated after each plan completion*
+| Phase 08 P01 | 4 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,7 @@ Contexte technique v1.0 conditionnant v1.1 (v1.1 enrichit, ne réécrit pas) :
 - [v1.0/Phase 3]: CompositeUsageProvider bascule PAR FENÊTRE (Exact > Estimated > Unavailable) — v1.1 exploite cette granularité pour la calibration auto (CAL-02).
 - [v1.0/Phase 6]: WeeklyRecalibration / WeeklyAnchor existent ; SettingsService atomique (Load disque avant écriture, cf. GAP-1) ; menu contextuel = seul point d'accès — v1.1 y ajoute « Calibrer les plafonds… ».
 - [v1.0/audit]: Dette DT-1 (SnapshotChanged mort), DT-2 (UsageSnapshot.Age inerte), DT-3 (EstimatedTokens non surfacé) — adressées par NET-01 (Phase 8) et NET-02 (Phase 9).
+- [Phase 08]: Algorithme « A » verrouillé : activité continue > 5 h ⇒ fenêtre 5 h inactive (null). Raffinement « B » différé v1.2, à valider empiriquement.
 
 ### Décisions v1.1 (roadmap)
 
@@ -77,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09
-Stopped at: Roadmap v1.1 créé (phases 8-9)
+Last session: 2026-07-09T05:23:38.752Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
