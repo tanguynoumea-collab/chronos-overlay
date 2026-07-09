@@ -121,6 +121,30 @@ public sealed class DiagnosticService
         }
         if (found == 0) sb.AppendLine("    (aucun coffre oauth:tokenCache trouvé sous %APPDATA%/%LOCALAPPDATA%)");
 
+        // Cartographie des dossiers Claude non vides → localiser le vrai magasin du token.
+        sb.AppendLine("  Structure des dossiers Claude (pour localiser le token) :");
+        foreach (var (label, rt) in new[]
+        {
+            ("%APPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
+            ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
+        })
+        {
+            IEnumerable<string> dirs;
+            try { dirs = Directory.EnumerateDirectories(rt).Where(d => { var n = Path.GetFileName(d).ToLowerInvariant(); return n.Contains("claude") || n.Contains("cowork") || n.Contains("anthropic"); }); }
+            catch { continue; }
+            foreach (var d in dirs)
+            {
+                string[] entries;
+                try { entries = Directory.GetFileSystemEntries(d); } catch { continue; }
+                if (entries.Length == 0) continue; // ignore les dossiers vides (comme mon sandbox)
+                sb.AppendLine("    " + d.Replace(rt, label) + " :");
+                sb.AppendLine("      Local State: " + (File.Exists(Path.Combine(d, "Local State")) ? "OUI" : "non")
+                            + " | leveldb: " + (Directory.Exists(Path.Combine(d, "Local Storage", "leveldb")) ? "OUI" : "non"));
+                var names = entries.Select(Path.GetFileName).Where(n => n is not null).Take(14);
+                sb.AppendLine("      contient: " + string.Join(", ", names));
+            }
+        }
+
         var token = _tokenReader.TryReadAccessToken(out var exp);
         sb.AppendLine("  Token déchiffré : " + (token is null ? "NON (pas de token lisible → pas de chiffres exacts)" : "OUI"));
         if (exp is { } e) sb.AppendLine("  Expiration token : " + e.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));

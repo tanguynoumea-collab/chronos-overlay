@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -25,24 +26,33 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
     private readonly string _configJsonPath;
     private readonly string _localStatePath;
     private readonly string _credentialsPath;   // repli Claude Code CLI (~/.claude/.credentials.json)
+    private readonly bool _discoverAcrossVariants; // balayage multi-variantes (prod uniquement, pas en test)
 
     /// <summary>Construit un reader sur des chemins explicites (injectables pour la testabilité).
-    /// <paramref name="credentialsPath"/> = coffre du CLI (repli) ; si null, ~/.claude/.credentials.json.</summary>
+    /// <paramref name="credentialsPath"/> = coffre du CLI (repli) ; si null, ~/.claude/.credentials.json.
+    /// La découverte multi-variantes reste DÉSACTIVÉE ici (déterminisme des tests) — voir <see cref="Default"/>.</summary>
     public ClaudeTokenReader(string configJsonPath, string localStatePath, string? credentialsPath = null)
+        : this(configJsonPath, localStatePath, credentialsPath, discoverAcrossVariants: false) { }
+
+    private ClaudeTokenReader(string configJsonPath, string localStatePath, string? credentialsPath, bool discoverAcrossVariants)
     {
         _configJsonPath = configJsonPath;
         _localStatePath = localStatePath;
         _credentialsPath = credentialsPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", ".credentials.json");
+        _discoverAcrossVariants = discoverAcrossVariants;
     }
 
-    /// <summary>Reader par défaut : coffre app bureau (config.json/Local State) + repli CLI (.credentials.json).</summary>
+    /// <summary>Reader par défaut (PROD) : coffre app bureau historique + DÉCOUVERTE multi-variantes
+    /// (Claude Nest-3p, Claude-3p, Cowork…) + repli CLI (.credentials.json).</summary>
     public static ClaudeTokenReader Default()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         return new ClaudeTokenReader(
             Path.Combine(appData, "Claude", "config.json"),
-            Path.Combine(appData, "Claude", "Local State"));
+            Path.Combine(appData, "Claude", "Local State"),
+            credentialsPath: null,
+            discoverAcrossVariants: true);
     }
 
     /// <summary>Le fichier de credentials CLI existe-t-il ? (pour le diagnostic — pas le token).</summary>
@@ -51,13 +61,88 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
     /// <inheritdoc/>
     public string? TryReadAccessToken(out DateTimeOffset? expiresAt)
     {
-        // 1) Coffre de l'app BUREAU Claude (safeStorage v10 / DPAPI).
-        var desktop = TryReadDesktopToken(out expiresAt);
+        // 1) Coffre BUREAU au chemin explicite (%APPDATA%/Claude — variante « historique »).
+        var desktop = TryDecryptVault(_configJsonPath, _localStatePath, out expiresAt);
         if (!string.IsNullOrEmpty(desktop)) return desktop;
 
-        // 2) Repli : token de Claude Code CLI (~/.claude/.credentials.json, clé claudeAiOauth, EN CLAIR).
+        // 2) DÉCOUVERTE GÉNÉRIQUE (prod uniquement) : n'importe quelle variante de l'app bureau (Claude,
+        //    Claude Nest-3p, Claude-3p, Cowork…) rangée sous %APPDATA%/%LOCALAPPDATA%. On cherche un couple
+        //    (Local State + fichier JSON contenant « oauth:tokenCache ») et on tente le même schéma v10.
+        if (_discoverAcrossVariants)
+        {
+            var discovered = TryDiscoverDesktopToken(out expiresAt);
+            if (!string.IsNullOrEmpty(discovered)) return discovered;
+        }
+
+        // 3) Repli : token de Claude Code CLI (~/.claude/.credentials.json, clé claudeAiOauth, EN CLAIR).
         //    Couvre les machines qui utilisent le CLI sans l'app bureau (config.json absent).
         return TryReadCliToken(out expiresAt);
+    }
+
+    // Racines de recherche des coffres bureau (profil utilisateur uniquement — aucune escalade).
+    private static IEnumerable<string> VaultSearchRoots()
+    {
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);       // %APPDATA%
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);  // %LOCALAPPDATA%
+    }
+
+    /// <summary>
+    /// Balaye les dossiers « claude/cowork/anthropic » sous %APPDATA%/%LOCALAPPDATA% (profondeur ≤ 2) à la
+    /// recherche d'un coffre bureau : un dossier contenant à la fois un « Local State » (clé AES) et un JSON
+    /// portant « oauth:tokenCache ». Tente le déchiffrement v10 sur chaque candidat, renvoie le 1er token
+    /// valide. Tolérance totale : toute anomalie d'E/S est ignorée (dossier suivant). Aucun détail journalisé.
+    /// </summary>
+    private string? TryDiscoverDesktopToken(out DateTimeOffset? expiresAt)
+    {
+        expiresAt = null;
+        foreach (var root in VaultSearchRoots())
+        {
+            IEnumerable<string> appDirs;
+            try
+            {
+                appDirs = Directory.EnumerateDirectories(root).Where(d =>
+                {
+                    var n = Path.GetFileName(d).ToLowerInvariant();
+                    return n.Contains("claude") || n.Contains("cowork") || n.Contains("anthropic");
+                });
+            }
+            catch { continue; }
+
+            foreach (var appDir in appDirs)
+            {
+                // Le « Local State » (clé AES) est généralement à la racine de l'app ; on le partage pour tous
+                // les fichiers du même dossier. On le cherche à la racine puis un cran plus bas.
+                foreach (var dir in EnumSelfAndChildren(appDir))
+                {
+                    var localState = Path.Combine(dir, "Local State");
+                    if (!File.Exists(localState)) continue;
+
+                    // Candidats « config » : *.json à la racine du dossier (config.json, session.json…).
+                    string[] jsons;
+                    try { jsons = Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly); }
+                    catch { continue; }
+
+                    foreach (var json in jsons)
+                    {
+                        var token = TryDecryptVault(json, localState, out expiresAt);
+                        if (!string.IsNullOrEmpty(token)) return token;
+                    }
+                }
+            }
+        }
+        expiresAt = null;
+        return null;
+    }
+
+    // Un dossier + ses sous-dossiers immédiats (profondeur 1) — les variantes Electron rangent parfois
+    // le coffre sous un sous-dossier (« Partitions/… », profil nommé…).
+    private static IEnumerable<string> EnumSelfAndChildren(string dir)
+    {
+        yield return dir;
+        IEnumerable<string> children;
+        try { children = Directory.EnumerateDirectories(dir); }
+        catch { yield break; }
+        foreach (var c in children) yield return c;
     }
 
     // Repli CLI : claudeAiOauth.accessToken (chaîne en clair) + expiresAt (epoch ms OU ISO). Mémoire seule.
@@ -89,15 +174,35 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
         catch (Exception) { expiresAt = null; return null; }
     }
 
-    // Coffre app bureau (schéma safeStorage v10 / DPAPI) — inchangé.
-    private string? TryReadDesktopToken(out DateTimeOffset? expiresAt)
+    // Coffre app bureau (schéma safeStorage v10 / DPAPI), sur un couple de chemins EXPLICITE
+    // (config JSON + Local State). Appelé au chemin historique ET par la découverte générique.
+    private static string? TryDecryptVault(string configJsonPath, string localStatePath, out DateTimeOffset? expiresAt)
     {
         expiresAt = null;
         try
         {
-            // 1) Clé AES depuis Local State (LECTURE SEULE) → os_crypt.encrypted_key (base64).
+            if (!File.Exists(configJsonPath) || !File.Exists(localStatePath)) return null;
+
+            // 1) Blob « tokenCache » depuis le JSON (LECTURE SEULE). On accepte tout nom de propriété
+            //    racine contenant « tokencache » (oauth:tokenCache et variantes selon l'app).
+            string? tokenCacheB64 = null;
+            using (var cfg = new FileStream(configJsonPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var cfgDoc = JsonDocument.Parse(cfg))
+            {
+                if (cfgDoc.RootElement.ValueKind != JsonValueKind.Object) return null;
+                foreach (var p in cfgDoc.RootElement.EnumerateObject())
+                {
+                    if (p.Value.ValueKind != JsonValueKind.String) continue;
+                    if (!p.Name.Replace(":", "").ToLowerInvariant().Contains("tokencache")) continue;
+                    tokenCacheB64 = p.Value.GetString();
+                    if (!string.IsNullOrEmpty(tokenCacheB64)) break;
+                }
+            }
+            if (string.IsNullOrEmpty(tokenCacheB64)) return null; // ce JSON n'est pas un coffre → suivant
+
+            // 2) Clé AES depuis Local State (LECTURE SEULE) → os_crypt.encrypted_key (base64).
             byte[] encryptedKey;
-            using (var ls = new FileStream(_localStatePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var ls = new FileStream(localStatePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var lsDoc = JsonDocument.Parse(ls))
             {
                 if (!lsDoc.RootElement.TryGetProperty("os_crypt", out var osCrypt)
@@ -110,19 +215,8 @@ public sealed class ClaudeTokenReader : IClaudeTokenReader
             // Retirer le préfixe ASCII "DPAPI" (5o) puis dé-envelopper via DPAPI (compte courant) → clé 32o.
             byte[] aesKey = ProtectedData.Unprotect(encryptedKey[5..], null, DataProtectionScope.CurrentUser);
 
-            // 2) Blob v10 depuis config.json (LECTURE SEULE) → oauth:tokenCache (base64).
-            string tokenCacheB64;
-            using (var cfg = new FileStream(_configJsonPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var cfgDoc = JsonDocument.Parse(cfg))
-            {
-                if (!cfgDoc.RootElement.TryGetProperty("oauth:tokenCache", out var tc)
-                    || tc.ValueKind != JsonValueKind.String)
-                    return null;
-                tokenCacheB64 = tc.GetString()!;
-            }
-
             // 3) Déchiffrement + sélection de l'entrée claude_code (cœur testable).
-            return DecryptAndSelectToken(aesKey, tokenCacheB64, out expiresAt);
+            return DecryptAndSelectToken(aesKey, tokenCacheB64!, out expiresAt);
         }
         catch (Exception)
         {
