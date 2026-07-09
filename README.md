@@ -1,4 +1,8 @@
-# Chronos
+<p align="center">
+  <img src="docs/logo.png" alt="Chronos" width="128" height="128">
+</p>
+
+<h1 align="center">Chronos</h1>
 
 **Overlay Windows en forme d'horloge qui affiche, d'un coup d'œil, l'état de tes limites d'usage Claude** (fenêtre 5 h + fenêtre hebdomadaire) — pour Claude Code et Cowork.
 

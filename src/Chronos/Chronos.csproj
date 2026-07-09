@@ -9,6 +9,21 @@
     <RootNamespace>Chronos</RootNamespace>
     <AssemblyName>Chronos</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\chronos.ico</ApplicationIcon>
+
+    <!-- Identité + VERSION embarquée dans l'exe (Propriétés → Détails). À incrémenter à chaque release ;
+         le nom du fichier publié porte aussi la version (Chronos-vX.Y.exe). -->
+    <Version>2.3.0</Version>
+    <FileVersion>2.3.0.0</FileVersion>
+    <AssemblyVersion>2.3.0.0</AssemblyVersion>
+    <InformationalVersion>2.3.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>Chronos</Product>
+    <AssemblyTitle>Chronos — overlay d'usage Claude</AssemblyTitle>
+    <Description>Overlay Windows always-on-top affichant en temps réel les limites d'usage Claude (5 h + hebdo).</Description>
+    <Company>Tanguy Noumea</Company>
+    <Authors>Tanguy Noumea</Authors>
+    <Copyright>© 2026 Tanguy Noumea — MIT</Copyright>
   </PropertyGroup>
   <!-- Propriétés de PUBLICATION uniquement (Phase 7) — jamais actives en build/debug -->
   <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
