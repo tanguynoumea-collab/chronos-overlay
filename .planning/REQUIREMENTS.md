@@ -54,7 +54,17 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| — | — | — |
+| TOK-01 | Phase 10 | Pending |
+| TOK-02 | Phase 10 | Pending |
+| TOK-03 | Phase 10 | Pending |
+| API-01 | Phase 10 | Pending |
+| API-02 | Phase 10 | Pending |
+| API-03 | Phase 10 | Pending |
+| INT-01 | Phase 11 | Pending |
+| INT-02 | Phase 11 | Pending |
+| INT-03 | Phase 11 | Pending |
+
+**Couverture : 9/9 requirements mappés — aucun orphelin, aucun doublon.**
 
 ---
-*Last updated: 2026-07-09 — milestone v1.2 initialisé*
+*Last updated: 2026-07-09 — roadmap v1.2 créée (phases 10-11)*

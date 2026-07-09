@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: — Estimation utile en mode app bureau
-status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-07-09T06:23:46.748Z"
+milestone: v1.2
+milestone_name: — Usage exact via l'endpoint OAuth
+status: planning
+stopped_at: Roadmap v1.2 créée (phases 10-11)
+last_updated: "2026-07-09T00:00:00.000Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 09 — calibration-des-plafonds-surfa-age
+**Current focus:** Phase 10 — Lecture du token + client endpoint (la partie sensible, isolée et testée à fond)
 
 ## Current Position
 
-Milestone: v1.1 — Estimation utile en mode app bureau
-Phase: 09
+Milestone: v1.2 — Usage exact via l'endpoint OAuth
+Phase: 10
 Plan: Not started
-Status: Ready to execute
+Status: Ready to plan
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -37,7 +37,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 
 **Velocity:**
 
-- Total plans completed (v1.1): 0
+- Total plans completed (v1.2): 0
 - Average duration: —
 - Total execution time: 0 h
 
@@ -45,36 +45,27 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 8 | 0/TBD | - | - |
-| 9 | 0/TBD | - | - |
+| 10 | 0/TBD | - | - |
+| 11 | 0/TBD | - | - |
 
 *Updated after each plan completion*
-| Phase 08 P01 | 4 min | 3 tasks | 6 files |
-| Phase 08 P02 | 6 min | 2 tasks | 10 files |
-| Phase 09 P01 | 6 min | 3 tasks | 9 files |
-| Phase 09 P03 | 2 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-Contexte technique v1.0 conditionnant v1.1 (v1.1 enrichit, ne réécrit pas) :
+Contexte technique v1.0/v1.1 conditionnant v1.2 (v1.2 enrichit le composite, ne réécrit pas) :
 
-- [v1.0/Phase 3]: JsonlEstimationProvider scanne déjà les JSONL (AllDirectories, subagents inclus) et somme les tokens de la fenêtre ; estimation toujours Estimated, Utilization/ResetsAt null (jamais inventé) — v1.1 lève ce null quand un plafond est connu.
-- [v1.0/Phase 3]: CompositeUsageProvider bascule PAR FENÊTRE (Exact > Estimated > Unavailable) — v1.1 exploite cette granularité pour la calibration auto (CAL-02).
-- [v1.0/Phase 6]: WeeklyRecalibration / WeeklyAnchor existent ; SettingsService atomique (Load disque avant écriture, cf. GAP-1) ; menu contextuel = seul point d'accès — v1.1 y ajoute « Calibrer les plafonds… ».
-- [v1.0/audit]: Dette DT-1 (SnapshotChanged mort), DT-2 (UsageSnapshot.Age inerte), DT-3 (EstimatedTokens non surfacé) — adressées par NET-01 (Phase 8) et NET-02 (Phase 9).
-- [Phase 08]: Algorithme « A » verrouillé : activité continue > 5 h ⇒ fenêtre 5 h inactive (null). Raffinement « B » différé v1.2, à valider empiriquement.
-- [Phase 08]: Repli JSONL enrichi : somme 5 h bornée à la fenêtre inférée [start, now] (ancien glissant brut retiré), utilization = tokens/plafond sans clamp haut (>=1 = gris épuisé déjà géré), SevenDay.ResetsAt laissé null (rempli par WeeklyRecalibration côté VM — EST-05 non régressé).
-- [Phase 08]: NET-01 soldé : IUsageProvider.SnapshotChanged et UsageSnapshot.Age retirés (dette DT-1/DT-2) ; RefreshOrchestrator.SnapshotChanged (event distinct) conservé. SettingsService injecté dans le provider (Load frais à chaque GetAsync) pour calibration Phase 9 sans redémarrage.
-- [Phase 09]: Calibrateur tokenSource = JsonlEstimationProvider concret (porte toujours EstimatedTokens), pas le composite
-- [Phase 09]: Priorité Manual > Auto/None : ApplyAuto n'écrase jamais une saisie manuelle
-- [Phase 09]: [Phase 09] NET-02 soldé : tokens estimés surfacés en texte discret (TokensText/HasTokens dans WindowGaugeViewModel.Apply + 2 TextBlocks), UNIQUEMENT en source Estimated avec tokens>0 — jamais en Exact ni sans donnée (honnêteté préservée)
+- [v1.0/Phase 3]: Abstraction IUsageProvider + UsageSnapshot immuables neutres en place ; le nouveau ClaudeOAuthUsageProvider s'y conforme (Exact) sans toucher au cadran.
+- [v1.0/Phase 3]: CompositeUsageProvider bascule PAR FENÊTRE (Exact > Estimated > Unavailable) — v1.2 insère l'OAuth en tête de priorité Exact, devant le pont statusLine et le repli JSONL.
+- [v1.0/Phase 6]: SettingsService atomique + menu contextuel = seul point d'accès UI — v1.2 y ajoute le toggle « Usage exact (OAuth) ».
+- [source docs/data-sources.md]: le champ réel est `used_percentage` (0..100) et `resets_at` en epoch SECONDES ; normalisation `Utilization = used_percentage / 100` côté modèle. L'endpoint OAuth `/api/oauth/usage` renvoie la même structure `rate_limits.five_hour/seven_day` — mapping réutilisable.
 
-### Décisions v1.1 (roadmap)
+### Décisions v1.2 (roadmap)
 
-- Phase 8 définit la math d'estimation (utilization = tokens / plafond, ou null si plafond absent = comportement v1.0) ; Phase 9 fournit l'UI qui peuple/calibre ces plafonds. Dépendance : EST-03/04 consomment les settings que CAL-01 permet de régler.
-- NET-01 (nettoyage du contrat IUsageProvider) rattaché à la Phase 8 car elle touche déjà les providers.
+- Découpage 2 phases avec la **sécurité isolée** : Phase 10 concentre toute la surface sensible (lecture/déchiffrement du token, appel réseau) et la teste de bout en bout AVANT de brancher l'UI en Phase 11.
+- Phase 10 démarre par un **test décisif E2E** (déchiffrer le vrai token une fois + appel réel + afficher les % exacts) : s'il échoue, la phase le documente comme bloquant plutôt que de coder à l'aveugle.
+- Contrainte sécurité transverse à honorer dans les critères Phase 10 : token jamais logué/écrit, transmis uniquement à api.anthropic.com, lecture seule du coffre, tolérance totale aux erreurs (jamais de crash, bascule repli).
 
 ### Pending Todos
 
@@ -82,11 +73,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Fiabilité de l'inférence de fenêtre 5 h (EST-01) : dépend de la régularité des timestamps JSONL et de la définition d'un « trou d'inactivité » — à valider empiriquement en planification/exécution Phase 8.
-- Calibration auto (CAL-02) : ne se déclenche que si un snapshot Exact apparaît un jour (statusline rendue au moins une fois) ; en app bureau pure, le plafond restera manuel — comportement attendu, pas un bug.
+- Faisabilité du mécanisme coffre → endpoint : à valider par le test décisif E2E en tout début de Phase 10 (safeStorage v10, clé DPAPI via Local State, AES-256-GCM). Si le déchiffrement ou l'appel échoue sur le vrai poste, la phase remonte le blocage.
+- Token potentiellement expiré (refreshToken hors scope v1.2) : comportement attendu = 401 → « indisponible » + bascule repli, pas un bug.
 
 ## Session Continuity
 
-Last session: 2026-07-09T06:18:33.449Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-07-09
+Stopped at: Roadmap v1.2 créée (phases 10-11)
 Resume file: None
