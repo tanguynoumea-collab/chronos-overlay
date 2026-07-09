@@ -29,9 +29,21 @@ public sealed class ClaudeOAuthUsageProvider : IUsageProvider
     private const string UsageUrl = "https://api.anthropic.com/api/oauth/usage";
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
+    // Anti-429 (bug « infos étranges ponctuelles ») : l'endpoint /usage limite la fréquence des appels.
+    // On l'interroge donc AU PLUS une fois toutes les MinInterval, on recule FORT sur un 429 (Backoff429),
+    // et on CONSERVE le dernier snapshot exact (CacheUsable) en cas d'échec → l'affichage ne clignote plus
+    // entre exact et estimé. L'ancienneté reste honnête via SourceCapturedAt (staleness).
+    private static readonly TimeSpan MinInterval = TimeSpan.FromSeconds(120);
+    private static readonly TimeSpan Backoff429  = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CacheUsable = TimeSpan.FromMinutes(15);
+
     private readonly IClaudeTokenReader _tokenReader;
     private readonly HttpClient _http;
     private readonly IClock _clock;
+
+    private UsageSnapshot? _cached;          // dernier appel EXACT réussi (SourceCapturedAt = son heure)
+    private DateTimeOffset _cachedAt;        // quand il a été récupéré
+    private DateTimeOffset _nextAllowedCall; // avant cette heure : servir le cache sans appeler le réseau
 
     public ClaudeOAuthUsageProvider(IClaudeTokenReader tokenReader, HttpClient http, IClock clock)
     {
@@ -42,12 +54,19 @@ public sealed class ClaudeOAuthUsageProvider : IUsageProvider
 
     public async Task<UsageSnapshot> GetAsync(CancellationToken ct = default)
     {
+        var now = _clock.UtcNow;
+
+        // Throttle : tant qu'on n'a pas le droit de rappeler l'API, servir le cache (s'il existe) sans réseau.
+        if (now < _nextAllowedCall && _cached is not null)
+            return _cached;
+
         // Token en variable locale UNIQUEMENT (jamais logué/écrit/exposé).
         var token = _tokenReader.TryReadAccessToken(out var expiresAt);
-        if (string.IsNullOrEmpty(token))
-            return UsageSnapshot.Empty;                                    // inerte : aucun token (API-03)
-        if (expiresAt is { } exp && exp < _clock.UtcNow)
-            return UsageSnapshot.Empty;                                    // court-circuit expiration (évite un 401)
+        if (string.IsNullOrEmpty(token) || (expiresAt is { } exp && exp < now))
+        {
+            _nextAllowedCall = now + MinInterval;                          // inerte : token absent/expiré (API-03)
+            return ServeCachedOr(UsageSnapshot.Empty, now);
+        }
 
         try
         {
@@ -61,27 +80,44 @@ public sealed class ClaudeOAuthUsageProvider : IUsageProvider
             req.Headers.TryAddWithoutValidation("User-Agent", "Chronos/1.2");
 
             using var resp = await _http.SendAsync(req, cts.Token);
-            if (!resp.IsSuccessStatusCode)
-                return UsageSnapshot.Empty;                               // 401/403/5xx → indisponible (API-02)
+
+            if ((int)resp.StatusCode == 429)                              // rate limité → reculer FORT + garder l'exact
+            {
+                _nextAllowedCall = now + Backoff429;
+                return ServeCachedOr(UsageSnapshot.Empty, now);
+            }
+            if (!resp.IsSuccessStatusCode)                               // 401/403/5xx → indisponible (API-02)
+            {
+                _nextAllowedCall = now + MinInterval;
+                return ServeCachedOr(UsageSnapshot.Empty, now);
+            }
 
             await using var stream = await resp.Content.ReadAsStreamAsync(cts.Token);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cts.Token);
             var root = doc.RootElement;
 
-            return new UsageSnapshot
+            var snap = new UsageSnapshot
             {
                 FiveHour = Read(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5)),
                 SevenDay = Read(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7)),
-                SourceCapturedAt = _clock.UtcNow,
+                SourceCapturedAt = now,
             };
+            _cached = snap; _cachedAt = now; _nextAllowedCall = now + MinInterval; // mémorise l'exact frais
+            return snap;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
                                      or OperationCanceledException or JsonException or IOException)
         {
-            // Réseau / timeout / annulation / malformé → indisponible, jamais de crash (API-02/03).
-            return UsageSnapshot.Empty;
+            // Réseau / timeout / annulation / malformé → garder l'exact récent, jamais de crash (API-02/03).
+            _nextAllowedCall = now + MinInterval;
+            return ServeCachedOr(UsageSnapshot.Empty, now);
         }
     }
+
+    // Sur échec : renvoie le dernier snapshot exact s'il est encore assez récent, sinon l'indisponible.
+    // Évite le clignotement exact↔estimé tout en laissant la staleness (SourceCapturedAt) vieillir la donnée.
+    private UsageSnapshot ServeCachedOr(UsageSnapshot fallback, DateTimeOffset now)
+        => _cached is not null && (now - _cachedAt) < CacheUsable ? _cached : fallback;
 
     // Lit UNE fenêtre du schéma OAuth : fenêtre absente/non-objet → Unavailable ;
     // utilization 0..100 → /100 (Pitfall 3) ; resets_at ISO 8601 → DateTimeOffset.Parse RoundtripKind

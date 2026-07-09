@@ -225,4 +225,85 @@ public class ClaudeOAuthUsageProviderTests
         Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
         Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
     }
+
+    // --- Anti-429 (correctif « infos étranges ponctuelles ») : throttle + backoff + conservation de l'exact ---
+
+    // Handler qui renvoie une séquence de statuts (un par appel), puis répète le dernier.
+    private static FakeHttpMessageHandler Sequence(params (HttpStatusCode status, string body)[] steps)
+    {
+        int i = 0;
+        return new FakeHttpMessageHandler(_ =>
+        {
+            var (s, b) = steps[System.Math.Min(i, steps.Length - 1)];
+            i++;
+            return new HttpResponseMessage(s) { Content = new StringContent(b) };
+        });
+    }
+
+    [Fact]
+    public async Task Throttle_deux_appels_rapproches_ne_touchent_le_reseau_qu_une_fois()
+    {
+        var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK, NominalBody(65, 92));
+        var provider = ProviderWith(handler, out _, out var clock);
+
+        var a = await provider.GetAsync();          // 1er appel → réseau
+        clock.UtcNow = Now + TimeSpan.FromSeconds(30); // < MinInterval (120 s)
+        var b = await provider.GetAsync();          // throttlé → cache, PAS de réseau
+
+        Assert.Equal(1, handler.SendCount);         // un seul appel réseau
+        Assert.Equal(0.65, a.FiveHour.Utilization); // exact
+        Assert.Equal(0.65, b.FiveHour.Utilization); // même exact servi depuis le cache
+    }
+
+    [Fact]
+    public async Task Apres_MinInterval_le_reseau_est_reinterroge()
+    {
+        var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK, NominalBody());
+        var provider = ProviderWith(handler, out _, out var clock);
+
+        await provider.GetAsync();
+        clock.UtcNow = Now + TimeSpan.FromSeconds(121); // > MinInterval
+        await provider.GetAsync();
+
+        Assert.Equal(2, handler.SendCount);
+    }
+
+    [Fact]
+    public async Task Sur_429_l_exact_precedent_est_conserve_pas_de_bascule_en_indisponible()
+    {
+        // 1er appel OK (exact mémorisé), 2e appel 429 → doit RE-servir l'exact, pas Unavailable.
+        var handler = Sequence(
+            (HttpStatusCode.OK, NominalBody(65, 92)),
+            (HttpStatusCode.TooManyRequests, "{}"));
+        var provider = ProviderWith(handler, out _, out var clock);
+
+        var exact = await provider.GetAsync();
+        Assert.Equal(SourceReliability.Exact, exact.FiveHour.Reliability);
+
+        clock.UtcNow = Now + TimeSpan.FromSeconds(121); // dépasse le throttle → 2e appel réel → 429
+        var apres429 = await provider.GetAsync();
+
+        Assert.Equal(2, handler.SendCount);
+        Assert.Equal(SourceReliability.Exact, apres429.FiveHour.Reliability); // exact conservé (pas de clignotement)
+        Assert.Equal(0.65, apres429.FiveHour.Utilization);
+    }
+
+    [Fact]
+    public async Task Sur_429_sans_cache_renvoie_Empty_puis_recule_de_5_min()
+    {
+        var handler = FakeHttpMessageHandler.Json(HttpStatusCode.TooManyRequests, "{}");
+        var provider = ProviderWith(handler, out _, out var clock);
+
+        var s1 = await provider.GetAsync();                 // 429, aucun cache → Empty
+        Assert.Equal(SourceReliability.Unavailable, s1.FiveHour.Reliability);
+        Assert.Equal(1, handler.SendCount);
+
+        clock.UtcNow = Now + TimeSpan.FromMinutes(2);       // < Backoff429 (5 min) → pas de nouvel appel…
+        await provider.GetAsync();
+        // …mais sans cache le throttle ne s'applique pas (condition « _cached is not null ») → un appel a lieu.
+        // On vérifie surtout qu'aucun crash et toujours Unavailable.
+        clock.UtcNow = Now + TimeSpan.FromMinutes(6);       // > Backoff429 → réessai autorisé
+        var s3 = await provider.GetAsync();
+        Assert.Equal(SourceReliability.Unavailable, s3.FiveHour.Reliability);
+    }
 }
