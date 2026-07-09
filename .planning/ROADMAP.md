@@ -66,7 +66,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Chaîne composite à 3 (OAuth gated → statusLine → JSONL) + réglage OAuthUsageEnabled + portillon gated zéro-accès-token (INT-01/03)
+- [x] 11-01-PLAN.md — Chaîne composite à 3 (OAuth gated → statusLine → JSONL) + réglage OAuthUsageEnabled + portillon gated zéro-accès-token (INT-01/03)
 - [ ] 11-02-PLAN.md — Toggle menu « Usage exact (OAuth) » persisté + badge « estimée » masqué en Exact + validation app réelle (INT-02/03)
 **UI hint**: yes
 
@@ -78,4 +78,4 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 10. Lecture du token + client endpoint | 2/2 | Complete    | 2026-07-09 |
-| 11. Intégration composite + réglage | 0/2 | Not started | - |
+| 11. Intégration composite + réglage | 1/2 | In Progress|  |

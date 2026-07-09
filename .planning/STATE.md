@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: — Usage exact via l'endpoint OAuth
-status: verifying
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-07-09T08:22:19.751Z"
+status: executing
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-07-09T08:40:41.987Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 10 — lecture-du-token-client-endpoint
+**Current focus:** Phase 11 — int-gration-composite-r-glage
 
 ## Current Position
 
 Milestone: v1.2 — Usage exact via l'endpoint OAuth
-Phase: 11
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 11 (int-gration-composite-r-glage) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -51,6 +51,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 *Updated after each plan completion*
 | Phase 10 P01 | 3min | 2 tasks | 5 files |
 | Phase 10 P02 | 3min | 2 tasks | 4 files |
+| Phase 11 P01 | 4min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Contexte technique v1.0/v1.1 conditionnant v1.2 (v1.2 enrichit le composite, ne 
 - [source docs/data-sources.md]: le champ réel est `used_percentage` (0..100) et `resets_at` en epoch SECONDES ; normalisation `Utilization = used_percentage / 100` côté modèle. L'endpoint OAuth `/api/oauth/usage` renvoie la même structure `rate_limits.five_hour/seven_day` — mapping réutilisable.
 - [Phase 10]: ClaudeTokenReader : dechiffrement DPAPI + AES-256-GCM v10, coeur internal static testable, lecture seule prouvee (grep + snapshot), tolerance totale -> null
 - [Phase 10]: ClaudeOAuthUsageProvider : mapping OAuth dedie (utilization/100 + resets_at ISO 8601 via DateTimeOffset.Parse RoundtripKind), token uniquement en en-tete Authorization, inertie prouvee (SendCount==0) si token null/expire, timeout 5s via CancellationTokenSource lie. 13 tests API-01/02/03 verts, suite 178/178.
+- [Phase 11]: OAuthUsageEnabled défaut true : overlay exact dès l'install ; false = v1.1 strict, coffre jamais ouvert (portillon gated, ReadCount==0/SendCount==0)
+- [Phase 11]: CompositeUsageProvider.Best généralisé au rang de fiabilité (Exact>Estimated>Unavailable) pour supporter la chaîne à 3 par imbrication (OAuth gated → statusLine → JSONL)
 
 ### Décisions v1.2 (roadmap)
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T08:18:19.411Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-07-09T08:40:34.332Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
