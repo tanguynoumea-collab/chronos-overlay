@@ -70,20 +70,45 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // Clic DROIT : ouvre la fenêtre de réglages sombre (remplace le menu contextuel gris). Positionnée
-    // près du curseur, elle partage le VM du cadran et se referme quand elle perd le focus.
+    // Clic DROIT : ouvre la fenêtre de réglages sombre (remplace le menu contextuel gris), CENTRÉE sur le
+    // cadran puis clampée à la zone de travail du moniteur (jamais hors écran). Elle partage le VM du cadran.
     private void OnRightClick(object sender, MouseButtonEventArgs e)
     {
         var dlg = new SettingsWindow(_vm) { Owner = this };
-        var p = PointToScreen(e.GetPosition(this));
-        var src = PresentationSource.FromVisual(this);
-        var m = src?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
-        var dip = m.Transform(new System.Windows.Point(p.X, p.Y));
-        dlg.Left = dip.X - 20;
-        dlg.Top = dip.Y - 20;
+        // Rendu HORS écran d'abord → SizeToContent calcule la taille sans clignotement visible.
+        dlg.Left = -10000; dlg.Top = -10000;
         dlg.Show();
+        CenterOnCadran(dlg);
         dlg.Activate();
         e.Handled = true;
+    }
+
+    // Centre la fenêtre sur le cadran (pixels physiques) et la clampe à la zone de travail du moniteur.
+    private void CenterOnCadran(Window dlg)
+    {
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd == System.IntPtr.Zero || !Interop.NativeMethods.GetWindowRect(hwnd, out var wr)) return;
+
+        double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        int dlgW = (int)System.Math.Round(dlg.ActualWidth * scale);
+        int dlgH = (int)System.Math.Round(dlg.ActualHeight * scale);
+        int left = (wr.Left + wr.Right) / 2 - dlgW / 2;
+        int top = (wr.Top + wr.Bottom) / 2 - dlgH / 2;
+
+        var hMon = Interop.NativeMethods.MonitorFromWindow(hwnd, Interop.NativeMethods.MONITOR_DEFAULTTONEAREST);
+        var mi = new Interop.NativeMethods.MONITORINFOEX { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<Interop.NativeMethods.MONITORINFOEX>() };
+        if (Interop.NativeMethods.GetMonitorInfo(hMon, ref mi))
+        {
+            left = System.Math.Max(mi.rcWork.Left, System.Math.Min(left, mi.rcWork.Right - dlgW));
+            top = System.Math.Max(mi.rcWork.Top, System.Math.Min(top, mi.rcWork.Bottom - dlgH));
+        }
+
+        // Physique → DIU pour Window.Left/Top.
+        var src = System.Windows.Interop.HwndSource.FromHwnd(hwnd);
+        var m = src?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var tl = m.Transform(new System.Windows.Point(left, top));
+        dlg.Left = tl.X;
+        dlg.Top = tl.Y;
     }
 
     // Applique les pinceaux d'un thème dans les ressources de la fenêtre → les DynamicResource du cadran
