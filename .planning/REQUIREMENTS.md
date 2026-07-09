@@ -25,7 +25,7 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 
 ### Calibration (CAL)
 
-- [ ] **CAL-01**: Les plafonds (FiveHourTokenBudget, WeeklyTokenBudget) sont persistés dans settings.json
+- [x] **CAL-01**: Les plafonds (FiveHourTokenBudget, WeeklyTokenBudget) sont persistés dans settings.json
   et réglables via le menu contextuel (« Calibrer les plafonds… », dialogue minimal).
 - [x] **CAL-02**: Calibration automatique opportuniste : quand un snapshot Exact (rate_limits réel) est
   disponible avec used_percentage > 0 ET que des tokens JSONL sont mesurables sur la même fenêtre,
@@ -57,7 +57,7 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 | EST-04 | Phase 8 | Complete |
 | EST-05 | Phase 8 | Complete |
 | NET-01 | Phase 8 | Complete |
-| CAL-01 | Phase 9 | Pending |
+| CAL-01 | Phase 9 | Complete |
 | CAL-02 | Phase 9 | Complete |
 | CAL-03 | Phase 9 | Complete |
 | NET-02 | Phase 9 | Complete |

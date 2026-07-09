@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: — Estimation utile en mode app bureau
 status: executing
 stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-07-09T06:18:45.113Z"
+last_updated: "2026-07-09T06:23:46.748Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Milestone: v1.1 — Estimation utile en mode app bureau
-Phase: 09 (calibration-des-plafonds-surfa-age) — EXECUTING
-Plan: 3 of 3
+Phase: 09
+Plan: Not started
 Status: Ready to execute
 Last activity: 2026-07-09
 
