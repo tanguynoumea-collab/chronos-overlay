@@ -102,6 +102,30 @@ public class JsonlEstimationProviderTests
         Assert.Equal(SourceReliability.Estimated, snap.FiveHour.Reliability);
     }
 
+    // --- CAL-03 : un plafond defini ne rend JAMAIS la fenetre Exact -> elle reste Estimated ---
+    // (le badge « estimee » de l'UI reste donc du). L'utilization apparait (couleur) mais la
+    // provenance ne ment pas : une somme JSONL calibree reste une ESTIMATION.
+
+    [Fact]
+    public async Task Plafond_defini_laisse_la_fenetre_5h_Estimated_avec_utilization()
+    {
+        // Fixture 5 h active + settings colocalise portant un FiveHourTokenBudget.
+        var temp = Path.Combine(Path.GetTempPath(), "ChronosCal03_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        File.Copy(Path.Combine(TestDataDir(), "sample-valid.jsonl"), Path.Combine(temp, "sample-valid.jsonl"));
+        File.WriteAllText(Path.Combine(temp, "settings.json"), "{\"FiveHourTokenBudget\":3100}");
+
+        var paths = new ChronosPaths(UsageFile: Path.Combine(temp, "usage.json"), ProjectsRoot: temp);
+        var provider = new JsonlEstimationProvider(paths, new FakeClock(Now), new SettingsService(paths));
+
+        var snap = await provider.GetAsync();
+
+        // CAL-03 : Reliability reste Estimated (jamais Exact) MALGRE le plafond...
+        Assert.Equal(SourceReliability.Estimated, snap.FiveHour.Reliability);
+        // ...et l'utilization est desormais connue (couleur), donc le badge « estimee » vient de l'UI.
+        Assert.NotNull(snap.FiveHour.Utilization);
+    }
+
     // --- EST-02 : fenetre inactive (dernier message > 5 h avant now) -> arc plein, jamais vide ---
 
     [Fact]
