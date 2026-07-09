@@ -103,4 +103,56 @@ public class CadranBindingTests
         Assert.NotNull(fenetre.FindName("BadgeEstimeeCinqHeures") as TextBlock);
         Assert.NotNull(fenetre.FindName("BadgeEstimeeHebdo") as TextBlock);
     }
+
+    // NET-02 : tokens estimés surfacés en texte secondaire discret, dérivés dans WindowGaugeViewModel.Apply.
+    // Ces [Fact] testent directement le sous-VM (pas de STA requis : pur, aucun WPF).
+
+    [Fact]
+    public void Estimated_avec_tokens_expose_HasTokens_et_TokensText_abrege()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Estimated,
+            EstimatedTokens = 62_484_658,
+        });
+
+        Assert.True(vm.HasTokens);
+        Assert.Equal("≈ 62,5 M tokens", vm.TokensText);
+    }
+
+    [Fact]
+    public void Exact_sans_tokens_n_affiche_aucun_texte_de_tokens()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.3,
+            EstimatedTokens = null, // honnêteté : jamais de tokens affichés en source Exact
+        });
+
+        Assert.False(vm.HasTokens);
+        Assert.Equal("", vm.TokensText);
+    }
+
+    [Fact]
+    public void Estimated_avec_zero_token_ne_surface_rien()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Estimated,
+            EstimatedTokens = 0,
+        });
+
+        Assert.False(vm.HasTokens);
+        Assert.Equal("", vm.TokensText);
+    }
 }

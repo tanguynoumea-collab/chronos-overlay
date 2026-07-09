@@ -21,6 +21,8 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     [ObservableProperty] private bool _exhausted;
     [ObservableProperty] private SourceReliability _reliability = SourceReliability.Unavailable;
     [ObservableProperty] private bool _isEstimated;                             // provenance → marquage « estimé » (DAT-08 Phase 5)
+    [ObservableProperty] private string _tokensText = "";                       // « ≈ N M/k tokens » ; vide si masqué (NET-02)
+    [ObservableProperty] private bool _hasTokens;                               // vrai SSI Estimated + tokens>0 (pilote la visibilité)
 
     public WindowGaugeViewModel(TimeSpan windowLength)
     {
@@ -36,6 +38,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         Exhausted = s.Exhausted;
         Reliability = s.Reliability;
         IsEstimated = s.Reliability == SourceReliability.Estimated; // pré-câble DAT-08 (Phase 5)
+
+        // NET-02 : surfacer les tokens estimés (matière première) UNIQUEMENT en source Estimated avec tokens>0.
+        // Jamais en Exact (les pourcentages exacts suffisent) ni sans donnée — honnêteté préservée.
+        HasTokens = s.Reliability == SourceReliability.Estimated && s.EstimatedTokens is > 0;
+        TokensText = HasTokens ? TokenFormatter.Format(s.EstimatedTokens!.Value) : "";
     }
 
     /// <summary>PUR, aucun I/O (RAF-03) : recalcule fraction d'arc + compte à rebours à l'instant <paramref name="now"/>.</summary>
