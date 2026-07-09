@@ -22,24 +22,26 @@
              Clic gauche = drag (code-behind), clic droit = ce menu → aucun conflit. -->
         <Grid.ContextMenu>
             <ContextMenu>
+                <!-- IsChecked en Mode=OneWay : le clic ne réécrit PAS l'observable (sinon double-bascule
+                     avec la commande) ; la commande est le seul point de bascule, la coche suit l'état réel. -->
                 <MenuItem Header="Arrière-plan" IsCheckable="True"
-                          IsChecked="{Binding IsBackground}"
+                          IsChecked="{Binding IsBackground, Mode=OneWay}"
                           Command="{Binding ToggleBackgroundCommand}"/>
                 <MenuItem Header="Recalibrer le reset hebdo…"
                           Command="{Binding RecalibrateCommand}"/>
                 <MenuItem Header="Calibrer les plafonds…"
                           Command="{Binding CalibrateBudgetsCommand}"/>
                 <MenuItem Header="Lancer au démarrage" IsCheckable="True"
-                          IsChecked="{Binding IsAutostart}"
+                          IsChecked="{Binding IsAutostart, Mode=OneWay}"
                           Command="{Binding ToggleAutostartCommand}"/>
                 <MenuItem Header="Se connecter à Claude (chiffres exacts)" IsCheckable="True"
-                          IsChecked="{Binding IsLoggedIn}"
+                          IsChecked="{Binding IsLoggedIn, Mode=OneWay}"
                           Command="{Binding LoginClaudeCommand}"/>
                 <MenuItem Header="Source exacte via terminal (Claude Code)" IsCheckable="True"
-                          IsChecked="{Binding IsStatusLineSourceEnabled}"
+                          IsChecked="{Binding IsStatusLineSourceEnabled, Mode=OneWay}"
                           Command="{Binding ToggleStatusLineSourceCommand}"/>
                 <MenuItem Header="Usage exact (OAuth)" IsCheckable="True"
-                          IsChecked="{Binding IsOAuthUsageEnabled}"
+                          IsChecked="{Binding IsOAuthUsageEnabled, Mode=OneWay}"
                           Command="{Binding ToggleOAuthUsageCommand}"/>
                 <Separator/>
                 <MenuItem Header="Diagnostic…" Click="OnDiagnosticClick"/>
