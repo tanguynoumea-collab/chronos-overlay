@@ -84,7 +84,15 @@ public sealed class DiagnosticService
         sb.AppendLine("  Usage exact (OAuth) : " + (s.OAuthUsageEnabled ? "ACTIVÉ" : "DÉSACTIVÉ (menu)"));
         sb.AppendLine();
 
-        // 2) Source exacte PRIMAIRE : pont statusLine Claude Code (usage.json). Voie universelle recommandée.
+        // 2a) Source exacte PRIMAIRE : login OAuth intégré de Chronos (coffre chiffré oauth.dat).
+        sb.AppendLine("[Source exacte — login OAuth Chronos]");
+        var oauthDat = Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "oauth.dat");
+        sb.AppendLine("  Connecté : " + (File.Exists(oauthDat)
+            ? "OUI (jeton chiffré présent) — les chiffres exacts arrivent au prochain rafraîchissement"
+            : "non (menu clic droit → « Se connecter à Claude »)"));
+        sb.AppendLine();
+
+        // 2b) Source exacte secondaire : pont statusLine Claude Code (usage.json), terminal uniquement.
         sb.AppendLine("[Source exacte — pont statusLine Claude Code]");
         var claudeSettings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
         bool bridgeInstalled = false;

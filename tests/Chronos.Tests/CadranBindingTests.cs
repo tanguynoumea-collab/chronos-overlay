@@ -34,7 +34,7 @@ public class CadranBindingTests
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             new FakeBudgetPrompt(), settings,
             new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(Now)),
-            new FakeStatusLineSetup());
+            new FakeStatusLineSetup(), new FakeOAuthLogin());
         vm.ApplySnapshot(snap);
 
         var guard = new TopmostGuard();

@@ -144,13 +144,28 @@ public partial class App : Application
             sp.GetRequiredService<ClaudeOAuthUsageProvider>(),
             sp.GetRequiredService<SettingsService>()));
 
-        // Chaîne à 3 par imbrication (INT-01) : OAuth (exact, gated) → pont statusLine (exact) → JSONL (estimé).
-        // Le CompositeUsageProvider gère déjà « meilleure source PAR FENÊTRE » + staleness → aucune réécriture.
+        // v2.1 : SOURCE EXACTE PRIMAIRE = login OAuth propre à Chronos (jeton obtenu par login navigateur,
+        // rafraîchi tout seul, stocké chiffré DPAPI). Marche que l'utilisateur soit en app bureau OU terminal.
+        services.AddSingleton<ChronosOAuthStore>(_ => new ChronosOAuthStore());
+        services.AddSingleton(_ => new ChronosOAuthClient(new HttpClient()));
+        services.AddSingleton(sp => new ChronosOAuthUsageProvider(
+            sp.GetRequiredService<ChronosOAuthStore>(),
+            sp.GetRequiredService<ChronosOAuthClient>(),
+            new HttpClient(),
+            sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IOAuthLogin>(sp => new Views.OAuthLogin(
+            sp.GetRequiredService<ChronosOAuthClient>(),
+            sp.GetRequiredService<ChronosOAuthStore>()));
+
+        // Chaîne exacte→estimée par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
+        //   login OAuth Chronos (exact) → OAuth coffre app (exact, gated) → pont statusLine (exact) → JSONL (estimé).
         services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
-            primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
+            primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
             fallback: new CompositeUsageProvider(
-                primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
-                fallback: sp.GetRequiredService<JsonlEstimationProvider>())));
+                primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
+                fallback: new CompositeUsageProvider(
+                    primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
+                    fallback: sp.GetRequiredService<JsonlEstimationProvider>()))));
 
         // Horloge DONNÉES Phase 4 : l'orchestrateur est enregistré UNE fois (Singleton, pour l'abonnement
         // du VM) et réexposé comme IHostedService via la MÊME instance (cycle de vie Start/Stop du host).

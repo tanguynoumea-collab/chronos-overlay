@@ -78,6 +78,8 @@ public class CompositionRootTests
 
         // Source exacte via pont statusLine : le ctor de MainViewModel dépend d'IStatusLineSetup.
         services.AddSingleton<IStatusLineSetup>(_ => new FakeStatusLineSetup());
+        // Login OAuth intégré : le ctor de MainViewModel dépend d'IOAuthLogin.
+        services.AddSingleton<IOAuthLogin>(_ => new FakeOAuthLogin());
 
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();

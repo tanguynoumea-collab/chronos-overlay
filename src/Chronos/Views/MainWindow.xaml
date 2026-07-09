@@ -32,7 +32,10 @@
                 <MenuItem Header="Lancer au démarrage" IsCheckable="True"
                           IsChecked="{Binding IsAutostart}"
                           Command="{Binding ToggleAutostartCommand}"/>
-                <MenuItem Header="Source exacte (Claude Code)" IsCheckable="True"
+                <MenuItem Header="Se connecter à Claude (chiffres exacts)" IsCheckable="True"
+                          IsChecked="{Binding IsLoggedIn}"
+                          Command="{Binding LoginClaudeCommand}"/>
+                <MenuItem Header="Source exacte via terminal (Claude Code)" IsCheckable="True"
                           IsChecked="{Binding IsStatusLineSourceEnabled}"
                           Command="{Binding ToggleStatusLineSourceCommand}"/>
                 <MenuItem Header="Usage exact (OAuth)" IsCheckable="True"
