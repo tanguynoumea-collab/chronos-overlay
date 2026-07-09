@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using Chronos.Models;
 using Chronos.Services;
+using Chronos.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -68,6 +70,34 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic au centre du cadran).</summary>
     public void ToggleCenterMode() => ShowCountdown = !ShowCountdown;
 
+    // --- Thèmes visuels (settings) ---
+
+    /// <summary>Version de l'app (« v2.4 ») affichée dans l'en-tête des réglages.</summary>
+    public string AppVersion => "v" + (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(2) ?? "");
+
+    /// <summary>Catalogue des thèmes affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
+    public ObservableCollection<ThemeChoice> Themes { get; } = new();
+
+    /// <summary>Clé du thème actif (persisté). Consommé par la vue pour appliquer les pinceaux au démarrage.</summary>
+    [ObservableProperty] private string _selectedThemeKey = "minuit";
+
+    /// <summary>Émis quand le thème change → la vue met à jour les ressources de pinceaux de la fenêtre.</summary>
+    public event Action<ChronosTheme>? ThemeChanged;
+
+    /// <summary>Sélectionne un thème : surbrillance, persistance, application aux jauges + notification de la vue.</summary>
+    [RelayCommand]
+    private void SelectTheme(ThemeChoice? choice)
+    {
+        if (choice is null) return;
+        foreach (var t in Themes) t.IsSelected = ReferenceEquals(t, choice);
+        SelectedThemeKey = choice.Theme.Key;
+        _settings = _settingsService.Load() with { ThemeKey = choice.Theme.Key }; // GAP-1
+        _settingsService.Save(_settings);
+        FiveHour.SetTheme(choice.Theme);
+        SevenDay.SetTheme(choice.Theme);
+        ThemeChanged?.Invoke(choice.Theme);
+    }
+
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
@@ -93,6 +123,13 @@ public sealed partial class MainViewModel : ObservableObject
         IsOAuthUsageEnabled = _settings.OAuthUsageEnabled;
         IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
+
+        // Thèmes : peupler le catalogue (surbrillance du persisté) et appliquer aux jauges dès le départ.
+        SelectedThemeKey = _settings.ThemeKey;
+        var active = ThemeCatalog.ByKey(SelectedThemeKey);
+        foreach (var t in ThemeCatalog.All) Themes.Add(new ThemeChoice(t, t.Key == active.Key));
+        FiveHour.SetTheme(active);
+        SevenDay.SetTheme(active);
 
         orchestrator.SnapshotChanged += OnSnapshotChanged; // callback thread pool (horloge données)
     }

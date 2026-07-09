@@ -15,12 +15,15 @@ public static class RampColor
     private static readonly Color Amber = Color.FromRgb(0xEF, 0xA2, 0x3A);
     private static readonly Color Red   = Color.FromRgb(0xD8, 0x50, 0x3A);
 
-    public static Color Interpolate(double u)
+    public static Color Interpolate(double u) => Interpolate(u, Green, Amber, Red);
+
+    /// <summary>Rampe à stops PERSONNALISÉS (theming) : même interpolation, couleurs fournies par le thème.</summary>
+    public static Color Interpolate(double u, Color green, Color amber, Color red)
     {
         u = Math.Clamp(u, 0.0, 1.0);
         return u <= AmberStop
-            ? Lerp(Green, Amber, u / AmberStop)
-            : Lerp(Amber, Red, (u - AmberStop) / (1.0 - AmberStop));
+            ? Lerp(green, amber, u / AmberStop)
+            : Lerp(amber, red, (u - AmberStop) / (1.0 - AmberStop));
     }
 
     private static Color Lerp(Color a, Color b, double t)

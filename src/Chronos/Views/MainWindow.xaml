@@ -16,83 +16,54 @@
              résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
         <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
     </Window.Resources>
-    <Grid>
-        <!-- Menu contextuel = SEUL point d'accès/sortie (FEN-06). Attaché à la Grid racine dont le
-             DataContext est le VM → les 4 MenuItem héritent du DataContext (Pattern 4 / Pitfall 5).
-             Clic gauche = drag (code-behind), clic droit = ce menu → aucun conflit. -->
-        <Grid.ContextMenu>
-            <ContextMenu>
-                <!-- IsChecked en Mode=OneWay : le clic ne réécrit PAS l'observable (sinon double-bascule
-                     avec la commande) ; la commande est le seul point de bascule, la coche suit l'état réel. -->
-                <MenuItem Header="Arrière-plan" IsCheckable="True"
-                          IsChecked="{Binding IsBackground, Mode=OneWay}"
-                          Command="{Binding ToggleBackgroundCommand}"/>
-                <MenuItem Header="Recalibrer le reset hebdo…"
-                          Command="{Binding RecalibrateCommand}"/>
-                <MenuItem Header="Calibrer les plafonds…"
-                          Command="{Binding CalibrateBudgetsCommand}"/>
-                <MenuItem Header="Lancer au démarrage" IsCheckable="True"
-                          IsChecked="{Binding IsAutostart, Mode=OneWay}"
-                          Command="{Binding ToggleAutostartCommand}"/>
-                <MenuItem Header="Se connecter à Claude (chiffres exacts)" IsCheckable="True"
-                          IsChecked="{Binding IsLoggedIn, Mode=OneWay}"
-                          Command="{Binding LoginClaudeCommand}"/>
-                <MenuItem Header="Source exacte via terminal (Claude Code)" IsCheckable="True"
-                          IsChecked="{Binding IsStatusLineSourceEnabled, Mode=OneWay}"
-                          Command="{Binding ToggleStatusLineSourceCommand}"/>
-                <MenuItem Header="Usage exact (OAuth)" IsCheckable="True"
-                          IsChecked="{Binding IsOAuthUsageEnabled, Mode=OneWay}"
-                          Command="{Binding ToggleOAuthUsageCommand}"/>
-                <Separator/>
-                <MenuItem Header="Diagnostic…" Click="OnDiagnosticClick"/>
-                <MenuItem Header="Quitter" Command="{Binding QuitCommand}"/>
-            </ContextMenu>
-        </Grid.ContextMenu>
+    <Grid MouseRightButtonUp="OnRightClick">
+        <!-- Clic DROIT = ouvre la fenêtre de réglages sombre (remplace l'ancien menu contextuel gris).
+             Clic gauche = drag (code-behind), clic au centre = bascule %/temps. -->
 
         <!-- Fond TRANSPARENT : plus de grand disque — les anneaux flottent sur le bureau.
              Seul un petit disque CENTRAL (dans le trou de l'anneau interne, R38) soutient les %
              pour qu'ils restent lisibles quel que soit le fond d'écran. -->
-        <Ellipse Width="64" Height="64" Fill="{StaticResource FondCadran}"/>
+        <Ellipse Width="64" Height="64" Fill="{DynamicResource FondCadran}"/>
 
         <!-- Pistes (arcs pleins de fond), ordre centre → extérieur (VIS-02). Deux jauges de quota
              ÉPAISSES (hebdo R38, 5 h R54), puis l'anneau timeline 24 h RAPPROCHÉ (R64) et FIN. -->
         <ctrl:RingArc Fraction="1" Radius="38"
-                      Stroke="{StaticResource PisteHebdo}" StrokeThickness="8"/>
+                      Stroke="{DynamicResource PisteHebdo}" StrokeThickness="8"/>
         <ctrl:RingArc Fraction="1" Radius="54"
-                      Stroke="{StaticResource Piste5h}" StrokeThickness="8"/>
+                      Stroke="{DynamicResource Piste5h}" StrokeThickness="8"/>
         <ctrl:RingArc Fraction="1" Radius="64"
-                      Stroke="{StaticResource Piste24h}" StrokeThickness="4"/>
+                      Stroke="{DynamicResource Piste24h}" StrokeThickness="4"/>
 
         <!-- Arc valeur hebdo (interne, R38) : remplissage INVERSÉ (VIS-01) → FractionElapsed,
              se remplit à mesure qu'on approche du reset. Couleur = utilization hebdo. -->
         <ctrl:RingArc x:Name="ArcHebdo" Radius="38" StrokeThickness="8"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding SevenDay.FractionElapsed}"
-                      Stroke="{Binding SevenDay.Utilization, Converter={StaticResource UtilBrush}}"/>
+                      Stroke="{Binding SevenDay.ValueBrush}"/>
 
         <!-- Arc valeur 5 h (milieu, R54) : remplissage inversé (VIS-01) → FractionElapsed. -->
         <ctrl:RingArc x:Name="ArcCinqHeures" Radius="54" StrokeThickness="8"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding FiveHour.FractionElapsed}"
-                      Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
+                      Stroke="{Binding FiveHour.ValueBrush}"/>
 
         <!-- Marques HORAIRES sur l'anneau 5 h : 1 par heure sur une fenêtre de 5 h → Count=5 (tous les 72°).
              Bien visibles (nuance claire, épaisses). Rayon = bord externe de l'anneau 5 h. -->
         <ctrl:TickRing Count="5" Radius="59" TickLength="7"
-                       Stroke="{StaticResource TickVisible}" StrokeThickness="2.5"/>
+                       Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
 
         <!-- Anneau timeline 24 h (externe, R64, FIN, RAPPROCHÉ) : rempli selon la fraction du jour (JOUR-01),
              couleur = utilization 5 h (JOUR-03). -->
         <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="64" StrokeThickness="4"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding DayFraction}"
-                      Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
+                      Stroke="{Binding FiveHour.ValueBrush}"/>
 
         <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe de l'anneau 24 h.
              Bien visibles (nuance claire, plus longs/épais). -->
         <ctrl:TickRing Radius="68" TickLength="7"
                        Angles="{Binding DayResetAngles}"
-                       Stroke="{StaticResource TickVisible}" StrokeThickness="2.5"/>
+                       Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
 
         <!-- Bloc central : deux modes alternés par un clic au centre (ToggleCenterMode).
              Mode POURCENTAGES (défaut) : UtilizationText (« ~ » si estimé, vide si inconnu).
@@ -101,19 +72,19 @@
                     Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding FiveHour.UtilizationText}"
                        FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"
-                       Foreground="{StaticResource TextePrincipal}"/>
+                       Foreground="{DynamicResource TextePrincipal}"/>
             <TextBlock Text="{Binding SevenDay.UtilizationText}"
                        FontSize="13" HorizontalAlignment="Center" Margin="0,1,0,0"
-                       Foreground="{StaticResource TexteSecondaireClair}"/>
+                       Foreground="{DynamicResource TexteSecondaireClair}"/>
         </StackPanel>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding FiveHour.CountdownText}"
                        FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center"
-                       Foreground="{StaticResource TextePrincipal}"/>
+                       Foreground="{DynamicResource TextePrincipal}"/>
             <TextBlock Text="{Binding SevenDay.CountdownText}"
                        FontSize="12" HorizontalAlignment="Center" Margin="0,1,0,0"
-                       Foreground="{StaticResource TexteSecondaireClair}"/>
+                       Foreground="{DynamicResource TexteSecondaireClair}"/>
         </StackPanel>
 
         <!-- Zone de CLIC au centre (transparente, au-dessus du texte) : bascule %/temps.

@@ -1,5 +1,7 @@
+using System.Windows.Media;
 using Chronos.Models;
 using Chronos.Text;
+using Chronos.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Chronos.ViewModels;
@@ -27,10 +29,25 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     [ObservableProperty] private string _tokensText = "";                       // « ≈ N M/k tokens » ; vide si masqué (NET-02)
     [ObservableProperty] private bool _hasTokens;                               // vrai SSI Estimated + tokens>0 (pilote la visibilité)
 
+    // Couleur de l'arc valeur calculée selon le THÈME courant (remplace le converter statique → switch live).
+    [ObservableProperty] private Brush? _valueBrush;
+    private ChronosTheme _theme = ThemeCatalog.Default;
+
+    /// <summary>Applique un thème : recalcule la couleur de l'arc valeur pour l'utilization courante.</summary>
+    public void SetTheme(ChronosTheme theme)
+    {
+        _theme = theme;
+        ValueBrush = _theme.ArcBrush(Utilization);
+    }
+
+    // Recalcule l'arc à chaque changement d'utilization (rampe du thème courant).
+    partial void OnUtilizationChanged(double? value) => ValueBrush = _theme.ArcBrush(value);
+
     public WindowGaugeViewModel(TimeSpan windowLength)
     {
         _windowLength = windowLength;
         _state = WindowState.Unavailable(default);
+        ValueBrush = _theme.ArcBrush(null); // neutre au départ (aucune donnée)
     }
 
     /// <summary>Applique un nouvel état de fenêtre (thread UI). Met à jour provenance/utilization/épuisement.</summary>

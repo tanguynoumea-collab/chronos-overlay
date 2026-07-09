@@ -1,0 +1,223 @@
+<Window x:Class="Chronos.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight" ShowInTaskbar="False"
+        WindowStartupLocation="Manual" Topmost="True"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <!-- Palette du CHROME des réglages (toujours sombre, indépendant du thème du cadran). -->
+        <SolidColorBrush x:Key="Panel"  Color="#151322"/>
+        <SolidColorBrush x:Key="Panel2" Color="#1E1B30"/>
+        <SolidColorBrush x:Key="Line"   Color="#2C2942"/>
+        <SolidColorBrush x:Key="Ink"    Color="#F2F0FB"/>
+        <SolidColorBrush x:Key="Ink2"   Color="#A9A6C4"/>
+        <SolidColorBrush x:Key="Accent" Color="#8B7BF0"/>
+        <SolidColorBrush x:Key="Ok"     Color="#4EC98A"/>
+
+        <!-- Libellé de section -->
+        <Style x:Key="Section" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="2,14,0,7"/>
+        </Style>
+
+        <!-- Bouton plat -->
+        <Style x:Key="Flat" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+            <Setter Property="Background" Value="{StaticResource Panel2}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#26223A"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Interrupteur (ToggleButton) : IsChecked en OneWay (pas de double-bascule avec la commande) -->
+        <Style x:Key="Switch" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="track" Width="40" Height="23" CornerRadius="12" Background="#2C2942">
+                            <Ellipse x:Name="knob" Width="17" Height="17" HorizontalAlignment="Left"
+                                     Margin="3,0,0,0" Fill="#6B6890"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="track" Property="Background" Value="{StaticResource Accent}"/>
+                                <Setter TargetName="knob" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="knob" Property="Margin" Value="0,0,3,0"/>
+                                <Setter TargetName="knob" Property="Fill" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Carte de thème -->
+        <Style x:Key="ThemeCardBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Width="88" Height="74" CornerRadius="12" Margin="0"
+                                Background="{StaticResource Panel2}" BorderThickness="1.5" BorderBrush="Transparent">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="#3B3860"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                <Setter TargetName="b" Property="Background" Value="#241F3C"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Panneau principal -->
+    <Border Background="{StaticResource Panel}" CornerRadius="16" BorderBrush="{StaticResource Line}"
+            BorderThickness="1" Width="330" Padding="16,14,16,13">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="26" ShadowDepth="8" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+        <StackPanel>
+            <!-- En-tête (zone de drag) -->
+            <Grid MouseLeftButtonDown="Header_Drag" Background="Transparent" Margin="0,0,0,4">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Logo Chronos inline (disque + arc ambre 5 h + arc vert hebdo + point) -->
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="100" Height="100">
+                            <Ellipse Width="92" Height="92" Canvas.Left="4" Canvas.Top="4" Fill="#221C33"/>
+                            <Path Data="M20,62 A34,34 0 1 1 80,62" Stroke="#ECA23C" StrokeThickness="9"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Path Data="M33,60 A20,20 0 1 1 67,60" Stroke="#38C08A" StrokeThickness="7"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Ellipse Width="8" Height="8" Canvas.Left="46" Canvas.Top="46" Fill="#F4F2EC"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="Chronos" Foreground="{StaticResource Ink}" FontSize="16" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="9,0,0,0"/>
+                    <Border Background="{StaticResource Panel2}" CornerRadius="20" Padding="7,2" Margin="9,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding AppVersion}" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
+                    </Border>
+                </StackPanel>
+                <Button Content="✕" Style="{StaticResource Flat}" Background="Transparent"
+                        HorizontalAlignment="Right" Padding="8,4" FontSize="12"
+                        Foreground="{StaticResource Ink2}" Click="Close_Click"/>
+            </Grid>
+
+            <!-- Données -->
+            <TextBlock Text="DONNÉES" Style="{StaticResource Section}"/>
+            <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,9">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Connexion Claude" Foreground="{StaticResource Ink}" FontSize="13"/>
+                        <TextBlock Text="chiffres exacts 5 h + hebdo" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
+                    </StackPanel>
+                    <Button HorizontalAlignment="Right" Style="{StaticResource Flat}"
+                            Command="{Binding LoginClaudeCommand}" FontSize="12">
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Se connecter"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLoggedIn}" Value="True">
+                                            <Setter Property="Text" Value="● Connecté"/>
+                                            <Setter Property="Foreground" Value="{StaticResource Ok}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Thème -->
+            <TextBlock Text="THÈME" Style="{StaticResource Section}"/>
+            <ItemsControl ItemsSource="{Binding Themes}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource ThemeCardBtn}" Margin="0,0,0,7"
+                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"
+                                HorizontalAlignment="Center">
+                            <StackPanel VerticalAlignment="Center">
+                                <!-- Pastille = disque du thème + 3 chips de rampe -->
+                                <Grid Width="46" Height="34" HorizontalAlignment="Center">
+                                    <Border CornerRadius="9" Background="{Binding Theme.PreviewDisc}"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Ellipse Width="9" Height="9" Margin="1,0" Fill="{Binding Theme.PreviewGreen}"/>
+                                        <Ellipse Width="9" Height="9" Margin="1,0" Fill="{Binding Theme.PreviewAmber}"/>
+                                        <Ellipse Width="9" Height="9" Margin="1,0" Fill="{Binding Theme.PreviewRed}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="10.5"
+                                           HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Affichage -->
+            <TextBlock Text="AFFICHAGE" Style="{StaticResource Section}"/>
+            <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,4">
+                <StackPanel>
+                    <Grid Margin="0,7">
+                        <TextBlock Text="Arrière-plan" Foreground="{StaticResource Ink}" FontSize="13" VerticalAlignment="Center"/>
+                        <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                      IsChecked="{Binding IsBackground, Mode=OneWay}" Command="{Binding ToggleBackgroundCommand}"/>
+                    </Grid>
+                    <Border Height="1" Background="{StaticResource Line}"/>
+                    <Grid Margin="0,7">
+                        <TextBlock Text="Lancer au démarrage" Foreground="{StaticResource Ink}" FontSize="13" VerticalAlignment="Center"/>
+                        <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                      IsChecked="{Binding IsAutostart, Mode=OneWay}" Command="{Binding ToggleAutostartCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Réglages avancés -->
+            <TextBlock Text="RÉGLAGES" Style="{StaticResource Section}"/>
+            <UniformGrid Columns="2">
+                <Button Content="Recalibrer hebdo…" Style="{StaticResource Flat}" Margin="0,0,4,6" FontSize="12"
+                        Command="{Binding RecalibrateCommand}"/>
+                <Button Content="Plafonds…" Style="{StaticResource Flat}" Margin="4,0,0,6" FontSize="12"
+                        Command="{Binding CalibrateBudgetsCommand}"/>
+                <Button Content="Source terminal" Style="{StaticResource Flat}" Margin="0,0,4,0" FontSize="12"
+                        Command="{Binding ToggleStatusLineSourceCommand}"/>
+                <Button Content="Diagnostic…" Style="{StaticResource Flat}" Margin="4,0,0,0" FontSize="12"
+                        Click="Diagnostic_Click"/>
+            </UniformGrid>
+
+            <!-- Pied -->
+            <Button Content="Quitter Chronos" Style="{StaticResource Flat}" Margin="0,10,0,0" FontSize="12"
+                    Foreground="#E8907F" Command="{Binding QuitCommand}"/>
+        </StackPanel>
+    </Border>
+</Window>

@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Chronos.Services;
+using Chronos.Theming;
 using Chronos.ViewModels;
 
 namespace Chronos.Views;
@@ -9,6 +11,7 @@ public partial class MainWindow : Window
 {
     private readonly TopmostGuard _topmostGuard;
     private readonly OverlayController _controller;
+    private readonly MainViewModel _vm;
 
     // État persisté à restaurer AVANT le premier rendu (fourni par App avant Show).
     private ChronosSettings? _restored;
@@ -17,8 +20,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;          // MVVM : la vue reçoit son VM par injection
+        _vm = viewModel;
         _topmostGuard = topmostGuard;
         _controller = controller;
+
+        // Thèmes : appliquer les pinceaux du thème persisté (ressources dynamiques) AVANT le 1er rendu,
+        // puis suivre chaque changement émis par le VM (sélection dans la fenêtre de réglages).
+        ApplyThemeBrushes(ThemeCatalog.ByKey(viewModel.SelectedThemeKey));
+        viewModel.ThemeChanged += ApplyThemeBrushes;
 
         // HWND garanti ici : on attache le guard puis le controller, et on restaure le placement
         // AVANT le premier rendu (pas de flash), remplaçant l'ancien PlacerCoinSuperieurDroit (Loaded).
@@ -61,17 +70,27 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // Menu « Diagnostic… » : affiche le rapport dans une POP-UP (facile à screenshoter), pas un fichier.
-    private async void OnDiagnosticClick(object sender, RoutedEventArgs e)
+    // Clic DROIT : ouvre la fenêtre de réglages sombre (remplace le menu contextuel gris). Positionnée
+    // près du curseur, elle partage le VM du cadran et se referme quand elle perd le focus.
+    private void OnRightClick(object sender, MouseButtonEventArgs e)
     {
-        try
-        {
-            var report = await ((MainViewModel)DataContext).BuildDiagnosticReportAsync();
-            MessageBox.Show(this, report, "Chronos — Diagnostic", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        catch (System.Exception ex)
-        {
-            MessageBox.Show(this, "Le diagnostic a échoué : " + ex.Message, "Chronos — Diagnostic");
-        }
+        var dlg = new SettingsWindow(_vm) { Owner = this };
+        var p = PointToScreen(e.GetPosition(this));
+        var src = PresentationSource.FromVisual(this);
+        var m = src?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var dip = m.Transform(new System.Windows.Point(p.X, p.Y));
+        dlg.Left = dip.X - 20;
+        dlg.Top = dip.Y - 20;
+        dlg.Show();
+        dlg.Activate();
+        e.Handled = true;
+    }
+
+    // Applique les pinceaux d'un thème dans les ressources de la fenêtre → les DynamicResource du cadran
+    // (disque, pistes, graduations, textes) se mettent à jour instantanément.
+    private void ApplyThemeBrushes(ChronosTheme theme)
+    {
+        foreach (var kv in theme.BrushTokens())
+            Resources[kv.Key] = kv.Value;
     }
 }
