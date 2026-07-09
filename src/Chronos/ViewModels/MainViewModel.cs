@@ -37,6 +37,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private DateTimeOffset? _capturedAt; // staleness pour l'UI Phase 5
     [ObservableProperty] private bool _isStale;
 
+    // Anneau 24 h (JOUR-01/02) : fraction du jour local + resets 5 h projetés sur l'axe des 24 h.
+    // Recalculés à chaque Interpolate (rafraîchis chaque seconde). La couleur 24 h réutilisera
+    // FiveHour.Utilization côté XAML (JOUR-03, plan 02).
+    [ObservableProperty] private double _dayFraction;
+    [ObservableProperty] private System.Collections.Generic.IReadOnlyList<double> _dayResetAngles = System.Array.Empty<double>();
+
     // État reflété dans les items « à cocher » du menu (FEN-05 / DEP-02).
     [ObservableProperty] private bool _isBackground;
     [ObservableProperty] private bool _isAutostart;
@@ -93,6 +99,12 @@ public sealed partial class MainViewModel : ObservableObject
         FiveHour.Interpolate(now);
         SevenDay.Interpolate(now);
         IsStale = CapturedAt is { } c && (now - c) > TimeSpan.FromMinutes(2);
+
+        // JOUR-01/02 : timeline 24 h. now est UTC → convertir en heure locale pour lire minuit/le jour local.
+        // Les angles se calent sur le resets_at 5 h courant (converti local) ; vides si inconnu.
+        var localNow = now.ToLocalTime();
+        DayFraction = Rendering.DayTimeline.Fraction(localNow);
+        DayResetAngles = Rendering.DayTimeline.ResetAngles(localNow, _last?.FiveHour.ResetsAt?.ToLocalTime());
     }
 
     /// <summary>Démarre l'horloge UI 1 s (RAF-03). Créé côté UI UNIQUEMENT (jamais dans le ctor → Pitfall 4).</summary>

@@ -413,6 +413,37 @@ public class MainViewModelTests
         Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);        // …SANS écraser le coin du drag (GAP-1)
     }
 
+    // --- JOUR-01/02 : Interpolate pose DayFraction + DayResetAngles (angles vides si ResetsAt 5 h inconnu) ---
+
+    [Fact]
+    public void DayFraction_et_angles_poses_par_Interpolate()
+    {
+        var vm = NewVm(out _, out var clock, out _);
+
+        // FiveHour.ResetsAt connu → angles non vides ; DayFraction câblée sur l'heure locale de now.
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = Readable(WindowKind.FiveHour, Now, remaining: TimeSpan.FromHours(2)),
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+            SourceCapturedAt = Now,
+        });
+        vm.Interpolate(clock.UtcNow);
+
+        var localNow = clock.UtcNow.ToLocalTime();
+        Assert.Equal(Chronos.Rendering.DayTimeline.Fraction(localNow), vm.DayFraction, 9); // câblage exact
+        Assert.NotEmpty(vm.DayResetAngles);                                                 // resets projetés
+
+        // FiveHour Unavailable (ResetsAt null) → aucun angle (rien à projeter honnêtement).
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+            SourceCapturedAt = Now,
+        });
+        vm.Interpolate(clock.UtcNow);
+        Assert.Empty(vm.DayResetAngles);
+    }
+
     // --- INT-03 : à l'init, IsOAuthUsageEnabled reflète le setting (défaut true) ---
     [Fact]
     public void Initialisation_IsOAuthUsageEnabled_reflete_le_setting_par_defaut_true()
