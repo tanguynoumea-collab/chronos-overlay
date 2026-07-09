@@ -34,4 +34,10 @@ public sealed record ChronosSettings
 
     /// <summary>Ancre du recalibrage hebdomadaire best-effort (ROB-03). null = pas d'ancre.</summary>
     public DateTimeOffset? WeeklyAnchor { get; init; }
+
+    /// <summary>Plafond de tokens de la fenêtre 5 h (calibrable, Phase 9). null = pas de plafond → utilization estimée null.</summary>
+    public long? FiveHourTokenBudget { get; init; }
+
+    /// <summary>Plafond de tokens de la fenêtre hebdo (calibrable, Phase 9). null = pas de plafond → utilization estimée null.</summary>
+    public long? WeeklyTokenBudget { get; init; }
 }
