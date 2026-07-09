@@ -45,37 +45,38 @@
                  Fill="{StaticResource FondCadran}"
                  Stroke="{StaticResource Rim}" StrokeThickness="2"/>
 
-        <!-- Pistes (arcs pleins de fond), ordre centre → extérieur (VIS-02) :
-             hebdo (interne, R44) → 5 h (milieu, R58) → 24 h (externe, R72). -->
-        <ctrl:RingArc Fraction="1" Radius="44"
-                      Stroke="{StaticResource PisteHebdo}" StrokeThickness="9"/>
-        <ctrl:RingArc Fraction="1" Radius="58"
-                      Stroke="{StaticResource Piste5h}" StrokeThickness="9"/>
-        <ctrl:RingArc Fraction="1" Radius="72"
-                      Stroke="{StaticResource Piste24h}" StrokeThickness="9"/>
+        <!-- Pistes (arcs pleins de fond), ordre centre → extérieur (VIS-02). Deux jauges de quota
+             ÉPAISSES (hebdo R38, 5 h R54) bien séparées, puis un anneau timeline 24 h FIN (R70) qui
+             se lit comme un cadre de contexte distinct — évite le « bloc rouge » quand tout est saturé. -->
+        <ctrl:RingArc Fraction="1" Radius="38"
+                      Stroke="{StaticResource PisteHebdo}" StrokeThickness="8"/>
+        <ctrl:RingArc Fraction="1" Radius="54"
+                      Stroke="{StaticResource Piste5h}" StrokeThickness="8"/>
+        <ctrl:RingArc Fraction="1" Radius="70"
+                      Stroke="{StaticResource Piste24h}" StrokeThickness="4"/>
 
-        <!-- Arc valeur hebdo (interne, R44) : remplissage INVERSÉ (VIS-01) → FractionElapsed,
+        <!-- Arc valeur hebdo (interne, R38) : remplissage INVERSÉ (VIS-01) → FractionElapsed,
              se remplit à mesure qu'on approche du reset. Couleur = utilization hebdo. -->
-        <ctrl:RingArc x:Name="ArcHebdo" Radius="44" StrokeThickness="9"
+        <ctrl:RingArc x:Name="ArcHebdo" Radius="38" StrokeThickness="8"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding SevenDay.FractionElapsed}"
                       Stroke="{Binding SevenDay.Utilization, Converter={StaticResource UtilBrush}}"/>
 
-        <!-- Arc valeur 5 h (milieu, R58) : remplissage inversé (VIS-01) → FractionElapsed. -->
-        <ctrl:RingArc x:Name="ArcCinqHeures" Radius="58" StrokeThickness="9"
+        <!-- Arc valeur 5 h (milieu, R54) : remplissage inversé (VIS-01) → FractionElapsed. -->
+        <ctrl:RingArc x:Name="ArcCinqHeures" Radius="54" StrokeThickness="8"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding FiveHour.FractionElapsed}"
                       Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
 
-        <!-- Anneau timeline 24 h (externe, R72) : rempli selon la fraction du jour (JOUR-01),
-             couleur = utilization 5 h (JOUR-03, même rampe que l'anneau 5 h). -->
-        <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="72" StrokeThickness="9"
+        <!-- Anneau timeline 24 h (externe, R70, FIN) : rempli selon la fraction du jour (JOUR-01),
+             couleur = utilization 5 h (JOUR-03). Fin volontairement pour se distinguer des jauges. -->
+        <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="70" StrokeThickness="4"
                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                       Fraction="{Binding DayFraction}"
                       Stroke="{Binding FiveHour.Utilization, Converter={StaticResource UtilBrush}}"/>
 
         <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe de l'anneau 24 h. -->
-        <ctrl:TickRing Radius="76" TickLength="6"
+        <ctrl:TickRing Radius="74" TickLength="5"
                        Angles="{Binding DayResetAngles}"
                        Stroke="{StaticResource TickMajeur}" StrokeThickness="2"/>
 
@@ -86,12 +87,12 @@
                  ne s'affichent que si l'utilization est connue (honnêteté : rien si null). -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <TextBlock Text="{Binding FiveHour.CountdownText}"
-                           FontSize="18" FontWeight="SemiBold"
+                           FontSize="15" FontWeight="SemiBold"
                            Foreground="{StaticResource TextePrincipal}"/>
-                <TextBlock Text=" · " FontSize="18"
+                <TextBlock Text=" · " FontSize="15"
                            Visibility="{Binding FiveHour.HasUtilizationText, Converter={StaticResource BoolToVis}}"
                            Foreground="{StaticResource TexteSecondaire}"/>
-                <TextBlock Text="{Binding FiveHour.UtilizationText}" FontSize="18"
+                <TextBlock Text="{Binding FiveHour.UtilizationText}" FontSize="15"
                            Foreground="{StaticResource TexteSecondaire}"/>
             </StackPanel>
             <TextBlock x:Name="BadgeEstimeeCinqHeures" HorizontalAlignment="Center"
@@ -112,12 +113,12 @@
             <!-- Groupe hebdo : « countdown · % » (VIS-05), countdown en nuance secondaire claire #C7C6D0 -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
                 <TextBlock Text="{Binding SevenDay.CountdownText}"
-                           FontSize="12"
+                           FontSize="11"
                            Foreground="{StaticResource TexteSecondaireClair}"/>
-                <TextBlock Text=" · " FontSize="12"
+                <TextBlock Text=" · " FontSize="11"
                            Visibility="{Binding SevenDay.HasUtilizationText, Converter={StaticResource BoolToVis}}"
                            Foreground="{StaticResource TexteSecondaire}"/>
-                <TextBlock Text="{Binding SevenDay.UtilizationText}" FontSize="12"
+                <TextBlock Text="{Binding SevenDay.UtilizationText}" FontSize="11"
                            Foreground="{StaticResource TexteSecondaire}"/>
             </StackPanel>
             <TextBlock x:Name="BadgeEstimeeHebdo" HorizontalAlignment="Center"

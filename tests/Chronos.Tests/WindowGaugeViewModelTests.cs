@@ -118,6 +118,25 @@ public class WindowGaugeViewModelTests
         Assert.Equal(0.0, vm.FractionElapsed, 9);
     }
 
+    // --- VIS-01 (correctif) : reset INCONNU → arc VIDE (0), pas plein — sinon un « — » trompeur affiche un plein ---
+    [Fact]
+    public void Elapsed_reset_inconnu_est_vide_pas_plein()
+    {
+        var now = new DateTimeOffset(2026, 7, 9, 12, 0, 0, TimeSpan.Zero);
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Estimated,
+            ResetsAt = null, // reset inconnu (repli JSONL sans inférence) → countdown « — »
+        });
+        vm.Interpolate(now);
+
+        Assert.Equal("—", vm.CountdownText);
+        Assert.Equal(0.0, vm.FractionElapsed, 9); // arc VIDE, jamais plein
+    }
+
     // --- VIS-05 : UtilizationText + HasUtilizationText posés par Apply ---
 
     [Fact]

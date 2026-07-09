@@ -56,9 +56,12 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     /// <summary>PUR, aucun I/O (RAF-03) : recalcule fraction d'arc + compte à rebours à l'instant <paramref name="now"/>.</summary>
     public void Interpolate(DateTimeOffset now)
     {
-        FractionRemaining = WindowState.FractionRemaining(_state.ResetsAt, now, _windowLength) ?? 0.0;
+        var remaining = WindowState.FractionRemaining(_state.ResetsAt, now, _windowLength);
+        FractionRemaining = remaining ?? 0.0;
         // VIS-01 : inversion du remplissage — l'arc est VIDE en début de fenêtre, PLEIN au reset.
-        FractionElapsed = System.Math.Clamp(1.0 - FractionRemaining, 0.0, 1.0);
+        // Reset INCONNU (remaining null) → arc VIDE (0), jamais plein : on n'affiche pas un plein trompeur
+        // quand on ne connaît pas le temps (countdown « — »).
+        FractionElapsed = remaining is { } rem ? System.Math.Clamp(1.0 - rem, 0.0, 1.0) : 0.0;
         CountdownText = _state.ResetsAt is { } r
             ? CountdownFormatter.Format(r - now)
             : "—";
