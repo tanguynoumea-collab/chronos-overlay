@@ -40,4 +40,16 @@ public sealed record ChronosSettings
 
     /// <summary>Plafond de tokens de la fenêtre hebdo (calibrable, Phase 9). null = pas de plafond → utilization estimée null.</summary>
     public long? WeeklyTokenBudget { get; init; }
+
+    /// <summary>Provenance du plafond 5 h (None/Manual/Auto). Défaut None : la calibration auto peut écrire dessus.</summary>
+    public BudgetSource FiveHourBudgetSource { get; init; } = BudgetSource.None;
+
+    /// <summary>Horodatage de la dernière calibration du plafond 5 h. null = jamais calibré.</summary>
+    public DateTimeOffset? FiveHourBudgetCalibratedAt { get; init; }
+
+    /// <summary>Provenance du plafond hebdo (None/Manual/Auto). Défaut None : la calibration auto peut écrire dessus.</summary>
+    public BudgetSource WeeklyBudgetSource { get; init; } = BudgetSource.None;
+
+    /// <summary>Horodatage de la dernière calibration du plafond hebdo. null = jamais calibré.</summary>
+    public DateTimeOffset? WeeklyBudgetCalibratedAt { get; init; }
 }
