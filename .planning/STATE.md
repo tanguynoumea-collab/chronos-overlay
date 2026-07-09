@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: — Usage exact via l'endpoint OAuth
 status: verifying
 stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-07-09T08:18:19.416Z"
+last_updated: "2026-07-09T08:22:19.751Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Milestone: v1.2 — Usage exact via l'endpoint OAuth
-Phase: 10 (lecture-du-token-client-endpoint) — EXECUTING
-Plan: 2 of 2
+Phase: 11
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-09
 

@@ -73,5 +73,5 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 10. Lecture du token + client endpoint | 2/2 | Complete   | 2026-07-09 |
+| 10. Lecture du token + client endpoint | 2/2 | Complete    | 2026-07-09 |
 | 11. Intégration composite + réglage | 0/TBD | Not started | - |
