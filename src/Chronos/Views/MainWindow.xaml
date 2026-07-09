@@ -80,6 +80,12 @@
                        FontSize="10" Text="quota épuisé"
                        Visibility="{Binding FiveHour.Exhausted, Converter={StaticResource BoolToVis}}"
                        Foreground="{StaticResource TexteSecondaire}"/>
+            <!-- NET-02 : tokens estimés (matière première), texte discret, visible seulement si estimée -->
+            <TextBlock x:Name="TokensCinqHeures" HorizontalAlignment="Center"
+                       FontSize="9"
+                       Text="{Binding FiveHour.TokensText}"
+                       Visibility="{Binding FiveHour.HasTokens, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
 
             <!-- Groupe hebdo (countdown en nuance secondaire claire #C7C6D0) -->
             <TextBlock x:Name="TexteHebdo" HorizontalAlignment="Center" Margin="0,4,0,0"
@@ -93,6 +99,12 @@
             <TextBlock x:Name="TexteEpuiseHebdo" HorizontalAlignment="Center"
                        FontSize="10" Text="quota épuisé"
                        Visibility="{Binding SevenDay.Exhausted, Converter={StaticResource BoolToVis}}"
+                       Foreground="{StaticResource TexteSecondaire}"/>
+            <!-- NET-02 : tokens estimés hebdo, même traitement discret -->
+            <TextBlock x:Name="TokensHebdo" HorizontalAlignment="Center"
+                       FontSize="9"
+                       Text="{Binding SevenDay.TokensText}"
+                       Visibility="{Binding SevenDay.HasTokens, Converter={StaticResource BoolToVis}}"
                        Foreground="{StaticResource TexteSecondaire}"/>
 
             <!-- Mentions globales : staleness (texte secondaire) puis indisponible -->
