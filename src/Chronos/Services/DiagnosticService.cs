@@ -37,6 +37,20 @@ public sealed class DiagnosticService
         _clock = clock;
     }
 
+    /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
+    /// (log automatique et silencieux). Toute erreur est absorbée : ne doit jamais empêcher le lancement.</summary>
+    public async Task LogStartupAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var report = await BuildReportAsync(ct);
+            var dir = Path.GetDirectoryName(_paths.SettingsFile)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "chronos.log"), "(log automatique au démarrage)\n" + report);
+        }
+        catch { /* le log ne doit jamais casser le démarrage */ }
+    }
+
     /// <summary>Construit le rapport, l'écrit sur disque et l'ouvre. Toute erreur est absorbée
     /// (un diagnostic ne doit jamais planter l'app).</summary>
     public async Task RunAsync(CancellationToken ct = default)

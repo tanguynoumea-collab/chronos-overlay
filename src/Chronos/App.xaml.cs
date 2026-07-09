@@ -31,6 +31,10 @@ public partial class App : Application
 
         await _host.StartAsync();                    // charge initiale → atteint le VM (Post mis en file via BeginInvoke)
 
+        // Log automatique au démarrage (observabilité) : écrit %APPDATA%/Chronos/chronos.log avec l'état réel
+        // (token/OAuth/sources/plafonds). Fire-and-forget, ne bloque pas et ne peut pas casser le lancement.
+        _ = _host.Services.GetRequiredService<DiagnosticService>().LogStartupAsync();
+
         // Restauration AVANT Show (FEN-07) : on fournit l'état persisté à la fenêtre ; SourceInitialized
         // appliquera RestorePlacement (coin + device = vérité) avant le premier rendu → pas de flash.
         var settings = _host.Services.GetRequiredService<ChronosSettings>();
