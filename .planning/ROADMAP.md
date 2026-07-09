@@ -52,7 +52,7 @@ via le menu, la source OAuth n'accède jamais au token — Chronos retombe au co
   4. **Sécurité vérifiée par test** : le token en clair n'apparaît dans **aucun** log ni fichier (un test asserte que le lecteur ne persiste rien) ; le coffre est ouvert en **lecture seule** (aucune réécriture) ; le provider est asynchrone, respecte le CancellationToken, reste inerte hors ligne et n'impacte pas le tick 1 s d'interpolation (TOK-03, API-03).
 **Plans**: 2 plans
 Plans:
-- [ ] 10-01-PLAN.md — ClaudeTokenReader : déchiffrement DPAPI + AES-256-GCM v10 → champ `token` claude_code, tolérant, lecture seule prouvée (TOK-01/02/03)
+- [x] 10-01-PLAN.md — ClaudeTokenReader : déchiffrement DPAPI + AES-256-GCM v10 → champ `token` claude_code, tolérant, lecture seule prouvée (TOK-01/02/03)
 - [ ] 10-02-PLAN.md — ClaudeOAuthUsageProvider : GET /api/oauth/usage → UsageSnapshot Exact, tolérance erreurs, inertie token absent/expiré (API-01/02/03)
 
 ### Phase 11 : Intégration composite + réglage
@@ -73,5 +73,5 @@ Les phases s'exécutent dans l'ordre numérique : 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 10. Lecture du token + client endpoint | 0/2 | Planned | - |
+| 10. Lecture du token + client endpoint | 1/2 | In Progress|  |
 | 11. Intégration composite + réglage | 0/TBD | Not started | - |

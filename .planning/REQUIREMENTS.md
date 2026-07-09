@@ -15,12 +15,12 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 
 ### Lecture du token (TOK)
 
-- [ ] **TOK-01**: Un lecteur déchiffre le token OAuth : lit `config.json['oauth:tokenCache']` (base64 `v10`),
+- [x] **TOK-01**: Un lecteur déchiffre le token OAuth : lit `config.json['oauth:tokenCache']` (base64 `v10`),
   récupère la clé AES depuis `Local State['os_crypt']['encrypted_key']` (préfixe DPAPI → CryptUnprotectData),
   puis AES-256-GCM (nonce 12o + tag 16o) → JSON `{accessToken, refreshToken, expiresAt, ...}`.
-- [ ] **TOK-02**: Le lecteur est tolérant : fichier/clé absents, format inattendu, déchiffrement échoué →
+- [x] **TOK-02**: Le lecteur est tolérant : fichier/clé absents, format inattendu, déchiffrement échoué →
   retourne « pas de token » SANS exception (Chronos bascule alors sur les sources v1.0/v1.1).
-- [ ] **TOK-03**: Le token en clair n'est jamais logué, écrit, ni exposé (vérifiable : aucune trace du token
+- [x] **TOK-03**: Le token en clair n'est jamais logué, écrit, ni exposé (vérifiable : aucune trace du token
   dans les logs/fichiers ; test asserte que le lecteur ne persiste rien).
 
 ### Client endpoint (API)
@@ -54,9 +54,9 @@ Lecture SEULE du coffre (jamais de réécriture). Aucune dépendance à un secre
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| TOK-01 | Phase 10 | Pending |
-| TOK-02 | Phase 10 | Pending |
-| TOK-03 | Phase 10 | Pending |
+| TOK-01 | Phase 10 | Complete |
+| TOK-02 | Phase 10 | Complete |
+| TOK-03 | Phase 10 | Complete |
 | API-01 | Phase 10 | Pending |
 | API-02 | Phase 10 | Pending |
 | API-03 | Phase 10 | Pending |

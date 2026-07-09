@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: — Usage exact via l'endpoint OAuth
-status: planning
-stopped_at: Roadmap v1.2 créée (phases 10-11)
-last_updated: "2026-07-09T00:00:00.000Z"
+status: executing
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-07-09T08:12:14.249Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 10 — Lecture du token + client endpoint (la partie sensible, isolée et testée à fond)
+**Current focus:** Phase 10 — lecture-du-token-client-endpoint
 
 ## Current Position
 
 Milestone: v1.2 — Usage exact via l'endpoint OAuth
-Phase: 10
-Plan: Not started
-Status: Ready to plan
+Phase: 10 (lecture-du-token-client-endpoint) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 | 11 | 0/TBD | - | - |
 
 *Updated after each plan completion*
+| Phase 10 P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,7 @@ Contexte technique v1.0/v1.1 conditionnant v1.2 (v1.2 enrichit le composite, ne 
 - [v1.0/Phase 3]: CompositeUsageProvider bascule PAR FENÊTRE (Exact > Estimated > Unavailable) — v1.2 insère l'OAuth en tête de priorité Exact, devant le pont statusLine et le repli JSONL.
 - [v1.0/Phase 6]: SettingsService atomique + menu contextuel = seul point d'accès UI — v1.2 y ajoute le toggle « Usage exact (OAuth) ».
 - [source docs/data-sources.md]: le champ réel est `used_percentage` (0..100) et `resets_at` en epoch SECONDES ; normalisation `Utilization = used_percentage / 100` côté modèle. L'endpoint OAuth `/api/oauth/usage` renvoie la même structure `rate_limits.five_hour/seven_day` — mapping réutilisable.
+- [Phase 10]: ClaudeTokenReader : dechiffrement DPAPI + AES-256-GCM v10, coeur internal static testable, lecture seule prouvee (grep + snapshot), tolerance totale -> null
 
 ### Décisions v1.2 (roadmap)
 
@@ -78,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09
-Stopped at: Roadmap v1.2 créée (phases 10-11)
+Last session: 2026-07-09T08:12:14.245Z
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None
