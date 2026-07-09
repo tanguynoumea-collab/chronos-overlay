@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Estimation utile en mode app bureau
-status: verifying
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-07-09T05:38:41.726Z"
+status: executing
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-07-09T06:06:45.572Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 08 — inf-rence-des-fen-tres-estimation-depuis-jsonl
+**Current focus:** Phase 09 — calibration-des-plafonds-surfa-age
 
 ## Current Position
 
 Milestone: v1.1 — Estimation utile en mode app bureau
-Phase: 9
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 09 (calibration-des-plafonds-surfa-age) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0% (0/2 phases)
@@ -51,6 +51,7 @@ Progress: [░░░░░░░░░░] 0% (0/2 phases)
 *Updated after each plan completion*
 | Phase 08 P01 | 4 min | 3 tasks | 6 files |
 | Phase 08 P02 | 6 min | 2 tasks | 10 files |
+| Phase 09 P01 | 6 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Contexte technique v1.0 conditionnant v1.1 (v1.1 enrichit, ne réécrit pas) :
 - [Phase 08]: Algorithme « A » verrouillé : activité continue > 5 h ⇒ fenêtre 5 h inactive (null). Raffinement « B » différé v1.2, à valider empiriquement.
 - [Phase 08]: Repli JSONL enrichi : somme 5 h bornée à la fenêtre inférée [start, now] (ancien glissant brut retiré), utilization = tokens/plafond sans clamp haut (>=1 = gris épuisé déjà géré), SevenDay.ResetsAt laissé null (rempli par WeeklyRecalibration côté VM — EST-05 non régressé).
 - [Phase 08]: NET-01 soldé : IUsageProvider.SnapshotChanged et UsageSnapshot.Age retirés (dette DT-1/DT-2) ; RefreshOrchestrator.SnapshotChanged (event distinct) conservé. SettingsService injecté dans le provider (Load frais à chaque GetAsync) pour calibration Phase 9 sans redémarrage.
+- [Phase 09]: Calibrateur tokenSource = JsonlEstimationProvider concret (porte toujours EstimatedTokens), pas le composite
+- [Phase 09]: Priorité Manual > Auto/None : ApplyAuto n'écrase jamais une saisie manuelle
 
 ### Décisions v1.1 (roadmap)
 
@@ -82,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-09T05:33:26.708Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-07-09T06:06:35.316Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None

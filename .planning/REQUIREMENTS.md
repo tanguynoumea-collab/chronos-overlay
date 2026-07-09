@@ -27,18 +27,18 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 
 - [ ] **CAL-01**: Les plafonds (FiveHourTokenBudget, WeeklyTokenBudget) sont persistés dans settings.json
   et réglables via le menu contextuel (« Calibrer les plafonds… », dialogue minimal).
-- [ ] **CAL-02**: Calibration automatique opportuniste : quand un snapshot Exact (rate_limits réel) est
+- [x] **CAL-02**: Calibration automatique opportuniste : quand un snapshot Exact (rate_limits réel) est
   disponible avec used_percentage > 0 ET que des tokens JSONL sont mesurables sur la même fenêtre,
   Chronos mémorise le plafond déduit (tokens / (used_percentage/100)) dans settings.json — visible et
   modifiable par l'utilisateur, jamais silencieusement écrasé s'il a saisi une valeur manuelle plus récente.
-- [ ] **CAL-03**: Toute valeur issue d'un plafond calibré reste badgée « estimée » — seul un snapshot
+- [x] **CAL-03**: Toute valeur issue d'un plafond calibré reste badgée « estimée » — seul un snapshot
   Exact (rate_limits) supprime le badge.
 
 ### Nettoyage dette v1.0 (NET)
 
 - [x] **NET-01**: L'événement mort IUsageProvider.SnapshotChanged est retiré du contrat (DT-1) ; le champ
   UsageSnapshot.Age inutilisé est retiré ou consommé (DT-2).
-- [ ] **NET-02**: Les tokens estimés (EstimatedTokens) sont surfacés dans l'UI en texte secondaire discret
+- [x] **NET-02**: Les tokens estimés (EstimatedTokens) sont surfacés dans l'UI en texte secondaire discret
   quand la source est Estimated (DT-3) — l'utilisateur voit la matière première de l'estimation.
 
 ## Out of Scope (v1.1)
@@ -58,9 +58,9 @@ l'honnêteté : tout ce qui est inféré reste marqué « estimée ».
 | EST-05 | Phase 8 | Complete |
 | NET-01 | Phase 8 | Complete |
 | CAL-01 | Phase 9 | Pending |
-| CAL-02 | Phase 9 | Pending |
-| CAL-03 | Phase 9 | Pending |
-| NET-02 | Phase 9 | Pending |
+| CAL-02 | Phase 9 | Complete |
+| CAL-03 | Phase 9 | Complete |
+| NET-02 | Phase 9 | Complete |
 
 **Couverture : 10/10 requirements v1.1 mappés — aucun orphelin.**
 

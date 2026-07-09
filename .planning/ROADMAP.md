@@ -60,7 +60,7 @@ v1.1 enrichit, ne réécrit pas.
   3. Toute valeur dérivée d'un plafond calibré reste badgée « estimée » ; seul un snapshot Exact (rate_limits) supprime le badge.
   4. En source Estimated, les tokens estimés (EstimatedTokens) sont affichés en texte secondaire discret — l'utilisateur voit la matière première de l'estimation.
 **Plans**: 3 plans
-- [ ] 09-01-PLAN.md — Fondations neutres : méta source des plafonds + BudgetCalibration (déduction + priorité manuel/auto) + TokenFormatter fr + BudgetAutoCalibrator (CAL-02/CAL-03/NET-02)
+- [x] 09-01-PLAN.md — Fondations neutres : méta source des plafonds + BudgetCalibration (déduction + priorité manuel/auto) + TokenFormatter fr + BudgetAutoCalibrator (CAL-02/CAL-03/NET-02)
 - [ ] 09-02-PLAN.md — Calibration manuelle : dialogue plafonds + CalibrateBudgetsCommand (GAP-1) + RequestRefresh + câblage DI du calibrateur (CAL-01/CAL-02)
 - [ ] 09-03-PLAN.md — Surfaçage des tokens estimés : WindowGaugeViewModel.TokensText + TextBlocks discrets (NET-02)
 **UI hint**: yes
