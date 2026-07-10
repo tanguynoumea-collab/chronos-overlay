@@ -103,28 +103,39 @@ public class CompositionRootTests
     }
 
     /// <summary>
-    /// GARDE DI RÉELLE (Phase 13) — au-delà de `dotnet build`. Le conteneur miroir de
+    /// GARDE DI RÉELLE (Phase 13, étendue Phase 14) — au-delà de `dotnet build`. Le conteneur miroir de
     /// <see cref="Host_resout_et_dispose_les_singletons"/> n'inclut PAS la sous-chaîne bureau UIA :
     /// une DI mal ordonnée (SessionMonitor résolu sans DesktopUiaSessionSource enregistré) ou un service
     /// manquant (IUiaTreeProvider) COMPILERAIT et ne planterait qu'au DÉMARRAGE de l'app, pas au build.
     /// Ce test enregistre EXACTEMENT la sous-chaîne bureau telle qu'elle est câblée dans App.xaml.cs et
     /// prouve que <c>SessionMonitor</c> ET <c>DesktopUiaPollService</c> se résolvent sans exception
     /// (= graphe câblé dans le bon ordre). [Fact] simple : aucun besoin de STA/WPF (pas de MainWindow) —
-    /// construire WindowsUiaTreeProvider ne touche PAS l'UIA tant que TryGetTree n'est pas appelé.
+    /// construire WindowsUiaTreeProvider/WindowsForegroundWatch ne touche PAS l'OS tant que rien n'est appelé.
+    ///
+    /// Phase 14 : la garde couvre désormais aussi <c>TreatedStore</c>, <c>SessionTreatmentTracker</c> et
+    /// <c>IForegroundWatch</c> (focus premier-plan RÉEL injecté comme 7e param de <c>SessionMonitor</c>) —
+    /// attrape une DI mal ordonnée du câblage NET-02 qui ne planterait qu'au démarrage.
     /// </summary>
     [Fact]
     public void Le_graphe_DI_resout_les_services_bureau_UIA()
     {
         var services = new ServiceCollection();
 
-        // Sous-chaîne bureau EXACTEMENT comme dans App.xaml.cs (bloc « Widget de sessions ») :
+        // Sous-chaîne bureau EXACTEMENT comme dans App.xaml.cs (bloc « Source BUREAU (UIA) » + hystérésis) :
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton(_ => new ArchiveStore(
             System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosArch_" + System.Guid.NewGuid().ToString("N") + ".json")));
         services.AddSingleton<IUiaTreeProvider>(_ => new WindowsUiaTreeProvider());
         services.AddSingleton(sp => new DesktopUiaSessionSource(sp.GetRequiredService<IUiaTreeProvider>()));
+        services.AddSingleton(_ => new TreatedStore(
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosTreated_" + System.Guid.NewGuid().ToString("N") + ".json")));
+        services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
+        services.AddSingleton<IForegroundWatch>(_ => new WindowsForegroundWatch());
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
-            sp.GetRequiredService<DesktopUiaSessionSource>()));
+            sp.GetRequiredService<DesktopUiaSessionSource>(),
+            sp.GetRequiredService<TreatedStore>(),
+            sp.GetRequiredService<SessionTreatmentTracker>(),
+            sp.GetRequiredService<IForegroundWatch>()));
         services.AddSingleton(sp => new DesktopUiaPollService(
             sp.GetRequiredService<DesktopUiaSessionSource>(),
             sp.GetRequiredService<IClock>()));
