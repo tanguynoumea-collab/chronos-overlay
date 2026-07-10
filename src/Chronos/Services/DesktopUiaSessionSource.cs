@@ -36,6 +36,16 @@ public sealed class DesktopUiaSessionSource : ISessionSource
     private readonly IUiaTreeProvider _provider;
     private volatile IReadOnlyList<SessionSnapshot> _cache = Array.Empty<SessionSnapshot>();
 
+    /// <summary>Sessions vues RÉCEMMENT (clé → snapshot + horodatage de dernière vue). Touché UNIQUEMENT
+    /// par <see cref="Poll"/> (un seul thread de fond) → pas de verrou. Sert à garder une liste STABLE quand
+    /// l'utilisateur navigue entre les modes Claude (Home/Code) : l'arbre UIA n'expose QUE le mode courant,
+    /// donc sans accumulation la liste changerait à chaque changement d'interface.</summary>
+    private readonly Dictionary<string, (SessionSnapshot Snap, DateTimeOffset Seen)> _seen = new(StringComparer.Ordinal);
+
+    /// <summary>Durée de rétention d'une session non re-vue (au-delà → retirée). Assez long pour survivre à
+    /// une navigation entre modes, assez court pour ne pas garder indéfiniment une session terminée.</summary>
+    private static readonly TimeSpan RetentionWindow = TimeSpan.FromMinutes(3);
+
     /// <summary>Dernier état de santé du poll (diag/futur). WindowMissing ≠ AnchorMissing ≠ Ok.</summary>
     public DesktopHealth Health { get; private set; } = DesktopHealth.Unknown;
 
@@ -52,7 +62,21 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         {
             var tree = _provider.TryGetTree();
             Health = EvaluateHealth(tree);
-            _cache = MapTree(tree, now);
+
+            // Vue courante (mode Claude actuellement affiché) → mise à jour des sessions vues.
+            foreach (var s in MapTree(tree, now)) _seen[s.SessionId] = (s, now);
+
+            // Purge des sessions plus vues depuis > RetentionWindow.
+            foreach (var k in _seen.Where(kv => now - kv.Value.Seen > RetentionWindow).Select(kv => kv.Key).ToList())
+                _seen.Remove(k);
+
+            // Cache STABLE = sessions vues récemment. Celles NON re-vues à ce poll (navigation vers un autre
+            // mode) restent listées mais leur état passe à Unknown : on ne prétend pas connaître un état
+            // qu'on ne voit plus (honnêteté). Tri par fraîcheur (dernière vue).
+            _cache = _seen.Values
+                .OrderByDescending(v => v.Seen)
+                .Select(v => v.Seen == now ? v.Snap : v.Snap with { Activity = SessionActivity.Unknown })
+                .ToList();
         }
         catch
         {

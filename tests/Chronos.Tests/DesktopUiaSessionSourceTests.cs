@@ -299,6 +299,46 @@ public class DesktopUiaSessionSourceTests
         public UiaNode? TryGetTree() { Appels++; return _tree; }
     }
 
+    /// <summary>Faux provider dont l'arbre peut changer entre deux polls (simule la navigation entre modes).</summary>
+    private sealed class MutableTreeProvider : IUiaTreeProvider
+    {
+        public UiaNode? Tree;
+        public MutableTreeProvider(UiaNode? tree) => Tree = tree;
+        public UiaNode? TryGetTree() => Tree;
+    }
+
+    [Fact]
+    public void Poll_accumule_les_sessions_et_marque_indetermine_les_non_revues()
+    {
+        // La sidebar UIA ne montre que le mode courant → on accumule pour que la liste reste STABLE quand
+        // l'utilisateur navigue entre Home/Code. Une session plus vue passe à Unknown (honnêteté), pas retirée.
+        var t0 = Now;
+        var t1 = Now.AddSeconds(30);
+        var provider = new MutableTreeProvider(Fenetre(
+            FakeUiaNode("Text", "Mode chat"),
+            FakeUiaNode("Button", "En cours d'exécution alpha")));
+        var src = new DesktopUiaSessionSource(provider);
+        src.Poll(t0);
+
+        // Changement d'interface : la vue montre « beta », plus « alpha ».
+        provider.Tree = Fenetre(
+            FakeUiaNode("Text", "Mode chat"),
+            FakeUiaNode("Button", "En cours d'exécution beta"));
+        src.Poll(t1);
+
+        var snaps = src.Read(t1);
+        var alpha = snaps.SingleOrDefault(s => s.Project == "alpha");
+        var beta = snaps.SingleOrDefault(s => s.Project == "beta");
+        Assert.NotNull(alpha);                                    // alpha PERSISTE malgré la navigation
+        Assert.NotNull(beta);
+        Assert.Equal(SessionActivity.Unknown, alpha.Activity);   // plus vue → indéterminé
+        Assert.Equal(SessionActivity.Working, beta.Activity);    // vue courante → état réel
+
+        // Au-delà de la rétention (3 min) sans re-voir alpha → purgée.
+        src.Poll(Now.AddMinutes(5));
+        Assert.DoesNotContain(src.Read(Now.AddMinutes(5)), s => s.Project == "alpha");
+    }
+
     [Fact]
     public void Poll_racine_null_donne_Health_WindowMissing_et_cache_vide()
     {
