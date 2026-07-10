@@ -50,8 +50,8 @@ public sealed partial class SessionsViewModel : ObservableObject
     [ObservableProperty] private bool _hasWaiting;
     [ObservableProperty] private string _summary = "Aucune session";
 
-    private static readonly Brush Amber = Frozen("#E9A23C");   // à toi (permission/question)
-    private static readonly Brush Blue = Frozen("#5B8DEF");    // tour fini, à toi
+    private static readonly Brush Amber = Frozen("#E9A23C");   // EN ATTENTE (orange) : réflexion finie non
+                                                              // consultée (tour fini) OU attend une intervention
     private static readonly Brush Green = Frozen("#3FB98A");   // en cours
     private static readonly Brush Gray = Frozen("#7A7A85");    // inconnu/périmé
 
@@ -124,8 +124,8 @@ public sealed partial class SessionsViewModel : ObservableObject
 
     private static (string, Brush, bool) Describe(SessionActivity a) => a switch
     {
-        SessionActivity.WaitingAttention => ("à toi", Amber, true),
-        SessionActivity.WaitingTurn => ("tour fini", Blue, true),
+        SessionActivity.WaitingAttention => ("à toi", Amber, true),         // attend une intervention → orange
+        SessionActivity.WaitingTurn => ("tour fini", Amber, true),          // réflexion finie non consultée → orange
         SessionActivity.Working => ("en cours", Green, false),
         _ => ("inconnu", Gray, false),
     };
