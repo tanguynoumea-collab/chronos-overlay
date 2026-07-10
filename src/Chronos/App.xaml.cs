@@ -181,8 +181,17 @@ public partial class App : Application
         //   DesktopUiaSessionSource sont déclarés AVANT le SessionMonitor qui les consomme.
         services.AddSingleton<IUiaTreeProvider>(_ => new WindowsUiaTreeProvider());
         services.AddSingleton(sp => new DesktopUiaSessionSource(sp.GetRequiredService<IUiaTreeProvider>()));
+
+        // Hystérésis (Phase 14) : magasin RÉVERSIBLE des sessions traitées + détecteur STATEFUL. Déclarés AVANT
+        // le SessionMonitor qui les consomme. Le paramètre `foreground` n'est PAS fourni ici → branche NET-02
+        // dormante jusqu'au plan 02 (aucune régression : null = désactivé).
+        services.AddSingleton(_ => new TreatedStore());
+        services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
+
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
-            sp.GetRequiredService<DesktopUiaSessionSource>()));
+            sp.GetRequiredService<DesktopUiaSessionSource>(),
+            sp.GetRequiredService<TreatedStore>(),
+            sp.GetRequiredService<SessionTreatmentTracker>()));
         // Poll de fond : IHostedService démarré/arrêté par le host (comme RefreshOrchestrator). Le Timer .NET
         // remplit le cache de la source ~1,5 s sur un thread du pool → jamais le thread UI (ROB-07).
         services.AddSingleton(sp => new DesktopUiaPollService(
