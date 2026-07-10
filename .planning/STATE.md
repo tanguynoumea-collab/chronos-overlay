@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-status: "Roadmap prêt — en attente de `/gsd:plan-phase 13`"
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-07-10T12:29:25.782Z"
-last_activity: 2026-07-10 — Roadmap v1.4 créé (2 phases, 11 requirements mappés)
+status: "En cours — Plan 13-02 exécuté (WindowsUiaTreeProvider réel + poll de fond) ; suivant : 13-03 (câblage DI + SessionMonitor + affichage type)"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-07-10T12:37:04.170Z"
+last_activity: 2026-07-10 — Plan 13-02 exécuté (BUR-01, ROB-07 ; 4 tests neufs, suite verte 298)
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
 Phase: 13 — Source UIA app bureau (en cours)
-Plan: 13-01 terminé (1/3 plans de la phase)
-Status: En cours — Plan 13-01 exécuté (fondation testable) ; suivant : 13-02 (WindowsUiaTreeProvider réel + câblage)
-Last activity: 2026-07-10 — Plan 13-01 exécuté (BUR-02..05, ROB-06 ; 28 tests neufs, suite verte 294)
+Plan: 13-02 terminé (2/3 plans de la phase)
+Status: En cours — Plan 13-02 exécuté (WindowsUiaTreeProvider réel + poll de fond) ; suivant : 13-03 (câblage DI + SessionMonitor + affichage type)
+Last activity: 2026-07-10 — Plan 13-02 exécuté (BUR-01, ROB-07 ; 4 tests neufs, suite verte 298)
 
-Progress: [███░░░░░░░] 33% (1/3 plans, phase 13)
+Progress: [███████░░░] 67% (2/3 plans, phase 13)
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [███░░░░░░░] 33% (1/3 plans, phase 13)
 
 *Updated after each plan completion*
 | Phase 13 P01 | 6 | 3 tasks | 7 files |
+| Phase 13 P02 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,7 @@ Progress: [███░░░░░░░] 33% (1/3 plans, phase 13)
 
 - [v1.4/roadmap]: Phase 13 = BUR-01..05 + ROB-06 + ROB-07 (7 req) ; Phase 14 = NET-01..04 (4 req).
 - [v1.4/roadmap]: Les deux phases sont **UI hint: yes** (surface visuelle WPF du widget sessions).
+- [Phase 13]: [13-02] WindowsUiaTreeProvider propage AutomationId (dont l'ancre RootWebArea) → foreground reconnu en PROD, pas seulement en test. Assemblies UIA fournies implicitement par UseWPF (aucun <Reference>, 0 warning). Poll de fond via Timer .NET hors thread UI (ROB-07).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -108,6 +110,6 @@ Progress: [███░░░░░░░] 33% (1/3 plans, phase 13)
 
 ## Session Continuity
 
-Last session: 2026-07-10T12:29:25.778Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-07-10T12:35:16Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None

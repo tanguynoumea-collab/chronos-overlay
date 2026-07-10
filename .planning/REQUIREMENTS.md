@@ -13,7 +13,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 
 ### App bureau via UI Automation (BUR)
 
-- [ ] **BUR-01**: L'utilisateur voit dans le widget les sessions de l'**application de bureau** Claude
+- [x] **BUR-01**: L'utilisateur voit dans le widget les sessions de l'**application de bureau** Claude
   (en plus des sessions Claude Code CLI), détectées en lisant l'arbre UI Automation de la fenêtre Claude
   (`System.Windows.Automation` — interop COM managé, pas de dépendance native de rendu, pas d'admin).
 - [x] **BUR-02**: Chaque session bureau affiche un **état honnête** : en cours (bosse), tour fini
@@ -41,7 +41,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 - [x] **ROB-06**: La détection UIA **résiste aux changements de version** de l'app : matching souple par
   libellé (table fr/en, pas par `AutomationId` volatils), **test de santé au démarrage**, dégradation vers
   « indéterminé » plutôt que d'inventer un état ; aucune source indisponible ne provoque de crash.
-- [ ] **ROB-07**: La lecture UIA **ne bloque pas le thread UI** (lecture hors thread UI puis marshalling),
+- [x] **ROB-07**: La lecture UIA **ne bloque pas le thread UI** (lecture hors thread UI puis marshalling),
   cadence alignée sur le tick existant (~1-2 s), élément racine mis en cache.
 
 ## Future Requirements (différés)
@@ -62,7 +62,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| BUR-01 | Phase 13 | Pending |
+| BUR-01 | Phase 13 | Complete |
 | BUR-02 | Phase 13 | Complete |
 | BUR-03 | Phase 13 | Complete |
 | BUR-04 | Phase 13 | Complete |
@@ -72,7 +72,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 | NET-03 | Phase 14 | Pending |
 | NET-04 | Phase 14 | Pending |
 | ROB-06 | Phase 13 | Complete |
-| ROB-07 | Phase 13 | Pending |
+| ROB-07 | Phase 13 | Complete |
 
 **Couverture :** 11/11 requirements mappés · Phase 13 (7) + Phase 14 (4) · aucun orphelin, aucun doublon.
 
