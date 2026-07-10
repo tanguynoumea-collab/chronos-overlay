@@ -90,7 +90,7 @@ sessions existantes (`SessionSnapshot`, `SessionMonitor`, `SessionsViewModel`) l
      UIA se fait hors thread UI puis marshalée, à la cadence du tick existant (~1-2 s), sans figer
      l'overlay (ROB-06, ROB-07).
 **Plans**: 3 plans
-- [ ] 13-01-PLAN.md — Modèle étendu (Kind/Origin) + seams neutres (UiaNode, IUiaTreeProvider, ISessionSource) + UiaLabels fr/en + DesktopUiaSessionSource.MapTree pur, testé par faux arbre
+- [x] 13-01-PLAN.md — Modèle étendu (Kind/Origin) + seams neutres (UiaNode, IUiaTreeProvider, ISessionSource) + UiaLabels fr/en + DesktopUiaSessionSource.MapTree pur, testé par faux arbre
 - [ ] 13-02-PLAN.md — WindowsUiaTreeProvider réel (System.Windows.Automation, racine cachée) + DesktopUiaPollService (poll de fond non bloquant)
 - [ ] 13-03-PLAN.md — Fusion dans SessionMonitor + câblage DI (App.xaml.cs) + affichage du type dans le widget
 **UI hint**: yes
@@ -129,5 +129,5 @@ Phase 13 → Phase 14 (dépendance forte : la source UIA avant l'hystérésis fo
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 13. Source UIA app bureau | 0/3 | Not started | - |
+| 13. Source UIA app bureau | 1/3 | In Progress|  |
 | 14. Auto-disparition hystérésis des sessions traitées | 0/TBD | Not started | - |

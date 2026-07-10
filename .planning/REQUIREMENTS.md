@@ -16,13 +16,13 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 - [ ] **BUR-01**: L'utilisateur voit dans le widget les sessions de l'**application de bureau** Claude
   (en plus des sessions Claude Code CLI), détectées en lisant l'arbre UI Automation de la fenêtre Claude
   (`System.Windows.Automation` — interop COM managé, pas de dépendance native de rendu, pas d'admin).
-- [ ] **BUR-02**: Chaque session bureau affiche un **état honnête** : en cours (bosse), tour fini
+- [x] **BUR-02**: Chaque session bureau affiche un **état honnête** : en cours (bosse), tour fini
   (attend ton message), attend une permission, ou indéterminé — jamais un état certain quand il est inféré.
-- [ ] **BUR-03**: Le widget **distingue le type** de session bureau : Chat, Code, Cowork
+- [x] **BUR-03**: Le widget **distingue le type** de session bureau : Chat, Code, Cowork
   (via les libellés/affordances de l'arbre : « Mode chat », onglets Home/Code, panneaux Terminal/Diff/Cowork).
-- [ ] **BUR-04**: Les **sessions agentiques actives** listées dans la barre latérale de l'app (marqueur
+- [x] **BUR-04**: Les **sessions agentiques actives** listées dans la barre latérale de l'app (marqueur
   « En cours d'exécution ») sont énumérées, pas seulement la conversation au premier plan.
-- [ ] **BUR-05**: Une session **Cowork en VM distante** est marquée « indéterminé » et jamais présentée
+- [x] **BUR-05**: Une session **Cowork en VM distante** est marquée « indéterminé » et jamais présentée
   comme un état d'exécution certain — son exécution n'est pas observable localement (honnêteté).
 
 ### Auto-disparition des sessions traitées (NET)
@@ -38,7 +38,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 
 ### Robustesse & threading (ROB)
 
-- [ ] **ROB-06**: La détection UIA **résiste aux changements de version** de l'app : matching souple par
+- [x] **ROB-06**: La détection UIA **résiste aux changements de version** de l'app : matching souple par
   libellé (table fr/en, pas par `AutomationId` volatils), **test de santé au démarrage**, dégradation vers
   « indéterminé » plutôt que d'inventer un état ; aucune source indisponible ne provoque de crash.
 - [ ] **ROB-07**: La lecture UIA **ne bloque pas le thread UI** (lecture hors thread UI puis marshalling),
@@ -63,15 +63,15 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
 | BUR-01 | Phase 13 | Pending |
-| BUR-02 | Phase 13 | Pending |
-| BUR-03 | Phase 13 | Pending |
-| BUR-04 | Phase 13 | Pending |
-| BUR-05 | Phase 13 | Pending |
+| BUR-02 | Phase 13 | Complete |
+| BUR-03 | Phase 13 | Complete |
+| BUR-04 | Phase 13 | Complete |
+| BUR-05 | Phase 13 | Complete |
 | NET-01 | Phase 14 | Pending |
 | NET-02 | Phase 14 | Pending |
 | NET-03 | Phase 14 | Pending |
 | NET-04 | Phase 14 | Pending |
-| ROB-06 | Phase 13 | Pending |
+| ROB-06 | Phase 13 | Complete |
 | ROB-07 | Phase 13 | Pending |
 
 **Couverture :** 11/11 requirements mappés · Phase 13 (7) + Phase 14 (4) · aucun orphelin, aucun doublon.
