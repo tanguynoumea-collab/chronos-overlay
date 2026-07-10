@@ -82,12 +82,15 @@ public sealed class DesktopUiaSessionSource : ISessionSource
     {
         if (root is null) return Array.Empty<SessionSnapshot>();
 
-        var all = Descendants(root).ToList();
-
-        // a. ANCRE : le foreground n'est exploitable que si l'ancre RootWebArea (AutomationId) est présente.
-        //    Ancre absente → liste vide (le repli tracé Health=AnchorMissing est posé par Poll/EvaluateHealth).
-        if (!all.Any(n => string.Equals(n.AutomationId, AnchorAutomationId, StringComparison.Ordinal)))
+        // a. ANCRE (sur l'arbre COMPLET — contrôle structurel) : le foreground n'est exploitable que si
+        //    l'ancre RootWebArea (AutomationId) est présente. Absente → liste vide (Health=AnchorMissing).
+        if (!Descendants(root).Any(n => string.Equals(n.AutomationId, AnchorAutomationId, StringComparison.Ordinal)))
             return Array.Empty<SessionSnapshot>();
+
+        // Matching des libellés UNIQUEMENT sur les nœuds de CONTRÔLE : le sous-arbre « Messages de la
+        // conversation » est EXCLU (son texte pollue type/état/nom — une conversation peut mentionner
+        // « Mode chat », « Contrôle à distance »…). Les vrais contrôles (composition, en-tête, sidebar) restent.
+        var all = ControlNodes(root).ToList();
 
         var result = new List<SessionSnapshot>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -191,6 +194,7 @@ public sealed class DesktopUiaSessionSource : ISessionSource
     /// repo est le PREMIER bouton du groupe, l'ordre compte). Tolérant : enfants null ignorés.</summary>
     private static UiaNode? FirstDescendant(UiaNode node, Func<UiaNode, bool> pred)
     {
+        if (UiaLabels.Matches(node.Name, UiaLabels.MessagesContainer)) return null; // exclure les messages
         if (pred(node)) return node;
         if (node.Children is null) return null;
         foreach (var c in node.Children)
@@ -217,5 +221,21 @@ public sealed class DesktopUiaSessionSource : ISessionSource
             foreach (var c in n.Children)
                 if (c is not null) stack.Push(c);
         }
+    }
+
+    /// <summary>Nœuds de CONTRÔLE : tout l'arbre SAUF le sous-arbre du conteneur de messages
+    /// (<see cref="UiaLabels.MessagesContainer"/>), dont le texte pollue le matching des libellés. On ne
+    /// descend JAMAIS dans ce conteneur. Le reste (barre de composition, en-tête « Volet principal »,
+    /// sidebar) est conservé.</summary>
+    private static IEnumerable<UiaNode> ControlNodes(UiaNode node)
+    {
+        if (UiaLabels.Matches(node.Name, UiaLabels.MessagesContainer))
+            yield break; // pruner : ne pas descendre dans la liste de messages
+        yield return node;
+        if (node.Children is null) yield break;
+        foreach (var c in node.Children)
+            if (c is not null)
+                foreach (var d in ControlNodes(c))
+                    yield return d;
     }
 }

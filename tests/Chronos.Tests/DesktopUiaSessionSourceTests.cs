@@ -266,6 +266,29 @@ public class DesktopUiaSessionSourceTests
         Assert.Contains(sidebar, s => s.Project == "Autre session");
     }
 
+    [Fact]
+    public void MapTree_ignore_les_libelles_dans_le_contenu_des_messages()
+    {
+        // Anti-pollution (validé app réelle 2026-07-10) : une conversation qui MENTIONNE les libellés ne
+        // doit pas fausser la détection. Ici tous les signaux sont du TEXTE sous « Messages de la
+        // conversation » (contenu de messages), pas de vrai contrôle → rien ne doit être inféré, et même
+        // un bouton « En cours d'exécution » sous les messages ne crée AUCUNE session fantôme.
+        var arbre = Fenetre(
+            FakeUiaNode("Group", "Messages de la conversation",
+                FakeUiaNode("Text", "Contrôle à distance"),
+                FakeUiaNode("Text", "Mode chat"),
+                FakeUiaNode("Text", "Arrêter"),
+                FakeUiaNode("Text", "Tapez / pour les commandes"),
+                FakeUiaNode("Button", "En cours d'exécution fantôme"),
+                FakeUiaNode("Group", "Volet principal", FakeUiaNode("Button", "faux-repo"))));
+        var snaps = DesktopUiaSessionSource.MapTree(arbre, Now);
+        var fg = Assert.Single(snaps);                          // seul le foreground, aucune session fantôme
+        Assert.Equal(SessionKind.Unknown, fg.Kind);            // « Contrôle à distance » n'était que du texte
+        Assert.Equal(SessionActivity.Unknown, fg.Activity);    // « Arrêter »/« Mode chat » ignorés
+        Assert.Equal("(sans titre)", fg.Project);              // « Volet principal » sous messages ignoré
+        Assert.DoesNotContain(snaps, s => s.Project == "fantôme");
+    }
+
     // ================= Task 3 : santé / repli tracé (Poll) =================
 
     private sealed class FakeTreeProvider : IUiaTreeProvider

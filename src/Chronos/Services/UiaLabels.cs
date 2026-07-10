@@ -40,6 +40,12 @@ public static class UiaLabels
     /// <summary>Pont VM Cowork : sa présence signale une session Cowork (état d'exécution NON connu localement).</summary>
     public static readonly string[] RemoteControl = { "Contrôle à distance", "Remote control" };
 
+    /// <summary>Conteneur de la LISTE DE MESSAGES (« Messages de la conversation »). Son sous-arbre est
+    /// EXCLU du matching : le TEXTE des messages peut mentionner n'importe quel libellé (« Mode chat »,
+    /// « Contrôle à distance »…) et fausserait type/état/nom. On ne cherche les signaux que dans les
+    /// zones de CONTRÔLE (barre de composition, en-tête, sidebar) — validé app réelle le 2026-07-10.</summary>
+    public static readonly string[] MessagesContainer = { "Messages de la conversation", "Conversation messages" };
+
     /// <summary>En-tête de session au premier plan (« Volet principal ») : son PREMIER bouton porte le
     /// TITRE/nom de la session (ex. « Untitled » si non titrée, sinon le titre, ou le repo/workspace).
     /// Ancre STABLE validée app réelle le 2026-07-10 (prof. ~13) — contrairement au groupe « Contrôles du
