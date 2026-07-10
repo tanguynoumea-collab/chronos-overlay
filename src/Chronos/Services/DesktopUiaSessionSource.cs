@@ -29,8 +29,9 @@ public sealed class DesktopUiaSessionSource : ISessionSource
     /// n'est PAS un identifiant volatil « base-ui-_r_XXX_ ».</summary>
     private const string AnchorAutomationId = "RootWebArea";
 
-    /// <summary>Libellé lisible de la conversation au premier plan (titre fenêtre = « Claude », non fiable).</summary>
-    private const string ForegroundProject = "Claude (bureau)";
+    /// <summary>Nom de repli du foreground quand aucun repo/workspace n'est lisible (titre fenêtre = « Claude »,
+    /// non fiable ; le titre de conversation n'est pas exposé de façon stable — repli honnête).</summary>
+    private const string ForegroundFallbackName = "(sans titre)";
 
     private readonly IUiaTreeProvider _provider;
     private volatile IReadOnlyList<SessionSnapshot> _cache = Array.Empty<SessionSnapshot>();
@@ -101,14 +102,18 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         // d. COWORK VM (BUR-05) : sa présence est signalée, son exécution distante N'est PAS connue → Unknown forcé.
         if (kind == SessionKind.Cowork) activity = SessionActivity.Unknown;
 
-        // e. Snapshot foreground, clé synthétique stable desktop:foreground:<kind>.
+        // e. Snapshot foreground, clé synthétique stable desktop:foreground:<kind>. NOM : repo/workspace
+        //    (groupe « Contrôles du dépôt et des pull requests ») → sinon « (sans titre) » (ex. session Chat).
+        var fgName = ForegroundName(root);
         var fgKey = $"desktop:foreground:{KindSlug(kind)}";
         if (seen.Add(fgKey))
-            result.Add(new SessionSnapshot(fgKey, ForegroundProject, activity, null, now, kind, SessionOrigin.Desktop));
+            result.Add(new SessionSnapshot(fgKey, fgName, activity, null, now, kind, SessionOrigin.Desktop));
 
-        // f. SIDEBAR (BUR-04) : chaque bouton « En cours d'exécution <nom> » = 1 session active nommée.
-        //    Les boutons SANS ce préfixe ne produisent RIEN. Kind hérité du foreground (ou Code par défaut agentique).
-        var sidebarKind = kind == SessionKind.Unknown ? SessionKind.Code : kind;
+        // f. SIDEBAR (BUR-04) : chaque bouton « En cours d'exécution <nom> » = 1 session active NOMMÉE.
+        //    Les boutons SANS ce préfixe ne produisent RIEN. Type par entrée non exposé → best-effort :
+        //    Cowork si l'app est bridgée (RemoteControl présent = pont VM), sinon Code (agentique local).
+        var bridged = all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.RemoteControl));
+        var sidebarKind = bridged ? SessionKind.Cowork : SessionKind.Code;
         foreach (var n in all)
         {
             if (!string.Equals(n.ControlType, "Button", StringComparison.OrdinalIgnoreCase)) continue;
@@ -160,6 +165,42 @@ public sealed class DesktopUiaSessionSource : ISessionSource
 
     private static bool HasAnchor(UiaNode root)
         => Descendants(root).Any(n => string.Equals(n.AutomationId, AnchorAutomationId, StringComparison.Ordinal));
+
+    /// <summary>Nom du foreground : repo/workspace (PREMIER bouton sous le groupe « Contrôles du dépôt et
+    /// des pull requests », présent pour les sessions agentiques) → sinon <see cref="ForegroundFallbackName"/>.
+    /// Le titre de conversation n'étant pas exposé de façon fiable, on ne l'invente pas.</summary>
+    private static string ForegroundName(UiaNode root)
+    {
+        var group = FirstDescendant(root, n =>
+            string.Equals(n.ControlType, "Group", StringComparison.OrdinalIgnoreCase)
+            && UiaLabels.Matches(n.Name, UiaLabels.RepoControlsGroup));
+
+        if (group is not null)
+        {
+            var repo = FirstDescendant(group, n =>
+                string.Equals(n.ControlType, "Button", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(n.Name));
+            if (repo is not null) return repo.Name.Trim();
+        }
+
+        return ForegroundFallbackName;
+    }
+
+    /// <summary>Premier nœud (racine incluse) satisfaisant <paramref name="pred"/>, en ORDRE DOCUMENT
+    /// (contrairement à <see cref="Descendants"/> qui, via une pile, inverse l'ordre des frères — le nom du
+    /// repo est le PREMIER bouton du groupe, l'ordre compte). Tolérant : enfants null ignorés.</summary>
+    private static UiaNode? FirstDescendant(UiaNode node, Func<UiaNode, bool> pred)
+    {
+        if (pred(node)) return node;
+        if (node.Children is null) return null;
+        foreach (var c in node.Children)
+        {
+            if (c is null) continue;
+            var found = FirstDescendant(c, pred);
+            if (found is not null) return found;
+        }
+        return null;
+    }
 
     private static string KindSlug(SessionKind kind) => kind.ToString().ToLowerInvariant();
 

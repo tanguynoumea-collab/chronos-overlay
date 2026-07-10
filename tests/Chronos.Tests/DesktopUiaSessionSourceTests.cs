@@ -224,6 +224,49 @@ public class DesktopUiaSessionSourceTests
         Assert.DoesNotContain(snaps, s => s.Project == "projet-inactif");
     }
 
+    // ================= Nommage foreground + typage sidebar (test app-réelle 2026-07-10) =================
+
+    [Fact]
+    public void MapTree_foreground_nomme_par_le_repo_workspace()
+    {
+        // Le nom du foreground vient du 1er bouton sous le groupe « Contrôles du dépôt et des pull requests ».
+        var arbre = Fenetre(
+            FakeUiaNode("Button", "Terminal"), // → Code
+            FakeUiaNode("Group", "Contrôles du dépôt et des pull requests",
+                FakeUiaNode("Button", "chronos-overlay"),
+                FakeUiaNode("Button", "main")));
+        var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
+        Assert.Equal("chronos-overlay", fg.Project);
+        Assert.Equal(SessionKind.Code, fg.Kind);
+    }
+
+    [Fact]
+    public void MapTree_foreground_sans_repo_retombe_sur_sans_titre()
+    {
+        var arbre = Fenetre(
+            FakeUiaNode("Text", "Mode chat"),
+            FakeUiaNode("Text", "Tapez / pour les commandes"));
+        var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
+        Assert.Equal("(sans titre)", fg.Project);
+        Assert.Equal(SessionKind.Chat, fg.Kind);
+    }
+
+    [Fact]
+    public void MapTree_sessions_sidebar_typees_Cowork_si_app_bridgee()
+    {
+        // App bridgée (« Contrôle à distance » = pont VM) → les sessions en cours sont typées Cowork ; nommées.
+        var arbre = Fenetre(
+            FakeUiaNode("Button", "Contrôle à distance"),
+            FakeUiaNode("Button", "En cours d'exécution Ma tâche agent"),
+            FakeUiaNode("Button", "En cours d'exécution Autre session"));
+        var sidebar = DesktopUiaSessionSource.MapTree(arbre, Now)
+            .Where(s => !s.SessionId.StartsWith("desktop:foreground:")).ToList();
+        Assert.Equal(2, sidebar.Count);
+        Assert.All(sidebar, s => Assert.Equal(SessionKind.Cowork, s.Kind));
+        Assert.Contains(sidebar, s => s.Project == "Ma tâche agent");
+        Assert.Contains(sidebar, s => s.Project == "Autre session");
+    }
+
     // ================= Task 3 : santé / repli tracé (Poll) =================
 
     private sealed class FakeTreeProvider : IUiaTreeProvider
