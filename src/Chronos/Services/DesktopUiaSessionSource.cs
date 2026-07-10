@@ -70,12 +70,13 @@ public sealed class DesktopUiaSessionSource : ISessionSource
             foreach (var k in _seen.Where(kv => now - kv.Value.Seen > RetentionWindow).Select(kv => kv.Key).ToList())
                 _seen.Remove(k);
 
-            // Cache STABLE = sessions vues récemment. Celles NON re-vues à ce poll (navigation vers un autre
-            // mode) restent listées mais leur état passe à Unknown : on ne prétend pas connaître un état
-            // qu'on ne voit plus (honnêteté). Tri par fraîcheur (dernière vue).
+            // Cache STABLE = sessions vues récemment, avec leur DERNIER état connu conservé (on ne bascule
+            // PAS vers Unknown quand un autre mode est affiché : ce serait un clignotement d'état à chaque
+            // navigation). La fraîcheur est portée par UpdatedAt (« il y a X min ») ; au-delà de
+            // RetentionWindow la session est purgée. Cohérent avec la péremption des sessions par hooks.
             _cache = _seen.Values
                 .OrderByDescending(v => v.Seen)
-                .Select(v => v.Seen == now ? v.Snap : v.Snap with { Activity = SessionActivity.Unknown })
+                .Select(v => v.Snap)
                 .ToList();
         }
         catch

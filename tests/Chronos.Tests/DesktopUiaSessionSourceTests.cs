@@ -308,10 +308,11 @@ public class DesktopUiaSessionSourceTests
     }
 
     [Fact]
-    public void Poll_accumule_les_sessions_et_marque_indetermine_les_non_revues()
+    public void Poll_accumule_les_sessions_en_gardant_leur_dernier_etat_connu()
     {
         // La sidebar UIA ne montre que le mode courant → on accumule pour que la liste reste STABLE quand
-        // l'utilisateur navigue entre Home/Code. Une session plus vue passe à Unknown (honnêteté), pas retirée.
+        // l'utilisateur navigue entre Home/Code. Une session plus vue GARDE son dernier état connu (pas de
+        // clignotement vers Unknown) ; sa fraîcheur est portée par UpdatedAt (dernière vue).
         var t0 = Now;
         var t1 = Now.AddSeconds(30);
         var provider = new MutableTreeProvider(Fenetre(
@@ -331,8 +332,10 @@ public class DesktopUiaSessionSourceTests
         var beta = snaps.SingleOrDefault(s => s.Project == "beta");
         Assert.NotNull(alpha);                                    // alpha PERSISTE malgré la navigation
         Assert.NotNull(beta);
-        Assert.Equal(SessionActivity.Unknown, alpha.Activity);   // plus vue → indéterminé
-        Assert.Equal(SessionActivity.Working, beta.Activity);    // vue courante → état réel
+        Assert.Equal(SessionActivity.Working, alpha.Activity);   // dernier état connu CONSERVÉ (pas de flip)
+        Assert.Equal(t0, alpha.UpdatedAt);                       // fraîcheur : vue à t0 (« il y a … »)
+        Assert.Equal(SessionActivity.Working, beta.Activity);    // vue courante
+        Assert.Equal(t1, beta.UpdatedAt);
 
         // Au-delà de la rétention (3 min) sans re-voir alpha → purgée.
         src.Poll(Now.AddMinutes(5));
