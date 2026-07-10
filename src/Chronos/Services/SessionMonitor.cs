@@ -25,13 +25,18 @@ public sealed class SessionMonitor
     private readonly string _dir;
     private readonly TranscriptSessionSource _transcripts;
     private readonly ArchiveStore _archive;
+    private readonly ISessionSource? _desktop;
 
-    public SessionMonitor(string? sessionsDir = null, TranscriptSessionSource? transcripts = null, ArchiveStore? archive = null)
+    // Le paramètre `desktop` est AJOUTÉ EN FIN avec une valeur par défaut nulle → tous les appels
+    // existants (App.xaml.cs, tests) restent valides (non cassant). Quand il est fourni, la source
+    // BUREAU (UIA) est fusionnée dans Read APRÈS transcripts + hooks.
+    public SessionMonitor(string? sessionsDir = null, TranscriptSessionSource? transcripts = null, ArchiveStore? archive = null, ISessionSource? desktop = null)
     {
         _dir = sessionsDir ?? Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
         _transcripts = transcripts ?? new TranscriptSessionSource();
         _archive = archive ?? new ArchiveStore();
+        _desktop = desktop;
     }
 
     public string Directory => _dir;
@@ -64,6 +69,18 @@ public sealed class SessionMonitor
         {
             var snap = TryRead(f, now);
             if (snap is not null) byId[snap.SessionId] = snap;
+        }
+
+        // 2.b) Source BUREAU (UIA) : clés synthétiques `desktop:...` disjointes des session_id JSONL → fusion
+        //      additive ; lecture NON bloquante (rend le cache du poll de fond, ROB-07). Une source bureau
+        //      ne doit JAMAIS casser la lecture → try/catch tolérant (dégradation silencieuse).
+        if (_desktop is not null)
+        {
+            try
+            {
+                foreach (var d in _desktop.Read(now)) byId[d.SessionId] = d;
+            }
+            catch { /* la source bureau ne casse jamais le pipeline des sessions CLI */ }
         }
 
         // 3) Retirer les sessions ARCHIVÉES par l'utilisateur.

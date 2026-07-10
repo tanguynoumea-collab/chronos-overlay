@@ -209,6 +209,78 @@ public class SessionsTests
         finally { Directory.Delete(hookDir, true); }
     }
 
+    // Faux ISessionSource : rend une liste FIXE de snapshots (simule le cache de la source bureau UIA,
+    // sans aucune fenêtre Claude ni dépendance UIA). Sert à prouver la fusion dans SessionMonitor.
+    private sealed class FakeSessionSource : ISessionSource
+    {
+        private readonly IReadOnlyList<SessionSnapshot> _snaps;
+        public FakeSessionSource(params SessionSnapshot[] snaps) => _snaps = snaps;
+        public IReadOnlyList<SessionSnapshot> Read(DateTimeOffset now) => _snaps;
+    }
+
+    [Fact]
+    public void Monitor_fusionne_la_source_bureau_avec_les_sessions_cli()
+    {
+        var hookDir = TempDir();
+        var projRoot = TempDir();
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            // 1 session CLI (transcript, Working) + 1 session BUREAU (clé desktop:..., WaitingTurn, Kind=Chat).
+            WriteTranscript(projRoot, "cli-1", new[] { CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
+            var bureau = new FakeSessionSource(new SessionSnapshot(
+                "desktop:foreground:chat", "Claude (bureau)", SessionActivity.WaitingTurn, null, now,
+                SessionKind.Chat, SessionOrigin.Desktop));
+
+            var monitor = new SessionMonitor(hookDir, new TranscriptSessionSource(projRoot),
+                new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
+            var snaps = monitor.Read(now).ToDictionary(s => s.SessionId);
+
+            // LES DEUX présentes, la session CLI inchangée.
+            Assert.Equal(2, snaps.Count);
+            Assert.Equal(SessionActivity.Working, snaps["cli-1"].Activity);
+            Assert.Equal(SessionOrigin.Cli, snaps["cli-1"].Origin);
+            var d = snaps["desktop:foreground:chat"];
+            Assert.Equal(SessionActivity.WaitingTurn, d.Activity);
+            Assert.Equal(SessionKind.Chat, d.Kind);
+            Assert.Equal(SessionOrigin.Desktop, d.Origin);
+        }
+        finally { Directory.Delete(hookDir, true); Directory.Delete(projRoot, true); }
+    }
+
+    [Fact]
+    public void Monitor_sans_source_bureau_ne_regresse_pas()
+    {
+        // desktop = null (défaut) → comportement identique à aujourd'hui (sessions CLI seules), aucun crash.
+        var projRoot = TempDir();
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            WriteTranscript(projRoot, "cli-only", new[] { CwdLine, AssistantEndTurn }, TimeSpan.FromMinutes(1));
+            var snaps = new SessionMonitor(TempDir(), new TranscriptSessionSource(projRoot)).Read(now);
+            Assert.Single(snaps);
+            Assert.Equal("cli-only", snaps[0].SessionId);
+        }
+        finally { Directory.Delete(projRoot, true); }
+    }
+
+    [Fact]
+    public void Monitor_archive_une_session_bureau()
+    {
+        // Les clés desktop:... sont archivables comme les autres (le filtre archived s'applique à l'ensemble fusionné).
+        var now = DateTimeOffset.UtcNow;
+        var archPath = Path.Combine(TempDir(), "archived.json");
+        var bureau = new FakeSessionSource(new SessionSnapshot(
+            "desktop:foreground:code", "Claude (bureau)", SessionActivity.Working, null, now,
+            SessionKind.Code, SessionOrigin.Desktop));
+        var archive = new ArchiveStore(archPath);
+        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()), archive, bureau);
+
+        Assert.Single(monitor.Read(now));
+        archive.Add("desktop:foreground:code");
+        Assert.Empty(monitor.Read(now));
+    }
+
     [Fact]
     public void Monitor_lit_les_sessions_et_applique_la_staleness()
     {
