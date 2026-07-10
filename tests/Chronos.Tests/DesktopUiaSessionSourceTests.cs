@@ -126,18 +126,16 @@ public class DesktopUiaSessionSourceTests
     }
 
     [Fact]
-    public void MapTree_type_Cowork_prime_sur_ChatMode_co_present()
+    public void MapTree_foreground_Cowork_non_emis_car_etat_VM_non_observable()
     {
-        // Régression (validé app réelle le 2026-07-10) : « Mode chat » est CO-PRÉSENT avec les affordances
-        // agentiques dans l'app unifiée. Le pont VM « Contrôle à distance » (Cowork) doit PRIMER, sinon
-        // toute session Cowork/Code est étiquetée Chat à tort (cas réel : la session Cowork n'apparaissait pas).
+        // Retour utilisateur : un foreground Cowork (« Contrôle à distance » = pont VM) restait affiché en
+        // PERMANENCE (« Untitled » gris, état non observable). On ne l'émet plus. Ce test vérifie aussi que
+        // Cowork PRIME sur « Mode chat » co-présent : sinon un foreground Chat serait émis (liste non vide).
         var arbre = Fenetre(
             FakeUiaNode("Text", "Mode chat"),
             FakeUiaNode("Button", "Contrôle à distance"),
             FakeUiaNode("Button", "Terminal"));
-        var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
-        Assert.Equal(SessionKind.Cowork, fg.Kind);
-        Assert.Equal(SessionActivity.Unknown, fg.Activity); // Cowork VM → exécution distante indéterminée (BUR-05)
+        Assert.Empty(DesktopUiaSessionSource.MapTree(arbre, Now)); // pas de foreground Cowork, pas de Chat fantôme
     }
 
     [Fact]
@@ -187,18 +185,9 @@ public class DesktopUiaSessionSourceTests
         Assert.Equal("desktop:foreground:code", fg.SessionId);
     }
 
-    [Fact]
-    public void MapTree_controle_a_distance_donne_Cowork_indetermine()
-    {
-        // BUR-05 : même si un signal d'exécution existe, une session Cowork VM reste Activity=Unknown.
-        var arbre = Fenetre(
-            FakeUiaNode("Text", "Claude répond."),   // signal d'exécution présent…
-            FakeUiaNode("Button", "Contrôle à distance"));
-        var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
-        Assert.Equal(SessionKind.Cowork, fg.Kind);
-        Assert.Equal(SessionActivity.Unknown, fg.Activity); // …mais l'état distant n'est jamais certain
-        Assert.Equal("desktop:foreground:cowork", fg.SessionId);
-    }
+    // (BUR-05 : un foreground Cowork VM n'est PAS émis — voir
+    //  MapTree_foreground_Cowork_non_emis_car_etat_VM_non_observable. Son état distant n'étant pas
+    //  observable, il resterait affiché en permanence sans information.)
 
     // ================= Task 3 : sidebar (BUR-04) =================
 
@@ -230,13 +219,14 @@ public class DesktopUiaSessionSourceTests
     public void MapTree_foreground_nomme_par_l_entete_de_session()
     {
         // Le nom du foreground = 1er bouton sous l'en-tête « Volet principal » (titre/nom de session).
+        // Session Code (Terminal, PAS de « Contrôle à distance » → non Cowork, donc émise).
         var arbre = Fenetre(
-            FakeUiaNode("Button", "Terminal"), // → Code
             FakeUiaNode("Group", "Volet principal",
                 FakeUiaNode("Button", "chronos-overlay"),
-                FakeUiaNode("Button", "Contrôle à distance")));
+                FakeUiaNode("Button", "Terminal")));
         var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
         Assert.Equal("chronos-overlay", fg.Project);
+        Assert.Equal(SessionKind.Code, fg.Kind);
     }
 
     [Fact]

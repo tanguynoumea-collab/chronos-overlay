@@ -130,12 +130,18 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         // d. COWORK VM (BUR-05) : sa présence est signalée, son exécution distante N'est PAS connue → Unknown forcé.
         if (kind == SessionKind.Cowork) activity = SessionActivity.Unknown;
 
-        // e. Snapshot foreground, clé synthétique stable desktop:foreground:<kind>. NOM : repo/workspace
-        //    (groupe « Contrôles du dépôt et des pull requests ») → sinon « (sans titre) » (ex. session Chat).
-        var fgName = ForegroundName(root);
-        var fgKey = $"desktop:foreground:{KindSlug(kind)}";
-        if (seen.Add(fgKey))
-            result.Add(new SessionSnapshot(fgKey, fgName, activity, null, now, kind, SessionOrigin.Desktop));
+        // e. Snapshot foreground, clé synthétique stable desktop:foreground:<kind>. NOM : 1er bouton de
+        //    l'en-tête « Volet principal » (titre) → sinon « (sans titre) ».
+        //    EXCEPTION (retour utilisateur) : on N'ÉMET PAS un foreground Cowork — son état VM distant n'est
+        //    pas observable (toujours Unknown), ce n'est que la fenêtre qu'on regarde, et il resterait affiché
+        //    en PERMANENCE (« Untitled » gris). Le travail Cowork qui TOURNE reste visible via la sidebar (f).
+        if (kind != SessionKind.Cowork)
+        {
+            var fgName = ForegroundName(root);
+            var fgKey = $"desktop:foreground:{KindSlug(kind)}";
+            if (seen.Add(fgKey))
+                result.Add(new SessionSnapshot(fgKey, fgName, activity, null, now, kind, SessionOrigin.Desktop));
+        }
 
         // f. SIDEBAR (BUR-04) : chaque bouton « En cours d'exécution <nom> » = 1 session active NOMMÉE.
         //    Les boutons SANS ce préfixe ne produisent RIEN. Type par entrée non exposé → best-effort :
