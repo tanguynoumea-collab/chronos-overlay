@@ -36,12 +36,13 @@ public sealed class SessionsController : ISessionsController
     {
         try
         {
-            _installer.Install(ExePath); // hooks pour les sessions FUTURES (config lue au démarrage de session)
+            _installer.Install(ExePath); // hooks = précision « permission » pour le terminal (bonus)
             Persist(s => s with { SessionsWidgetEnabled = true });
             ShowWindow();
             MessageBox.Show(Owner(),
-                "Widget de sessions activé.\n\nIl affiche les sessions Claude Code lancées À PARTIR DE MAINTENANT\n" +
-                "(les sessions déjà ouvertes ne sont pas suivies). Ouvre un terminal « claude » pour voir.",
+                "Widget de sessions activé.\n\nIl affiche tes sessions Claude Code ACTIVES (app bureau incluse),\n" +
+                "détectées via leurs transcripts. Une session apparaît dès qu'elle a de l'activité récente\n" +
+                "et indique si elle a fini son tour (elle t'attend) ou travaille encore.",
                 "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (System.Exception ex)

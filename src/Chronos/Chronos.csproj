@@ -13,10 +13,10 @@
 
     <!-- Identité + VERSION embarquée dans l'exe (Propriétés → Détails). À incrémenter à chaque release ;
          le nom du fichier publié porte aussi la version (Chronos-vX.Y.exe). -->
-    <Version>2.5.1</Version>
-    <FileVersion>2.5.1.0</FileVersion>
-    <AssemblyVersion>2.5.1.0</AssemblyVersion>
-    <InformationalVersion>2.5.1</InformationalVersion>
+    <Version>2.5.2</Version>
+    <FileVersion>2.5.2.0</FileVersion>
+    <AssemblyVersion>2.5.2.0</AssemblyVersion>
+    <InformationalVersion>2.5.2</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Chronos</Product>
     <AssemblyTitle>Chronos — overlay d'usage Claude</AssemblyTitle>

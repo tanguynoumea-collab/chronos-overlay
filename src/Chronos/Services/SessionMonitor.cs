@@ -23,10 +23,14 @@ public sealed class SessionMonitor
     private static readonly System.TimeSpan DropAfter = System.TimeSpan.FromHours(8);
 
     private readonly string _dir;
+    private readonly TranscriptSessionSource _transcripts;
 
-    public SessionMonitor(string? sessionsDir = null)
-        => _dir = sessionsDir ?? Path.Combine(
+    public SessionMonitor(string? sessionsDir = null, TranscriptSessionSource? transcripts = null)
+    {
+        _dir = sessionsDir ?? Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
+        _transcripts = transcripts ?? new TranscriptSessionSource();
+    }
 
     public string Directory => _dir;
 
@@ -37,20 +41,30 @@ public sealed class SessionMonitor
         AllowTrailingCommas = true,
     };
 
-    /// <summary>Instantané courant des sessions, staleness appliquée à l'instant <paramref name="now"/>.</summary>
+    /// <summary>
+    /// Instantané courant des sessions (staleness appliquée). FUSIONNE deux sources par session_id :
+    ///   • transcripts (~/.claude/projects) — universel, couvre l'app BUREAU (base) ;
+    ///   • fichiers d'état des HOOKS (%APPDATA%\Chronos\sessions) — plus précis (permission), PRIORITAIRES
+    ///     quand présents (utilisateurs du terminal).
+    /// </summary>
     public IReadOnlyList<SessionSnapshot> Read(System.DateTimeOffset now)
     {
-        var list = new List<SessionSnapshot>();
+        var byId = new Dictionary<string, SessionSnapshot>();
+
+        // 1) Base : transcripts (app bureau incluse).
+        foreach (var t in _transcripts.Read(now)) byId[t.SessionId] = t;
+
+        // 2) Surcharge : fichiers d'état des hooks (plus précis) quand ils existent.
         string[] files;
         try { files = System.IO.Directory.Exists(_dir) ? System.IO.Directory.GetFiles(_dir, "*.json") : System.Array.Empty<string>(); }
-        catch { return list; }
-
+        catch { files = System.Array.Empty<string>(); }
         foreach (var f in files)
         {
             var snap = TryRead(f, now);
-            if (snap is not null) list.Add(snap);
+            if (snap is not null) byId[snap.SessionId] = snap;
         }
-        return list;
+
+        return byId.Values.ToList();
     }
 
     private static SessionSnapshot? TryRead(string file, System.DateTimeOffset now)

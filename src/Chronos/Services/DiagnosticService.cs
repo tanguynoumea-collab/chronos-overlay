@@ -353,9 +353,21 @@ public sealed class DiagnosticService
                 catch { }
             }
             if (files.Length == 0)
-                sb.AppendLine("    → aucun. Active le widget PUIS ouvre un NOUVEAU terminal « claude » (les hooks sont lus au démarrage de session).");
+                sb.AppendLine("    (aucun — normal en app bureau : la détection passe par les transcripts, pas les hooks)");
         }
         catch { }
+
+        // Ce que le widget AFFICHE réellement (transcripts ~/.claude/projects + hooks, fusionnés + staleness).
+        try
+        {
+            var detected = new SessionMonitor().Read(_clock.UtcNow);
+            sb.AppendLine($"  Sessions détectées (widget) : {detected.Count}");
+            foreach (var d in detected.Take(8))
+                sb.AppendLine($"    · {d.Project} — {d.Activity} (maj il y a {(_clock.UtcNow - d.UpdatedAt).TotalMinutes:F0} min)");
+            if (detected.Count == 0)
+                sb.AppendLine("    → aucune session active récente (< 15 min). Utilise une session Claude Code puis rouvre ce diagnostic.");
+        }
+        catch (Exception ex) { sb.AppendLine("  (détection sessions impossible : " + ex.GetType().Name + ")"); }
         sb.AppendLine();
 
         // 5) Conseil

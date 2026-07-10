@@ -56,7 +56,7 @@
             </ItemsControl>
 
             <!-- État vide -->
-            <TextBlock Text="Aucune session active. Lance « claude » dans un terminal."
+            <TextBlock Text="Aucune session récente. Utilise une session Claude Code (app bureau ou terminal) — elle apparaîtra ici."
                        Foreground="{StaticResource Ink2}" FontSize="11" TextWrapping="Wrap" Margin="2,2,2,2">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">

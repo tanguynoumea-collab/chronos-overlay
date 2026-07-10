@@ -112,6 +112,81 @@ public class SessionsTests
     private static void WriteState(string dir, string id, SessionActivity a, long ms)
         => File.WriteAllText(Path.Combine(dir, id + ".json"), SessionHookProcessor.BuildStateJson(id, "Proj-" + id, a, null, ms));
 
+    // --- TranscriptSessionSource (détection app bureau, sans hooks) ---
+
+    private static string WriteTranscript(string root, string session, string[] lines, TimeSpan ago)
+    {
+        var projDir = Path.Combine(root, "C--dev-MonProjet");
+        Directory.CreateDirectory(projDir);
+        var f = Path.Combine(projDir, session + ".jsonl");
+        File.WriteAllText(f, string.Join("\n", lines) + "\n");
+        File.SetLastWriteTimeUtc(f, DateTime.UtcNow - ago);
+        return f;
+    }
+
+    private const string CwdLine = """{"type":"user","cwd":"C:\\dev\\MonProjet","message":{"role":"user","content":[{"type":"text","text":"salut"}]}}""";
+    private const string AssistantToolUse = """{"type":"assistant","message":{"role":"assistant","stop_reason":"tool_use","content":[{"type":"tool_use","name":"Bash"}]}}""";
+    private const string AssistantEndTurn = """{"type":"assistant","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"fini"}]}}""";
+
+    [Fact]
+    public void Transcript_dernier_assistant_end_turn_est_WaitingTurn()
+    {
+        var root = TempDir();
+        try
+        {
+            WriteTranscript(root, "s-wait", new[] { CwdLine, AssistantToolUse, AssistantEndTurn }, TimeSpan.FromMinutes(2));
+            var snap = new TranscriptSessionSource(root).Read(DateTimeOffset.UtcNow).Single();
+            Assert.Equal("s-wait", snap.SessionId);
+            Assert.Equal("MonProjet", snap.Project);
+            Assert.Equal(SessionActivity.WaitingTurn, snap.Activity);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void Transcript_dernier_assistant_tool_use_est_Working()
+    {
+        var root = TempDir();
+        try
+        {
+            WriteTranscript(root, "s-work", new[] { CwdLine, AssistantEndTurn, CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
+            var snap = new TranscriptSessionSource(root).Read(DateTimeOffset.UtcNow).Single();
+            Assert.Equal(SessionActivity.Working, snap.Activity);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void Transcript_trop_ancien_est_ignore()
+    {
+        var root = TempDir();
+        try
+        {
+            WriteTranscript(root, "s-old", new[] { CwdLine, AssistantEndTurn }, TimeSpan.FromMinutes(30)); // > 15 min
+            Assert.Empty(new TranscriptSessionSource(root).Read(DateTimeOffset.UtcNow));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void Monitor_fusionne_transcripts_et_hooks_hook_prioritaire()
+    {
+        var hookDir = TempDir();
+        var projRoot = TempDir();
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            // Même session_id des deux côtés : le hook (WaitingAttention) doit primer sur le transcript (Working).
+            WriteTranscript(projRoot, "dup", new[] { CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
+            WriteState(hookDir, "dup", SessionActivity.WaitingAttention, now.ToUnixTimeMilliseconds());
+
+            var snaps = new SessionMonitor(hookDir, new TranscriptSessionSource(projRoot)).Read(now);
+            Assert.Single(snaps);
+            Assert.Equal(SessionActivity.WaitingAttention, snaps[0].Activity); // hook prioritaire
+        }
+        finally { Directory.Delete(hookDir, true); Directory.Delete(projRoot, true); }
+    }
+
     [Fact]
     public void Monitor_lit_les_sessions_et_applique_la_staleness()
     {
@@ -124,7 +199,8 @@ public class SessionsTests
             WriteState(dir, "staleWork", SessionActivity.Working, now.AddMinutes(-30).ToUnixTimeMilliseconds());     // working périmé
             WriteState(dir, "dead", SessionActivity.WaitingTurn, now.AddHours(-9).ToUnixTimeMilliseconds());          // > drop
 
-            var snaps = new SessionMonitor(dir).Read(now).ToDictionary(s => s.SessionId);
+            var emptyProjects = TempDir();
+            var snaps = new SessionMonitor(dir, new TranscriptSessionSource(emptyProjects)).Read(now).ToDictionary(s => s.SessionId);
 
             Assert.Equal(SessionActivity.Working, snaps["fresh"].Activity);
             Assert.Equal(SessionActivity.WaitingAttention, snaps["waiting"].Activity);   // l'attente PERSISTE
