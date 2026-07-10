@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-status: "Phase 14 en cours (1/2 plans) — cœur hystérésis livré (TreatedStore réversible + tracker NET-01/02/03 + filtre SessionMonitor) ; suivant : plan 14-02 (focus OS réel NET-02 + intégration UI)"
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-07-10T13:07:53.568Z"
-last_activity: 2026-07-10 — Plan 14-01 exécuté (NET-01/03/04 ; 12 tests neufs, suite verte 316)
+status: "Phase 14 TERMINÉE (2/2 plans) — NET-02 vivant en prod (focus OS réel WindowsForegroundWatch injecté). NET-01..04 tous couverts. Milestone v1.4 prêt pour l'audit."
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-07-10T13:11:52.272Z"
+last_activity: 2026-07-10 — Plan 14-02 exécuté (NET-02 focus OS réel ; 0 test neuf, garde DI étendue, suite verte 316)
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 14 — Auto-disparition hystérésis (deuxième phase de v1.4)
+**Current focus:** Milestone v1.4 complet — prêt pour l'audit (Phase 13 + Phase 14 terminées)
 
 ## Current Position
 
 Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-Phase: 14 — Auto-disparition hystérésis (en cours)
-Plan: 14-01 terminé (1/2 plans de la phase)
-Status: Phase 14 en cours (1/2 plans) — cœur hystérésis livré (TreatedStore réversible + tracker NET-01/02/03 + filtre SessionMonitor) ; suivant : plan 14-02 (focus OS réel NET-02 + intégration UI)
-Last activity: 2026-07-10 — Plan 14-01 exécuté (NET-01/03/04 ; 12 tests neufs, suite verte 316)
+Phase: 14 — Auto-disparition hystérésis (TERMINÉE, 2/2 plans)
+Plan: 14-02 terminé (dernière wave de la dernière phase du milestone)
+Status: Phase 14 TERMINÉE — NET-02 vivant en prod (focus OS réel WindowsForegroundWatch injecté dans SessionMonitor). NET-01..04 tous couverts. Milestone v1.4 prêt pour l'audit.
+Last activity: 2026-07-10 — Plan 14-02 exécuté (NET-02 focus OS réel ; garde DI étendue, suite verte 316)
 
-Progress: [█████░░░░░] 50% (1/2 plans, phase 14)
+Progress: [██████████] 100% (2/2 plans, phase 14)
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [█████░░░░░] 50% (1/2 plans, phase 14)
 | Phase 13 P02 | 4min | 2 tasks | 4 files |
 | Phase 13 P03 | 4min | 3 tasks | 6 files |
 | Phase 14 P01 | 5m | 3 tasks | 6 files |
+| Phase 14 P02 | ~2 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,7 @@ Progress: [█████░░░░░] 50% (1/2 plans, phase 14)
 - [Phase 13]: 13-03: source bureau fusionnée dans SessionMonitor.Read (ISessionSource? optionnel, 4e arg non cassant), après transcripts+hooks, avant archived, non bloquant (ROB-07)
 - [Phase 13]: 13-03: garde DI réelle (CompositionRootTests) reproduisant la sous-chaîne bureau d'App.xaml.cs → attrape un service manquant/mal ordonné qui ne planterait qu'au démarrage
 - [Phase 14]: [14-01] Réversibilité NET-03 portée par le tracker (purge sur nouvel épisode d'attente), PAS par une comparaison ts>=UpdatedAt dans le filtre (fausse pour le bureau: UpdatedAt==now à chaque poll). Horodatage d'épisode maintenu par le tracker.
+- [Phase 14]: [14-02] Focus premier-plan OS réel (WindowsForegroundWatch, Win32 GetForegroundWindow, titre « Claude ») injecté 7e param de SessionMonitor => branche NET-02 VIVANTE en prod. Best-effort ne lève jamais ; couche neutre (aucun HWND public). NET-01..04 tous couverts, phase 14 complète, milestone v1.4 prêt pour audit.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -115,6 +117,6 @@ Progress: [█████░░░░░] 50% (1/2 plans, phase 14)
 
 ## Session Continuity
 
-Last session: 2026-07-10T13:07:21.943Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-07-10T13:11:52.267Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None

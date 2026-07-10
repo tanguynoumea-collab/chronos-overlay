@@ -29,7 +29,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 
 - [x] **NET-01**: Une session en attente **disparaît automatiquement** de la liste dès que l'utilisateur
   **y répond** (elle repasse en « en cours » — transition observable via transcript ou via UIA).
-- [ ] **NET-02**: Une session en attente **disparaît automatiquement** dès que l'utilisateur la garde
+- [x] **NET-02**: Une session en attente **disparaît automatiquement** dès que l'utilisateur la garde
   **au premier plan** de l'app ≥ ~2-3 s (acquittement, avec debounce anti-survol).
 - [x] **NET-03**: Une session « traitée » qui **repart en attente** (événement d'attente plus récent que
   le traitement) **réapparaît** dans la liste.
@@ -68,7 +68,7 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 | BUR-04 | Phase 13 | Complete |
 | BUR-05 | Phase 13 | Complete |
 | NET-01 | Phase 14 | Complete |
-| NET-02 | Phase 14 | Pending |
+| NET-02 | Phase 14 | Complete |
 | NET-03 | Phase 14 | Complete |
 | NET-04 | Phase 14 | Complete |
 | ROB-06 | Phase 13 | Complete |
