@@ -40,10 +40,11 @@ public static class UiaLabels
     /// <summary>Pont VM Cowork : sa présence signale une session Cowork (état d'exécution NON connu localement).</summary>
     public static readonly string[] RemoteControl = { "Contrôle à distance", "Remote control" };
 
-    /// <summary>Groupe des contrôles du dépôt/PR de la session agentique au premier plan : son PREMIER
-    /// bouton porte le nom du repo/workspace (source du nom foreground — validé app réelle le 2026-07-10).</summary>
-    public static readonly string[] RepoControlsGroup =
-        { "Contrôles du dépôt et des pull requests", "Repository and pull request controls" };
+    /// <summary>En-tête de session au premier plan (« Volet principal ») : son PREMIER bouton porte le
+    /// TITRE/nom de la session (ex. « Untitled » si non titrée, sinon le titre, ou le repo/workspace).
+    /// Ancre STABLE validée app réelle le 2026-07-10 (prof. ~13) — contrairement au groupe « Contrôles du
+    /// dépôt » qui alterne Group/Text selon l'état de l'UI (fragile).</summary>
+    public static readonly string[] SessionHeaderGroup = { "Volet principal", "Main panel" };
 
     /// <summary>Affordances d'une vue agentique Code.</summary>
     public static readonly string[] CodePanels =

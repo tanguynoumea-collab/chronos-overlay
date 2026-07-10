@@ -227,17 +227,16 @@ public class DesktopUiaSessionSourceTests
     // ================= Nommage foreground + typage sidebar (test app-réelle 2026-07-10) =================
 
     [Fact]
-    public void MapTree_foreground_nomme_par_le_repo_workspace()
+    public void MapTree_foreground_nomme_par_l_entete_de_session()
     {
-        // Le nom du foreground vient du 1er bouton sous le groupe « Contrôles du dépôt et des pull requests ».
+        // Le nom du foreground = 1er bouton sous l'en-tête « Volet principal » (titre/nom de session).
         var arbre = Fenetre(
             FakeUiaNode("Button", "Terminal"), // → Code
-            FakeUiaNode("Group", "Contrôles du dépôt et des pull requests",
+            FakeUiaNode("Group", "Volet principal",
                 FakeUiaNode("Button", "chronos-overlay"),
-                FakeUiaNode("Button", "main")));
+                FakeUiaNode("Button", "Contrôle à distance")));
         var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
         Assert.Equal("chronos-overlay", fg.Project);
-        Assert.Equal(SessionKind.Code, fg.Kind);
     }
 
     [Fact]

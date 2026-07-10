@@ -166,21 +166,21 @@ public sealed class DesktopUiaSessionSource : ISessionSource
     private static bool HasAnchor(UiaNode root)
         => Descendants(root).Any(n => string.Equals(n.AutomationId, AnchorAutomationId, StringComparison.Ordinal));
 
-    /// <summary>Nom du foreground : repo/workspace (PREMIER bouton sous le groupe « Contrôles du dépôt et
-    /// des pull requests », présent pour les sessions agentiques) → sinon <see cref="ForegroundFallbackName"/>.
-    /// Le titre de conversation n'étant pas exposé de façon fiable, on ne l'invente pas.</summary>
+    /// <summary>Nom du foreground : PREMIER bouton sous l'en-tête de session « Volet principal » (= titre
+    /// de la session, « Untitled » si non titrée, sinon le repo/workspace) → sinon
+    /// <see cref="ForegroundFallbackName"/>. On ne prend que ce qui est réellement exposé, sans inventer.</summary>
     private static string ForegroundName(UiaNode root)
     {
-        var group = FirstDescendant(root, n =>
+        var header = FirstDescendant(root, n =>
             string.Equals(n.ControlType, "Group", StringComparison.OrdinalIgnoreCase)
-            && UiaLabels.Matches(n.Name, UiaLabels.RepoControlsGroup));
+            && UiaLabels.Matches(n.Name, UiaLabels.SessionHeaderGroup));
 
-        if (group is not null)
+        if (header is not null)
         {
-            var repo = FirstDescendant(group, n =>
+            var titre = FirstDescendant(header, n =>
                 string.Equals(n.ControlType, "Button", StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(n.Name));
-            if (repo is not null) return repo.Name.Trim();
+            if (titre is not null) return titre.Name.Trim();
         }
 
         return ForegroundFallbackName;
