@@ -118,7 +118,10 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         var all = ControlNodes(root).ToList();
 
         var result = new List<SessionSnapshot>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        // Dédoublonnage par NOM (insensible à la casse) : une session déjà listée n'est jamais ré-ajoutée —
+        // ni entre sidebar et foreground, ni d'un poll à l'autre (l'accumulation clé par SessionId, lui-même
+        // stable puisque indépendant du type ci-dessous).
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // c. TYPE foreground : Cowork (pont VM) prioritaire, puis Code (panneaux), puis Chat (cf. InferKind).
         var kind = InferKind(all);
@@ -130,22 +133,11 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         // d. COWORK VM (BUR-05) : sa présence est signalée, son exécution distante N'est PAS connue → Unknown forcé.
         if (kind == SessionKind.Cowork) activity = SessionActivity.Unknown;
 
-        // e. Snapshot foreground, clé synthétique stable desktop:foreground:<kind>. NOM : 1er bouton de
-        //    l'en-tête « Volet principal » (titre) → sinon « (sans titre) ».
-        //    EXCEPTION (retour utilisateur) : on N'ÉMET PAS un foreground Cowork — son état VM distant n'est
-        //    pas observable (toujours Unknown), ce n'est que la fenêtre qu'on regarde, et il resterait affiché
-        //    en PERMANENCE (« Untitled » gris). Le travail Cowork qui TOURNE reste visible via la sidebar (f).
-        if (kind != SessionKind.Cowork)
-        {
-            var fgName = ForegroundName(root);
-            var fgKey = $"desktop:foreground:{KindSlug(kind)}";
-            if (seen.Add(fgKey))
-                result.Add(new SessionSnapshot(fgKey, fgName, activity, null, now, kind, SessionOrigin.Desktop));
-        }
-
-        // f. SIDEBAR (BUR-04) : chaque bouton « En cours d'exécution <nom> » = 1 session active NOMMÉE.
-        //    Les boutons SANS ce préfixe ne produisent RIEN. Type par entrée non exposé → best-effort :
-        //    Cowork si l'app est bridgée (RemoteControl présent = pont VM), sinon Code (agentique local).
+        // e. SIDEBAR (BUR-04) D'ABORD : chaque bouton « En cours d'exécution <nom> » = 1 session active NOMMÉE.
+        //    CLÉ INDÉPENDANTE DU TYPE (desktop:session:<nom>). Le type par entrée n'est pas exposé et notre
+        //    heuristique (Cowork si app bridgée, sinon Code) dépend de la VUE AFFICHÉE : mettre le type dans la
+        //    clé re-cléerait la même session à chaque changement de vue → DOUBLON via l'accumulation. Le NOM est
+        //    stable. Dédoublonnage par nom.
         var bridged = all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.RemoteControl));
         var sidebarKind = bridged ? SessionKind.Cowork : SessionKind.Code;
         foreach (var n in all)
@@ -153,10 +145,22 @@ public sealed class DesktopUiaSessionSource : ISessionSource
             if (!string.Equals(n.ControlType, "Button", StringComparison.OrdinalIgnoreCase)) continue;
             if (!UiaLabels.StartsWithAny(n.Name, UiaLabels.RunningPrefix, out var nom)) continue;
             if (string.IsNullOrWhiteSpace(nom)) continue;
+            if (!names.Add(nom)) continue; // déjà listée
 
-            var key = $"desktop:{KindSlug(sidebarKind)}:{nom}";
-            if (seen.Add(key))
-                result.Add(new SessionSnapshot(key, nom, SessionActivity.Working, null, now, sidebarKind, SessionOrigin.Desktop));
+            result.Add(new SessionSnapshot($"desktop:session:{nom}", nom, SessionActivity.Working, null, now, sidebarKind, SessionOrigin.Desktop));
+        }
+
+        // f. Snapshot FOREGROUND (la conversation affichée). NOM : 1er bouton de l'en-tête « Volet principal »
+        //    (titre) → sinon « (sans titre) ». On ne l'émet PAS si :
+        //    • kind == Cowork : état VM distant non observable → « Untitled » gris permanent inutile (le Cowork
+        //      qui tourne est déjà dans la sidebar) ;
+        //    • son nom est DÉJÀ listé par la sidebar : ouvrir une session déjà identifiée ne doit pas créer un
+        //      DOUBLON foreground↔sidebar.
+        if (kind != SessionKind.Cowork)
+        {
+            var fgName = ForegroundName(root);
+            if (names.Add(fgName))
+                result.Add(new SessionSnapshot($"desktop:foreground:{KindSlug(kind)}", fgName, activity, null, now, kind, SessionOrigin.Desktop));
         }
 
         return result;

@@ -333,6 +333,38 @@ public class DesktopUiaSessionSourceTests
     }
 
     [Fact]
+    public void MapTree_ne_duplique_pas_un_foreground_deja_liste_en_sidebar()
+    {
+        // Ouvrir une session déjà identifiée (présente en sidebar) ne doit pas créer un doublon :
+        // le nom du foreground == un nom de la sidebar → UNE seule entrée.
+        var arbre = Fenetre(
+            FakeUiaNode("Button", "Terminal"),                          // → Code (foreground, non bridgé)
+            FakeUiaNode("Button", "En cours d'exécution mon-projet"),   // sidebar : « mon-projet »
+            FakeUiaNode("Group", "Volet principal",
+                FakeUiaNode("Button", "mon-projet")));                  // titre foreground == nom sidebar
+        Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now).Where(s => s.Project == "mon-projet"));
+    }
+
+    [Fact]
+    public void Poll_ne_duplique_pas_une_session_dont_le_type_change_selon_la_vue()
+    {
+        // Le bug signalé : la MÊME session vue dans une vue bridgée (typée Cowork) puis non bridgée (typée
+        // Code) ne doit PAS créer 2 entrées — la clé (desktop:session:<nom>) est indépendante du type.
+        var provider = new MutableTreeProvider(Fenetre(
+            FakeUiaNode("Button", "Contrôle à distance"),               // vue bridgée → Cowork
+            FakeUiaNode("Button", "En cours d'exécution mon-projet")));
+        var src = new DesktopUiaSessionSource(provider);
+        src.Poll(Now);
+
+        provider.Tree = Fenetre(
+            FakeUiaNode("Text", "Mode chat"),                           // vue non bridgée → Code
+            FakeUiaNode("Button", "En cours d'exécution mon-projet"));
+        src.Poll(Now.AddSeconds(30));
+
+        Assert.Single(src.Read(Now.AddSeconds(30)).Where(s => s.Project == "mon-projet"));
+    }
+
+    [Fact]
     public void Poll_racine_null_donne_Health_WindowMissing_et_cache_vide()
     {
         var src = new DesktopUiaSessionSource(new FakeTreeProvider(null));
