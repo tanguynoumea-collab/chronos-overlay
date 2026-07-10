@@ -55,7 +55,7 @@ staleness, filtre `archived` via `ArchiveStore`), `TranscriptSessionSource`, `Se
 - Phases entières (13, 14) : travail de milestone planifié — continue après la Phase 12 (v1.3)
 - Phases décimales (13.1, 13.2) : insertions urgentes (marquées INSERTED)
 
-- [x] **Phase 13 : Source UIA app bureau** - Un `DesktopUiaSessionSource` lit l'arbre UI Automation de la fenêtre Claude : états honnêtes (bosse / attend / attend-permission / indéterminé), distinction Chat/Code/Cowork, énumération des sessions actives de la sidebar, matching souple fr/en, test de santé + dégradation, lecture non bloquante pour le thread UI (completed 2026-07-10)
+- [x] **Phase 13 : Source UIA app bureau** - Un `DesktopUiaSessionSource` lit l'arbre UI Automation de la fenêtre Claude : états honnêtes (bosse / attend / attend-permission / indéterminé), distinction Chat/Code/Cowork, énumération des sessions actives de la sidebar, matching souple fr/en, test de santé + dégradation, lecture non bloquante pour le thread UI (completed 2026-07-10)
 - [ ] **Phase 14 : Auto-disparition hystérésis des sessions traitées** - Un magasin « traitées » auto-géré et réversible retire une session sur « répondu » OU « acquittée par focus ≥ ~2-3 s », la fait réapparaître sur un événement d'attente plus récent, et conserve l'archivage manuel clic-droit distinct et permanent
 
 ### Phase Details
@@ -119,7 +119,9 @@ la branche « répondu », NET-01, fonctionne déjà avec les sources actuelles)
      récent que le traitement) réapparaît dans la liste (NET-03).
   4. **Archivage manuel préservé** : l'archivage par clic droit reste disponible et permanent — distinct
      et complémentaire de l'auto-disparition, ne réapparaît jamais contrairement au « traité » (NET-04).
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 14-01-PLAN.md — TreatedStore réversible + SessionTreatmentTracker (hystérésis pure) + filtre treated dans SessionMonitor.Read, testés à fond (NET-01, NET-03, NET-04, logique NET-02 par faux focus)
+- [ ] 14-02-PLAN.md — WindowsForegroundWatch (focus premier-plan OS réel) + injection DI + garde DI étendue (NET-02 vivant)
 **UI hint**: yes
 
 ### Progress
@@ -130,4 +132,4 @@ Phase 13 → Phase 14 (dépendance forte : la source UIA avant l'hystérésis fo
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 13. Source UIA app bureau | 3/3 | Complete   | 2026-07-10 |
-| 14. Auto-disparition hystérésis des sessions traitées | 0/TBD | Not started | - |
+| 14. Auto-disparition hystérésis des sessions traitées | 0/2 | Not started | - |
