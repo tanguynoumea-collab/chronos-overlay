@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Chronos.Services;
+using Chronos.ViewModels;
 using Xunit;
 
 namespace Chronos.Tests;
@@ -279,6 +280,48 @@ public class SessionsTests
         Assert.Single(monitor.Read(now));
         archive.Add("desktop:foreground:code");
         Assert.Empty(monitor.Read(now));
+    }
+
+    // --- SessionsViewModel : affichage du TYPE (BUR-03) ---
+
+    [WpfFact]
+    public void Widget_affiche_le_type_de_session_bureau()
+    {
+        var now = DateTimeOffset.UtcNow;
+        // Une session bureau Kind=Code + une session bureau Kind=Unknown (comme une CLI) → le VM doit
+        // exposer KindLabel="Code" pour la première et "" pour la seconde (pas de bruit).
+        var bureau = new FakeSessionSource(
+            new SessionSnapshot("desktop:foreground:code", "Claude (bureau)", SessionActivity.Working, null, now,
+                SessionKind.Code, SessionOrigin.Desktop),
+            new SessionSnapshot("cli-x", "MonProjet", SessionActivity.WaitingTurn, null, now,
+                SessionKind.Unknown, SessionOrigin.Cli));
+        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()),
+            new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
+        var vm = new SessionsViewModel(monitor, new FakeClock(now), new ArchiveStore(Path.Combine(TempDir(), "b.json")));
+
+        vm.Refresh(now);
+
+        var byId = vm.Items.ToDictionary(i => i.SessionId);
+        Assert.Equal("Code", byId["desktop:foreground:code"].KindLabel);
+        Assert.Equal("", byId["cli-x"].KindLabel);   // Unknown → rien affiché
+    }
+
+    [WpfFact]
+    public void Widget_mappe_chaque_type_bureau_vers_son_libelle()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var bureau = new FakeSessionSource(
+            new SessionSnapshot("desktop:foreground:chat", "Claude (bureau)", SessionActivity.WaitingTurn, null, now, SessionKind.Chat, SessionOrigin.Desktop),
+            new SessionSnapshot("desktop:foreground:cowork", "Claude (bureau)", SessionActivity.Unknown, null, now, SessionKind.Cowork, SessionOrigin.Desktop));
+        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()),
+            new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
+        var vm = new SessionsViewModel(monitor, new FakeClock(now), new ArchiveStore(Path.Combine(TempDir(), "b.json")));
+
+        vm.Refresh(now);
+
+        var byId = vm.Items.ToDictionary(i => i.SessionId);
+        Assert.Equal("Chat", byId["desktop:foreground:chat"].KindLabel);
+        Assert.Equal("Cowork", byId["desktop:foreground:cowork"].KindLabel);
     }
 
     [Fact]

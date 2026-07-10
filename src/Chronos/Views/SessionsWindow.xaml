@@ -31,6 +31,30 @@
                                 <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10.5" FontWeight="SemiBold"/>
                                 <TextBlock Text="  ·  " Foreground="#8C8A98" FontSize="10.5"/>
                                 <TextBlock Text="{Binding Detail}" Foreground="#8C8A98" FontSize="10.5"/>
+                                <!-- BUR-03 : type de session bureau (Chat/Code/Cowork). Masqué (avec son
+                                     séparateur) quand vide → aucune pollution des sessions CLI. -->
+                                <TextBlock Text="  ·  " Foreground="#8C8A98" FontSize="10.5">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding KindLabel}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding KindLabel}" Foreground="#8C8A98" FontSize="10.5" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding KindLabel}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                         </StackPanel>
                     </Grid>
