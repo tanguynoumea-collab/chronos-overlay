@@ -38,7 +38,10 @@ chiffre exact.
 
 <!-- Current scope. Building toward these. -->
 
-(Milestone v1.0 livré — validation humaine UAT en attente : voir les fichiers *-HUMAN-UAT.md)
+Milestone v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code) :
+- Source UIA « app bureau » : détecter l'état des sessions de l'app de bureau Claude (bosse / attend / attend-permission / indéterminé) via UI Automation, distinguer Chat/Code/Cowork, énumérer les sessions actives de la barre latérale (SESS-01..05).
+- Auto-disparition hystérésis : une session traitée sort de la liste (répondu → en cours OU acquittée par focus ≥ ~2-3 s), réversible sur nouvel événement d'attente ; archivage manuel conservé (SESS-06..09).
+- Robustesse & honnêteté : matching souple par libellé (fr/en), test de santé au démarrage, dégradation vers « indéterminé », lecture non bloquante pour le thread UI (SESS-10..11).
 
 
 ### Out of Scope
@@ -61,10 +64,26 @@ et de reset, centre cliquable basculant pourcentages ↔ temps avant reset. 4 mi
 215 tests, exe mono-fichier. Robustesse : anti-429 OAuth (throttle+backoff+cache). Reste : UAT humains,
 refresh du token OAuth (candidat v1.4).
 
-## Next Milestone Goals
+## Current Milestone: v1.4 — Intégration des sessions de l'app bureau Claude
 
-À définir (/gsd:new-milestone). Candidats : refresh token OAuth, sous-fenêtres opus/sonnet/cowork,
-survol/tooltip, tray, taille réglable.
+**Goal :** Étendre le widget sessions (déjà livré hors GSD, « v2.5 » : détection des sessions Claude Code
+par transcripts JSONL + hooks) pour couvrir aussi les sessions de l'**application de bureau** Claude —
+Chat, Code et Cowork — via **UI Automation**, et faire **disparaître automatiquement** les sessions traitées.
+
+**Target features :**
+- Source UIA « app bureau » — états bosse / attend / attend-permission / indéterminé, distinction
+  Chat/Code/Cowork, énumération des sessions actives de la barre latérale (spike prouvé le 2026-07-10 :
+  voir mémoire `chronos-desktop-uia.md`).
+- Auto-disparition hystérésis des sessions traitées (répondu **ou** acquittée par focus), réversible.
+- Robustesse inter-versions (matching souple fr/en, test de santé, dégradation) + lecture non bloquante.
+
+**Note de versioning :** le tracking GSD (milestones v1.0→v1.3) a divergé du versioning de l'app (« v2.5 »).
+Le widget sessions a été construit hors GSD ; v1.4 le reprend sous tracking GSD.
+
+## Next Milestone Goals (après v1.4)
+
+Refresh du token OAuth, sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray, taille réglable,
+notification Windows en bonus du signal UIA (`UserNotificationListener`).
 
 ## Context
 
@@ -127,4 +146,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 after Phase 7 completion (milestone v1.0 livré)*
+*Last updated: 2026-07-10 — milestone v1.4 démarré (intégration sessions app bureau)*

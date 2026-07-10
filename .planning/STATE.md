@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: "— Refonte du cadran : 3 anneaux, remplissage, compacité"
-status: verifying
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-07-09T13:03:47.242Z"
-last_activity: 2026-07-09
+milestone: v1.4
+milestone_name: "— Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)"
+status: defining_requirements
+stopped_at: Milestone v1.4 started
+last_updated: "2026-07-10"
+last_activity: 2026-07-10
 progress:
   total_phases: 1
   completed_phases: 1
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Milestone: v1.3 — Refonte du cadran : 3 anneaux, remplissage, compacité
-Phase: 12
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-09
+Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-10 — Milestone v1.4 started
 
 Progress: [░░░░░░░░░░] 0% (0/1 phases)
 
