@@ -199,6 +199,15 @@
                         <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                       IsChecked="{Binding IsAutostart, Mode=OneWay}" Command="{Binding ToggleAutostartCommand}"/>
                     </Grid>
+                    <Border Height="1" Background="{StaticResource Line}"/>
+                    <Grid Margin="0,7">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Widget sessions Claude Code" Foreground="{StaticResource Ink}" FontSize="13"/>
+                            <TextBlock Text="voir quelle session t'attend" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
+                        </StackPanel>
+                        <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                      IsChecked="{Binding IsSessionsWidgetEnabled, Mode=OneWay}" Command="{Binding ToggleSessionsWidgetCommand}"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 

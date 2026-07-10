@@ -67,4 +67,11 @@ public sealed record ChronosSettings
 
     /// <summary>Clé du thème visuel sélectionné (« minuit » par défaut). Voir Chronos.Theming.ThemeCatalog.</summary>
     public string ThemeKey { get; init; } = "minuit";
+
+    /// <summary>Widget de sessions Claude Code activé (hooks installés + panneau affiché).</summary>
+    public bool SessionsWidgetEnabled { get; init; }
+
+    /// <summary>Position persistée du panneau de sessions (DIU). null = position par défaut.</summary>
+    public double? SessionsX { get; init; }
+    public double? SessionsY { get; init; }
 }

@@ -80,6 +80,8 @@ public class CompositionRootTests
         services.AddSingleton<IStatusLineSetup>(_ => new FakeStatusLineSetup());
         // Login OAuth intégré : le ctor de MainViewModel dépend d'IOAuthLogin.
         services.AddSingleton<IOAuthLogin>(_ => new FakeOAuthLogin());
+        // Widget de sessions : le ctor de MainViewModel dépend d'ISessionsController.
+        services.AddSingleton<ISessionsController>(_ => new FakeSessionsController());
 
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();

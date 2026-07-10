@@ -96,7 +96,7 @@ public class ThemingTests
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             new FakeBudgetPrompt(), settings,
             new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
-            new FakeStatusLineSetup(), new FakeOAuthLogin());
+            new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController());
 
         var win = new SettingsWindow(vm);
         win.Measure(new Size(1000, 1000));

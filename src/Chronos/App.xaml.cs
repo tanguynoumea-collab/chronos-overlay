@@ -24,6 +24,16 @@ public partial class App : Application
             return;
         }
 
+        // MODE HOOK (--hook <Event>) : Claude Code invoque « Chronos.exe --hook Notification/Stop/… » à
+        // chaque événement de session ; on lit le JSON stdin et on écrit l'état de la session sur disque.
+        int hookIdx = System.Array.FindIndex(e.Args, a => string.Equals(a, "--hook", StringComparison.OrdinalIgnoreCase));
+        if (hookIdx >= 0)
+        {
+            RunSessionHook(hookIdx + 1 < e.Args.Length ? e.Args[hookIdx + 1] : null);
+            Environment.Exit(0);
+            return;
+        }
+
         base.OnStartup(e);
 
         var builder = Host.CreateApplicationBuilder();
@@ -57,6 +67,42 @@ public partial class App : Application
         // Première exécution : proposer d'activer la SOURCE EXACTE (pont statusLine Claude Code).
         // Une seule fois (StatusLinePromptDismissed), non bloquant pour le rendu de l'overlay.
         _host.Services.GetRequiredService<IStatusLineSetup>().OfferOnFirstRun();
+
+        // Widget de sessions : réafficher le panneau s'il était activé.
+        _host.Services.GetRequiredService<ISessionsController>().ShowIfEnabled();
+    }
+
+    // Exécuté en mode --hook : lit le JSON stdin de Claude Code, écrit/supprime le fichier d'état de la
+    // session dans %APPDATA%\Chronos\sessions\<id>.json. Neutre, ne lève jamais (ne doit pas casser le hook).
+    private static void RunSessionHook(string? eventName)
+    {
+        try
+        {
+            var utf8 = new System.Text.UTF8Encoding(false);
+            string input;
+            using (var sr = new System.IO.StreamReader(Console.OpenStandardInput(), utf8))
+                input = sr.ReadToEnd();
+
+            var res = SessionHookProcessor.Process(eventName, input, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            if (res.Ignore || string.IsNullOrEmpty(res.SessionId)) return;
+
+            var dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
+            System.IO.Directory.CreateDirectory(dir);
+            var file = System.IO.Path.Combine(dir, res.SessionId + ".json");
+
+            if (res.Delete)
+            {
+                try { if (System.IO.File.Exists(file)) System.IO.File.Delete(file); } catch { }
+            }
+            else if (res.StateJson is not null)
+            {
+                var tmp = file + ".tmp-" + Environment.ProcessId;
+                System.IO.File.WriteAllText(tmp, res.StateJson);
+                System.IO.File.Move(tmp, file, overwrite: true);
+            }
+        }
+        catch { /* un hook ne doit jamais casser la session Claude Code */ }
     }
 
     // Exécuté en mode --statusline : neutre, sans WPF ni DI. Ne lève jamais (ne doit pas casser la barre).
@@ -124,6 +170,16 @@ public partial class App : Application
         services.AddSingleton<IStatusLineSetup>(sp => new Views.StatusLineSetup(
             sp.GetRequiredService<StatusLineInstaller>(),
             sp.GetRequiredService<SettingsService>()));
+
+        // Widget de sessions Claude Code : moniteur des fichiers d'état (écrits par le mode --hook),
+        // installateur des hooks, contrôleur du panneau flottant.
+        services.AddSingleton(_ => new SessionMonitor());
+        services.AddSingleton(_ => new SessionHookInstaller());
+        services.AddSingleton<ISessionsController>(sp => new Views.SessionsController(
+            sp.GetRequiredService<SessionHookInstaller>(),
+            sp.GetRequiredService<SettingsService>(),
+            sp.GetRequiredService<SessionMonitor>(),
+            sp.GetRequiredService<IClock>()));
 
         // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
         // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).

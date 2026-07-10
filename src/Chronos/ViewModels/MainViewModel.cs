@@ -31,6 +31,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DiagnosticService _diagnostic;
     private readonly IStatusLineSetup _statusLineSetup;
     private readonly IOAuthLogin _oauthLogin;
+    private readonly ISessionsController _sessions;
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
     private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
@@ -60,6 +61,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     // État reflété dans l'item « Se connecter à Claude » : un jeton OAuth Chronos est-il présent ?
     [ObservableProperty] private bool _isLoggedIn;
+
+    // État reflété dans l'item « Sessions Claude Code » : le widget de sessions est-il activé ?
+    [ObservableProperty] private bool _isSessionsWidgetEnabled;
 
     // Mode d'affichage du centre : false = pourcentages (défaut), true = temps avant reset.
     // Un clic au centre bascule via ToggleCenterMode(). ShowPercent est l'inverse (pour le binding XAML).
@@ -102,7 +106,8 @@ public sealed partial class MainViewModel : ObservableObject
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
         IRecalibrationPrompt prompt, IBudgetPrompt budgetPrompt, SettingsService settings,
-        DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin)
+        DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
+        ISessionsController sessions)
     {
         _ui = ui;
         _clock = clock;
@@ -115,6 +120,7 @@ public sealed partial class MainViewModel : ObservableObject
         _diagnostic = diagnostic;
         _statusLineSetup = statusLineSetup;
         _oauthLogin = oauthLogin;
+        _sessions = sessions;
         _settings = settings.Load();
 
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
@@ -123,6 +129,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsOAuthUsageEnabled = _settings.OAuthUsageEnabled;
         IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
+        IsSessionsWidgetEnabled = _sessions.IsEnabled;
 
         // Thèmes : peupler le catalogue (surbrillance du persisté) et appliquer aux jauges dès le départ.
         SelectedThemeKey = _settings.ThemeKey;
@@ -248,6 +255,15 @@ public sealed partial class MainViewModel : ObservableObject
         _settings = _settingsService.Load() with { OAuthUsageEnabled = IsOAuthUsageEnabled };
         _settingsService.Save(_settings);
         _orchestrator.RequestRefresh();   // application immédiate (le gated Load() frais à chaque GetAsync)
+    }
+
+    /// <summary>Active/désactive le widget de sessions Claude Code (installe/retire les hooks + panneau).</summary>
+    [RelayCommand]
+    private void ToggleSessionsWidget()
+    {
+        if (_sessions.IsEnabled) _sessions.Disable();
+        else _sessions.Enable();
+        IsSessionsWidgetEnabled = _sessions.IsEnabled;
     }
 
     /// <summary>Se connecter à Claude (login OAuth intégré = source exacte universelle) ou se déconnecter.
