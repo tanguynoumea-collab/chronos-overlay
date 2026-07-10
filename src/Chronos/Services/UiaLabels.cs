@@ -20,9 +20,13 @@ public static class UiaLabels
     /// <summary>Bouton d'arrêt présent = l'assistant bosse.</summary>
     public static readonly string[] StopButton = { "Arrêter", "Stop" };
 
-    /// <summary>Bouton de décision de permission = attend une intervention maintenant.</summary>
-    public static readonly string[] PermissionButton =
-        { "Ignorer les permissions", "Skip permissions", "Autoriser", "Allow" };
+    // NOTE (honnêteté — validé en app réelle le 2026-07-10) : « Ignorer les permissions » / « Skip
+    // permissions » sont un TOGGLE PERSISTANT de la barre de composition (mode agentique), présent en
+    // PERMANENCE dans les sessions Code — PAS un dialogue transitoire de permission. S'en servir comme
+    // signal « attend une permission » produisait un FAUX POSITIF (toute session Code affichée « attend
+    // permission »). Faute d'un échantillon UIA vérifié d'une VRAIE demande de permission, la source bureau
+    // NE DÉTECTE PAS WaitingAttention (comme TranscriptSessionSource : « non détectable côté bureau ») :
+    // elle n'émet que Working / WaitingTurn / Unknown. À rétablir si un signal transitoire fiable est capturé.
 
     /// <summary>Étiquette « Mode chat » (repos, conversation non agentique).</summary>
     public static readonly string[] ChatMode = { "Mode chat", "Chat mode" };

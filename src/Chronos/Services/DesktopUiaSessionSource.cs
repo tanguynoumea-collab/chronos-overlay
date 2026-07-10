@@ -94,8 +94,8 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         // c. TYPE foreground : Chat prioritaire, puis Code (panneaux), puis Cowork (pont VM).
         var kind = InferKind(all);
 
-        // b. ÉTAT foreground : Responding/Stop → Working ; permission → WaitingAttention ;
-        //    Mode chat + placeholder → WaitingTurn ; sinon Unknown (jamais inventé).
+        // b. ÉTAT foreground : Responding/Stop → Working ; Mode chat + placeholder → WaitingTurn ;
+        //    sinon Unknown (jamais inventé). Pas de WaitingAttention : permission non détectable (cf. InferActivity).
         var activity = InferActivity(all);
 
         // d. COWORK VM (BUR-05) : sa présence est signalée, son exécution distante N'est PAS connue → Unknown forcé.
@@ -131,9 +131,9 @@ public sealed class DesktopUiaSessionSource : ISessionSource
             || all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.StopButton)))
             return SessionActivity.Working;
 
-        if (all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.PermissionButton)))
-            return SessionActivity.WaitingAttention;
-
+        // Pas de branche WaitingAttention : « attend une permission » n'est PAS détectable de façon fiable
+        // dans l'arbre bureau (le seul libellé candidat, « Ignorer les permissions », est un toggle
+        // persistant → faux positif ; validé en app réelle). Voir UiaLabels. On sous-claim honnêtement.
         var chatMode = all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.ChatMode));
         var placeholder = all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.ChatPlaceholder));
         if (chatMode && placeholder)

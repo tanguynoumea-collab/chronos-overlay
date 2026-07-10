@@ -110,11 +110,19 @@ public class DesktopUiaSessionSourceTests
     }
 
     [Fact]
-    public void MapTree_bouton_permission_donne_WaitingAttention()
+    public void MapTree_toggle_persistant_Ignorer_les_permissions_ne_donne_PAS_WaitingAttention()
     {
-        var arbre = Fenetre(FakeUiaNode("Button", "Ignorer les permissions"));
+        // Régression (validé app réelle le 2026-07-10) : « Ignorer les permissions » est un TOGGLE
+        // PERSISTANT de la barre de composition (présent en permanence dans les sessions Code), PAS un
+        // dialogue transitoire de permission. Il ne doit JAMAIS forcer WaitingAttention (faux positif).
+        // Ici, avec Mode chat + placeholder, l'état honnête est WaitingTurn (repos), pas « attend permission ».
+        var arbre = Fenetre(
+            FakeUiaNode("Button", "Ignorer les permissions"),
+            FakeUiaNode("Text", "Mode chat"),
+            FakeUiaNode("Text", "Tapez / pour les commandes"));
         var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
-        Assert.Equal(SessionActivity.WaitingAttention, fg.Activity);
+        Assert.NotEqual(SessionActivity.WaitingAttention, fg.Activity);
+        Assert.Equal(SessionActivity.WaitingTurn, fg.Activity);
     }
 
     [Fact]
