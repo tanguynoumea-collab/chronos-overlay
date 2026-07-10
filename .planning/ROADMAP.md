@@ -55,7 +55,7 @@ staleness, filtre `archived` via `ArchiveStore`), `TranscriptSessionSource`, `Se
 - Phases entières (13, 14) : travail de milestone planifié — continue après la Phase 12 (v1.3)
 - Phases décimales (13.1, 13.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 13 : Source UIA app bureau** - Un `DesktopUiaSessionSource` lit l'arbre UI Automation de la fenêtre Claude : états honnêtes (bosse / attend / attend-permission / indéterminé), distinction Chat/Code/Cowork, énumération des sessions actives de la sidebar, matching souple fr/en, test de santé + dégradation, lecture non bloquante pour le thread UI
+- [x] **Phase 13 : Source UIA app bureau** - Un `DesktopUiaSessionSource` lit l'arbre UI Automation de la fenêtre Claude : états honnêtes (bosse / attend / attend-permission / indéterminé), distinction Chat/Code/Cowork, énumération des sessions actives de la sidebar, matching souple fr/en, test de santé + dégradation, lecture non bloquante pour le thread UI (completed 2026-07-10)
 - [ ] **Phase 14 : Auto-disparition hystérésis des sessions traitées** - Un magasin « traitées » auto-géré et réversible retire une session sur « répondu » OU « acquittée par focus ≥ ~2-3 s », la fait réapparaître sur un événement d'attente plus récent, et conserve l'archivage manuel clic-droit distinct et permanent
 
 ### Phase Details
@@ -92,7 +92,7 @@ sessions existantes (`SessionSnapshot`, `SessionMonitor`, `SessionsViewModel`) l
 **Plans**: 3 plans
 - [x] 13-01-PLAN.md — Modèle étendu (Kind/Origin) + seams neutres (UiaNode, IUiaTreeProvider, ISessionSource) + UiaLabels fr/en + DesktopUiaSessionSource.MapTree pur, testé par faux arbre
 - [x] 13-02-PLAN.md — WindowsUiaTreeProvider réel (System.Windows.Automation, racine cachée) + DesktopUiaPollService (poll de fond non bloquant)
-- [ ] 13-03-PLAN.md — Fusion dans SessionMonitor + câblage DI (App.xaml.cs) + affichage du type dans le widget
+- [x] 13-03-PLAN.md — Fusion dans SessionMonitor + câblage DI (App.xaml.cs) + affichage du type dans le widget
 **UI hint**: yes
 
 **Note de démarrage** : le spike UIA a été capturé pendant une génération ; il MANQUE un snapshot en
@@ -129,5 +129,5 @@ Phase 13 → Phase 14 (dépendance forte : la source UIA avant l'hystérésis fo
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 13. Source UIA app bureau | 2/3 | In Progress|  |
+| 13. Source UIA app bureau | 3/3 | Complete   | 2026-07-10 |
 | 14. Auto-disparition hystérésis des sessions traitées | 0/TBD | Not started | - |
