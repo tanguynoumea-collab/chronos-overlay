@@ -182,16 +182,20 @@ public partial class App : Application
         services.AddSingleton<IUiaTreeProvider>(_ => new WindowsUiaTreeProvider());
         services.AddSingleton(sp => new DesktopUiaSessionSource(sp.GetRequiredService<IUiaTreeProvider>()));
 
-        // Hystérésis (Phase 14) : magasin RÉVERSIBLE des sessions traitées + détecteur STATEFUL. Déclarés AVANT
-        // le SessionMonitor qui les consomme. Le paramètre `foreground` n'est PAS fourni ici → branche NET-02
-        // dormante jusqu'au plan 02 (aucune régression : null = désactivé).
+        // Hystérésis (Phase 14) : magasin RÉVERSIBLE des sessions traitées + détecteur STATEFUL + focus
+        // premier-plan OS RÉEL (plan 02). Déclarés AVANT le SessionMonitor qui les consomme. Le focus réel
+        // (WindowsForegroundWatch, Win32) rend la branche NET-02 VIVANTE : une session bureau en attente
+        // gardée au premier plan de l'OS ≥ ~2,5 s est acquittée. Best-effort : indisponible → NET-02 ne
+        // déclenche pas, sans erreur.
         services.AddSingleton(_ => new TreatedStore());
         services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
+        services.AddSingleton<IForegroundWatch>(_ => new WindowsForegroundWatch());
 
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<DesktopUiaSessionSource>(),
             sp.GetRequiredService<TreatedStore>(),
-            sp.GetRequiredService<SessionTreatmentTracker>()));
+            sp.GetRequiredService<SessionTreatmentTracker>(),
+            sp.GetRequiredService<IForegroundWatch>()));
         // Poll de fond : IHostedService démarré/arrêté par le host (comme RefreshOrchestrator). Le Timer .NET
         // remplit le cache de la source ~1,5 s sur un thread du pool → jamais le thread UI (ROB-07).
         services.AddSingleton(sp => new DesktopUiaPollService(
