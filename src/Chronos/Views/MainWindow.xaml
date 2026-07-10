@@ -66,13 +66,13 @@
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           Fraction="{Binding DayFraction}"
                           Stroke="{Binding FiveHour.ValueBrush}"/>
-            <!-- 24 sous-tirets = 1 par heure (tous les 15°). Bien visibles (nuance claire), subordonnés aux
-                 resets. Dessinés APRÈS l'arc → au premier plan. -->
-            <ctrl:TickRing Count="24" Radius="60" TickLength="5"
+            <!-- 24 sous-tirets = 1 par heure (tous les 15°), ALIGNÉS SUR LE TRAIT de l'anneau (bande R48,5–R55,5 :
+                 Radius=55,5, TickLength=7). Bien visibles (nuance claire), au premier plan (dessinés après l'arc). -->
+            <ctrl:TickRing Count="24" Radius="55.5" TickLength="7"
                            Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="1.8"/>
-            <!-- Marques de reset 5 h projetées (JOUR-02) : les plus proéminentes (claires, longues, épaisses),
-                 tout au premier plan. -->
-            <ctrl:TickRing Radius="63" TickLength="11"
+            <!-- Marques de reset 5 h projetées (JOUR-02) : sur le trait, légèrement débordantes pour la
+                 proéminence (R48–R57), claires et épaisses, tout au premier plan. -->
+            <ctrl:TickRing Radius="57" TickLength="9"
                            Angles="{Binding DayResetAngles}"
                            Stroke="{DynamicResource TickVisible}" StrokeThickness="3.2"/>
         </Grid>
