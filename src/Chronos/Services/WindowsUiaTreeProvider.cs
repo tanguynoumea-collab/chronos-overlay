@@ -136,7 +136,14 @@ public sealed class WindowsUiaTreeProvider : IUiaTreeProvider
         try
         {
             var info = element.Current;
-            controlType = info.ControlType?.ProgrammaticName ?? string.Empty;
+            // ProgrammaticName = « ControlType.Button » : on RETIRE le préfixe pour émettre un type NEUTRE
+            // (« Button », « Group »…) cohérent avec MapTree et les faux arbres de test. VALIDÉ APP RÉELLE
+            // (2026-07-10) : sans ça, AUCUN match ControlType en prod → sidebar jamais énumérée, nom
+            // foreground jamais trouvé (les tests passaient car les faux nœuds utilisent le type nu).
+            var progName = info.ControlType?.ProgrammaticName ?? string.Empty;
+            controlType = progName.StartsWith("ControlType.", StringComparison.Ordinal)
+                ? progName.Substring("ControlType.".Length)
+                : progName;
             name = info.Name ?? string.Empty;
             // AutomationId : porte le littéral d'ancre « RootWebArea » (Document). Sans lui, MapTree
             // ne reconnaît jamais le foreground → widget vide en prod. Ne JAMAIS l'oublier.
