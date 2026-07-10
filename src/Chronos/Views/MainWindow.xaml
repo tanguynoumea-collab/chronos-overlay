@@ -61,16 +61,16 @@
              couleur = utilization 5 h (l'anneau 5 h séparé disparaît → son usage passe dans la couleur).
              + 24 SOUS-TIRETS horaires (mineurs) + marques de RESET 5 h (visibles, plus longues). ===== -->
         <Grid Visibility="{Binding IsModeNormal, Converter={StaticResource BoolToVis}}">
-            <ctrl:RingArc Fraction="1" Radius="56" Stroke="{DynamicResource Piste5h}" StrokeThickness="7"/>
-            <ctrl:RingArc x:Name="ArcTimelineNormal" Radius="56" StrokeThickness="7"
+            <ctrl:RingArc Fraction="1" Radius="52" Stroke="{DynamicResource Piste5h}" StrokeThickness="7"/>
+            <ctrl:RingArc x:Name="ArcTimelineNormal" Radius="52" StrokeThickness="7"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           Fraction="{Binding DayFraction}"
                           Stroke="{Binding FiveHour.ValueBrush}"/>
             <!-- 24 sous-tirets = 1 par heure (tous les 15°), mineurs (subordonnés aux resets). -->
-            <ctrl:TickRing Count="24" Radius="63" TickLength="4"
+            <ctrl:TickRing Count="24" Radius="59" TickLength="4"
                            Stroke="{DynamicResource TickMajeur}" StrokeThickness="1.4"/>
             <!-- Marques de reset 5 h projetées (JOUR-02), plus longues et bien visibles, par-dessus. -->
-            <ctrl:TickRing Radius="65" TickLength="8"
+            <ctrl:TickRing Radius="61" TickLength="8"
                            Angles="{Binding DayResetAngles}"
                            Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
         </Grid>
