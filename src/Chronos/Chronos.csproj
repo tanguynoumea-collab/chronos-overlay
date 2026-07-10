@@ -40,6 +40,13 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Chronos.Tests" />
   </ItemGroup>
+  <!-- Assemblies UI Automation (interop COM MANAGÉ) consommées par WindowsUiaTreeProvider (Plan 13-02)
+       pour lire l'arbre d'accessibilité de l'app bureau Claude : UIAutomationClient et UIAutomationTypes.
+       Elles sont FOURNIES IMPLICITEMENT par le framework Microsoft.WindowsDesktop.App (déjà tiré par
+       UseWPF ; les ref-assemblies net8.0 contiennent UIAutomationClient.dll / UIAutomationTypes.dll) :
+       aucun <Reference> explicite n'est requis — en ajouter un déclenche des avertissements MSB3243/MSB3245
+       (conflit avec l'assembly du framework). C'est de l'interop COM MANAGÉ, PAS une dépendance native de
+       RENDU (cf. CLAUDE.md : System.Windows.Automation autorisé, SkiaSharp/Direct2D interdits). -->
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
