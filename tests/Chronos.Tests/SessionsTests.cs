@@ -188,6 +188,28 @@ public class SessionsTests
     }
 
     [Fact]
+    public void Archive_retire_la_session_de_l_affichage()
+    {
+        var hookDir = TempDir();
+        var archPath = Path.Combine(TempDir(), "archived.json");
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            WriteState(hookDir, "keep", SessionActivity.WaitingTurn, now.ToUnixTimeMilliseconds());
+            WriteState(hookDir, "bye", SessionActivity.WaitingTurn, now.ToUnixTimeMilliseconds());
+            var archive = new ArchiveStore(archPath);
+            var monitor = new SessionMonitor(hookDir, new TranscriptSessionSource(TempDir()), archive);
+
+            Assert.Equal(2, monitor.Read(now).Count);
+            archive.Add("bye");
+            var after = monitor.Read(now);
+            Assert.Single(after);
+            Assert.Equal("keep", after[0].SessionId);
+        }
+        finally { Directory.Delete(hookDir, true); }
+    }
+
+    [Fact]
     public void Monitor_lit_les_sessions_et_applique_la_staleness()
     {
         var dir = TempDir();
@@ -199,8 +221,8 @@ public class SessionsTests
             WriteState(dir, "staleWork", SessionActivity.Working, now.AddMinutes(-30).ToUnixTimeMilliseconds());     // working périmé
             WriteState(dir, "dead", SessionActivity.WaitingTurn, now.AddHours(-9).ToUnixTimeMilliseconds());          // > drop
 
-            var emptyProjects = TempDir();
-            var snaps = new SessionMonitor(dir, new TranscriptSessionSource(emptyProjects)).Read(now).ToDictionary(s => s.SessionId);
+            var snaps = new SessionMonitor(dir, new TranscriptSessionSource(TempDir()), new ArchiveStore(Path.Combine(TempDir(), "a.json")))
+                .Read(now).ToDictionary(s => s.SessionId);
 
             Assert.Equal(SessionActivity.Working, snaps["fresh"].Activity);
             Assert.Equal(SessionActivity.WaitingAttention, snaps["waiting"].Activity);   // l'attente PERSISTE

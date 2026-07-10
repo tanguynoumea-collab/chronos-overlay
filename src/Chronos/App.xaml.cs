@@ -173,13 +173,15 @@ public partial class App : Application
 
         // Widget de sessions Claude Code : moniteur des fichiers d'état (écrits par le mode --hook),
         // installateur des hooks, contrôleur du panneau flottant.
-        services.AddSingleton(_ => new SessionMonitor());
+        services.AddSingleton(_ => new ArchiveStore());
+        services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>()));
         services.AddSingleton(_ => new SessionHookInstaller());
         services.AddSingleton<ISessionsController>(sp => new Views.SessionsController(
             sp.GetRequiredService<SessionHookInstaller>(),
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<SessionMonitor>(),
-            sp.GetRequiredService<IClock>()));
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<ArchiveStore>()));
 
         // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
         // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).

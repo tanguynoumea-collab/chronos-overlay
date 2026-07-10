@@ -2,73 +2,40 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" SizeToContent="Height" Width="270"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight"
         ShowInTaskbar="False" ShowActivated="False" Topmost="True"
         WindowStartupLocation="Manual" FontFamily="Segoe UI">
-    <Window.Resources>
-        <SolidColorBrush x:Key="Panel"  Color="#151322"/>
-        <SolidColorBrush x:Key="Panel2" Color="#1E1B30"/>
-        <SolidColorBrush x:Key="Line"   Color="#2C2942"/>
-        <SolidColorBrush x:Key="Ink"    Color="#F2F0FB"/>
-        <SolidColorBrush x:Key="Ink2"   Color="#A9A6C4"/>
-    </Window.Resources>
-
-    <Border Background="{StaticResource Panel}" CornerRadius="14" BorderBrush="{StaticResource Line}"
-            BorderThickness="1" Padding="12,10,12,11">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="22" ShadowDepth="6" Opacity="0.45" Color="Black"/>
-        </Border.Effect>
-        <StackPanel>
-            <!-- En-tête (drag) -->
-            <Grid MouseLeftButtonDown="Header_Drag" Background="Transparent" Margin="0,0,0,8">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse Width="8" Height="8" Fill="#8B7BF0" VerticalAlignment="Center"/>
-                    <TextBlock Text="Sessions Claude Code" Foreground="{StaticResource Ink}" FontSize="13.5"
-                               FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
-                <TextBlock Text="✕" Foreground="{StaticResource Ink2}" HorizontalAlignment="Right"
-                           VerticalAlignment="Center" FontSize="12" Cursor="Hand"
-                           MouseLeftButtonUp="Close_Click"/>
-            </Grid>
-            <TextBlock Text="{Binding Summary}" Foreground="{StaticResource Ink2}" FontSize="11" Margin="0,0,0,9"/>
-
-            <!-- Liste des sessions -->
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="{StaticResource Panel2}" CornerRadius="10" Padding="10,8" Margin="0,0,0,6">
-                            <Grid>
-                                <Ellipse Width="10" Height="10" Fill="{Binding StateBrush}"
-                                         HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                <StackPanel Margin="20,0,0,0">
-                                    <TextBlock Text="{Binding Project}" Foreground="{StaticResource Ink}"
-                                               FontSize="12.5" TextTrimming="CharacterEllipsis"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                        <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10.5" FontWeight="SemiBold"/>
-                                        <TextBlock Text="  ·  " Foreground="{StaticResource Ink2}" FontSize="10.5"/>
-                                        <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <!-- État vide -->
-            <TextBlock Text="Aucune session récente. Utilise une session Claude Code (app bureau ou terminal) — elle apparaîtra ici."
-                       Foreground="{StaticResource Ink2}" FontSize="11" TextWrapping="Wrap" Margin="2,2,2,2">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding TotalCount}" Value="0">
-                                <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-        </StackPanel>
-    </Border>
+    <!-- Panneau CHROMELESS : ni titre, ni résumé, ni fond autour. Seules les pastilles flottent sur le
+         bureau (comme le cadran). Glisser = déplacer. Clic droit sur une pastille = Archiver. -->
+    <ItemsControl ItemsSource="{Binding Items}" Background="#01000000"
+                  MouseLeftButtonDown="Drag" Padding="2">
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <Border CornerRadius="9" Padding="10,7" Margin="0,3" MinWidth="180"
+                        Background="#CC17151F">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.35" Color="Black"/>
+                    </Border.Effect>
+                    <Border.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                            <MenuItem Header="Archiver (retirer de l'overlay)" Command="{Binding ArchiveCommand}"/>
+                        </ContextMenu>
+                    </Border.ContextMenu>
+                    <Grid>
+                        <Ellipse Width="10" Height="10" Fill="{Binding StateBrush}"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <StackPanel Margin="20,0,0,0">
+                            <TextBlock Text="{Binding Project}" Foreground="#F4F2EC" FontSize="12.5"
+                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10.5" FontWeight="SemiBold"/>
+                                <TextBlock Text="  ·  " Foreground="#8C8A98" FontSize="10.5"/>
+                                <TextBlock Text="{Binding Detail}" Foreground="#8C8A98" FontSize="10.5"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
 </Window>

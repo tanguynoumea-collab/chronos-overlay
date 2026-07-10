@@ -4,20 +4,31 @@ using System.Linq;
 using System.Windows.Media;
 using Chronos.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Chronos.ViewModels;
 
-/// <summary>Une session dans la liste : projet, libellé d'état, couleur, détail temporel.</summary>
+/// <summary>Une session dans la liste : projet, libellé d'état, couleur, détail temporel, + archivage.</summary>
 public sealed partial class SessionItemVm : ObservableObject
 {
     public string SessionId { get; }
+    private readonly System.Action<string> _archive;
+
     [ObservableProperty] private string _project = "";
     [ObservableProperty] private string _stateText = "";
     [ObservableProperty] private string _detail = "";
     [ObservableProperty] private Brush _stateBrush = Brushes.Gray;
     [ObservableProperty] private bool _isWaiting;
 
-    public SessionItemVm(string sessionId) => SessionId = sessionId;
+    public SessionItemVm(string sessionId, System.Action<string> archive)
+    {
+        SessionId = sessionId;
+        _archive = archive;
+    }
+
+    /// <summary>Clic droit → Archiver : retire la session de l'overlay (elle ne réapparaît plus).</summary>
+    [RelayCommand]
+    private void Archive() => _archive(SessionId);
 }
 
 /// <summary>
@@ -29,6 +40,7 @@ public sealed partial class SessionsViewModel : ObservableObject
 {
     private readonly SessionMonitor _monitor;
     private readonly IClock _clock;
+    private readonly ArchiveStore _archive;
 
     public ObservableCollection<SessionItemVm> Items { get; } = new();
 
@@ -42,10 +54,18 @@ public sealed partial class SessionsViewModel : ObservableObject
     private static readonly Brush Green = Frozen("#3FB98A");   // en cours
     private static readonly Brush Gray = Frozen("#7A7A85");    // inconnu/périmé
 
-    public SessionsViewModel(SessionMonitor monitor, IClock clock)
+    public SessionsViewModel(SessionMonitor monitor, IClock clock, ArchiveStore archive)
     {
         _monitor = monitor;
         _clock = clock;
+        _archive = archive;
+    }
+
+    // Archive une session puis rafraîchit (elle disparaît immédiatement de la liste).
+    private void ArchiveSession(string sessionId)
+    {
+        _archive.Add(sessionId);
+        Refresh(_clock.UtcNow);
     }
 
     /// <summary>Démarre l'horloge de rafraîchissement (2 s), côté UI uniquement.</summary>
@@ -69,7 +89,7 @@ public sealed partial class SessionsViewModel : ObservableObject
         Items.Clear();
         foreach (var s in snaps)
         {
-            var it = new SessionItemVm(s.SessionId) { Project = s.Project };
+            var it = new SessionItemVm(s.SessionId, ArchiveSession) { Project = s.Project };
             (it.StateText, it.StateBrush, it.IsWaiting) = Describe(s.Activity);
             it.Detail = Age(now - s.UpdatedAt);
             Items.Add(it);

@@ -24,12 +24,14 @@ public sealed class SessionMonitor
 
     private readonly string _dir;
     private readonly TranscriptSessionSource _transcripts;
+    private readonly ArchiveStore _archive;
 
-    public SessionMonitor(string? sessionsDir = null, TranscriptSessionSource? transcripts = null)
+    public SessionMonitor(string? sessionsDir = null, TranscriptSessionSource? transcripts = null, ArchiveStore? archive = null)
     {
         _dir = sessionsDir ?? Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
         _transcripts = transcripts ?? new TranscriptSessionSource();
+        _archive = archive ?? new ArchiveStore();
     }
 
     public string Directory => _dir;
@@ -64,7 +66,9 @@ public sealed class SessionMonitor
             if (snap is not null) byId[snap.SessionId] = snap;
         }
 
-        return byId.Values.ToList();
+        // 3) Retirer les sessions ARCHIVÉES par l'utilisateur.
+        var archived = _archive.Load();
+        return byId.Values.Where(s => !archived.Contains(s.SessionId)).ToList();
     }
 
     private static SessionSnapshot? TryRead(string file, System.DateTimeOffset now)

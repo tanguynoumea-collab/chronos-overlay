@@ -16,15 +16,17 @@ public sealed class SessionsController : ISessionsController
     private readonly SettingsService _settings;
     private readonly SessionMonitor _monitor;
     private readonly IClock _clock;
+    private readonly ArchiveStore _archive;
 
     private SessionsWindow? _window;
 
-    public SessionsController(SessionHookInstaller installer, SettingsService settings, SessionMonitor monitor, IClock clock)
+    public SessionsController(SessionHookInstaller installer, SettingsService settings, SessionMonitor monitor, IClock clock, ArchiveStore archive)
     {
         _installer = installer;
         _settings = settings;
         _monitor = monitor;
         _clock = clock;
+        _archive = archive;
     }
 
     private static string ExePath =>
@@ -71,7 +73,7 @@ public sealed class SessionsController : ISessionsController
     {
         if (_window is null)
         {
-            var vm = new SessionsViewModel(_monitor, _clock);
+            var vm = new SessionsViewModel(_monitor, _clock, _archive);
             _window = new SessionsWindow(vm);
             var s = _settings.Load();
             if (s.SessionsX is { } x && s.SessionsY is { } y) { _window.Left = x; _window.Top = y; }
