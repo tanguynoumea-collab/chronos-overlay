@@ -295,6 +295,69 @@ public sealed class DiagnosticService
         catch (Exception ex) { sb.AppendLine("  (échec de lecture : " + ex.Message + ")"); }
         sb.AppendLine();
 
+        // 4b) Widget de sessions Claude Code (hooks + fichiers d'état)
+        sb.AppendLine("[Widget sessions Claude Code]");
+        sb.AppendLine("  Activé (réglage) : " + (s.SessionsWidgetEnabled ? "OUI" : "non"));
+        sb.AppendLine("  Exe courant : " + (Environment.ProcessPath ?? "?"));
+
+        // Hooks --hook présents dans ~/.claude/settings.json ? (+ chemin exe référencé)
+        try
+        {
+            if (File.Exists(claudeSettings))
+            {
+                using var sd = JsonDocument.Parse(File.ReadAllText(claudeSettings));
+                var present = new List<string>();
+                string? hookExe = null;
+                if (sd.RootElement.TryGetProperty("hooks", out var hks) && hks.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var ev in new[] { "Notification", "Stop", "UserPromptSubmit", "SessionStart", "SessionEnd" })
+                    {
+                        if (!hks.TryGetProperty(ev, out var arr) || arr.ValueKind != JsonValueKind.Array) continue;
+                        foreach (var grp in arr.EnumerateArray())
+                        {
+                            if (!grp.TryGetProperty("hooks", out var hs) || hs.ValueKind != JsonValueKind.Array) continue;
+                            foreach (var h in hs.EnumerateArray())
+                            {
+                                var cmd = h.TryGetProperty("command", out var cc) && cc.ValueKind == JsonValueKind.String ? cc.GetString() : null;
+                                if (cmd is null || !cmd.Contains("--hook")) continue;
+                                present.Add(ev);
+                                hookExe ??= cmd;
+                            }
+                        }
+                    }
+                }
+                sb.AppendLine("  Hooks --hook installés : " + (present.Count > 0 ? string.Join(", ", present.Distinct()) : "AUCUN"));
+                if (hookExe is not null) sb.AppendLine("  Commande hook : " + hookExe);
+            }
+            else sb.AppendLine("  settings.json Claude absent");
+        }
+        catch { sb.AppendLine("  (lecture settings.json impossible)"); }
+
+        // Fichiers d'état écrits par le mode --hook.
+        var sessDir = Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "sessions");
+        try
+        {
+            var files = Directory.Exists(sessDir) ? Directory.GetFiles(sessDir, "*.json") : System.Array.Empty<string>();
+            sb.AppendLine($"  Fichiers d'état ({sessDir}) : {files.Length}");
+            foreach (var f in files.Take(8))
+            {
+                try
+                {
+                    using var d = JsonDocument.Parse(File.ReadAllText(f));
+                    var r = d.RootElement;
+                    string P(string k) => r.TryGetProperty(k, out var v) ? v.ToString() : "?";
+                    var age = r.TryGetProperty("updated_at", out var ua) && ua.TryGetInt64(out var ms)
+                        ? $"{(_clock.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(ms)).TotalMinutes:F0} min" : "?";
+                    sb.AppendLine($"    · {P("project")} — {P("activity")} (maj il y a {age})");
+                }
+                catch { }
+            }
+            if (files.Length == 0)
+                sb.AppendLine("    → aucun. Active le widget PUIS ouvre un NOUVEAU terminal « claude » (les hooks sont lus au démarrage de session).");
+        }
+        catch { }
+        sb.AppendLine();
+
         // 5) Conseil
         sb.AppendLine("[Conseil]");
         if (!bridgeInstalled)
