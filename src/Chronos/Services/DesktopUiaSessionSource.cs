@@ -91,7 +91,7 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         var result = new List<SessionSnapshot>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        // c. TYPE foreground : Chat prioritaire, puis Code (panneaux), puis Cowork (pont VM).
+        // c. TYPE foreground : Cowork (pont VM) prioritaire, puis Code (panneaux), puis Chat (cf. InferKind).
         var kind = InferKind(all);
 
         // b. ÉTAT foreground : Responding/Stop → Working ; Mode chat + placeholder → WaitingTurn ;
@@ -142,14 +142,19 @@ public sealed class DesktopUiaSessionSource : ISessionSource
         return SessionActivity.Unknown; // rien d'exploitable → indéterminé, jamais deviné
     }
 
+    // Ordre du PLUS SPÉCIFIQUE au moins spécifique (validé app réelle le 2026-07-10) :
+    //   1) Contrôle à distance = pont VM → Cowork (le signal le plus discriminant) ;
+    //   2) panneaux Terminal/Diff/Actions de session → Code (agentique local) ;
+    //   3) « Mode chat » → Chat (libellé le plus ambigu : co-présent avec les affordances agentiques
+    //      dans l'app unifiée — le tester en DERNIER, sinon toute session Cowork/Code est étiquetée Chat).
     private static SessionKind InferKind(IReadOnlyCollection<UiaNode> all)
     {
-        if (all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.ChatMode)))
-            return SessionKind.Chat;
-        if (all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.CodePanels)))
-            return SessionKind.Code;
         if (all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.RemoteControl)))
             return SessionKind.Cowork;
+        if (all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.CodePanels)))
+            return SessionKind.Code;
+        if (all.Any(n => UiaLabels.Matches(n.Name, UiaLabels.ChatMode)))
+            return SessionKind.Chat;
         return SessionKind.Unknown;
     }
 

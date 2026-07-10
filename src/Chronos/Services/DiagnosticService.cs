@@ -368,6 +368,22 @@ public sealed class DiagnosticService
                 sb.AppendLine("    → aucune session active récente (< 15 min). Utilise une session Claude Code puis rouvre ce diagnostic.");
         }
         catch (Exception ex) { sb.AppendLine("  (détection sessions impossible : " + ex.GetType().Name + ")"); }
+
+        // Sessions BUREAU via la VRAIE source UIA (poll one-shot, hors thread UI) — vérité-terrain de ce
+        // que voit réellement DesktopUiaSessionSource (le bloc « widget » ci-dessus est volontairement
+        // aveugle au bureau : new SessionMonitor() sans source bureau).
+        try
+        {
+            var desktop = new DesktopUiaSessionSource(new WindowsUiaTreeProvider());
+            desktop.Poll(_clock.UtcNow);
+            var dsk = desktop.Read(_clock.UtcNow);
+            sb.AppendLine($"  Sessions BUREAU (UIA, one-shot) : {dsk.Count}  [santé UIA : {desktop.Health}]");
+            foreach (var d in dsk.Take(12))
+                sb.AppendLine($"    · {d.Kind}/{d.Activity} — {d.Project}  [{d.SessionId}]");
+            if (dsk.Count == 0)
+                sb.AppendLine("    → aucune session bureau (app Claude fermée, ancre absente, ou libellés non reconnus).");
+        }
+        catch (Exception ex) { sb.AppendLine("  (source bureau UIA indisponible : " + ex.GetType().Name + ")"); }
         sb.AppendLine();
 
         // 5) Conseil

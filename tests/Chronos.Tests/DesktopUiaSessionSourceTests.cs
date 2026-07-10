@@ -126,6 +126,32 @@ public class DesktopUiaSessionSourceTests
     }
 
     [Fact]
+    public void MapTree_type_Cowork_prime_sur_ChatMode_co_present()
+    {
+        // Régression (validé app réelle le 2026-07-10) : « Mode chat » est CO-PRÉSENT avec les affordances
+        // agentiques dans l'app unifiée. Le pont VM « Contrôle à distance » (Cowork) doit PRIMER, sinon
+        // toute session Cowork/Code est étiquetée Chat à tort (cas réel : la session Cowork n'apparaissait pas).
+        var arbre = Fenetre(
+            FakeUiaNode("Text", "Mode chat"),
+            FakeUiaNode("Button", "Contrôle à distance"),
+            FakeUiaNode("Button", "Terminal"));
+        var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
+        Assert.Equal(SessionKind.Cowork, fg.Kind);
+        Assert.Equal(SessionActivity.Unknown, fg.Activity); // Cowork VM → exécution distante indéterminée (BUR-05)
+    }
+
+    [Fact]
+    public void MapTree_type_Code_prime_sur_ChatMode_co_present()
+    {
+        // Idem : panneaux Code (Terminal) + « Mode chat » co-présents → Code, pas Chat.
+        var arbre = Fenetre(
+            FakeUiaNode("Text", "Mode chat"),
+            FakeUiaNode("Button", "Terminal"));
+        var fg = Assert.Single(DesktopUiaSessionSource.MapTree(arbre, Now));
+        Assert.Equal(SessionKind.Code, fg.Kind);
+    }
+
+    [Fact]
     public void MapTree_mode_chat_au_repos_donne_WaitingTurn_Chat()
     {
         var arbre = Fenetre(

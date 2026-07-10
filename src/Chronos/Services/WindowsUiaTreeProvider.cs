@@ -30,12 +30,17 @@ namespace Chronos.Services;
 /// </summary>
 public sealed class WindowsUiaTreeProvider : IUiaTreeProvider
 {
-    /// <summary>Profondeur maximale du walk : borne le coût sur une fenêtre layered (cf. CLAUDE.md,
-    /// coûts de composition). L'arbre Chromium est large ; on reste léger et non bloquant.</summary>
-    private const int MaxDepth = 12;
+    /// <summary>Profondeur maximale du walk. VALIDÉ EN APP RÉELLE (2026-07-10) : les signaux utiles de
+    /// l'app Claude — barre de composition (« Mode chat », « Arrêter », « Contrôle à distance ») et boutons
+    /// sidebar « En cours d'exécution » — sont à profondeur ~13-18. Une borne à 12 les TRONQUAIT : l'ancre
+    /// RootWebArea (~prof. 5) était trouvée (santé Ok) mais Kind/Activity ressortaient Unknown et la sidebar
+    /// vide. L'arbre complet ne fait que ~1,3 k nœuds → le walk reste léger et non bloquant (poll de fond).</summary>
+    private const int MaxDepth = 28;
 
-    /// <summary>Largeur maximale d'enfants explorés par nœud : garde-fou anti-explosion.</summary>
-    private const int MaxChildrenPerNode = 200;
+    /// <summary>Largeur maximale d'enfants explorés par nœud : garde-fou anti-explosion. Borne
+    /// naturellement la liste de messages (longue) sans masquer la barre de composition, qui en est un
+    /// FRÈRE (atteinte quel que soit le nombre de messages).</summary>
+    private const int MaxChildrenPerNode = 400;
 
     /// <summary>Racine (fenêtre Claude) mise en CACHE entre les polls, réacquise si invalide.</summary>
     private AutomationElement? _root;
