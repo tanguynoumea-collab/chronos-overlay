@@ -2,6 +2,10 @@ using Chronos.Placement;
 
 namespace Chronos.Services;
 
+/// <summary>Mode d'affichage du cadran. <see cref="Normal"/> (défaut) = épuré, 2 anneaux (hebdo + timeline
+/// 24 h colorée par l'usage 5 h, sous-tirets horaires). <see cref="Etendu"/> = 3 anneaux (hebdo, 5 h, timeline).</summary>
+public enum CadranDisplayMode { Normal, Etendu }
+
 /// <summary>
 /// Schéma persisté de settings.json (FEN-07). Décision verrouillée : le COIN + le nom du
 /// moniteur (<see cref="MonitorDeviceName"/>) sont la VÉRITÉ pour restaurer la position ;
@@ -74,4 +78,8 @@ public sealed record ChronosSettings
     /// <summary>Position persistée du panneau de sessions (DIU). null = position par défaut.</summary>
     public double? SessionsX { get; init; }
     public double? SessionsY { get; init; }
+
+    /// <summary>Mode d'affichage du cadran (défaut <see cref="CadranDisplayMode.Normal"/> = épuré, 2 anneaux).
+    /// Sérialisé en TEXTE (JsonStringEnumConverter) ; absent d'un ancien settings.json → défaut Normal.</summary>
+    public CadranDisplayMode CadranMode { get; init; } = CadranDisplayMode.Normal;
 }

@@ -189,6 +189,15 @@
             <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,4">
                 <StackPanel>
                     <Grid Margin="0,7">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Mode étendu" Foreground="{StaticResource Ink}" FontSize="13"/>
+                            <TextBlock Text="3 anneaux (défaut : épuré, 2 anneaux)" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
+                        </StackPanel>
+                        <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                      IsChecked="{Binding IsModeEtendu, Mode=OneWay}" Command="{Binding ToggleCadranModeCommand}"/>
+                    </Grid>
+                    <Border Height="1" Background="{StaticResource Line}"/>
+                    <Grid Margin="0,7">
                         <TextBlock Text="Arrière-plan" Foreground="{StaticResource Ink}" FontSize="13" VerticalAlignment="Center"/>
                         <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                       IsChecked="{Binding IsBackground, Mode=OneWay}" Command="{Binding ToggleBackgroundCommand}"/>

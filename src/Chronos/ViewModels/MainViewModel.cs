@@ -74,6 +74,12 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic au centre du cadran).</summary>
     public void ToggleCenterMode() => ShowCountdown = !ShowCountdown;
 
+    // Mode d'affichage du cadran : false = Normal (défaut, 2 anneaux : hebdo + timeline 24 h), true = Étendu
+    // (3 anneaux). Bindé aux Visibility des groupes d'anneaux (MainWindow.xaml). Persisté dans settings.json.
+    [ObservableProperty] private bool _isModeEtendu;
+    public bool IsModeNormal => !IsModeEtendu;
+    partial void OnIsModeEtenduChanged(bool value) => OnPropertyChanged(nameof(IsModeNormal));
+
     // --- Thèmes visuels (settings) ---
 
     /// <summary>Version de l'app (« v2.4 ») affichée dans l'en-tête des réglages.</summary>
@@ -130,6 +136,9 @@ public sealed partial class MainViewModel : ObservableObject
         IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
         IsSessionsWidgetEnabled = _sessions.IsEnabled;
+        IsModeEtendu = _settings.CadranMode == CadranDisplayMode.Etendu; // défaut Normal
+
+
 
         // Thèmes : peupler le catalogue (surbrillance du persisté) et appliquer aux jauges dès le départ.
         SelectedThemeKey = _settings.ThemeKey;
@@ -264,6 +273,20 @@ public sealed partial class MainViewModel : ObservableObject
         if (_sessions.IsEnabled) _sessions.Disable();
         else _sessions.Enable();
         IsSessionsWidgetEnabled = _sessions.IsEnabled;
+    }
+
+    /// <summary>Bascule le mode d'affichage du cadran (Normal ↔ Étendu) et le persiste (GAP-1 : Load disque
+    /// frais avant Save, pour ne pas écraser un réglage écrit ailleurs — ex. OverlayController). Les
+    /// Visibility des groupes d'anneaux réagissent aussitôt (IsModeEtendu/IsModeNormal).</summary>
+    [RelayCommand]
+    private void ToggleCadranMode()
+    {
+        IsModeEtendu = !IsModeEtendu;
+        _settings = _settingsService.Load() with
+        {
+            CadranMode = IsModeEtendu ? CadranDisplayMode.Etendu : CadranDisplayMode.Normal
+        };
+        _settingsService.Save(_settings);
     }
 
     /// <summary>Se connecter à Claude (login OAuth intégré = source exacte universelle) ou se déconnecter.
