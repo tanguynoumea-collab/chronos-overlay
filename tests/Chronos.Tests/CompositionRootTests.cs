@@ -101,4 +101,41 @@ public class CompositionRootTests
         provider.Dispose();
         Assert.True(marqueur.Disposed);
     }
+
+    /// <summary>
+    /// GARDE DI RÉELLE (Phase 13) — au-delà de `dotnet build`. Le conteneur miroir de
+    /// <see cref="Host_resout_et_dispose_les_singletons"/> n'inclut PAS la sous-chaîne bureau UIA :
+    /// une DI mal ordonnée (SessionMonitor résolu sans DesktopUiaSessionSource enregistré) ou un service
+    /// manquant (IUiaTreeProvider) COMPILERAIT et ne planterait qu'au DÉMARRAGE de l'app, pas au build.
+    /// Ce test enregistre EXACTEMENT la sous-chaîne bureau telle qu'elle est câblée dans App.xaml.cs et
+    /// prouve que <c>SessionMonitor</c> ET <c>DesktopUiaPollService</c> se résolvent sans exception
+    /// (= graphe câblé dans le bon ordre). [Fact] simple : aucun besoin de STA/WPF (pas de MainWindow) —
+    /// construire WindowsUiaTreeProvider ne touche PAS l'UIA tant que TryGetTree n'est pas appelé.
+    /// </summary>
+    [Fact]
+    public void Le_graphe_DI_resout_les_services_bureau_UIA()
+    {
+        var services = new ServiceCollection();
+
+        // Sous-chaîne bureau EXACTEMENT comme dans App.xaml.cs (bloc « Widget de sessions ») :
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(_ => new ArchiveStore(
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosArch_" + System.Guid.NewGuid().ToString("N") + ".json")));
+        services.AddSingleton<IUiaTreeProvider>(_ => new WindowsUiaTreeProvider());
+        services.AddSingleton(sp => new DesktopUiaSessionSource(sp.GetRequiredService<IUiaTreeProvider>()));
+        services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
+            sp.GetRequiredService<DesktopUiaSessionSource>()));
+        services.AddSingleton(sp => new DesktopUiaPollService(
+            sp.GetRequiredService<DesktopUiaSessionSource>(),
+            sp.GetRequiredService<IClock>()));
+        services.AddHostedService(sp => sp.GetRequiredService<DesktopUiaPollService>());
+
+        var provider = services.BuildServiceProvider();
+
+        // Résolution sans exception = graphe câblé dans le BON ORDRE (aucun service manquant/mal ordonné).
+        Assert.NotNull(provider.GetRequiredService<SessionMonitor>());
+        Assert.NotNull(provider.GetRequiredService<DesktopUiaPollService>());
+
+        provider.Dispose(); // dispose le poll de fond (IDisposable) sans erreur
+    }
 }

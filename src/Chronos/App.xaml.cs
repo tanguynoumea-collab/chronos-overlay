@@ -174,7 +174,22 @@ public partial class App : Application
         // Widget de sessions Claude Code : moniteur des fichiers d'état (écrits par le mode --hook),
         // installateur des hooks, contrôleur du panneau flottant.
         services.AddSingleton(_ => new ArchiveStore());
-        services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>()));
+
+        // Source BUREAU (UIA) — chaîne complète (Phase 13) :
+        //   provider réel (arbre a11y de la fenêtre Claude) → source (cache) → poll de fond (HORS thread UI,
+        //   ROB-07) → SessionMonitor (fusion) → widget. L'ordre d'ENREGISTREMENT importe : IUiaTreeProvider et
+        //   DesktopUiaSessionSource sont déclarés AVANT le SessionMonitor qui les consomme.
+        services.AddSingleton<IUiaTreeProvider>(_ => new WindowsUiaTreeProvider());
+        services.AddSingleton(sp => new DesktopUiaSessionSource(sp.GetRequiredService<IUiaTreeProvider>()));
+        services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
+            sp.GetRequiredService<DesktopUiaSessionSource>()));
+        // Poll de fond : IHostedService démarré/arrêté par le host (comme RefreshOrchestrator). Le Timer .NET
+        // remplit le cache de la source ~1,5 s sur un thread du pool → jamais le thread UI (ROB-07).
+        services.AddSingleton(sp => new DesktopUiaPollService(
+            sp.GetRequiredService<DesktopUiaSessionSource>(),
+            sp.GetRequiredService<IClock>()));
+        services.AddHostedService(sp => sp.GetRequiredService<DesktopUiaPollService>());
+
         services.AddSingleton(_ => new SessionHookInstaller());
         services.AddSingleton<ISessionsController>(sp => new Views.SessionsController(
             sp.GetRequiredService<SessionHookInstaller>(),
