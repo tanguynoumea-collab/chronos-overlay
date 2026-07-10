@@ -120,7 +120,7 @@ la branche « répondu », NET-01, fonctionne déjà avec les sources actuelles)
   4. **Archivage manuel préservé** : l'archivage par clic droit reste disponible et permanent — distinct
      et complémentaire de l'auto-disparition, ne réapparaît jamais contrairement au « traité » (NET-04).
 **Plans**: 2 plans
-- [ ] 14-01-PLAN.md — TreatedStore réversible + SessionTreatmentTracker (hystérésis pure) + filtre treated dans SessionMonitor.Read, testés à fond (NET-01, NET-03, NET-04, logique NET-02 par faux focus)
+- [x] 14-01-PLAN.md — TreatedStore réversible + SessionTreatmentTracker (hystérésis pure) + filtre treated dans SessionMonitor.Read, testés à fond (NET-01, NET-03, NET-04, logique NET-02 par faux focus)
 - [ ] 14-02-PLAN.md — WindowsForegroundWatch (focus premier-plan OS réel) + injection DI + garde DI étendue (NET-02 vivant)
 **UI hint**: yes
 
@@ -132,4 +132,4 @@ Phase 13 → Phase 14 (dépendance forte : la source UIA avant l'hystérésis fo
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 13. Source UIA app bureau | 3/3 | Complete   | 2026-07-10 |
-| 14. Auto-disparition hystérésis des sessions traitées | 0/2 | Not started | - |
+| 14. Auto-disparition hystérésis des sessions traitées | 1/2 | In Progress|  |

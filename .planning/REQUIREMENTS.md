@@ -27,13 +27,13 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 
 ### Auto-disparition des sessions traitées (NET)
 
-- [ ] **NET-01**: Une session en attente **disparaît automatiquement** de la liste dès que l'utilisateur
+- [x] **NET-01**: Une session en attente **disparaît automatiquement** de la liste dès que l'utilisateur
   **y répond** (elle repasse en « en cours » — transition observable via transcript ou via UIA).
 - [ ] **NET-02**: Une session en attente **disparaît automatiquement** dès que l'utilisateur la garde
   **au premier plan** de l'app ≥ ~2-3 s (acquittement, avec debounce anti-survol).
-- [ ] **NET-03**: Une session « traitée » qui **repart en attente** (événement d'attente plus récent que
+- [x] **NET-03**: Une session « traitée » qui **repart en attente** (événement d'attente plus récent que
   le traitement) **réapparaît** dans la liste.
-- [ ] **NET-04**: L'**archivage manuel** par clic droit reste disponible et **permanent**, distinct et
+- [x] **NET-04**: L'**archivage manuel** par clic droit reste disponible et **permanent**, distinct et
   complémentaire de l'auto-disparition (ne réapparaît jamais, contrairement au « traité »).
 
 ### Robustesse & threading (ROB)
@@ -67,10 +67,10 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 | BUR-03 | Phase 13 | Complete |
 | BUR-04 | Phase 13 | Complete |
 | BUR-05 | Phase 13 | Complete |
-| NET-01 | Phase 14 | Pending |
+| NET-01 | Phase 14 | Complete |
 | NET-02 | Phase 14 | Pending |
-| NET-03 | Phase 14 | Pending |
-| NET-04 | Phase 14 | Pending |
+| NET-03 | Phase 14 | Complete |
+| NET-04 | Phase 14 | Complete |
 | ROB-06 | Phase 13 | Complete |
 | ROB-07 | Phase 13 | Complete |
 

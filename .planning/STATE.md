@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-status: "Phase 13 terminée (3/3 plans) — source UIA app bureau intégrée de bout en bout (fusion + DI + type) ; suivant : Phase 14 (hystérésis / sessions traitées)"
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-07-10T12:44:05.632Z"
-last_activity: 2026-07-10 — Plan 13-03 exécuté (BUR-01, BUR-03 ; 6 tests neufs, suite verte 304 ; phase 13 complète)
+status: "Phase 14 en cours (1/2 plans) — cœur hystérésis livré (TreatedStore réversible + tracker NET-01/02/03 + filtre SessionMonitor) ; suivant : plan 14-02 (focus OS réel NET-02 + intégration UI)"
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-07-10T13:07:53.568Z"
+last_activity: 2026-07-10 — Plan 14-01 exécuté (NET-01/03/04 ; 12 tests neufs, suite verte 316)
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 5
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 13 — Source UIA app bureau (première phase de v1.4)
+**Current focus:** Phase 14 — Auto-disparition hystérésis (deuxième phase de v1.4)
 
 ## Current Position
 
 Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-Phase: 13 — Source UIA app bureau (terminée)
-Plan: 13-03 terminé (3/3 plans de la phase)
-Status: Phase 13 terminée (3/3 plans) — source UIA app bureau intégrée de bout en bout (fusion + DI + type) ; suivant : Phase 14 (hystérésis / sessions traitées)
-Last activity: 2026-07-10 — Plan 13-03 exécuté (BUR-01, BUR-03 ; 6 tests neufs, suite verte 304 ; phase 13 complète)
+Phase: 14 — Auto-disparition hystérésis (en cours)
+Plan: 14-01 terminé (1/2 plans de la phase)
+Status: Phase 14 en cours (1/2 plans) — cœur hystérésis livré (TreatedStore réversible + tracker NET-01/02/03 + filtre SessionMonitor) ; suivant : plan 14-02 (focus OS réel NET-02 + intégration UI)
+Last activity: 2026-07-10 — Plan 14-01 exécuté (NET-01/03/04 ; 12 tests neufs, suite verte 316)
 
-Progress: [██████████] 100% (3/3 plans, phase 13)
+Progress: [█████░░░░░] 50% (1/2 plans, phase 14)
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100% (3/3 plans, phase 13)
 | Phase 13 P01 | 6 | 3 tasks | 7 files |
 | Phase 13 P02 | 4min | 2 tasks | 4 files |
 | Phase 13 P03 | 4min | 3 tasks | 6 files |
+| Phase 14 P01 | 5m | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,7 @@ Progress: [██████████] 100% (3/3 plans, phase 13)
 - [Phase 13]: [13-02] WindowsUiaTreeProvider propage AutomationId (dont l'ancre RootWebArea) → foreground reconnu en PROD, pas seulement en test. Assemblies UIA fournies implicitement par UseWPF (aucun <Reference>, 0 warning). Poll de fond via Timer .NET hors thread UI (ROB-07).
 - [Phase 13]: 13-03: source bureau fusionnée dans SessionMonitor.Read (ISessionSource? optionnel, 4e arg non cassant), après transcripts+hooks, avant archived, non bloquant (ROB-07)
 - [Phase 13]: 13-03: garde DI réelle (CompositionRootTests) reproduisant la sous-chaîne bureau d'App.xaml.cs → attrape un service manquant/mal ordonné qui ne planterait qu'au démarrage
+- [Phase 14]: [14-01] Réversibilité NET-03 portée par le tracker (purge sur nouvel épisode d'attente), PAS par une comparaison ts>=UpdatedAt dans le filtre (fausse pour le bureau: UpdatedAt==now à chaque poll). Horodatage d'épisode maintenu par le tracker.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -113,6 +115,6 @@ Progress: [██████████] 100% (3/3 plans, phase 13)
 
 ## Session Continuity
 
-Last session: 2026-07-10T12:43:30.884Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-07-10T13:07:21.943Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
