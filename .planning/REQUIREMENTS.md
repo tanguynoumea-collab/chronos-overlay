@@ -62,19 +62,19 @@ préservée (état « indéterminé » quand la vérité-terrain n'est pas obser
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| BUR-01 | TBD | Pending |
-| BUR-02 | TBD | Pending |
-| BUR-03 | TBD | Pending |
-| BUR-04 | TBD | Pending |
-| BUR-05 | TBD | Pending |
-| NET-01 | TBD | Pending |
-| NET-02 | TBD | Pending |
-| NET-03 | TBD | Pending |
-| NET-04 | TBD | Pending |
-| ROB-06 | TBD | Pending |
-| ROB-07 | TBD | Pending |
+| BUR-01 | Phase 13 | Pending |
+| BUR-02 | Phase 13 | Pending |
+| BUR-03 | Phase 13 | Pending |
+| BUR-04 | Phase 13 | Pending |
+| BUR-05 | Phase 13 | Pending |
+| NET-01 | Phase 14 | Pending |
+| NET-02 | Phase 14 | Pending |
+| NET-03 | Phase 14 | Pending |
+| NET-04 | Phase 14 | Pending |
+| ROB-06 | Phase 13 | Pending |
+| ROB-07 | Phase 13 | Pending |
 
-*(Colonne Phase remplie par le roadmapper.)*
+**Couverture :** 11/11 requirements mappés · Phase 13 (7) + Phase 14 (4) · aucun orphelin, aucun doublon.
 
 ---
-*Last updated: 2026-07-10 — milestone v1.4 démarré (11 requirements)*
+*Last updated: 2026-07-10 — roadmap v1.4 créé (phases 13-14, 11 requirements mappés)*
