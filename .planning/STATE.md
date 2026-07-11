@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-status: "Phase 14 TERMINÉE (2/2 plans) — NET-02 vivant en prod (focus OS réel WindowsForegroundWatch injecté). NET-01..04 tous couverts. Milestone v1.4 prêt pour l'audit."
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-07-10T13:11:52.272Z"
-last_activity: 2026-07-10 — Plan 14-02 exécuté (NET-02 focus OS réel ; 0 test neuf, garde DI étendue, suite verte 316)
+status: "v1.4 VALIDÉ en UAT app-réelle (2026-07-11) : sessions bureau (BUR/NET/ROB) + nombreux correctifs de test réel. Feature cadran deux modes (Normal/Étendu) ajoutée en direct (hors phases GSD). 327 tests verts."
+stopped_at: v1.4 validé (UAT app-réelle) + cadran deux modes
+last_updated: "2026-07-11"
+last_activity: 2026-07-11 — UAT app-réelle (correctifs sessions) + feature cadran deux modes ; 327 tests verts, tout committé sur main (non poussé)
 progress:
   total_phases: 2
   completed_phases: 2
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Milestone v1.4 complet — prêt pour l'audit (Phase 13 + Phase 14 terminées)
+**Current focus:** v1.4 VALIDÉ en UAT app-réelle + feature cadran deux modes livrée. Prêt à shipper (versionner l'exe + push) au feu vert de l'utilisateur.
 
 ## Current Position
 
-Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-Phase: 14 — Auto-disparition hystérésis (TERMINÉE, 2/2 plans)
-Plan: 14-02 terminé (dernière wave de la dernière phase du milestone)
-Status: Phase 14 TERMINÉE — NET-02 vivant en prod (focus OS réel WindowsForegroundWatch injecté dans SessionMonitor). NET-01..04 tous couverts. Milestone v1.4 prêt pour l'audit.
-Last activity: 2026-07-10 — Plan 14-02 exécuté (NET-02 focus OS réel ; garde DI étendue, suite verte 316)
+Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code) — VALIDÉ
+Phase: 13 + 14 terminées ; correctifs UAT app-réelle appliqués (voir git) ; cadran deux modes ajouté en direct
+Plan: —
+Status: **v1.4 validé en UAT app-réelle le 2026-07-11.** Sessions bureau (BUR/NET/ROB) opérationnelles + série de correctifs trouvés en test réel (faux positif permission, priorité de type, walk UIA trop peu profond, ControlType non normalisé, pollution par le texte des messages, stabilité inter-modes, dédoublonnage, foreground Cowork supprimé, dernier état conservé). BONUS hors GSD : feature cadran **deux modes** (Normal épuré par défaut / Étendu), bascule dans les réglages, sous-tirets alignés sur la grille des resets 5 h, pastille session ORANGE pour les deux états d'attente. 327 tests verts, tout committé sur `main` (non poussé).
+Last activity: 2026-07-11 — validation utilisateur ; « tout valider »
 
 Progress: [██████████] 100% (2/2 plans, phase 14)
 

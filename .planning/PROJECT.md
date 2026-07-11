@@ -38,7 +38,7 @@ chiffre exact.
 
 <!-- Current scope. Building toward these. -->
 
-Milestone v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code) :
+Milestone v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code) — **✓ LIVRÉ & VALIDÉ en UAT app-réelle (2026-07-11)** :
 - Source UIA « app bureau » : détecter l'état des sessions de l'app de bureau Claude (bosse / attend / attend-permission / indéterminé) via UI Automation, distinguer Chat/Code/Cowork, énumérer les sessions actives de la barre latérale (SESS-01..05).
 - Auto-disparition hystérésis : une session traitée sort de la liste (répondu → en cours OU acquittée par focus ≥ ~2-3 s), réversible sur nouvel événement d'attente ; archivage manuel conservé (SESS-06..09).
 - Robustesse & honnêteté : matching souple par libellé (fr/en), test de santé au démarrage, dégradation vers « indéterminé », lecture non bloquante pour le thread UI (SESS-10..11).
@@ -56,13 +56,17 @@ Milestone v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowo
 - ClickOnce / SharePoint — déploiement exe mono-fichier uniquement
 - Bande d'activité des sous-agents (blocs Task JSONL) — optionnelle, différée après le cœur fonctionnel
 
-## Current State (v1.3 — SHIPPED 2026-07-09)
+## Current State (v1.4 — VALIDÉ en UAT app-réelle 2026-07-11)
 
 Chronos affiche les quotas Claude (exact via OAuth, sinon estimé JSONL) dans un cadran compact 170 px à
-fond transparent : 3 anneaux (hebdo/5h/timeline 24h) qui se remplissent vers le reset, marques horaires
-et de reset, centre cliquable basculant pourcentages ↔ temps avant reset. 4 milestones livrés (v1.0→v1.3),
-215 tests, exe mono-fichier. Robustesse : anti-429 OAuth (throttle+backoff+cache). Reste : UAT humains,
-refresh du token OAuth (candidat v1.4).
+fond transparent. Le widget **sessions** couvre désormais l'app de bureau Claude (Chat / Code / Cowork) via
+UI Automation, avec noms, énumération individuelle, auto-disparition hystérésis et pastille ORANGE pour les
+deux états d'attente. Le **cadran a deux modes** (Normal épuré par défaut / Étendu 3 anneaux, bascule dans les
+réglages) : en normal, la timeline 24 h portée en anneau principal (couleur = usage 5 h) + sous-tirets
+horaires alignés sur la grille des resets 5 h + marques de reset en blanc primaire. **327 tests verts.**
+5 milestones (v1.0→v1.4), exe mono-fichier. Reste (au feu vert utilisateur) : versionner l'exe + push/ship ;
+suivi mineur (durcir NET-02 contre le flicker du Kind au premier plan). Le cadran deux-modes a été livré en
+direct (hors phases GSD), comme le widget sessions historique.
 
 ## Current Milestone: v1.4 — Intégration des sessions de l'app bureau Claude
 
@@ -146,4 +150,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-10 — milestone v1.4 démarré (intégration sessions app bureau)*
+*Last updated: 2026-07-11 — v1.4 validé en UAT app-réelle + cadran deux modes (Normal/Étendu)*
