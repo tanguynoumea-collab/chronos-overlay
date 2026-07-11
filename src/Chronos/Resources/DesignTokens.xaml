@@ -9,7 +9,9 @@
     <SolidColorBrush x:Key="TickMineur"          Color="#34333D"/>    <!-- graduations mineures -->
     <SolidColorBrush x:Key="TickMajeur"          Color="#46454F"/>    <!-- graduations majeures -->
     <SolidColorBrush x:Key="TickVisible"         Color="#C9C8D2"/>    <!-- graduations bien visibles (marques horaires 5 h + resets 24 h) -->
-    <SolidColorBrush x:Key="TickReset"           Color="#5AC8F5"/>    <!-- marques de RESET 5 h : couleur DISTINCTE (cyan) pour se démarquer des sous-tirets horaires gris -->
+    <SolidColorBrush x:Key="TickReset"           Color="#F4F2EC"/>    <!-- marques de RESET 5 h = blanc chaud PRIMAIRE (même neutre que le texte principal) : hiérarchie
+                                                                          cohérente sur l'échelle neutre (resets primaires / sous-tirets horaires secondaires gris),
+                                                                          se démarque par la LUMINOSITÉ, sans teinte étrangère ni conflit avec la rampe d'usage -->
     <SolidColorBrush x:Key="Piste5h"             Color="#2A2932"/>    <!-- piste de l'arc 5 h -->
     <SolidColorBrush x:Key="PisteHebdo"          Color="#26252E"/>    <!-- piste de l'arc hebdo -->
     <SolidColorBrush x:Key="Piste24h"            Color="#242330"/>    <!-- piste de l'anneau timeline 24 h (nuance sombre proche des autres pistes) -->
