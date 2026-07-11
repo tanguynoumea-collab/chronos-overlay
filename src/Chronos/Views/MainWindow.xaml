@@ -51,10 +51,10 @@
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           Fraction="{Binding DayFraction}"
                           Stroke="{Binding FiveHour.ValueBrush}"/>
-            <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe. -->
+            <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe. Couleur DISTINCTE (cyan). -->
             <ctrl:TickRing Radius="68" TickLength="7"
                            Angles="{Binding DayResetAngles}"
-                           Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
+                           Stroke="{DynamicResource TickReset}" StrokeThickness="2.5"/>
         </Grid>
 
         <!-- ===== MODE NORMAL (DÉFAUT, 2 anneaux) : la timeline 24 h portée en anneau PRINCIPAL (R56, épais),
@@ -70,11 +70,11 @@
                  Radius=55,5, TickLength=7). Bien visibles (nuance claire), au premier plan (dessinés après l'arc). -->
             <ctrl:TickRing Count="24" Radius="55.5" TickLength="7"
                            Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="1.8"/>
-            <!-- Marques de reset 5 h projetées (JOUR-02) : sur le trait, légèrement débordantes pour la
-                 proéminence (R48–R57), claires et épaisses, tout au premier plan. -->
+            <!-- Marques de reset 5 h projetées (JOUR-02) : couleur DISTINCTE (cyan TickReset) pour se démarquer
+                 des sous-tirets horaires gris. Sur le trait, légèrement débordantes (R48–R57), épaisses, premier plan. -->
             <ctrl:TickRing Radius="57" TickLength="9"
                            Angles="{Binding DayResetAngles}"
-                           Stroke="{DynamicResource TickVisible}" StrokeThickness="3.2"/>
+                           Stroke="{DynamicResource TickReset}" StrokeThickness="3.2"/>
         </Grid>
 
         <!-- Bloc central : deux modes alternés par un clic au centre (ToggleCenterMode).
