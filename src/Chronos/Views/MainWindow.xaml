@@ -66,9 +66,11 @@
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           Fraction="{Binding DayFraction}"
                           Stroke="{Binding FiveHour.ValueBrush}"/>
-            <!-- 24 sous-tirets = 1 par heure (tous les 15°), ALIGNÉS SUR LE TRAIT de l'anneau (bande R48,5–R55,5 :
-                 Radius=55,5, TickLength=7). Bien visibles (nuance claire), au premier plan (dessinés après l'arc). -->
-            <ctrl:TickRing Count="24" Radius="55.5" TickLength="7"
+            <!-- Sous-tirets HORAIRES alignés sur la grille des resets 5 h (DaySubTickAngles) : ils subdivisent
+                 chaque intervalle de 5 h entre deux marques principales (PAS un cadran 24 h fixe). Sur le trait
+                 de l'anneau (bande R48,5–R55,5 : Radius=55,5, TickLength=7), gris secondaire, premier plan. -->
+            <ctrl:TickRing Radius="55.5" TickLength="7"
+                           Angles="{Binding DaySubTickAngles}"
                            Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="1.8"/>
             <!-- Marques de reset 5 h projetées (JOUR-02) : couleur DISTINCTE (cyan TickReset) pour se démarquer
                  des sous-tirets horaires gris. Sur le trait, légèrement débordantes (R48–R57), épaisses, premier plan. -->

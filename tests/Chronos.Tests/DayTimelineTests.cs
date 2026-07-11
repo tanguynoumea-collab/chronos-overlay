@@ -86,4 +86,44 @@ public class DayTimelineTests
         var angles = DayTimeline.ResetAngles(now, reset);
         Assert.Equal(new[] { 30.0, 105.0, 180.0, 255.0, 330.0 }, angles);
     }
+
+    // ---- SubTickAngles : sous-tirets horaires alignés sur la grille des resets (subdivisent les 5 h) ----
+
+    [Fact]
+    public void SubTicks_null_rend_liste_vide()
+    {
+        var now = new DateTimeOffset(2026, 7, 9, 18, 0, 0, TimeSpan.FromHours(2));
+        Assert.Empty(DayTimeline.SubTickAngles(now, null));
+    }
+
+    [Fact]
+    public void SubTicks_subdivisent_les_5h_sans_tomber_sur_les_resets()
+    {
+        var now = new DateTimeOffset(2026, 7, 9, 18, 0, 0, TimeSpan.FromHours(2));
+        var reset = new DateTimeOffset(2026, 7, 9, 3, 0, 0, TimeSpan.FromHours(2)); // resets 03/08/13/18/23 h
+        var subs = DayTimeline.SubTickAngles(now, reset);
+
+        // 24 heures − 5 resets = 19 sous-tirets (décalage-minute 0 → angle = heure × 15°).
+        Assert.Equal(19, subs.Count);
+        // Aucune position de reset (45/120/195/270/345°) n'est un sous-tiret (ce sont les marques principales).
+        foreach (var r in new[] { 45.0, 120.0, 195.0, 270.0, 345.0 })
+            Assert.DoesNotContain(r, subs);
+        // Heures intermédiaires attendues : 01 h → 15°, 04 h → 60°, 22 h → 330°.
+        Assert.Contains(15.0, subs);
+        Assert.Contains(60.0, subs);
+        Assert.Contains(330.0, subs);
+    }
+
+    [Fact]
+    public void SubTicks_conservent_le_decalage_minute_des_resets()
+    {
+        // Ancre 03:20 → resets à :20 de 03/08/13/18/23 h. Les sous-tirets partagent ce décalage (:20).
+        var now = new DateTimeOffset(2026, 7, 9, 12, 0, 0, TimeSpan.FromHours(2));
+        var reset = new DateTimeOffset(2026, 7, 9, 3, 20, 0, TimeSpan.FromHours(2));
+        var subs = DayTimeline.SubTickAngles(now, reset);
+        Assert.Equal(19, subs.Count);
+        // 00:20 → (20/1440)×360 = 5° doit être un sous-tiret ; 03:20 (reset) → (200/1440)×360 = 50° ne l'est pas.
+        Assert.Contains(5.0, subs);
+        Assert.DoesNotContain(50.0, subs);
+    }
 }

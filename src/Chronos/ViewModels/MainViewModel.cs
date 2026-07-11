@@ -48,6 +48,8 @@ public sealed partial class MainViewModel : ObservableObject
     // FiveHour.Utilization côté XAML (JOUR-03, plan 02).
     [ObservableProperty] private double _dayFraction;
     [ObservableProperty] private System.Collections.Generic.IReadOnlyList<double> _dayResetAngles = System.Array.Empty<double>();
+    // Sous-tirets horaires alignés sur la grille des resets 5 h (subdivisent chaque intervalle de 5 h, mode normal).
+    [ObservableProperty] private System.Collections.Generic.IReadOnlyList<double> _daySubTickAngles = System.Array.Empty<double>();
 
     // État reflété dans les items « à cocher » du menu (FEN-05 / DEP-02).
     [ObservableProperty] private bool _isBackground;
@@ -181,7 +183,9 @@ public sealed partial class MainViewModel : ObservableObject
         // Les angles se calent sur le resets_at 5 h courant (converti local) ; vides si inconnu.
         var localNow = now.ToLocalTime();
         DayFraction = Rendering.DayTimeline.Fraction(localNow);
-        DayResetAngles = Rendering.DayTimeline.ResetAngles(localNow, _last?.FiveHour.ResetsAt?.ToLocalTime());
+        var localReset5h = _last?.FiveHour.ResetsAt?.ToLocalTime();
+        DayResetAngles = Rendering.DayTimeline.ResetAngles(localNow, localReset5h);
+        DaySubTickAngles = Rendering.DayTimeline.SubTickAngles(localNow, localReset5h);
     }
 
     /// <summary>Démarre l'horloge UI 1 s (RAF-03). Créé côté UI UNIQUEMENT (jamais dans le ctor → Pitfall 4).</summary>
