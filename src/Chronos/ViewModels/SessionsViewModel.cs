@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Controls;
 using System.Windows.Media;
 using Chronos.Services;
+using Chronos.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -20,6 +22,13 @@ public sealed partial class SessionItemVm : ObservableObject
     [ObservableProperty] private Brush _stateBrush = Brushes.Gray;
     [ObservableProperty] private bool _isWaiting;
     [ObservableProperty] private string _kindLabel = "";   // type bureau (Chat/Code/Cowork) ; vide pour les sessions CLI
+
+    // États d'activité distincts, exposés pour les templates de la refonte visuelle (formes/rythmes par état).
+    // « à toi » (Attention) vs « tour fini » (Turn) = les DEUX attentes, distinguées SANS deux oranges.
+    [ObservableProperty] private bool _isAttention;  // WaitingAttention → « à toi » (respire)
+    [ObservableProperty] private bool _isTurn;       // WaitingTurn → « tour fini » (fixe)
+    [ObservableProperty] private bool _isWorking;    // en cours
+    [ObservableProperty] private bool _isGhost;      // Unknown / périmé → fantôme
 
     public SessionItemVm(string sessionId, System.Action<string> archive)
     {
@@ -50,10 +59,52 @@ public sealed partial class SessionsViewModel : ObservableObject
     [ObservableProperty] private bool _hasWaiting;
     [ObservableProperty] private string _summary = "Aucune session";
 
-    private static readonly Brush Amber = Frozen("#E9A23C");   // EN ATTENTE (orange) : réflexion finie non
-                                                              // consultée (tour fini) OU attend une intervention
-    private static readonly Brush Green = Frozen("#3FB98A");   // en cours
-    private static readonly Brush Gray = Frozen("#7A7A85");    // inconnu/périmé
+    // Style visuel du widget (refonte). Piloté par la fenêtre de réglages via SessionsController.SetStyle ;
+    // les booléens IsStyleX sélectionnent le template dans SessionsWindow.xaml.
+    [ObservableProperty] private SessionStyle _style;
+    public bool IsStylePastilles    => Style == SessionStyle.Pastilles;
+    public bool IsStyleMarge        => Style == SessionStyle.Marge;
+    public bool IsStyleJetons       => Style == SessionStyle.Jetons;
+    public bool IsStyleSonar        => Style == SessionStyle.Sonar;
+    public bool IsStyleFacade       => Style == SessionStyle.Facade;
+    public bool IsStyleEtagere      => Style == SessionStyle.Etagere;
+    public bool IsStyleAnnonciateur => Style == SessionStyle.Annonciateur;
+    public bool IsStyleVeilleurs    => Style == SessionStyle.Veilleurs;
+    partial void OnStyleChanged(SessionStyle value)
+    {
+        OnPropertyChanged(nameof(IsStylePastilles));
+        OnPropertyChanged(nameof(IsStyleMarge));
+        OnPropertyChanged(nameof(IsStyleJetons));
+        OnPropertyChanged(nameof(IsStyleSonar));
+        OnPropertyChanged(nameof(IsStyleFacade));
+        OnPropertyChanged(nameof(IsStyleEtagere));
+        OnPropertyChanged(nameof(IsStyleAnnonciateur));
+        OnPropertyChanged(nameof(IsStyleVeilleurs));
+    }
+
+    // Disposition des styles « en rangée » (Sonar / Jetons / Veilleurs) : horizontale (défaut) ou colonne.
+    // Les panneaux de ces templates lient leur Orientation à RowOrientation.
+    [ObservableProperty] private bool _vertical;
+    public Orientation RowOrientation => Vertical ? Orientation.Vertical : Orientation.Horizontal;
+    partial void OnVerticalChanged(bool value) => OnPropertyChanged(nameof(RowOrientation));
+
+    // Couleurs d'ÉTAT dérivées du THÈME courant (cohérence avec le cadran). Recalculées par SetTheme ;
+    // valeurs de départ = thème par défaut. attente → rampe ambre, en cours → rampe verte, déduit → texte atténué.
+    private ChronosTheme _theme = ThemeCatalog.Default;
+    private Brush _amber = FrozenC(ThemeCatalog.Default.RampAmber);   // EN ATTENTE (tour fini / à toi)
+    private Brush _green = FrozenC(ThemeCatalog.Default.RampGreen);   // en cours
+    private Brush _gray = FrozenC(ThemeCatalog.Default.TexteSecondaire); // inconnu/périmé
+
+    /// <summary>Applique un thème : recolore les états (attente/en cours/déduit) selon la rampe et re-rend.
+    /// Les fonds/textes des templates suivent via les DynamicResource posés par SessionsWindow.ApplyThemeBrushes.</summary>
+    public void SetTheme(ChronosTheme theme)
+    {
+        _theme = theme;
+        _amber = FrozenC(theme.RampAmber);
+        _green = FrozenC(theme.RampGreen);
+        _gray = FrozenC(theme.TexteSecondaire);
+        Refresh(_clock.UtcNow);   // recolore les items existants
+    }
 
     public SessionsViewModel(SessionMonitor monitor, IClock clock, ArchiveStore archive)
     {
@@ -92,6 +143,10 @@ public sealed partial class SessionsViewModel : ObservableObject
         {
             var it = new SessionItemVm(s.SessionId, ArchiveSession) { Project = s.Project };
             (it.StateText, it.StateBrush, it.IsWaiting) = Describe(s.Activity);
+            it.IsAttention = s.Activity == SessionActivity.WaitingAttention;
+            it.IsTurn = s.Activity == SessionActivity.WaitingTurn;
+            it.IsWorking = s.Activity == SessionActivity.Working;
+            it.IsGhost = s.Activity == SessionActivity.Unknown;
             it.Detail = Age(now - s.UpdatedAt);
             it.KindLabel = KindText(s.Kind);   // BUR-03 : type bureau visible ; vide (Unknown) pour les sessions CLI
             Items.Add(it);
@@ -122,12 +177,12 @@ public sealed partial class SessionsViewModel : ObservableObject
         _ => "",
     };
 
-    private static (string, Brush, bool) Describe(SessionActivity a) => a switch
+    private (string, Brush, bool) Describe(SessionActivity a) => a switch
     {
-        SessionActivity.WaitingAttention => ("à toi", Amber, true),         // attend une intervention → orange
-        SessionActivity.WaitingTurn => ("tour fini", Amber, true),          // réflexion finie non consultée → orange
-        SessionActivity.Working => ("en cours", Green, false),
-        _ => ("inconnu", Gray, false),
+        SessionActivity.WaitingAttention => ("à toi", _amber, true),        // attend une intervention → rampe ambre
+        SessionActivity.WaitingTurn => ("tour fini", _amber, true),         // réflexion finie non consultée → rampe ambre
+        SessionActivity.Working => ("en cours", _green, false),
+        _ => ("inconnu", _gray, false),
     };
 
     private static string Age(System.TimeSpan d)
@@ -137,9 +192,9 @@ public sealed partial class SessionsViewModel : ObservableObject
         return $"il y a {(int)d.TotalHours} h";
     }
 
-    private static Brush Frozen(string hex)
+    private static Brush FrozenC(Color c)
     {
-        var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        var b = new SolidColorBrush(c);
         b.Freeze();
         return b;
     }

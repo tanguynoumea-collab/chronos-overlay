@@ -1,0 +1,38 @@
+<UserControl x:Class="Chronos.Views.Cadrans.CadranBraisesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cad="clr-namespace:Chronos.Controls"
+             Background="Transparent">
+    <!-- Piste 1 — Anneau de braises. Deux couronnes discrètes : 5 h (externe) + hebdo (interne).
+         Nombre de braises = temps restant ; couleur = quota ; estimé = braises en pointillé.
+         Centre : bascule % (défaut) ↔ temps (ShowPercent/ShowCountdown, clic au centre). -->
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+    <Grid Width="170" Height="170">
+        <cad:EmberRingControl Radius="66" Count="16" PipRadius="4.4"
+                              Fraction="{Binding FiveHour.FractionRemaining}"
+                              QuotaBrush="{Binding FiveHour.ValueBrush}"
+                              Estimated="{Binding FiveHour.IsEstimated}"/>
+        <cad:EmberRingControl Radius="44" Count="12" PipRadius="3.6"
+                              Fraction="{Binding SevenDay.FractionRemaining}"
+                              QuotaBrush="{Binding SevenDay.ValueBrush}"
+                              Estimated="{Binding SevenDay.IsEstimated}"/>
+        <!-- Centre en mode POURCENTAGES (défaut) -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding FiveHour.UtilizationText}" HorizontalAlignment="Center"
+                       FontSize="20" FontWeight="SemiBold" Foreground="#F4F2EC"/>
+            <TextBlock Text="{Binding SevenDay.UtilizationText}" HorizontalAlignment="Center"
+                       FontSize="12" Margin="0,1,0,0" Foreground="#C7C6D0"/>
+        </StackPanel>
+        <!-- Centre en mode TEMPS avant reset -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding FiveHour.CountdownText}" HorizontalAlignment="Center"
+                       FontSize="16" FontWeight="SemiBold" Foreground="#F4F2EC"/>
+            <TextBlock Text="{Binding SevenDay.CountdownText}" HorizontalAlignment="Center"
+                       FontSize="11" Margin="0,1,0,0" Foreground="#C7C6D0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

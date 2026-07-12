@@ -21,4 +21,12 @@ public partial class SessionsWindow : Window
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
+
+    /// <summary>Injecte les pinceaux « sessions » du thème dans les ressources de la fenêtre → les
+    /// DynamicResource des templates (fonds, encre, texte atténué, attente) se mettent à jour instantanément.</summary>
+    public void ApplyThemeBrushes(Chronos.Theming.ChronosTheme theme)
+    {
+        foreach (var kv in theme.SessionBrushTokens())
+            Resources[kv.Key] = kv.Value;
+    }
 }

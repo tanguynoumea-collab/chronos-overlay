@@ -34,6 +34,29 @@ public partial class App : Application
             return;
         }
 
+        // MODE GALERIE CADRANS (--cadrans) : prototype visuel des 4 pistes de cadran (overlay 1). Court-circuite
+        // le pipeline temps réel et le host DI : une simple fenêtre avec des données d'échantillon pilotables,
+        // pour juger les concepts au coup d'œil. Sert la refonte visuelle (llm-council), hors app livrée.
+        if (e.Args.Any(a => string.Equals(a, "--cadrans", StringComparison.OrdinalIgnoreCase)))
+        {
+            base.OnStartup(e);
+            var gallery = new CadranGalleryWindow();
+            MainWindow = gallery;
+            gallery.Show();
+            return;
+        }
+
+        // MODE GALERIE SESSIONS (--sessions) : prototype visuel des 8 styles du widget de sessions (overlay 2),
+        // avec des données d'échantillon. Court-circuite le pipeline/host, comme --cadrans.
+        if (e.Args.Any(a => string.Equals(a, "--sessions", StringComparison.OrdinalIgnoreCase)))
+        {
+            base.OnStartup(e);
+            var gallery = new SessionsGalleryWindow();
+            MainWindow = gallery;
+            gallery.Show();
+            return;
+        }
+
         base.OnStartup(e);
 
         var builder = Host.CreateApplicationBuilder();

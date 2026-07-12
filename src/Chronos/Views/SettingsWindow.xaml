@@ -92,6 +92,32 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Puce de sélection du STYLE de cadran (surbrillance quand IsSelected). -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <Style x:Key="StyleChip" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="chip" CornerRadius="9" Background="{StaticResource Panel2}"
+                                BorderThickness="1.5" BorderBrush="Transparent" Padding="4,8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="chip" Property="BorderBrush" Value="#3B3860"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter TargetName="chip" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                <Setter TargetName="chip" Property="Background" Value="#241F3C"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <!-- Panneau principal -->
@@ -184,11 +210,30 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
+            <!-- Style du cadran (refonte visuelle) -->
+            <TextBlock Text="CADRAN" Style="{StaticResource Section}"/>
+            <ItemsControl ItemsSource="{Binding CadranStyles}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource StyleChip}"
+                                Command="{Binding DataContext.SelectCadranStyleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}">
+                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="10.5"
+                                       HorizontalAlignment="Center"/>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <!-- Affichage -->
             <TextBlock Text="AFFICHAGE" Style="{StaticResource Section}"/>
             <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,4">
                 <StackPanel>
-                    <Grid Margin="0,7">
+                    <!-- « Mode étendu » ne concerne que le style Anneaux → masqué pour les autres styles. -->
+                    <Grid Margin="0,7" Visibility="{Binding IsStyleArcs, Converter={StaticResource BoolToVis}}">
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Mode étendu" Foreground="{StaticResource Ink}" FontSize="13"/>
                             <TextBlock Text="3 anneaux (défaut : épuré, 2 anneaux)" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
@@ -196,7 +241,8 @@
                         <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                       IsChecked="{Binding IsModeEtendu, Mode=OneWay}" Command="{Binding ToggleCadranModeCommand}"/>
                     </Grid>
-                    <Border Height="1" Background="{StaticResource Line}"/>
+                    <Border Height="1" Background="{StaticResource Line}"
+                            Visibility="{Binding IsStyleArcs, Converter={StaticResource BoolToVis}}"/>
                     <Grid Margin="0,7">
                         <TextBlock Text="Arrière-plan" Foreground="{StaticResource Ink}" FontSize="13" VerticalAlignment="Center"/>
                         <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
@@ -218,6 +264,38 @@
                                       IsChecked="{Binding IsSessionsWidgetEnabled, Mode=OneWay}" Command="{Binding ToggleSessionsWidgetCommand}"/>
                     </Grid>
                 </StackPanel>
+            </Border>
+
+            <!-- Style du widget de sessions (refonte visuelle) -->
+            <TextBlock Text="SESSIONS" Style="{StaticResource Section}"/>
+            <ItemsControl ItemsSource="{Binding SessionStyles}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource StyleChip}"
+                                Command="{Binding DataContext.SelectSessionStyleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}">
+                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="10"
+                                       HorizontalAlignment="Center"/>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Option des styles EN RANGÉE (Sonar / Jetons / Veilleurs) : disposition en colonne.
+                 Masquée pour les autres styles. -->
+            <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,4" Margin="0,7,0,0"
+                    Visibility="{Binding IsRowStyle, Converter={StaticResource BoolToVis}}">
+                <Grid Margin="0,7">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Disposition verticale" Foreground="{StaticResource Ink}" FontSize="13"/>
+                        <TextBlock Text="colonne (défaut : rangée horizontale)" Foreground="{StaticResource Ink2}" FontSize="10.5"/>
+                    </StackPanel>
+                    <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                  IsChecked="{Binding VerticalLayout, Mode=OneWay}" Command="{Binding ToggleVerticalLayoutCommand}"/>
+                </Grid>
             </Border>
 
             <!-- Réglages avancés -->

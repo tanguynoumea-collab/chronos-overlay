@@ -70,6 +70,18 @@ public sealed class ChronosTheme
         ["TexteSecondaire"] = Frozen(TexteSecondaire),
     };
 
+    /// <summary>Pinceaux du WIDGET DE SESSIONS (l'autre overlay), dérivés du thème pour que l'ensemble soit
+    /// cohérent : fond des pastilles, encre, texte atténué, couleur d'attente. Les couleurs d'ÉTAT par session
+    /// (attente/en cours/déduit) sont calculées côté SessionsViewModel à partir de la rampe (RampAmber/
+    /// RampGreen/TexteSecondaire).</summary>
+    public IReadOnlyDictionary<string, Brush> SessionBrushTokens() => new Dictionary<string, Brush>
+    {
+        ["SessPanel"] = Frozen(Color.FromArgb(0xCC, FondCadran.R, FondCadran.G, FondCadran.B)),
+        ["SessInk"] = Frozen(TextePrincipal),
+        ["SessMuted"] = Frozen(TexteSecondaire),
+        ["SessAttention"] = Frozen(RampAmber),
+    };
+
     // Pinceaux d'APERÇU (settings) — disque opaque + 3 stops de rampe + encre. Gelés, calculés une fois.
     public Brush PreviewDisc => _pDisc ??= Frozen(Color.FromRgb(FondCadran.R, FondCadran.G, FondCadran.B));
     public Brush PreviewGreen => _pGreen ??= Frozen(RampGreen);
@@ -124,7 +136,9 @@ public sealed class ChronosTheme
         (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));
 }
 
-/// <summary>Catalogue des thèmes embarqués (6). « minuit » est le défaut historique.</summary>
+/// <summary>Catalogue des thèmes embarqués (9). « minuit » est le défaut historique. Les trois derniers
+/// (Moka, Roseraie, Forêt) sont dérivés de palettes de référence largement adoptées (Catppuccin Mocha,
+/// Rosé Pine, Everforest) — teintes distinctes des six premiers (lavande pastel, rose mauve, vert forêt).</summary>
 public static class ThemeCatalog
 {
     public static readonly IReadOnlyList<ChronosTheme> All = new[]
@@ -135,6 +149,12 @@ public static class ThemeCatalog
         ChronosTheme.From("neon",    "Néon",        "#0E0A1F", "#241B3A", "#7DF9FF", "#E6E1FF", "#38E8C6", "#B14BFF", "#FF2E97"),
         ChronosTheme.From("aurore",  "Aurore",      "#0E1726", "#1D2B44", "#BFE3FF", "#EAF2FF", "#4FD1C5", "#6D8CF0", "#C86BE0"),
         ChronosTheme.From("ambre",   "Ambre chaud", "#1E1712", "#33271C", "#EAD9B8", "#F6ECD9", "#E4B24A", "#E07E3C", "#D24A3A"),
+        // Moka — d'après Catppuccin Mocha : dark lavande pastel, texte bleu-lavande, rampe vert menthe → pêche → rose-rouge.
+        ChronosTheme.From("moka",     "Moka",        "#1E1E2E", "#313244", "#BAC2DE", "#CDD6F4", "#A6E3A1", "#FAB387", "#F38BA8"),
+        // Roseraie — d'après Rosé Pine : dark rose-mauve, texte lilas clair, rampe écume (teal) → or → « love » (rose-rouge).
+        ChronosTheme.From("roseraie", "Roseraie",    "#191724", "#26233A", "#B3AECC", "#E0DEF4", "#9CCFD8", "#F6C177", "#EB6F92"),
+        // Forêt — d'après Everforest (dark) : vert forêt terreux, texte sauge, rampe vert olive → jaune blé → rouge doux.
+        ChronosTheme.From("foret",    "Forêt",       "#2D353B", "#3A454A", "#A6B0A0", "#D3C6AA", "#A7C080", "#DBBC7F", "#E67E80"),
     };
 
     public static ChronosTheme Default => All[0];

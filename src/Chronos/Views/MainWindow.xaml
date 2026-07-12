@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctrl="clr-namespace:Chronos.Controls"
+        xmlns:cadv="clr-namespace:Chronos.Views.Cadrans"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" SizeToContent="Manual"
@@ -9,8 +10,9 @@
     <!-- Cadran complet (Pattern 6 : empilement du fond vers le premier plan).
          Aucune Storyboard/blur/shadow : AllowsTransparency force le rendu logiciel.
          Aucun code-behind : uniquement des bindings + converters. Centre = 85,85 (Grid 170×170).
-         Refonte v1.3 : 3 anneaux réordonnés (hebdo interne → 5 h milieu → 24 h externe),
-         remplissage inversé (FractionElapsed), anneau timeline 24 h + % au centre. -->
+         Refonte visuelle : le style est sélectionnable (Anneaux / Braises / Fusible / Marée / Volets),
+         un seul groupe visible à la fois (IsStyleX). Les 4 nouvelles pistes réutilisent FiveHour/SevenDay
+         et sont mises à l'échelle par un Viewbox pour tenir dans l'empreinte 170×170. -->
     <Window.Resources>
         <!-- Tokens de design + converters, au niveau fenêtre : la vue est autonome (les StaticResource
              résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
@@ -18,92 +20,115 @@
     </Window.Resources>
     <Grid MouseRightButtonUp="OnRightClick">
         <!-- Clic DROIT = ouvre la fenêtre de réglages sombre (remplace l'ancien menu contextuel gris).
-             Clic gauche = drag (code-behind), clic au centre = bascule %/temps. -->
+             Clic gauche = drag (code-behind), clic au centre = bascule %/temps (style Anneaux). -->
 
-        <!-- Fond TRANSPARENT : plus de grand disque — les anneaux flottent sur le bureau.
-             Seul un petit disque CENTRAL (dans le trou de l'anneau interne, R38) soutient les %
-             pour qu'ils restent lisibles quel que soit le fond d'écran. -->
-        <Ellipse Width="64" Height="64" Fill="{DynamicResource FondCadran}"/>
+        <!-- ===================== STYLE « ANNEAUX » (défaut, historique) ===================== -->
+        <Grid Visibility="{Binding IsStyleArcs, Converter={StaticResource BoolToVis}}">
+            <!-- Fond TRANSPARENT : plus de grand disque — les anneaux flottent sur le bureau.
+                 Seul un petit disque CENTRAL (dans le trou de l'anneau interne, R38) soutient les %
+                 pour qu'ils restent lisibles quel que soit le fond d'écran. -->
+            <Ellipse Width="64" Height="64" Fill="{DynamicResource FondCadran}"/>
 
-        <!-- ANNEAU HEBDO (PARTAGÉ aux deux modes) : piste + valeur, interne R38. Remplissage INVERSÉ
-             (VIS-01) → FractionElapsed, se remplit à l'approche du reset. Couleur = utilization hebdo. -->
-        <ctrl:RingArc Fraction="1" Radius="38"
-                      Stroke="{DynamicResource PisteHebdo}" StrokeThickness="8"/>
-        <ctrl:RingArc x:Name="ArcHebdo" Radius="38" StrokeThickness="8"
-                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                      Fraction="{Binding SevenDay.FractionElapsed}"
-                      Stroke="{Binding SevenDay.ValueBrush}"/>
-
-        <!-- ===== MODE ÉTENDU (3 anneaux) : 5 h (milieu, épais) + timeline 24 h (externe, fine). ===== -->
-        <Grid Visibility="{Binding IsModeEtendu, Converter={StaticResource BoolToVis}}">
-            <ctrl:RingArc Fraction="1" Radius="54" Stroke="{DynamicResource Piste5h}" StrokeThickness="8"/>
-            <ctrl:RingArc Fraction="1" Radius="64" Stroke="{DynamicResource Piste24h}" StrokeThickness="4"/>
-            <!-- Arc valeur 5 h (R54) : remplissage inversé (FractionElapsed). -->
-            <ctrl:RingArc x:Name="ArcCinqHeures" Radius="54" StrokeThickness="8"
+            <!-- ANNEAU HEBDO (PARTAGÉ aux deux modes) : piste + valeur, interne R38. Remplissage INVERSÉ
+                 (VIS-01) → FractionElapsed, se remplit à l'approche du reset. Couleur = utilization hebdo. -->
+            <ctrl:RingArc Fraction="1" Radius="38"
+                          Stroke="{DynamicResource PisteHebdo}" StrokeThickness="8"/>
+            <ctrl:RingArc x:Name="ArcHebdo" Radius="38" StrokeThickness="8"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          Fraction="{Binding FiveHour.FractionElapsed}"
-                          Stroke="{Binding FiveHour.ValueBrush}"/>
-            <!-- Marques horaires 5 h (Count=5, tous les 72°), bord externe de l'anneau 5 h. -->
-            <ctrl:TickRing Count="5" Radius="59" TickLength="7"
-                           Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
-            <!-- Timeline 24 h (R64, fine) : fraction du jour (JOUR-01), couleur = utilization 5 h (JOUR-03). -->
-            <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="64" StrokeThickness="4"
-                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          Fraction="{Binding DayFraction}"
-                          Stroke="{Binding FiveHour.ValueBrush}"/>
-            <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe. Couleur DISTINCTE (cyan). -->
-            <ctrl:TickRing Radius="68" TickLength="7"
-                           Angles="{Binding DayResetAngles}"
-                           Stroke="{DynamicResource TickReset}" StrokeThickness="2.5"/>
+                          Fraction="{Binding SevenDay.FractionElapsed}"
+                          Stroke="{Binding SevenDay.ValueBrush}"/>
+
+            <!-- ===== MODE ÉTENDU (3 anneaux) : 5 h (milieu, épais) + timeline 24 h (externe, fine). ===== -->
+            <Grid Visibility="{Binding IsModeEtendu, Converter={StaticResource BoolToVis}}">
+                <ctrl:RingArc Fraction="1" Radius="54" Stroke="{DynamicResource Piste5h}" StrokeThickness="8"/>
+                <ctrl:RingArc Fraction="1" Radius="64" Stroke="{DynamicResource Piste24h}" StrokeThickness="4"/>
+                <!-- Arc valeur 5 h (R54) : remplissage inversé (FractionElapsed). -->
+                <ctrl:RingArc x:Name="ArcCinqHeures" Radius="54" StrokeThickness="8"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Fraction="{Binding FiveHour.FractionElapsed}"
+                              Stroke="{Binding FiveHour.ValueBrush}"/>
+                <!-- Marques horaires 5 h (Count=5, tous les 72°), bord externe de l'anneau 5 h. -->
+                <ctrl:TickRing Count="5" Radius="59" TickLength="7"
+                               Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
+                <!-- Timeline 24 h (R64, fine) : fraction du jour (JOUR-01), couleur = utilization 5 h (JOUR-03). -->
+                <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="64" StrokeThickness="4"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Fraction="{Binding DayFraction}"
+                              Stroke="{Binding FiveHour.ValueBrush}"/>
+                <!-- Ticks des resets 5 h projetés sur l'axe 24 h (JOUR-02), bord externe. Couleur DISTINCTE (cyan). -->
+                <ctrl:TickRing Radius="68" TickLength="7"
+                               Angles="{Binding DayResetAngles}"
+                               Stroke="{DynamicResource TickReset}" StrokeThickness="2.5"/>
+            </Grid>
+
+            <!-- ===== MODE NORMAL (DÉFAUT, 2 anneaux) : la timeline 24 h portée en anneau PRINCIPAL (R56, épais),
+                 couleur = utilization 5 h (l'anneau 5 h séparé disparaît → son usage passe dans la couleur).
+                 + 24 SOUS-TIRETS horaires (mineurs) + marques de RESET 5 h (visibles, plus longues). ===== -->
+            <Grid Visibility="{Binding IsModeNormal, Converter={StaticResource BoolToVis}}">
+                <ctrl:RingArc Fraction="1" Radius="52" Stroke="{DynamicResource Piste5h}" StrokeThickness="7"/>
+                <ctrl:RingArc x:Name="ArcTimelineNormal" Radius="52" StrokeThickness="7"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Fraction="{Binding DayFraction}"
+                              Stroke="{Binding FiveHour.ValueBrush}"/>
+                <!-- Sous-tirets HORAIRES alignés sur la grille des resets 5 h (DaySubTickAngles) : ils subdivisent
+                     chaque intervalle de 5 h entre deux marques principales (PAS un cadran 24 h fixe). Sur le trait
+                     de l'anneau (bande R48,5–R55,5 : Radius=55,5, TickLength=7), gris secondaire, premier plan. -->
+                <ctrl:TickRing Radius="55.5" TickLength="7"
+                               Angles="{Binding DaySubTickAngles}"
+                               Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="1.8"/>
+                <!-- Marques de reset 5 h projetées (JOUR-02) : couleur DISTINCTE (cyan TickReset) pour se démarquer
+                     des sous-tirets horaires gris. Sur le trait, légèrement débordantes (R48–R57), épaisses, premier plan. -->
+                <ctrl:TickRing Radius="57" TickLength="9"
+                               Angles="{Binding DayResetAngles}"
+                               Stroke="{DynamicResource TickReset}" StrokeThickness="3.2"/>
+            </Grid>
+
+            <!-- Bloc central : deux modes alternés par un clic au centre (ToggleCenterMode).
+                 Mode POURCENTAGES (défaut) : UtilizationText (« ~ » si estimé, vide si inconnu).
+                 Mode TEMPS : CountdownText (temps avant reset). 5 h en gros/blanc, hebdo plus petit/clair. -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding FiveHour.UtilizationText}"
+                           FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextePrincipal}"/>
+                <TextBlock Text="{Binding SevenDay.UtilizationText}"
+                           FontSize="13" HorizontalAlignment="Center" Margin="0,1,0,0"
+                           Foreground="{DynamicResource TexteSecondaireClair}"/>
+            </StackPanel>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding FiveHour.CountdownText}"
+                           FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextePrincipal}"/>
+                <TextBlock Text="{Binding SevenDay.CountdownText}"
+                           FontSize="12" HorizontalAlignment="Center" Margin="0,1,0,0"
+                           Foreground="{DynamicResource TexteSecondaireClair}"/>
+            </StackPanel>
         </Grid>
 
-        <!-- ===== MODE NORMAL (DÉFAUT, 2 anneaux) : la timeline 24 h portée en anneau PRINCIPAL (R56, épais),
-             couleur = utilization 5 h (l'anneau 5 h séparé disparaît → son usage passe dans la couleur).
-             + 24 SOUS-TIRETS horaires (mineurs) + marques de RESET 5 h (visibles, plus longues). ===== -->
-        <Grid Visibility="{Binding IsModeNormal, Converter={StaticResource BoolToVis}}">
-            <ctrl:RingArc Fraction="1" Radius="52" Stroke="{DynamicResource Piste5h}" StrokeThickness="7"/>
-            <ctrl:RingArc x:Name="ArcTimelineNormal" Radius="52" StrokeThickness="7"
-                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          Fraction="{Binding DayFraction}"
-                          Stroke="{Binding FiveHour.ValueBrush}"/>
-            <!-- Sous-tirets HORAIRES alignés sur la grille des resets 5 h (DaySubTickAngles) : ils subdivisent
-                 chaque intervalle de 5 h entre deux marques principales (PAS un cadran 24 h fixe). Sur le trait
-                 de l'anneau (bande R48,5–R55,5 : Radius=55,5, TickLength=7), gris secondaire, premier plan. -->
-            <ctrl:TickRing Radius="55.5" TickLength="7"
-                           Angles="{Binding DaySubTickAngles}"
-                           Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="1.8"/>
-            <!-- Marques de reset 5 h projetées (JOUR-02) : couleur DISTINCTE (cyan TickReset) pour se démarquer
-                 des sous-tirets horaires gris. Sur le trait, légèrement débordantes (R48–R57), épaisses, premier plan. -->
-            <ctrl:TickRing Radius="57" TickLength="9"
-                           Angles="{Binding DayResetAngles}"
-                           Stroke="{DynamicResource TickReset}" StrokeThickness="3.2"/>
-        </Grid>
+        <!-- ===================== NOUVELLES PISTES (refonte visuelle) =====================
+             Chacune réutilise FiveHour/SevenDay et est mise à l'échelle par un Viewbox pour tenir dans
+             l'empreinte 170×170 sans changer la taille de la fenêtre (ancrage/placement préservés). -->
+        <Viewbox Stretch="Uniform" Margin="4"
+                 Visibility="{Binding IsStyleBraises, Converter={StaticResource BoolToVis}}">
+            <cadv:CadranBraisesView/>
+        </Viewbox>
+        <Viewbox Stretch="Uniform" Margin="6"
+                 Visibility="{Binding IsStyleFusible, Converter={StaticResource BoolToVis}}">
+            <cadv:CadranFusibleView/>
+        </Viewbox>
+        <Viewbox Stretch="Uniform" Margin="6"
+                 Visibility="{Binding IsStyleMaree, Converter={StaticResource BoolToVis}}">
+            <cadv:CadranMareeView/>
+        </Viewbox>
+        <Viewbox Stretch="Uniform" Margin="6"
+                 Visibility="{Binding IsStyleVolets, Converter={StaticResource BoolToVis}}">
+            <cadv:CadranVoletsView/>
+        </Viewbox>
 
-        <!-- Bloc central : deux modes alternés par un clic au centre (ToggleCenterMode).
-             Mode POURCENTAGES (défaut) : UtilizationText (« ~ » si estimé, vide si inconnu).
-             Mode TEMPS : CountdownText (temps avant reset). 5 h en gros/blanc, hebdo plus petit/clair. -->
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                    Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="{Binding FiveHour.UtilizationText}"
-                       FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"
-                       Foreground="{DynamicResource TextePrincipal}"/>
-            <TextBlock Text="{Binding SevenDay.UtilizationText}"
-                       FontSize="13" HorizontalAlignment="Center" Margin="0,1,0,0"
-                       Foreground="{DynamicResource TexteSecondaireClair}"/>
-        </StackPanel>
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                    Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="{Binding FiveHour.CountdownText}"
-                       FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center"
-                       Foreground="{DynamicResource TextePrincipal}"/>
-            <TextBlock Text="{Binding SevenDay.CountdownText}"
-                       FontSize="12" HorizontalAlignment="Center" Margin="0,1,0,0"
-                       Foreground="{DynamicResource TexteSecondaireClair}"/>
-        </StackPanel>
-
-        <!-- Zone de CLIC au centre (transparente, au-dessus du texte) : bascule %/temps.
-             MouseLeftButtonDown marqué Handled dans le code-behind → n'entraîne PAS le DragMove
-             de la fenêtre (le drag reste possible en saisissant les anneaux). -->
+        <!-- Zone de CLIC au centre PARTAGÉE par tous les styles (transparente, au-dessus de tout) :
+             bascule %/temps. MouseLeftButtonDown marqué Handled (code-behind) → n'entraîne PAS le DragMove
+             (le drag reste possible en saisissant l'overlay hors du centre). -->
         <Ellipse x:Name="CentreHit" Width="66" Height="66" Fill="Transparent" Cursor="Hand"
                  ToolTip="Cliquer : basculer pourcentage / temps avant reset"
                  MouseLeftButtonDown="CentreHit_MouseLeftButtonDown"/>

@@ -1,0 +1,87 @@
+<UserControl x:Class="Chronos.Views.Cadrans.CadranVoletsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cad="clr-namespace:Chronos.Controls"
+             Background="Transparent">
+    <!-- Piste 4 — Afficheur à volets (Solari). Chiffre EXACT du compte à rebours = temps (le plus
+         honnête) ; luminance de la plaque = quota ; volets = repère périphérique ; plaque tramée = estimé. -->
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <DrawingBrush x:Key="GrainHatch" TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute">
+            <DrawingBrush.Drawing>
+                <GeometryDrawing>
+                    <GeometryDrawing.Geometry>
+                        <LineGeometry StartPoint="0,4" EndPoint="4,0"/>
+                    </GeometryDrawing.Geometry>
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#55000000" Thickness="1"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </UserControl.Resources>
+
+    <StackPanel Width="234" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <!-- Ligne 5 H -->
+        <Grid Margin="0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="34"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Width="30" Height="30" Background="#211D2A" CornerRadius="5">
+                <TextBlock Text="5H" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border Grid.Column="1" Height="30" Margin="8,0" CornerRadius="5"
+                    Background="{Binding FiveHour.ValueBrush}">
+                <Grid>
+                    <Rectangle Fill="{StaticResource GrainHatch}" RadiusX="5" RadiusY="5"
+                               Visibility="{Binding FiveHour.IsEstimated, Converter={StaticResource BoolToVis}}"/>
+                    <Border Height="1" VerticalAlignment="Center" Background="#33000000"/>
+                    <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="#161019"
+                               FontSize="15" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="#161019"
+                               FontSize="15" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+            </Border>
+            <cad:FlapRow Grid.Column="2" Width="84" Height="16" Count="6" VerticalAlignment="Center"
+                         Fraction="{Binding FiveHour.FractionRemaining}"/>
+        </Grid>
+
+        <!-- Ligne 7 J -->
+        <Grid Margin="0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="34"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Width="30" Height="30" Background="#211D2A" CornerRadius="5">
+                <TextBlock Text="7J" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border Grid.Column="1" Height="30" Margin="8,0" CornerRadius="5"
+                    Background="{Binding SevenDay.ValueBrush}">
+                <Grid>
+                    <Rectangle Fill="{StaticResource GrainHatch}" RadiusX="5" RadiusY="5"
+                               Visibility="{Binding SevenDay.IsEstimated, Converter={StaticResource BoolToVis}}"/>
+                    <Border Height="1" VerticalAlignment="Center" Background="#33000000"/>
+                    <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="#161019"
+                               FontSize="15" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="#161019"
+                               FontSize="15" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+            </Border>
+            <cad:FlapRow Grid.Column="2" Width="84" Height="16" Count="6" VerticalAlignment="Center"
+                         Fraction="{Binding SevenDay.FractionRemaining}"/>
+        </Grid>
+    </StackPanel>
+</UserControl>

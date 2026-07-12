@@ -82,6 +82,74 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsModeNormal => !IsModeEtendu;
     partial void OnIsModeEtenduChanged(bool value) => OnPropertyChanged(nameof(IsModeNormal));
 
+    // Style visuel du cadran (refonte visuelle) : Arcs (défaut) + 4 pistes. Persisté dans settings.json.
+    // Les 5 booléens IsStyleX pilotent les Visibility des groupes de MainWindow.xaml (un seul visible).
+    [ObservableProperty] private CadranStyle _cadranStyle;
+    public bool IsStyleArcs    => CadranStyle == CadranStyle.Arcs;
+    public bool IsStyleBraises => CadranStyle == CadranStyle.Braises;
+    public bool IsStyleFusible => CadranStyle == CadranStyle.Fusible;
+    public bool IsStyleMaree   => CadranStyle == CadranStyle.Maree;
+    public bool IsStyleVolets  => CadranStyle == CadranStyle.Volets;
+    partial void OnCadranStyleChanged(CadranStyle value)
+    {
+        OnPropertyChanged(nameof(IsStyleArcs));
+        OnPropertyChanged(nameof(IsStyleBraises));
+        OnPropertyChanged(nameof(IsStyleFusible));
+        OnPropertyChanged(nameof(IsStyleMaree));
+        OnPropertyChanged(nameof(IsStyleVolets));
+    }
+
+    /// <summary>Catalogue des styles de cadran affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
+    public ObservableCollection<CadranStyleChoice> CadranStyles { get; } = new();
+
+    /// <summary>Sélectionne un style de cadran : surbrillance, bascule des Visibility, persistance (GAP-1 :
+    /// Load DISQUE frais avant Save, pour ne pas écraser un réglage écrit ailleurs — ex. OverlayController).</summary>
+    [RelayCommand]
+    private void SelectCadranStyle(CadranStyleChoice? choice)
+    {
+        if (choice is null) return;
+        foreach (var c in CadranStyles) c.IsSelected = ReferenceEquals(c, choice);
+        CadranStyle = choice.Style;
+        _settings = _settingsService.Load() with { CadranStyle = choice.Style };
+        _settingsService.Save(_settings);
+    }
+
+    /// <summary>Catalogue des styles du widget de sessions (settings). Surbrillance du sélectionné.</summary>
+    public ObservableCollection<SessionStyleChoice> SessionStyles { get; } = new();
+
+    /// <summary>Sélectionne un style de sessions : surbrillance + persistance (GAP-1) + application LIVE à la
+    /// fenêtre de sessions via le contrôleur (si elle est affichée).</summary>
+    [RelayCommand]
+    private void SelectSessionStyle(SessionStyleChoice? choice)
+    {
+        if (choice is null) return;
+        foreach (var c in SessionStyles) c.IsSelected = ReferenceEquals(c, choice);
+        SessionStyle = choice.Style;
+        _settings = _settingsService.Load() with { SessionStyle = choice.Style };
+        _settingsService.Save(_settings);
+        _sessions.SetStyle(choice.Style);   // application immédiate si le panneau est ouvert
+    }
+
+    // Style de sessions courant (scalaire) : pilote la visibilité de l'option « Disposition verticale »
+    // (réglages), affichée pour les styles EN RANGÉE (Sonar / Jetons / Veilleurs).
+    [ObservableProperty] private SessionStyle _sessionStyle;
+    public bool IsRowStyle => SessionStyle is SessionStyle.Sonar or SessionStyle.Jetons or SessionStyle.Veilleurs;
+    partial void OnSessionStyleChanged(SessionStyle value) => OnPropertyChanged(nameof(IsRowStyle));
+
+    /// <summary>Disposition VERTICALE (colonne) des styles en rangée (réglage). Reflète l'état persisté ;
+    /// le toggle des réglages appelle <see cref="ToggleVerticalLayoutCommand"/>.</summary>
+    [ObservableProperty] private bool _verticalLayout;
+
+    /// <summary>Bascule horizontal ↔ vertical (Sonar/Jetons/Veilleurs) : persiste (GAP-1) + applique en LIVE.</summary>
+    [RelayCommand]
+    private void ToggleVerticalLayout()
+    {
+        VerticalLayout = !VerticalLayout;
+        _settings = _settingsService.Load() with { VerticalLayout = VerticalLayout };
+        _settingsService.Save(_settings);
+        _sessions.SetVerticalLayout(VerticalLayout);
+    }
+
     // --- Thèmes visuels (settings) ---
 
     /// <summary>Version de l'app (« v2.4 ») affichée dans l'en-tête des réglages.</summary>
@@ -108,6 +176,7 @@ public sealed partial class MainViewModel : ObservableObject
         FiveHour.SetTheme(choice.Theme);
         SevenDay.SetTheme(choice.Theme);
         ThemeChanged?.Invoke(choice.Theme);
+        _sessions.SetTheme(choice.Theme);   // le widget de sessions (l'autre overlay) suit le même thème
     }
 
     public MainViewModel(
@@ -140,7 +209,27 @@ public sealed partial class MainViewModel : ObservableObject
         IsSessionsWidgetEnabled = _sessions.IsEnabled;
         IsModeEtendu = _settings.CadranMode == CadranDisplayMode.Etendu; // défaut Normal
 
+        // Style de cadran : refléter le persisté (défaut Arcs) et peupler le catalogue du sélecteur (settings).
+        CadranStyle = _settings.CadranStyle;
+        foreach (var (style, name) in new[]
+                 {
+                     (CadranStyle.Arcs, "Anneaux"), (CadranStyle.Braises, "Braises"),
+                     (CadranStyle.Fusible, "Fusible"), (CadranStyle.Maree, "Marée"),
+                     (CadranStyle.Volets, "Volets"),
+                 })
+            CadranStyles.Add(new CadranStyleChoice(style, name, style == _settings.CadranStyle));
 
+        // Style de sessions : peupler le catalogue du sélecteur (settings), surbrillance du persisté.
+        foreach (var (style, name) in new[]
+                 {
+                     (SessionStyle.Pastilles, "Pastilles"), (SessionStyle.Marge, "Marge"),
+                     (SessionStyle.Jetons, "Jetons"), (SessionStyle.Sonar, "Sonar"),
+                     (SessionStyle.Facade, "Façade"), (SessionStyle.Etagere, "Étagère"),
+                     (SessionStyle.Annonciateur, "Voyants"), (SessionStyle.Veilleurs, "Veilleurs"),
+                 })
+            SessionStyles.Add(new SessionStyleChoice(style, name, style == _settings.SessionStyle));
+        SessionStyle = _settings.SessionStyle;   // scalaire courant (option disposition verticale)
+        VerticalLayout = _settings.VerticalLayout;
 
         // Thèmes : peupler le catalogue (surbrillance du persisté) et appliquer aux jauges dès le départ.
         SelectedThemeKey = _settings.ThemeKey;

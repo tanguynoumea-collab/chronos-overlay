@@ -5,61 +5,31 @@
         ResizeMode="NoResize" SizeToContent="WidthAndHeight"
         ShowInTaskbar="False" ShowActivated="False" Topmost="True"
         WindowStartupLocation="Manual" FontFamily="Segoe UI">
-    <!-- Panneau CHROMELESS : ni titre, ni résumé, ni fond autour. Seules les pastilles flottent sur le
-         bureau (comme le cadran). Glisser = déplacer. Clic droit sur une pastille = Archiver. -->
-    <ItemsControl ItemsSource="{Binding Items}" Background="#01000000"
-                  MouseLeftButtonDown="Drag" Padding="2">
-        <ItemsControl.ItemTemplate>
-            <DataTemplate>
-                <Border CornerRadius="9" Padding="10,7" Margin="0,3" MinWidth="180"
-                        Background="#CC17151F">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.35" Color="Black"/>
-                    </Border.Effect>
-                    <Border.ContextMenu>
-                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                            <MenuItem Header="Archiver (retirer de l'overlay)" Command="{Binding ArchiveCommand}"/>
-                        </ContextMenu>
-                    </Border.ContextMenu>
-                    <Grid>
-                        <Ellipse Width="10" Height="10" Fill="{Binding StateBrush}"
-                                 HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        <StackPanel Margin="20,0,0,0">
-                            <TextBlock Text="{Binding Project}" Foreground="#F4F2EC" FontSize="12.5"
-                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10.5" FontWeight="SemiBold"/>
-                                <TextBlock Text="  ·  " Foreground="#8C8A98" FontSize="10.5"/>
-                                <TextBlock Text="{Binding Detail}" Foreground="#8C8A98" FontSize="10.5"/>
-                                <!-- BUR-03 : type de session bureau (Chat/Code/Cowork). Masqué (avec son
-                                     séparateur) quand vide → aucune pollution des sessions CLI. -->
-                                <TextBlock Text="  ·  " Foreground="#8C8A98" FontSize="10.5">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding KindLabel}" Value="">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <TextBlock Text="{Binding KindLabel}" Foreground="#8C8A98" FontSize="10.5" FontWeight="SemiBold">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding KindLabel}" Value="">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </StackPanel>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-            </DataTemplate>
-        </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <!-- Panneau CHROMELESS. Le STYLE (refonte visuelle) est choisi dans les réglages ; un ContentControl
+         sélectionne le template correspondant via IsStyleX. Templates partagés (Resources/SessionStyles.xaml)
+         avec la galerie de prévisualisation. Loi : mouvement réservé à l'attente ; « à toi » respire,
+         « tour fini » fixe ; déduit = fantôme. -->
+    <Window.Resources>
+        <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/SessionStyles.xaml"/>
+    </Window.Resources>
+
+    <!-- Glisser n'importe où = déplacer. Le ContentControl choisit le template selon le style courant. -->
+    <Grid Background="#01000000" MouseLeftButtonDown="Drag">
+        <ContentControl Content="{Binding}">
+            <ContentControl.Style>
+                <Style TargetType="ContentControl">
+                    <Setter Property="ContentTemplate" Value="{StaticResource TplPastilles}"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsStyleMarge}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplMarge}"/></DataTrigger>
+                        <DataTrigger Binding="{Binding IsStyleJetons}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplJetons}"/></DataTrigger>
+                        <DataTrigger Binding="{Binding IsStyleSonar}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplSonar}"/></DataTrigger>
+                        <DataTrigger Binding="{Binding IsStyleFacade}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplFacade}"/></DataTrigger>
+                        <DataTrigger Binding="{Binding IsStyleEtagere}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplEtagere}"/></DataTrigger>
+                        <DataTrigger Binding="{Binding IsStyleAnnonciateur}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplAnnonciateur}"/></DataTrigger>
+                        <DataTrigger Binding="{Binding IsStyleVeilleurs}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource TplVeilleurs}"/></DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ContentControl.Style>
+        </ContentControl>
+    </Grid>
 </Window>

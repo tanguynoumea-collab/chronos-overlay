@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using Chronos.Services;
+using Chronos.Theming;
 using Chronos.ViewModels;
 
 namespace Chronos.Views;
@@ -19,6 +20,7 @@ public sealed class SessionsController : ISessionsController
     private readonly ArchiveStore _archive;
 
     private SessionsWindow? _window;
+    private SessionsViewModel? _vm;
 
     public SessionsController(SessionHookInstaller installer, SettingsService settings, SessionMonitor monitor, IClock clock, ArchiveStore archive)
     {
@@ -69,13 +71,40 @@ public sealed class SessionsController : ISessionsController
         if (IsEnabled) ShowWindow();
     }
 
+    /// <summary>Applique le style à la fenêtre live (si présente). Persistance = côté MainViewModel.</summary>
+    public void SetStyle(SessionStyle style)
+    {
+        if (_vm is not null) _vm.Style = style;
+    }
+
+    /// <summary>Bascule la disposition verticale des styles en rangée sur la fenêtre live. Persistance = MainViewModel.</summary>
+    public void SetVerticalLayout(bool vertical)
+    {
+        if (_vm is not null) _vm.Vertical = vertical;
+    }
+
+    /// <summary>Applique le thème au widget de sessions (couleurs d'état côté VM + fonds/texte côté fenêtre).</summary>
+    public void SetTheme(ChronosTheme theme)
+    {
+        _vm?.SetTheme(theme);
+        _window?.ApplyThemeBrushes(theme);
+    }
+
     private void ShowWindow()
     {
         if (_window is null)
         {
-            var vm = new SessionsViewModel(_monitor, _clock, _archive);
-            _window = new SessionsWindow(vm);
             var s = _settings.Load();
+            var vm = new SessionsViewModel(_monitor, _clock, _archive)
+            {
+                Style = s.SessionStyle,          // style persisté
+                Vertical = s.VerticalLayout,     // disposition (colonne) persistée
+            };
+            _vm = vm;
+            _window = new SessionsWindow(vm);
+            var theme = ThemeCatalog.ByKey(s.ThemeKey);   // même thème que le cadran (cohérence)
+            vm.SetTheme(theme);
+            _window.ApplyThemeBrushes(theme);
             if (s.SessionsX is { } x && s.SessionsY is { } y) { _window.Left = x; _window.Top = y; }
             else { _window.Left = 80; _window.Top = 80; }
             _window.LocationChanged += (_, _) => PersistPosition();

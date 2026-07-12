@@ -24,7 +24,7 @@ public class ThemingTests
     [Fact]
     public void Catalogue_a_six_themes_aux_cles_uniques()
     {
-        Assert.Equal(6, ThemeCatalog.All.Count);
+        Assert.Equal(9, ThemeCatalog.All.Count);
         Assert.Equal(ThemeCatalog.All.Count, ThemeCatalog.All.Select(t => t.Key).Distinct().Count());
         Assert.Equal("minuit", ThemeCatalog.Default.Key);
     }
@@ -103,7 +103,7 @@ public class ThemingTests
         win.Arrange(new Rect(0, 0, 1000, 1000));
 
         Assert.NotNull(win.Content);
-        Assert.Equal(6, vm.Themes.Count);                 // les 6 thèmes alimentent la grille
+        Assert.Equal(9, vm.Themes.Count);                 // les 9 thèmes alimentent la grille
         Assert.Contains(vm.Themes, t => t.IsSelected);    // un thème est sélectionné
     }
 }

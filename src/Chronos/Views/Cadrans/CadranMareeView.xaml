@@ -1,0 +1,42 @@
+<UserControl x:Class="Chronos.Views.Cadrans.CadranMareeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cad="clr-namespace:Chronos.Controls"
+             Background="Transparent">
+    <!-- Piste 3 — Marée. Deux colonnes : hauteur de lumière = temps (l'ombre monte vers le reset) ;
+         luminance = quota ; waterline nette (exact) vs frangée (estimé).
+         Valeur sous chaque colonne : bascule % (défaut) ↔ temps (clic au centre). -->
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Margin="12,0">
+            <cad:TideColumn Width="42" Height="120"
+                            Fraction="{Binding FiveHour.FractionRemaining}"
+                            QuotaBrush="{Binding FiveHour.ValueBrush}"
+                            Estimated="{Binding FiveHour.IsEstimated}"/>
+            <TextBlock Text="5 H" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" Margin="0,7,0,1"/>
+            <Grid HorizontalAlignment="Center">
+                <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </StackPanel>
+        <StackPanel Margin="12,0">
+            <cad:TideColumn Width="42" Height="120"
+                            Fraction="{Binding SevenDay.FractionRemaining}"
+                            QuotaBrush="{Binding SevenDay.ValueBrush}"
+                            Estimated="{Binding SevenDay.IsEstimated}"/>
+            <TextBlock Text="7 J" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" Margin="0,7,0,1"/>
+            <Grid HorizontalAlignment="Center">
+                <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </StackPanel>
+    </StackPanel>
+</UserControl>
