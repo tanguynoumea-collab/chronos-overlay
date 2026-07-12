@@ -220,14 +220,16 @@ public class SessionsTests
     }
 
     [Fact]
-    public void Monitor_fusionne_la_source_bureau_avec_les_sessions_cli()
+    public void Monitor_source_bureau_ignoree_si_sessions_locales_presentes()
     {
+        // ANTI-DOUBLON : la source bureau (UIA) est un REPLI. Les transcripts couvrent déjà l'app bureau,
+        // donc fusionner l'UIA quand une session locale existe re-listerait la MÊME session sous une clé
+        // `desktop:...` → doublon. Attendu : seule la session locale, l'entrée bureau écartée.
         var hookDir = TempDir();
         var projRoot = TempDir();
         var now = DateTimeOffset.UtcNow;
         try
         {
-            // 1 session CLI (transcript, Working) + 1 session BUREAU (clé desktop:..., WaitingTurn, Kind=Chat).
             WriteTranscript(projRoot, "cli-1", new[] { CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
             var bureau = new FakeSessionSource(new SessionSnapshot(
                 "desktop:foreground:chat", "Claude (bureau)", SessionActivity.WaitingTurn, null, now,
@@ -237,16 +239,28 @@ public class SessionsTests
                 new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
             var snaps = monitor.Read(now).ToDictionary(s => s.SessionId);
 
-            // LES DEUX présentes, la session CLI inchangée.
-            Assert.Equal(2, snaps.Count);
+            Assert.Single(snaps);
             Assert.Equal(SessionActivity.Working, snaps["cli-1"].Activity);
             Assert.Equal(SessionOrigin.Cli, snaps["cli-1"].Origin);
-            var d = snaps["desktop:foreground:chat"];
-            Assert.Equal(SessionActivity.WaitingTurn, d.Activity);
-            Assert.Equal(SessionKind.Chat, d.Kind);
-            Assert.Equal(SessionOrigin.Desktop, d.Origin);
+            Assert.False(snaps.ContainsKey("desktop:foreground:chat")); // doublon écarté
         }
         finally { Directory.Delete(hookDir, true); Directory.Delete(projRoot, true); }
+    }
+
+    [Fact]
+    public void Monitor_source_bureau_utilisee_en_repli_si_aucune_session_locale()
+    {
+        // Aucune session locale (transcript/hook) → la source bureau alimente la liste (ex. Cowork VM pur,
+        // distant, sans transcript local). Le repli reste donc utile là où il n'y a pas de doublon possible.
+        var now = DateTimeOffset.UtcNow;
+        var bureau = new FakeSessionSource(new SessionSnapshot(
+            "desktop:session:X", "X", SessionActivity.Working, null, now, SessionKind.Cowork, SessionOrigin.Desktop));
+        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()),
+            new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
+
+        var snaps = monitor.Read(now).ToDictionary(s => s.SessionId);
+        Assert.Single(snaps);
+        Assert.True(snaps.ContainsKey("desktop:session:X"));
     }
 
     [Fact]

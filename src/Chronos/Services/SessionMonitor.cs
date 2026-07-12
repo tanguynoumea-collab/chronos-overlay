@@ -83,10 +83,14 @@ public sealed class SessionMonitor
             if (snap is not null) byId[snap.SessionId] = snap;
         }
 
-        // 2.b) Source BUREAU (UIA) : clés synthétiques `desktop:...` disjointes des session_id JSONL → fusion
-        //      additive ; lecture NON bloquante (rend le cache du poll de fond, ROB-07). Une source bureau
-        //      ne doit JAMAIS casser la lecture → try/catch tolérant (dégradation silencieuse).
-        if (_desktop is not null)
+        // 2.b) Source BUREAU (UIA) : REPLI anti-doublon. Les transcripts (étape 1) couvrent DÉJÀ l'app bureau
+        //      — l'app écrit ses transcripts dans ~/.claude/projects. La source UIA verrait donc les MÊMES
+        //      sessions, mais sous des clés SYNTHÉTIQUES `desktop:...` disjointes des UUID (aucune clé commune,
+        //      noms différents « projet » vs « titre de session ») → la fusion additive comptait chaque session
+        //      locale DEUX FOIS. On ne fusionne donc l'UIA QUE si aucune session locale (transcript/hook) n'est
+        //      visible — cas d'un Cowork VM pur (distant, sans transcript local). Lecture NON bloquante (cache
+        //      du poll de fond, ROB-07) ; ne casse JAMAIS le pipeline → try/catch tolérant.
+        if (_desktop is not null && byId.Count == 0)
         {
             try
             {
