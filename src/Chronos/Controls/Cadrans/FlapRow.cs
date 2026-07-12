@@ -24,11 +24,17 @@ public sealed class FlapRow : FrameworkElement
     public static readonly DependencyProperty OffBrushProperty =
         DependencyProperty.Register(nameof(OffBrush), typeof(Brush), typeof(FlapRow),
             new FrameworkPropertyMetadata(Frozen(0x2A, 0x26, 0x34), FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty HasDataProperty =
+        DependencyProperty.Register(nameof(HasData), typeof(bool), typeof(FlapRow),
+            new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    private static readonly Brush WaitFill = FrozenA(0x6E, 0xB0, 0xAE, 0xBA);
 
     public double Fraction { get => (double)GetValue(FractionProperty); set => SetValue(FractionProperty, value); }
     public int    Count    { get => (int)GetValue(CountProperty);       set => SetValue(CountProperty, value); }
     public Brush  OnBrush  { get => (Brush)GetValue(OnBrushProperty);    set => SetValue(OnBrushProperty, value); }
     public Brush  OffBrush { get => (Brush)GetValue(OffBrushProperty);   set => SetValue(OffBrushProperty, value); }
+    public bool   HasData  { get => (bool)GetValue(HasDataProperty);     set => SetValue(HasDataProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -36,20 +42,25 @@ public sealed class FlapRow : FrameworkElement
         if (w <= 0 || h <= 0) return;
 
         int n = Math.Max(1, Count);
-        double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
-        int lit = (int)Math.Round(frac * n, MidpointRounding.AwayFromZero);
-
         double gap = 3;
         double fw = (w - (n - 1) * gap) / n;
         if (fw <= 0) return;
 
+        double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
+        int lit = (int)Math.Round(frac * n, MidpointRounding.AwayFromZero);
+
         for (int i = 0; i < n; i++)
         {
             double x = i * (fw + gap);
-            dc.DrawRoundedRectangle(i < lit ? OnBrush : OffBrush, null, new Rect(x, 0, fw, h), 2, 2);
+            // EN ATTENTE : volets neutres (ni allumés ni éteints) → jamais un rang vide.
+            var brush = !HasData ? WaitFill : (i < lit ? OnBrush : OffBrush);
+            dc.DrawRoundedRectangle(brush, null, new Rect(x, 0, fw, h), 2, 2);
         }
     }
 
     private static SolidColorBrush Frozen(byte r, byte g, byte b)
     { var s = new SolidColorBrush(Color.FromRgb(r, g, b)); s.Freeze(); return s; }
+
+    private static SolidColorBrush FrozenA(byte a, byte r, byte g, byte b)
+    { var s = new SolidColorBrush(Color.FromArgb(a, r, g, b)); s.Freeze(); return s; }
 }

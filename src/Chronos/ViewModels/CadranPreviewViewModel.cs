@@ -62,6 +62,7 @@ public sealed partial class CadranPreviewViewModel : ObservableObject
 
         g.FractionRemaining = time;
         g.FractionElapsed = 1.0 - time;
+        g.HasTime = true;   // la galerie a toujours des données (pas d'état « en attente »)
         g.Utilization = quota;                                   // déclenche ValueBrush = theme.ArcBrush(quota)
         g.IsEstimated = estimated;
         g.Exhausted = quota >= 1.0;

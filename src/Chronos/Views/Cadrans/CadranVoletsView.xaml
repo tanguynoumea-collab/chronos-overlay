@@ -50,7 +50,8 @@
                 </Grid>
             </Border>
             <cad:FlapRow Grid.Column="2" Width="84" Height="16" Count="6" VerticalAlignment="Center"
-                         Fraction="{Binding FiveHour.FractionRemaining}"/>
+                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         HasData="{Binding FiveHour.HasTime}"/>
         </Grid>
 
         <!-- Ligne 7 J -->
@@ -81,7 +82,8 @@
                 </Grid>
             </Border>
             <cad:FlapRow Grid.Column="2" Width="84" Height="16" Count="6" VerticalAlignment="Center"
-                         Fraction="{Binding SevenDay.FractionRemaining}"/>
+                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         HasData="{Binding SevenDay.HasTime}"/>
         </Grid>
     </StackPanel>
 </UserControl>

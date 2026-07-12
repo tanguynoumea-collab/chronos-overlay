@@ -34,6 +34,12 @@ public sealed class EmberRingControl : FrameworkElement
     public static readonly DependencyProperty EstimatedProperty =
         DependencyProperty.Register(nameof(Estimated), typeof(bool), typeof(EmberRingControl),
             new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+    // false = pas de temps de reset (chargement / inconnu) → état « en attente » au lieu du vide.
+    public static readonly DependencyProperty HasDataProperty =
+        DependencyProperty.Register(nameof(HasData), typeof(bool), typeof(EmberRingControl),
+            new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    private static readonly Brush WaitFill = FrozenA(0x6E, 0xB0, 0xAE, 0xBA);   // neutre translucide, visible sur tout fond
 
     public double Fraction  { get => (double)GetValue(FractionProperty);  set => SetValue(FractionProperty, value); }
     public int    Count     { get => (int)GetValue(CountProperty);        set => SetValue(CountProperty, value); }
@@ -42,14 +48,28 @@ public sealed class EmberRingControl : FrameworkElement
     public Brush  QuotaBrush { get => (Brush)GetValue(QuotaBrushProperty); set => SetValue(QuotaBrushProperty, value); }
     public Brush  AshBrush   { get => (Brush)GetValue(AshBrushProperty);   set => SetValue(AshBrushProperty, value); }
     public bool   Estimated  { get => (bool)GetValue(EstimatedProperty);   set => SetValue(EstimatedProperty, value); }
+    public bool   HasData    { get => (bool)GetValue(HasDataProperty);     set => SetValue(HasDataProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
         int n = Math.Max(1, Count);
+        var center = new Point(ActualWidth / 2, ActualHeight / 2);
+
+        // EN ATTENTE : pas de temps de reset (données pas encore chargées) → couronne neutre visible,
+        // jamais un vide (qui laisserait croire à un overlay cassé).
+        if (!HasData)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                double aw = i * 360.0 / n * Math.PI / 180.0;
+                var pw = new Point(center.X + Radius * Math.Sin(aw), center.Y - Radius * Math.Cos(aw));
+                dc.DrawEllipse(WaitFill, null, pw, PipRadius * 0.7, PipRadius * 0.7);
+            }
+            return;
+        }
+
         double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
         int lit = (int)Math.Round(frac * n, MidpointRounding.AwayFromZero);
-
-        var center = new Point(ActualWidth / 2, ActualHeight / 2);
         var quota = QuotaBrush ?? Brushes.Gray;
         var ash = AshBrush ?? Brushes.DimGray;
 
@@ -91,4 +111,7 @@ public sealed class EmberRingControl : FrameworkElement
 
     private static SolidColorBrush Frozen(byte r, byte g, byte b)
     { var s = new SolidColorBrush(Color.FromRgb(r, g, b)); s.Freeze(); return s; }
+
+    private static SolidColorBrush FrozenA(byte a, byte r, byte g, byte b)
+    { var s = new SolidColorBrush(Color.FromArgb(a, r, g, b)); s.Freeze(); return s; }
 }

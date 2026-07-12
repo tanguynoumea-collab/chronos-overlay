@@ -19,6 +19,9 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
 
     [ObservableProperty] private double _fractionRemaining;                    // 0..1 → longueur d'arc restante
     [ObservableProperty] private double _fractionElapsed;                       // 0..1 → longueur d'arc ÉCOULÉE (VIS-01)
+    [ObservableProperty] private bool _hasTime;                                 // vrai SSI reset connu → les nouveaux styles
+                                                                                // (temps = géométrie) ont de quoi dessiner ;
+                                                                                // faux (chargement/pas de reset) → état « en attente »
     [ObservableProperty] private double? _utilization;                          // 0..1 ou null → couleur (Phase 5)
     [ObservableProperty] private string _utilizationText = "";                  // « 80 % » / « ~80 % » / «» (VIS-05)
     [ObservableProperty] private bool _hasUtilizationText;                      // vrai SSI utilization connue (pilote le séparateur « · »)
@@ -75,6 +78,7 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     {
         var remaining = WindowState.FractionRemaining(_state.ResetsAt, now, _windowLength);
         FractionRemaining = remaining ?? 0.0;
+        HasTime = _state.ResetsAt is not null;   // reset connu → géométrie fiable pour les nouveaux styles
         // VIS-01 : inversion du remplissage — l'arc est VIDE en début de fenêtre, PLEIN au reset.
         // Reset INCONNU (remaining null) → arc VIDE (0), jamais plein : on n'affiche pas un plein trompeur
         // quand on ne connaît pas le temps (countdown « — »).

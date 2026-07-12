@@ -23,7 +23,8 @@
         <cad:FuseBar Height="26" CordThickness="11"
                      Fraction="{Binding FiveHour.FractionRemaining}"
                      QuotaBrush="{Binding FiveHour.ValueBrush}"
-                     Estimated="{Binding FiveHour.IsEstimated}"/>
+                     Estimated="{Binding FiveHour.IsEstimated}"
+                     HasData="{Binding FiveHour.HasTime}"/>
         <!-- 7 J -->
         <Grid Margin="2,14,0,3">
             <TextBlock Text="7 J" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"/>
@@ -37,6 +38,7 @@
         <cad:FuseBar Height="24" CordThickness="9"
                      Fraction="{Binding SevenDay.FractionRemaining}"
                      QuotaBrush="{Binding SevenDay.ValueBrush}"
-                     Estimated="{Binding SevenDay.IsEstimated}"/>
+                     Estimated="{Binding SevenDay.IsEstimated}"
+                     HasData="{Binding SevenDay.HasTime}"/>
     </StackPanel>
 </UserControl>

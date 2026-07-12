@@ -27,12 +27,18 @@ public sealed class TideColumn : FrameworkElement
     public static readonly DependencyProperty EstimatedProperty =
         DependencyProperty.Register(nameof(Estimated), typeof(bool), typeof(TideColumn),
             new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty HasDataProperty =
+        DependencyProperty.Register(nameof(HasData), typeof(bool), typeof(TideColumn),
+            new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    private static readonly Brush WaitFill = FrozenA(0x5A, 0xB0, 0xAE, 0xBA);
 
     public double Fraction       { get => (double)GetValue(FractionProperty);       set => SetValue(FractionProperty, value); }
     public Brush  QuotaBrush     { get => (Brush)GetValue(QuotaBrushProperty);      set => SetValue(QuotaBrushProperty, value); }
     public Brush  TrackBrush     { get => (Brush)GetValue(TrackBrushProperty);      set => SetValue(TrackBrushProperty, value); }
     public Brush  WaterlineBrush { get => (Brush)GetValue(WaterlineBrushProperty);  set => SetValue(WaterlineBrushProperty, value); }
     public bool   Estimated      { get => (bool)GetValue(EstimatedProperty);        set => SetValue(EstimatedProperty, value); }
+    public bool   HasData        { get => (bool)GetValue(HasDataProperty);          set => SetValue(HasDataProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -40,12 +46,21 @@ public sealed class TideColumn : FrameworkElement
         if (w <= 0 || h <= 0) return;
 
         double pad = 2, x = pad, colW = w - 2 * pad, top = 3, bot = h - 3, colH = bot - top;
+        var channel = new Rect(x, top, colW, colH);
+        dc.DrawRoundedRectangle(TrackBrush, null, channel, 5, 5);
+
+        // EN ATTENTE : pas de temps de reset → colonne voilée d'un neutre translucide, jamais un vide.
+        if (!HasData)
+        {
+            dc.PushClip(new RectangleGeometry(channel, 5, 5));
+            dc.DrawRectangle(WaitFill, null, channel);
+            dc.Pop();
+            return;
+        }
+
         double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
         double litH = colH * frac;
         var quota = QuotaBrush ?? Brushes.Gray;
-
-        var channel = new Rect(x, top, colW, colH);
-        dc.DrawRoundedRectangle(TrackBrush, null, channel, 5, 5);
 
         dc.PushClip(new RectangleGeometry(channel, 5, 5));
         dc.DrawRectangle(quota, null, new Rect(x, top, colW, litH));    // lumière par le HAUT = temps
@@ -80,4 +95,7 @@ public sealed class TideColumn : FrameworkElement
 
     private static SolidColorBrush Frozen(byte r, byte g, byte b)
     { var s = new SolidColorBrush(Color.FromRgb(r, g, b)); s.Freeze(); return s; }
+
+    private static SolidColorBrush FrozenA(byte a, byte r, byte g, byte b)
+    { var s = new SolidColorBrush(Color.FromArgb(a, r, g, b)); s.Freeze(); return s; }
 }

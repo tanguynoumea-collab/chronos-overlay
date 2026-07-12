@@ -13,11 +13,13 @@
         <cad:EmberRingControl Radius="66" Count="16" PipRadius="4.4"
                               Fraction="{Binding FiveHour.FractionRemaining}"
                               QuotaBrush="{Binding FiveHour.ValueBrush}"
-                              Estimated="{Binding FiveHour.IsEstimated}"/>
+                              Estimated="{Binding FiveHour.IsEstimated}"
+                              HasData="{Binding FiveHour.HasTime}"/>
         <cad:EmberRingControl Radius="44" Count="12" PipRadius="3.6"
                               Fraction="{Binding SevenDay.FractionRemaining}"
                               QuotaBrush="{Binding SevenDay.ValueBrush}"
-                              Estimated="{Binding SevenDay.IsEstimated}"/>
+                              Estimated="{Binding SevenDay.IsEstimated}"
+                              HasData="{Binding SevenDay.HasTime}"/>
         <!-- Centre en mode POURCENTAGES (défaut) -->
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
