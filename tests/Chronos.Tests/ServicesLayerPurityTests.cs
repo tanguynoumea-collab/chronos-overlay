@@ -50,4 +50,26 @@ public class ServicesLayerPurityTests
             Assert.DoesNotContain(assembliesTouches, n => interdits.Contains(n));
         }
     }
+
+    /// <summary>
+    /// GARDE DE NON-RETOUR (DEL-05, phase 16). Le sous-système de plafonds — cause racine des
+    /// pourcentages faux après le passage Max x5 → Max x20 — a été entièrement supprimé. Les limites
+    /// Anthropic pondèrent par modèle : « tokens / plafond » reste faux même avec le bon plafond, la
+    /// calibration n'a donc aucun avenir. Ce test échoue si un type nommé Budget* réapparaît dans
+    /// l'assembly, quelle qu'en soit la voie (rétablissement depuis l'historique, nouvelle
+    /// implémentation, dialogue WPF). Le remplacement légitime est la correction par DELTA
+    /// (phase 19, DEL-03/DEL-04), qui ne dérive jamais un pourcentage d'un comptage de tokens.
+    /// </summary>
+    [Fact]
+    public void Aucun_type_de_plafond_ne_subsiste_dans_l_assembly()
+    {
+        var asm = typeof(Chronos.Services.IUsageProvider).Assembly;
+
+        var revenants = asm.GetTypes()
+            .Where(t => t.Name.StartsWith("Budget", StringComparison.Ordinal))
+            .Select(t => t.FullName)
+            .ToList();
+
+        Assert.Empty(revenants);
+    }
 }
