@@ -6,6 +6,10 @@ namespace Chronos.Services;
 /// Cohérent avec WeeklyRecalibration.NextReset (même ancre) → longueur et couleur de l'arc alignées.
 /// Classe NEUTRE (DateTimeOffset/TimeSpan), now en paramètre.
 /// </summary>
+/// <remarks>ORPHELIN ASSUMÉ depuis la phase 16 : plus aucun appelant en production depuis la
+/// conversion des transcripts en source de delta. CONSERVÉ VOLONTAIREMENT — logique pure, couverte
+/// par ses tests, et candidate à réemploi en phase 19 (borne basse d'un delta quand ResetsAt est
+/// inconnu). Ne pas supprimer sans décision explicite.</remarks>
 public static class WeeklyWindow
 {
     public static readonly TimeSpan Week = TimeSpan.FromDays(7);

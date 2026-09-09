@@ -6,6 +6,10 @@ namespace Chronos.Services;
 /// inter-messages ≥ 5 h n'existe entre M et le message le plus récent, en remontant depuis le
 /// plus récent. Classe NEUTRE (DateTimeOffset/TimeSpan uniquement), now en paramètre → testable.
 /// </summary>
+/// <remarks>ORPHELIN ASSUMÉ depuis la phase 16 : plus aucun appelant en production depuis la
+/// conversion des transcripts en source de delta. CONSERVÉ VOLONTAIREMENT — logique pure, couverte
+/// par ses tests, et candidate à réemploi en phase 19 (borne basse d'un delta quand ResetsAt est
+/// inconnu). Ne pas supprimer sans décision explicite.</remarks>
 public static class FiveHourWindowInference
 {
     public static readonly TimeSpan Window = TimeSpan.FromHours(5);
