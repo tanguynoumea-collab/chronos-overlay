@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-09-09T14:03:01.439Z"
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-09-09T14:14:35.551Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 17 (Jeton toujours vivant, panne toujours visible) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-09
 
@@ -132,6 +132,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 16 P03 | 29min | 3 tasks | 12 files |
 | Phase 16 P04 | 24 | 3 tasks | 7 files |
 | Phase 17 P01 | 18 | 2 tasks | 2 files |
+| Phase 17 P02 | 7min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -201,6 +202,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 17]: [17-01] Wave 0 : 3 defauts d'avant-phase graves en tests VERTS (401 muet, refresh paresseux, recul 429 inoperant sans cache). Ils seront REECRITS par 17-02/17-04, jamais supprimes — trace executable du bug avant/apres.
 - [Phase 17]: [17-01] DEFAUT NON PREVU AU PLAN : le garde-fou anti-429 (ChronosOAuthUsageProvider.cs:53) exige 'now < _nextAllowedCall ET _cached is not null'. _cached vivant en RAM, il est vide a CHAQUE demarrage de l'exe : le recul 429 ne freine alors rien du tout. 17-04 doit porter le backoff dans l'autorite de jeton, independamment de tout cache d'usage.
 - [Phase 17]: [17-01] TOK-01/TOK-02 laisses Pending malgre le frontmatter du plan : la Wave 0 ne livre que la couverture et prouve au contraire que les requirements ne sont PAS satisfaits. Ils seront coches par les plans qui livrent le correctif.
+- [Phase 17]: [17-02] La cause d'un echec de refresh est desormais typee : 429 rate_limit_error = EchecTemporaire (jamais 'deconnecte' — ce serait une fausse alerte sur un compte sain), 200 a corps inexploitable = IdentifiantsRejetes (la rotation a deja eu lieu cote serveur, reessayer est vain).
+- [Phase 17]: [17-02] ResultatRafraichissement n'expose AUCUNE propriete string, et un test reflexif (GetProperties) l'impose : un corps d'erreur peut echoiser la requete, donc le refresh token. La securite est structurelle, pas conventionnelle.
+- [Phase 17]: [17-02] EtatAuthentification a 4 valeurs et pas 3 : HorsLigne et Deconnecte sont irreductibles. IAuthStatus copie le motif RefreshOrchestrator.SnapshotChanged (le service expose l'event, l'abonne marshalle) — ServicesLayerPurityTests reste vert sans toucher son allow-list.
+- [Phase 17]: [17-02] TOK-01/TOK-02 laisses Pending : ce plan ne cree ni autorite, ni service de fond, ni pastille. IAuthStatus et EtatAuthentification sont des contrats sans implementation a ce commit — intentionnel, 17-03 implemente, 17-05 consomme.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -249,7 +254,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T14:03:01.434Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-09-09T14:14:24.909Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15
