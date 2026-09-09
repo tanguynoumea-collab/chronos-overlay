@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -67,5 +68,125 @@ public class ChronosOAuthClientTests
         var (c, s) = ChronosOAuthClient.SplitCodeState(pasted, "FB");
         Assert.Equal(code, c);
         Assert.Equal(state, s);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // RefreshAsync — couverture posée AVANT réécriture (Wave 0 de la phase 17).
+    //
+    // SÉCURITÉ — non négociable : « REF-VIEUX-BIDON » est une valeur INVENTÉE. Aucun test de ce dépôt
+    // ne doit lire, déchiffrer ni envoyer le refresh token réel de %APPDATA%\Chronos\oauth.dat :
+    // l'endpoint fait TOURNER le refresh token, et un appel dont le résultat n'est pas re-sauvegardé
+    // INVALIDERAIT DÉFINITIVEMENT le login de l'utilisateur. Tout passe par FakeHttpMessageHandler.
+    // ------------------------------------------------------------------------------------------
+
+    private const string CorpsNominal = """{"access_token":"ACC-2","refresh_token":"REF-2","expires_in":3600}""";
+
+    // 200 dont le corps s'interrompt au milieu : la rotation a DÉJÀ eu lieu côté serveur, mais le
+    // nouveau refresh token est perdu. Écrit en littéral échappé (pas en raw string) pour lever
+    // toute ambiguïté sur le comptage des guillemets de fermeture.
+    private const string CorpsTronque = "{\"access_token\":\"ACC-2\"";
+
+    /// <summary>
+    /// Helper UNIQUE de construction : aucun réseau réel, aucun coffre. Le plan 17-02 ne changera
+    /// que la ligne de retour quand RefreshAsync deviendra typé (ResultatRafraichissement).
+    /// </summary>
+    private static async Task<OAuthTokens?> RefreshAvec(FakeHttpMessageHandler handler)
+    {
+        var client = new ChronosOAuthClient(new HttpClient(handler));
+        return await client.RefreshAsync("REF-VIEUX-BIDON");
+    }
+
+    [Fact]
+    public async Task Refresh_200_rend_des_jetons_ET_fait_tourner_le_refresh_token()
+    {
+        var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsNominal);
+
+        var jetons = await RefreshAvec(handler);
+
+        Assert.NotNull(jetons);
+        Assert.Equal("ACC-2", jetons!.AccessToken);
+        Assert.Equal("REF-2", jetons.RefreshToken);            // ROTATION : ce n'est plus REF-VIEUX-BIDON
+        Assert.NotEqual("REF-VIEUX-BIDON", jetons.RefreshToken);
+        Assert.InRange(jetons.ExpiresAt,
+            DateTimeOffset.UtcNow.AddMinutes(50), DateTimeOffset.UtcNow.AddMinutes(70));
+        Assert.Equal(1, handler.SendCount);
+    }
+
+    [Fact]
+    public async Task Refresh_200_sans_refresh_token_est_rejete()
+    {
+        // ChronosOAuthClient.cs:114 — access ET refresh sont obligatoires. Un 200 amputé du refresh
+        // n'est pas exploitable : sans nouveau refresh, l'appel SUIVANT échouerait (rotation).
+        var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK,
+            """{"access_token":"ACC-2","expires_in":3600}""");
+
+        Assert.Null(await RefreshAvec(handler));
+    }
+
+    [Fact]
+    public async Task Refresh_200_a_corps_tronque_ne_leve_pas()
+    {
+        var ex = await Record.ExceptionAsync(async () =>
+            await RefreshAvec(FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsTronque)));
+
+        Assert.Null(ex);
+        Assert.Null(await RefreshAvec(FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsTronque)));
+    }
+
+    [Fact]
+    public async Task Refresh_exception_reseau_ne_leve_pas()
+    {
+        var ex = await Record.ExceptionAsync(async () =>
+            await RefreshAvec(FakeHttpMessageHandler.Throws(new HttpRequestException("réseau"))));
+
+        Assert.Null(ex);
+        Assert.Null(await RefreshAvec(FakeHttpMessageHandler.Throws(new HttpRequestException("réseau"))));
+    }
+
+    [Fact]
+    public async Task Refresh_timeout_ne_leve_pas()
+    {
+        var ex = await Record.ExceptionAsync(async () =>
+            await RefreshAvec(FakeHttpMessageHandler.Throws(new TaskCanceledException())));
+
+        Assert.Null(ex);
+        Assert.Null(await RefreshAvec(FakeHttpMessageHandler.Throws(new TaskCanceledException())));
+    }
+
+    /// <summary>
+    /// DÉFAUT DOCUMENTÉ (état AVANT la phase 17). Le <c>catch { return null; }</c> de PostTokenAsync
+    /// (ChronosOAuthClient.cs:119), doublé du <c>if (!resp.IsSuccessStatusCode) return null;</c>
+    /// (ligne 106), confond cinq causes qui appellent des réactions OPPOSÉES :
+    /// « refresh token révoqué » (seule une reconnexion répare), « identifiants rejetés »,
+    /// « rate limité » (attendre suffit), « panne serveur » (réessayer), « corps illisible après une
+    /// rotation déjà faite côté serveur » (irréparable). Sans cause, TOK-02 — rendre la panne visible
+    /// et actionnable — est mécaniquement impossible : on ne peut pas afficher ce qui a été détruit.
+    /// Le plan 17-02 RÉÉCRIT ce test (il ne le supprime pas) avec un résultat typé par cause.
+    /// </summary>
+    [Theory]
+    [InlineData(400, """{"error":"invalid_grant"}""")]              // identifiants révoqués
+    [InlineData(401, """{"error":"invalid_client"}""")]             // identifiants rejetés
+    [InlineData(429, """{"error":{"type":"rate_limit_error"}}""")]  // TEMPORAIRE — mode d'échec RÉEL
+    [InlineData(500, "")]                                           // panne serveur
+    [InlineData(200, CorpsTronque)]                                 // rotation déjà faite, corps perdu
+    public async Task Toutes_les_causes_d_echec_se_confondent_en_un_seul_null(int statut, string corps)
+    {
+        var jetons = await RefreshAvec(FakeHttpMessageHandler.Json((HttpStatusCode)statut, corps));
+
+        Assert.Null(jetons);   // <- LE DÉFAUT : aucune de ces cinq situations n'est distinguable
+    }
+
+    [Fact]
+    public async Task Le_refresh_token_ne_transite_JAMAIS_par_l_URL()
+    {
+        var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsNominal);
+
+        await RefreshAvec(handler);
+
+        var url = handler.LastRequest!.RequestUri!.ToString();
+        Assert.Equal("https://console.anthropic.com/v1/oauth/token", url);
+        Assert.DoesNotContain("REF-VIEUX-BIDON", url);
+        Assert.DoesNotContain("ACC-2", url);
+        Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
     }
 }
