@@ -6,130 +6,239 @@
 - ✅ **v1.1 — Estimation utile en mode app bureau** (2 phases, 5 plans, SHIPPED 2026-07-09) — [archive](.planning/milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 — Usage exact via l'endpoint OAuth** (2 phases, 4 plans, SHIPPED 2026-07-09) — [archive](.planning/milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 — Refonte du cadran (3 anneaux, remplissage, compacité)** (1 phase, phase 12, SHIPPED 2026-07-09) — [archive](.planning/milestones/v1.3-ROADMAP.md)
-- 🚧 **v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)** (2 phases, phases 13-14, en cours)
+- ✅ **v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)** (2 phases, phases 13-14, 5 plans, SHIPPED 2026-07-11) — [archive](.planning/milestones/v1.4-ROADMAP.md)
+- 🚧 **v1.5 — Exactitude permanente** (6 phases, phases 15-20, en cours)
 
 ## Prochain milestone
 
-Après v1.4 : refresh du token OAuth, sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray,
-taille réglable, notification Windows en bonus du signal UIA (`UserNotificationListener`).
+Après v1.5 : sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray, taille réglable, notification Windows
+en bonus du signal UIA (`UserNotificationListener`), préavis avant saturation du quota et notification au reset.
 
 ---
 
-## Milestone v1.4 : Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
+## Milestone v1.5 : Exactitude permanente
 
 ### Overview
 
-Le widget sessions existant (livré hors GSD, « v2.5 ») détecte les sessions **Claude Code** via les
-transcripts JSONL (`~/.claude/projects`) et les hooks. v1.4 l'étend à l'**application de bureau** Claude
-(Chat / Code / Cowork) via **UI Automation** — spike prouvé sur la machine le 2026-07-10 — et fait
-**disparaître automatiquement** les sessions traitées selon une règle d'hystérésis décidée avec l'utilisateur.
+Chronos affiche depuis deux mois des pourcentages faux (~4×) sans jamais le dire. Le diagnostic du 2026-09-09
+(voir `.planning/STATE.md`, section « Contexte technique v1.5 ») montre que ce n'est pas un bug isolé mais une
+**panne silencieuse des trois sources exactes** doublée d'une **doctrine de repli défaillante** : jeton OAuth
+expiré (401 muet), `usage.json` figé au 2026-07-10 mais toujours servi comme `Exact` faute de limite d'âge,
+cache exact en RAM seulement (perdu à chaque démarrage), composite classant uniquement par fiabilité, et repli
+divisant une somme de tokens par des plafonds calibrés sous l'ancien forfait.
 
-Le milestone se lit en **deux gestes cohérents à dépendance technique forte** :
+**Décision de fond du milestone :** on ne cherche plus à rendre l'estimation absolue juste — les limites
+Anthropic pondèrent par modèle, donc `tokens / plafond` restera faux même avec le bon plafond. L'estimation
+absolue est **supprimée**. Doctrine cible : **exact frais → dernier exact persisté (encore rigoureusement exact
+si rien ne s'est passé) → dernier exact + delta borné et marqué → indisponible.** Jamais de pourcentage inventé.
 
-1. **La source de vérité d'abord** (Phase 13). La distinction Chat/Cowork/Code et la branche « acquittée
-   par focus » (NET-02) EXIGENT l'arbre UI Automation de la fenêtre Claude. Rien de l'auto-disparition
-   focus-based ne peut fonctionner sans cette source. On construit donc `DesktopUiaSessionSource` :
-   lecture de l'arbre UIA, états honnêtes (bosse / attend / attend-permission / indéterminé), distinction
-   des types de session, énumération de la sidebar, matching souple fr/en, test de santé, dégradation,
-   lecture non bloquante pour le thread UI.
+Le milestone se lit en **six gestes**, ordonnés par dépendance technique réelle :
 
-2. **L'hystérésis ensuite** (Phase 14), qui roule sur la source précédente. Un magasin « traitées »
-   auto-géré et réversible retire une session sur « répondu » (retour en cours — déjà observable avec les
-   sources actuelles, NET-01) **ou** sur « acquittée par focus » (premier plan ≥ ~2-3 s — nécessite la
-   source UIA de la Phase 13, NET-02), et la fait réapparaître sur un événement d'attente plus récent.
-   L'archivage manuel par clic droit reste conservé, distinct et permanent.
+1. **Nettoyer les intégrations** (Phase 15). Les installateurs de hooks et de statusLine cumulent au lieu de
+   remplacer — 25 hooks Chronos au lieu de 5, pointant sur des exes de versions révolues. Indépendant du
+   pipeline d'usage, court, réparable tout de suite, et il assainit le terrain de mesure.
+2. **Poser les fondations de la correction par delta** (Phase 16). Deux gestes qui touchent le même code et
+   cassent les mêmes tests, donc indissociables : persister sur disque le dernier relevé exact (l'instant T de
+   référence, sans lequel aucun delta n'est calculable) et transformer `JsonlEstimationProvider` en source de
+   delta, ce qui implique la démolition complète du sous-système de plafonds et la migration des réglages.
+3. **Garder le jeton vivant et la panne visible** (Phase 17). Sans jeton valide, aucune source exacte ne
+   répond — ni l'endpoint OAuth existant, ni la sonde d'en-têtes de la phase suivante.
+4. **Ajouter la source par en-têtes de rate-limit** (Phase 18). Une source exacte de plus en tête de chaîne,
+   qui répond **même sur un 429** et apporte statut serveur et dépassement. Elle arrive avant la refonte du
+   composite pour que la nouvelle doctrine intègre sa place dès sa conception.
+5. **Refondre la doctrine du composite** (Phase 19). Le cœur du milestone : limite d'âge sur toute source
+   exacte, choix par fraîcheur et non par seule fiabilité, « encore exact » sans activité, « exact + delta
+   borné » avec activité, « indisponible » sinon.
+6. **Rendre l'état visible** (Phase 20). `IsStale` est calculé mais bindé nulle part : la distinction frais /
+   daté / indisponible arrive enfin à l'écran, et le diagnostic dit quelle source alimente réellement
+   l'affichage et depuis quand.
 
-**Contraintes portées :** `System.Windows.Automation` (interop COM managé, aucune dépendance native de
-rendu, aucun droit admin), chemins sous `%USERPROFILE%`/`%APPDATA%` uniquement, honnêteté (état
-« indéterminé » quand la vérité-terrain n'est pas observable localement — ex. Cowork en VM distante),
-lecture tolérante (aucune source indisponible ne provoque de crash), UI et commentaires en français.
-
-**Briques existantes réutilisées :** `SessionSnapshot` (record neutre + enum `SessionActivity`
-Working/WaitingAttention/WaitingTurn/Unknown), `SessionMonitor.Read(now)` (fusionne transcripts + hooks,
-staleness, filtre `archived` via `ArchiveStore`), `TranscriptSessionSource`, `SessionsViewModel`
-(Refresh, timer 2 s), tests dans `SessionsTests.cs`.
+**Contraintes portées :** C# / .NET 8 (`net8.0-windows`) / WPF / MVVM (CommunityToolkit.Mvvm) +
+Microsoft.Extensions.DependencyInjection + Hosting ; aucune dépendance native ; chemins sous `%USERPROFILE%` /
+`%APPDATA%` uniquement, aucun droit admin ; UI et commentaires en français ; les **327 tests xUnit** restent
+verts, y compris la garde de pureté `ServicesLayerPurityTests` (aucun type WPF dans `Services/` ni `Models/`)
+et la garde de composition `CompositionRootTests`.
 
 ### Phases
 
 **Numérotation des phases :**
-- Phases entières (13, 14) : travail de milestone planifié — continue après la Phase 12 (v1.3)
-- Phases décimales (13.1, 13.2) : insertions urgentes (marquées INSERTED)
+- Phases entières (15→20) : travail de milestone planifié — continue après la Phase 14 (v1.4)
+- Phases décimales (15.1, 15.2) : insertions urgentes (marquées INSERTED)
 
-- [x] **Phase 13 : Source UIA app bureau** - Un `DesktopUiaSessionSource` lit l'arbre UI Automation de la fenêtre Claude : états honnêtes (bosse / attend / attend-permission / indéterminé), distinction Chat/Code/Cowork, énumération des sessions actives de la sidebar, matching souple fr/en, test de santé + dégradation, lecture non bloquante pour le thread UI (completed 2026-07-10)
-- [x] **Phase 14 : Auto-disparition hystérésis des sessions traitées** - Un magasin « traitées » auto-géré et réversible retire une session sur « répondu » OU « acquittée par focus ≥ ~2-3 s », la fait réapparaître sur un événement d'attente plus récent, et conserve l'archivage manuel clic-droit distinct et permanent (completed 2026-07-10)
+- [ ] **Phase 15 : Idempotence des intégrations** - Les installateurs de hooks et de statusLine remplacent l'entrée Chronos existante au lieu de la cumuler, et purgent les entrées fantômes déjà présentes
+- [ ] **Phase 16 : Fondations du delta — persistance & démolition des plafonds** - Le dernier relevé exact survit au redémarrage de l'exe, les transcripts JSONL ne produisent plus qu'« activité depuis T ? » et « tokens depuis T ? », le sous-système de plafonds disparaît et les réglages existants migrent sans casse
+- [ ] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
+- [ ] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement
+- [ ] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens
+- [ ] **Phase 20 : Honnêteté visible — cadran & diagnostic** - Le cadran distingue à l'œil chiffre frais / chiffre daté / indisponible, et le diagnostic nomme la source réellement affichée et son âge
 
 ### Phase Details
 
-### Phase 13 : Source UIA app bureau
-**Goal**: Livrer un `DesktopUiaSessionSource` qui, en lisant l'arbre UI Automation de la fenêtre de
-l'application de bureau Claude (`System.Windows.Automation`), fait apparaître dans le widget les sessions
-Chat / Code / Cowork de l'app bureau — en plus des sessions Claude Code CLI existantes — chacune avec un
-état honnête (bosse / attend / attend-permission / indéterminé), son type identifié, et l'ensemble des
-sessions agentiques actives de la sidebar énumérées ; le tout robuste aux changements de version (matching
-souple fr/en, test de santé, dégradation vers « indéterminé ») et sans jamais bloquer le thread UI.
-**Depends on**: v1.3 (Phase 12 close) — première phase du milestone v1.4. S'appuie sur les briques
-sessions existantes (`SessionSnapshot`, `SessionMonitor`, `SessionsViewModel`) livrées hors GSD.
-**Requirements**: BUR-01, BUR-02, BUR-03, BUR-04, BUR-05, ROB-06, ROB-07
+### Phase 15 : Idempotence des intégrations
+**Goal**: L'utilisateur peut installer et réinstaller Chronos autant de fois qu'il veut sans que
+`~/.claude/settings.json` n'accumule d'entrées : chaque installation **remplace** l'entrée Chronos précédente
+et **purge** les entrées fantômes pointant sur des exes de versions révolues.
+**Depends on**: Rien (première phase du milestone v1.5, totalement indépendante du pipeline d'usage).
+**Requirements**: PUR-01, PUR-02, PUR-03
 **Success Criteria** (what must be TRUE):
-  1. **Sessions bureau visibles** : l'utilisateur voit dans le widget les sessions de l'application de
-     bureau Claude (en plus des sessions Claude Code CLI), détectées via l'arbre UI Automation de la
-     fenêtre Claude — sans dépendance native de rendu ni droit admin (BUR-01).
-  2. **États honnêtes** : chaque session bureau affiche « en cours » (bosse), « attend ton message »
-     (tour fini), « attend une permission », ou « indéterminé » — et une session Cowork en VM distante,
-     structurellement non observable localement, est marquée « indéterminé », jamais présentée comme un
-     état d'exécution certain (BUR-02, BUR-05).
-  3. **Type distingué** : le widget indique le type de chaque session bureau — Chat, Code ou Cowork —
-     dérivé des libellés/affordances de l'arbre (« Mode chat », onglets Home/Code, panneaux
-     Terminal/Diff/Cowork) (BUR-03).
-  4. **Sidebar énumérée** : les sessions agentiques actives listées dans la barre latérale de l'app
-     (marqueur « En cours d'exécution ») sont toutes énumérées, pas seulement la conversation au premier
-     plan (BUR-04).
-  5. **Robuste & non bloquant** : la détection résiste aux changements de version (matching souple par
-     libellé fr/en et non par `AutomationId` volatils, test de santé au démarrage, dégradation vers
-     « indéterminé » plutôt que d'inventer un état, aucune source indisponible ne crashe), et la lecture
-     UIA se fait hors thread UI puis marshalée, à la cadence du tick existant (~1-2 s), sans figer
-     l'overlay (ROB-06, ROB-07).
-**Plans**: 3 plans
-- [x] 13-01-PLAN.md — Modèle étendu (Kind/Origin) + seams neutres (UiaNode, IUiaTreeProvider, ISessionSource) + UiaLabels fr/en + DesktopUiaSessionSource.MapTree pur, testé par faux arbre
-- [x] 13-02-PLAN.md — WindowsUiaTreeProvider réel (System.Windows.Automation, racine cachée) + DesktopUiaPollService (poll de fond non bloquant)
-- [x] 13-03-PLAN.md — Fusion dans SessionMonitor + câblage DI (App.xaml.cs) + affichage du type dans le widget
+  1. **Hooks non cumulatifs** : après trois lancements successifs de Chronos depuis trois chemins d'exe
+     différents, `~/.claude/settings.json` contient exactement 5 hooks Chronos — pas 15 — le repérage se
+     faisant sur le marqueur `--hook` et non sur le chemin d'exe (PUR-01).
+  2. **statusLine non cumulatif** : l'entrée `statusLine` de Chronos est remplacée et non dupliquée, repérée
+     par le marqueur `--statusline`, quel que soit le chemin d'exe précédemment enregistré (PUR-02).
+  3. **Fantômes purgés** : au premier lancement sur une machine déjà polluée (cas réel constaté : 25 hooks
+     Chronos au lieu de 5, statusLine pointant un chemin `Downloads` en dur), les entrées obsolètes
+     disparaissent automatiquement, sans intervention manuelle de l'utilisateur (PUR-03).
+  4. **Rien d'autre n'est touché** : les hooks et réglages non-Chronos présents dans
+     `~/.claude/settings.json` survivent intacts à l'opération, et un fichier illisible ou malformé ne
+     provoque aucun crash au démarrage.
+**Plans**: TBD
+
+### Phase 16 : Fondations du delta — persistance & démolition des plafonds
+**Goal**: Chronos dispose d'un **instant T de référence persistant** (le dernier relevé exact, sur disque avec
+son horodatage, rechargé au démarrage) et d'une **source de delta bornée** (les transcripts JSONL répondent à
+« activité depuis T ? » et « tokens depuis T ? »), le sous-système de plafonds ayant entièrement disparu du
+code, des réglages et du menu.
+**Depends on**: Phase 15 (aucune dépendance technique — simple ordre d'exécution). Constitue le **prérequis
+technique de la Phase 19** : sans relevé exact persisté et sans source de delta, aucune correction par delta
+n'est calculable.
+**Requirements**: EXA-01, DEL-01, DEL-02, DEL-05, DEL-06
+**Success Criteria** (what must be TRUE):
+  1. **Le chiffre survit au redémarrage** : après fermeture puis relancement de l'exe hors connexion, Chronos
+     réaffiche immédiatement le dernier chiffre exact connu avec son horodatage, au lieu de repartir sans
+     chiffre — la bascule silencieuse au redémarrage, cas le plus fréquent, disparaît (EXA-01).
+  2. **Les transcripts répondent à deux questions bornées** : pour un instant T donné, Chronos sait dire s'il
+     y a eu une réponse assistant depuis T, et combien de tokens depuis T — et ne produit plus aucun
+     pourcentage (DEL-01, DEL-02).
+  3. **Plus une trace de plafond** : l'entrée de menu « Calibrer les plafonds… » a disparu, aucun dialogue de
+     calibration n'est atteignable, et `BudgetCalibration` / `BudgetAutoCalibrator` / `BudgetSource` /
+     `BudgetDialog` + VM / `IBudgetPrompt` / `BudgetPrompt` ne sont plus ni enregistrés en DI ni présents dans
+     le code — le bug de forfait devient structurellement impossible (DEL-05).
+  4. **Réglages migrés sans casse** : un `settings.json` existant contenant les six champs de plafonds
+     s'ouvre sans erreur, les champs obsolètes sont ignorés, et coin, écran, thème, style de cadran et
+     réglages du widget sessions sont conservés à l'identique (DEL-06).
+  5. **Aucune régression de garde** : les tests xUnit restent verts, `ServicesLayerPurityTests` (aucun type
+     WPF dans `Services/` ni `Models/`) et `CompositionRootTests` (composition DI complète) compris.
+**Plans**: TBD
+
+### Phase 17 : Jeton toujours vivant, panne toujours visible
+**Goal**: L'utilisateur n'est plus jamais laissé deux mois avec un jeton mort sans le savoir : le jeton OAuth
+est rafraîchi **avant** son expiration, et si l'authentification tombe malgré tout, l'overlay le dit et permet
+de rouvrir le login en un clic.
+**Depends on**: Phase 16 (ordre d'exécution). Conditionne l'utilité réelle de l'endpoint OAuth existant **et**
+de la sonde d'en-têtes de la Phase 18 : sans jeton vivant, aucune source exacte ne répond.
+**Requirements**: TOK-01, TOK-02, TOK-03
+**Success Criteria** (what must be TRUE):
+  1. **Rafraîchissement préventif** : le jeton est renouvelé avant sa date d'expiration, sans attendre qu'une
+     requête échoue au moment où l'utilisateur regarde le cadran — un exe laissé tourner plusieurs jours
+     continue de recevoir des chiffres exacts (TOK-01).
+  2. **Panne d'authentification visible** : quand le renouvellement échoue ou qu'une requête revient en 401,
+     une pastille de déconnexion apparaît dans l'overlay — plus jamais de 401 muet (TOK-02).
+  3. **Réparation en un clic** : un clic sur la pastille de déconnexion relance le parcours de login, et la
+     pastille disparaît dès qu'un chiffre exact est de nouveau obtenu (TOK-03).
+  4. **Robustesse préservée** : une panne réseau, un refresh token invalide ou un serveur injoignable ne
+     provoquent aucun crash ni gel de l'overlay — la dégradation reste silencieuse côté logs et explicite
+     côté pastille.
+**Plans**: TBD
 **UI hint**: yes
 
-**Note de démarrage** : le spike UIA a été capturé pendant une génération ; il MANQUE un snapshot en
-état **repos** (premier plan qui « m'attend »). Le capturer en tout début de Phase 13 pour figer la
-représentation exacte avant de coder le mapping d'états.
-
-### Phase 14 : Auto-disparition hystérésis des sessions traitées
-**Goal**: Faire disparaître automatiquement de la liste les sessions traitées, selon une règle
-d'hystérésis réversible : un magasin « traitées » auto-géré (clé `SessionId` + horodatage de l'état
-d'attente déclencheur), filtré dans `SessionMonitor.Read` au même endroit que le filtre `archived`, retire
-une session dès qu'elle est « répondue » (retour en Working) OU « acquittée » (focus premier plan ≥ ~2-3 s
-avec debounce anti-survol), et la fait réapparaître si un événement d'attente plus récent survient —
-tandis que l'archivage manuel par clic droit reste disponible, distinct et permanent.
-**Depends on**: Phase 13 (la branche « acquittée par focus », NET-02, exige la source UIA premier-plan ;
-la branche « répondu », NET-01, fonctionne déjà avec les sources actuelles).
-**Requirements**: NET-01, NET-02, NET-03, NET-04
+### Phase 18 : Source exacte par en-têtes de rate-limit
+**Goal**: Chronos dispose d'une source exacte supplémentaire, en tête de chaîne, qui répond **même quand
+l'API est en 429** — précisément l'instant où l'overlay sert le plus — et qui apporte deux informations que
+personne d'autre ne donne : le statut serveur et le dépassement.
+**Depends on**: Phase 17 (la sonde exige un jeton valide ; sans rafraîchissement préventif ni signal de
+déconnexion, elle retombe dans la panne silencieuse qu'on éradique).
+**Requirements**: HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06
 **Success Criteria** (what must be TRUE):
-  1. **Disparition sur réponse** : une session en attente disparaît automatiquement de la liste dès que
-     l'utilisateur y répond (elle repasse en « en cours », transition observable via transcript ou UIA)
-     (NET-01).
-  2. **Disparition sur acquittement focus** : une session en attente disparaît dès que l'utilisateur la
-     garde au premier plan de l'app ≥ ~2-3 s (debounce anti-survol) (NET-02).
-  3. **Réapparition réversible** : une session « traitée » qui repart en attente (événement d'attente plus
-     récent que le traitement) réapparaît dans la liste (NET-03).
-  4. **Archivage manuel préservé** : l'archivage par clic droit reste disponible et permanent — distinct
-     et complémentaire de l'auto-disparition, ne réapparaît jamais contrairement au « traité » (NET-04).
-**Plans**: 2 plans
-- [x] 14-01-PLAN.md — TreatedStore réversible + SessionTreatmentTracker (hystérésis pure) + filtre treated dans SessionMonitor.Read, testés à fond (NET-01, NET-03, NET-04, logique NET-02 par faux focus)
-- [x] 14-02-PLAN.md — WindowsForegroundWatch (focus premier-plan OS réel) + injection DI + garde DI étendue (NET-02 vivant)
+  1. **Chiffres exacts sans pont ni fichier** : sur une machine où `usage.json` est absent ou périmé,
+     Chronos affiche quand même des chiffres exacts pour les deux fenêtres, obtenus par une requête jetable
+     (`POST /v1/messages`, `max_tokens:1`, modèle le moins cher) et la lecture des en-têtes
+     `anthropic-ratelimit-unified-*` (HDR-01).
+  2. **Répond encore en saturation** : quand l'API renvoie un 429, le cadran continue d'afficher des chiffres
+     exacts et à jour au lieu de basculer en « indisponible » (HDR-02).
+  3. **Statut serveur et dépassement affichés** : l'utilisateur voit l'état déclaré par le serveur
+     (`allowed` / `allowed_warning` / `rejected`) plutôt qu'un état déduit d'un pourcentage, et l'usage en
+     dépassement (`overage`) quand il est présent (HDR-03, HDR-04).
+  4. **Aucune divergence d'unité à l'écran** : quelle que soit la source qui alimente le cadran (en-têtes en
+     0..1, `/api/oauth/usage` en 0..100, pont statusLine `used_percentage` en 0..100 ; `resets_at` en epoch
+     secondes ou en ISO 8601), le pourcentage et le compte à rebours affichés sont cohérents entre eux —
+     la normalisation se fait en un point unique (HDR-05).
+  5. **Coût maîtrisé et annoncé** : la cadence d'interrogation est bornée (pas de sonde à chaque tick), et
+     les réglages indiquent honnêtement que chaque appel consomme une micro-requête sur le compte (HDR-06).
+**Plans**: TBD
+
+### Phase 19 : Nouvelle doctrine du composite
+**Goal**: Le cœur du milestone — Chronos n'affiche plus jamais qu'un chiffre exact, éventuellement corrigé
+d'un delta borné et marqué comme tel, ou rien du tout : **exact frais → dernier exact persisté encore
+rigoureusement valide → dernier exact + delta borné avec sa marge → indisponible.**
+**Depends on**: Phase 16 (relevé exact persisté = instant T de référence, et source de delta) et Phase 18
+(la source en-têtes doit déjà exister pour que la doctrine intègre sa place plutôt que d'être rétrofittée).
+**Requirements**: EXA-02, EXA-04, EXA-05, DEL-03, DEL-04
+**Success Criteria** (what must be TRUE):
+  1. **Fin du « exact » périmé** : un relevé exact au-delà de l'âge maximal cesse d'être présenté comme
+     exact — un `usage.json` figé depuis deux mois ne peut plus battre une donnée fraîche, et le classement
+     du composite ne se fait plus par seule fiabilité (EXA-02).
+  2. **Encore exact quand rien n'a bougé** : si aucune réponse assistant n'est survenue depuis le dernier
+     relevé exact, ce relevé est présenté comme **encore exact** — l'utilisation n'a effectivement pas
+     changé — et non comme périmé (DEL-03).
+  3. **Exact + delta marqué quand ça a bougé** : s'il y a eu de l'activité depuis, l'affichage devient
+     « dernier exact + delta estimé » avec sa marge d'incertitude, visiblement distinct d'un relevé exact
+     (DEL-04).
+  4. **Plus aucun pourcentage inventé** : aucune utilization absolue dérivée d'un comptage de tokens n'est
+     affichée dans quelque situation que ce soit ; et si aucun chiffre exact n'a jamais été obtenu, l'overlay
+     affiche « indisponible » et invite à se connecter plutôt que d'afficher un pourcentage (EXA-04, EXA-05).
+  5. **Doctrine reproductible sous test** : les quatre branches de la doctrine (frais / encore valide /
+     delta / indisponible) sont vérifiables par des scénarios déterministes, et les gardes de pureté et de
+     composition restent vertes.
+**Plans**: TBD
+
+### Phase 20 : Honnêteté visible — cadran & diagnostic
+**Goal**: Ce que la doctrine sait, l'utilisateur le voit : le cadran distingue à l'œil un chiffre exact frais,
+un chiffre exact daté et un état indisponible, et le diagnostic nomme la source qui alimente réellement
+l'affichage ainsi que son ancienneté.
+**Depends on**: Phase 19 (les trois états à distinguer n'existent qu'une fois la nouvelle doctrine en place).
+**Requirements**: EXA-03, EXA-06
+**Success Criteria** (what must be TRUE):
+  1. **Trois états lisibles d'un coup d'œil** : sans lire de texte, l'utilisateur distingue un chiffre exact
+     frais, un chiffre exact daté (ou corrigé d'un delta) et un état indisponible — `IsStale`, jusqu'ici
+     calculé mais bindé nulle part, devient un signal réel à l'écran (EXA-03).
+  2. **Cohérent dans les deux modes et les trois thèmes** : la distinction reste lisible en mode Normal comme
+     en mode Étendu, et dans les trois thèmes de couleur, sans casser la compacité du cadran ni les tokens de
+     design validés.
+  3. **Diagnostic sans ambiguïté** : le diagnostic indique quelle source alimente l'affichage à cet instant
+     (en-têtes / endpoint OAuth / pont statusLine / dernier exact persisté / dernier exact + delta) et depuis
+     quand — l'utilisateur peut constater seul une panne de source sans instrumenter le code (EXA-06).
+  4. **Aucune fuite de WPF dans les services** : le nouveau signal visuel passe par les ViewModels ;
+     `ServicesLayerPurityTests` reste vert.
+**Plans**: TBD
 **UI hint**: yes
 
 ### Progress
 
 **Execution Order:**
-Phase 13 → Phase 14 (dépendance forte : la source UIA avant l'hystérésis focus-based).
+Phase 15 (indépendante) → Phase 16 (fondations : persistance + delta + démolition des plafonds) →
+Phase 17 (jeton vivant) → Phase 18 (source en-têtes) → Phase 19 (doctrine du composite, exige 16 et 18) →
+Phase 20 (rendu visible de la doctrine, exige 19).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 13. Source UIA app bureau | 3/3 | Complete   | 2026-07-10 |
-| 14. Auto-disparition hystérésis des sessions traitées | 2/2 | Complete   | 2026-07-10 |
+| 15. Idempotence des intégrations | 0/? | Not started | - |
+| 16. Fondations du delta — persistance & démolition des plafonds | 0/? | Not started | - |
+| 17. Jeton toujours vivant, panne toujours visible | 0/? | Not started | - |
+| 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
+| 19. Nouvelle doctrine du composite | 0/? | Not started | - |
+| 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
+
+### Couverture des exigences
+
+24 requirements v1.5, chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
+
+| Phase | Requirements | Nombre |
+|-------|--------------|--------|
+| 15 | PUR-01, PUR-02, PUR-03 | 3 |
+| 16 | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | 5 |
+| 17 | TOK-01, TOK-02, TOK-03 | 3 |
+| 18 | HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06 | 6 |
+| 19 | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | 5 |
+| 20 | EXA-03, EXA-06 | 2 |
+| **Total** | | **24 / 24** |

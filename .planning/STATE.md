@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente (suppression de l'estimation pure, correction par delta)
-status: "Milestone v1.5 démarré le 2026-09-09. Définition des exigences."
-stopped_at: Milestone v1.5 initialisé
+status: "Roadmap v1.5 créée : 6 phases (15 → 20), 24/24 requirements mappés. Prêt pour /gsd:plan-phase 15."
+stopped_at: Roadmap v1.5 créée (phases 15 à 20)
 last_updated: "2026-09-09"
-last_activity: 2026-09-09 — Milestone v1.5 démarré (diagnostic complet du pipeline d'usage + analyse de claude-session-browser)
+last_activity: 2026-09-09 — Roadmap v1.5 créée (6 phases, 15 → 20, couverture 24/24)
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -26,13 +26,25 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 ## Current Position
 
-Milestone: v1.5 — Exactitude permanente
-Phase: Not started (defining requirements)
+Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
+Phase: Phase 15 — Idempotence des intégrations (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-09 — Milestone v1.5 started
+Status: Roadmap créée, planification de phase à venir
+Last activity: 2026-09-09 — Roadmap v1.5 créée (24/24 requirements mappés)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░] 0% (0/6 phases)
+
+**Ordre d'exécution :** 15 (indépendante) → 16 (fondations : persistance + delta + démolition des plafonds)
+→ 17 (jeton vivant) → 18 (source en-têtes) → 19 (doctrine du composite, exige 16 et 18) → 20 (rendu visible).
+
+| Phase | Titre | Requirements | Statut |
+|-------|-------|--------------|--------|
+| 15 | Idempotence des intégrations | PUR-01..03 | Not started |
+| 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Not started |
+| 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Not started |
+| 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Not started |
+| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Not started |
+| 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Not started |
 
 ## Performance Metrics
 
@@ -109,6 +121,27 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Decisions
 
+- [v1.5/roadmap]: **6 phases, numérotées 15 → 20** (continuité après la phase 14 de v1.4). Couverture
+  24/24 requirements, aucun orphelin, aucun doublon.
+- [v1.5/roadmap]: **EXA-01 (persistance du dernier relevé exact) est placé en Phase 16, avant la refonte du
+  composite (Phase 19)** : la correction par delta (DEL-03/04) est impossible sans un instant T de référence
+  persisté.
+- [v1.5/roadmap]: **DEL-05 (démolition des plafonds) et DEL-01/02 (JSONL en source de delta) sont dans la même
+  phase (16)** : ils touchent le même code et cassent les mêmes tests ; les séparer produirait un état
+  intermédiaire non compilable. DEL-06 (migration des réglages) les accompagne pour la même raison.
+- [v1.5/roadmap]: **HDR-01..06 en Phase 18, AVANT la refonte du composite (Phase 19)** : la source en-têtes
+  est indépendante (un `IUsageProvider` de plus en tête de chaîne), mais la placer avant évite de rétrofitter
+  sa place dans la nouvelle doctrine.
+- [v1.5/roadmap]: **TOK-01..03 en Phase 17, avant HDR** : sans jeton vivant, ni l'endpoint OAuth existant ni
+  la sonde d'en-têtes ne répondent — le jeton conditionne l'utilité réelle de la Phase 18.
+- [v1.5/roadmap]: **PUR-01..03 en Phase 15** : totalement indépendant du pipeline d'usage, court, plaçable
+  n'importe où ; placé en tête pour assainir le terrain de mesure tout de suite.
+- [v1.5/roadmap]: **Phases 17 et 20 marquées « UI hint: yes »** (pastille de déconnexion cliquable TOK-02/03 ;
+  distinction visuelle frais / daté / indisponible EXA-03). Les autres phases sont purement services/données.
+  Note : `ui_phase: false` dans config.json — l'indice est consigné mais aucune phase UI dédiée n'est déclenchée.
+- [v1.5/roadmap]: Toute phase doit conserver vertes les **327 tests xUnit**, la garde de pureté
+  `ServicesLayerPurityTests` et la garde de composition `CompositionRootTests`.
+
 - [v1.4/roadmap]: **2 phases à dépendance forte** — la source UIA (Phase 13) avant l'hystérésis (Phase 14).
   La distinction Chat/Cowork/Code et l'acquittement par focus (NET-02) EXIGENT l'arbre UIA ; la branche
   « répondu » (NET-01) roule déjà sur les sources actuelles. On ne peut donc pas inverser l'ordre.
@@ -156,7 +189,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- Phase 13 (tout début) : capturer le snapshot UIA en état **repos** avant de coder le mapping d'états.
+- Prochaine action v1.5 : `/gsd:plan-phase 15` (idempotence des installateurs de hooks / statusLine).
+- ~~Phase 13 (tout début) : capturer le snapshot UIA en état **repos**~~ (fait, v1.4 clos).
 
 ### Blockers/Concerns
 
@@ -167,6 +201,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-07-10T13:11:52.267Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-09-09
+Stopped at: Roadmap v1.5 créée (.planning/ROADMAP.md, phases 15 → 20) + traçabilité REQUIREMENTS.md à jour
 Resume file: None
+Next: /gsd:plan-phase 15

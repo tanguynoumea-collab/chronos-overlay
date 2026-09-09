@@ -113,32 +113,41 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| EXA-01 | TBD | Pending |
-| EXA-02 | TBD | Pending |
-| EXA-03 | TBD | Pending |
-| EXA-04 | TBD | Pending |
-| EXA-05 | TBD | Pending |
-| EXA-06 | TBD | Pending |
-| DEL-01 | TBD | Pending |
-| DEL-02 | TBD | Pending |
-| DEL-03 | TBD | Pending |
-| DEL-04 | TBD | Pending |
-| DEL-05 | TBD | Pending |
-| DEL-06 | TBD | Pending |
-| HDR-01 | TBD | Pending |
-| HDR-02 | TBD | Pending |
-| HDR-03 | TBD | Pending |
-| HDR-04 | TBD | Pending |
-| HDR-05 | TBD | Pending |
-| HDR-06 | TBD | Pending |
-| TOK-01 | TBD | Pending |
-| TOK-02 | TBD | Pending |
-| TOK-03 | TBD | Pending |
-| PUR-01 | TBD | Pending |
-| PUR-02 | TBD | Pending |
-| PUR-03 | TBD | Pending |
+| EXA-01 | Phase 16 | Pending |
+| EXA-02 | Phase 19 | Pending |
+| EXA-03 | Phase 20 | Pending |
+| EXA-04 | Phase 19 | Pending |
+| EXA-05 | Phase 19 | Pending |
+| EXA-06 | Phase 20 | Pending |
+| DEL-01 | Phase 16 | Pending |
+| DEL-02 | Phase 16 | Pending |
+| DEL-03 | Phase 19 | Pending |
+| DEL-04 | Phase 19 | Pending |
+| DEL-05 | Phase 16 | Pending |
+| DEL-06 | Phase 16 | Pending |
+| HDR-01 | Phase 18 | Pending |
+| HDR-02 | Phase 18 | Pending |
+| HDR-03 | Phase 18 | Pending |
+| HDR-04 | Phase 18 | Pending |
+| HDR-05 | Phase 18 | Pending |
+| HDR-06 | Phase 18 | Pending |
+| TOK-01 | Phase 17 | Pending |
+| TOK-02 | Phase 17 | Pending |
+| TOK-03 | Phase 17 | Pending |
+| PUR-01 | Phase 15 | Pending |
+| PUR-02 | Phase 15 | Pending |
+| PUR-03 | Phase 15 | Pending |
 
-**Couverture :** 24 requirements à mapper (roadmap à créer).
+**Couverture :** 24 / 24 requirements mappés — 6 phases (15 → 20), aucun orphelin, aucun doublon.
+
+| Phase | Requirements | Nombre |
+|-------|--------------|--------|
+| 15 — Idempotence des intégrations | PUR-01, PUR-02, PUR-03 | 3 |
+| 16 — Fondations du delta (persistance & démolition des plafonds) | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | 5 |
+| 17 — Jeton toujours vivant, panne toujours visible | TOK-01, TOK-02, TOK-03 | 3 |
+| 18 — Source exacte par en-têtes de rate-limit | HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06 | 6 |
+| 19 — Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | 5 |
+| 20 — Honnêteté visible (cadran & diagnostic) | EXA-03, EXA-06 | 2 |
 
 ---
-*Last updated: 2026-09-09 — exigences v1.5 définies (24 requirements, recherche passée : diagnostic déjà établi)*
+*Last updated: 2026-09-09 — roadmap v1.5 créée : 24/24 requirements mappés sur les phases 15 à 20*
