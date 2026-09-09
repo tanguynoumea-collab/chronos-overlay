@@ -246,12 +246,23 @@ public partial class App : Application
             sp.GetRequiredService<IClock>(),
             sp.GetRequiredService<ArchiveStore>()));
 
-        // Pipeline de donnees Phase 3 : primaire (pont usage.json) -> repli (JSONL), composite
-        // expose comme IUsageProvider. Chemins via Environment (jamais Assembly.Location, mono-fichier).
+        // Pipeline de donnees : chaine de sources EXACTES uniquement, exposee comme IUsageProvider
+        // et coiffee du decorateur de persistance. Plus aucun repli estime (EXA-04).
+        // Chemins via Environment (jamais Assembly.Location, mono-fichier).
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton(ChronosPaths.Default());
         services.AddSingleton<ClaudeUsageObjectProvider>();
-        services.AddSingleton<JsonlEstimationProvider>();
+
+        // DEL-01/DEL-02 : les transcripts ne repondent plus qu'a deux questions bornees (activite
+        // depuis T ? tokens depuis T ?) — ils ne sont PLUS un IUsageProvider et sont donc HORS de la
+        // chaine composite. Plus aucune dependance a SettingsService : ni plafond, ni ancre hebdo.
+        services.AddSingleton<ITranscriptActivitySource>(sp => new TranscriptActivityProvider(
+            sp.GetRequiredService<ChronosPaths>(),
+            sp.GetRequiredService<IClock>()));
+
+        // EXA-01 : magasin persistant du dernier releve exact (%APPDATA%\Chronos\last-exact.json).
+        services.AddSingleton(sp => new LastExactStore(
+            sp.GetRequiredService<ChronosPaths>().LastExactFile));
 
         // v1.2 (INT-01/03) : source EXACTE OAuth en tête de chaîne. Le reader cible le coffre de l'app
         // bureau (%APPDATA%/Claude) ; il n'est JAMAIS sollicité tant que le portillon gated est fermé.
@@ -278,15 +289,20 @@ public partial class App : Application
             sp.GetRequiredService<ChronosOAuthClient>(),
             sp.GetRequiredService<ChronosOAuthStore>()));
 
-        // Chaîne exacte→estimée par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
-        //   login OAuth Chronos (exact) → OAuth coffre app (exact, gated) → pont statusLine (exact) → JSONL (estimé).
-        services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
-            primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
-            fallback: new CompositeUsageProvider(
-                primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
+        // Chaîne exacte par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
+        //   login OAuth Chronos (exact) → OAuth coffre app (exact, gated) → pont statusLine (exact).
+        // Le maillon JSONL a disparu (EXA-04) : le composite se termine sur le pont statusLine.
+        // Le décorateur EXA-01 coiffe le tout : écrivain UNIQUE du dernier relevé exact, et rebouchage
+        // des fenêtres Unavailable depuis le magasin. La règle Best() de CompositeUsageProvider n'est
+        // PAS modifiée (c'est la phase 19).
+        services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
+            inner: new CompositeUsageProvider(
+                primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
                 fallback: new CompositeUsageProvider(
-                    primary:  sp.GetRequiredService<ClaudeUsageObjectProvider>(),
-                    fallback: sp.GetRequiredService<JsonlEstimationProvider>()))));
+                    primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
+                    fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>())),
+            store: sp.GetRequiredService<LastExactStore>(),
+            clock: sp.GetRequiredService<IClock>()));
 
         // Horloge DONNÉES Phase 4 : l'orchestrateur est enregistré UNE fois (Singleton, pour l'abonnement
         // du VM) et réexposé comme IHostedService via la MÊME instance (cycle de vie Start/Stop du host).

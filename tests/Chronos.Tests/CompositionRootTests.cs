@@ -32,12 +32,30 @@ public class CompositionRootTests
         // Pipeline de données Phase 3 + orchestrateur Phase 4 (miroir de App.xaml.cs) :
         // le MainViewModel dépend désormais de RefreshOrchestrator + IClock (04-02).
         services.AddSingleton<IClock, SystemClock>();
-        services.AddSingleton(ChronosPaths.Default());
+        // GARDE ANTI-ACCIDENT : ChronosPaths.Default() pointerait le VRAI %APPDATA%\Chronos, donc
+        // le magasin ecrirait le vrai last-exact.json pendant la suite de tests. Un UsageFile en
+        // dossier temp isole propage l'isolation a settings.json ET a last-exact.json (proprietes
+        // calculees) — meme motif que Le_graphe_DI_resout_le_reconciliateur_de_settings_Claude.
+        var tmpUsage = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "ChronosDI_" + System.Guid.NewGuid().ToString("N"), "usage.json");
+        services.AddSingleton(ChronosPaths.Default() with { UsageFile = tmpUsage });
         services.AddSingleton<ClaudeUsageObjectProvider>();
-        services.AddSingleton<JsonlEstimationProvider>();
-        services.AddSingleton<IUsageProvider>(sp => new CompositeUsageProvider(
-            primary: sp.GetRequiredService<ClaudeUsageObjectProvider>(),
-            fallback: sp.GetRequiredService<JsonlEstimationProvider>()));
+
+        // Source de delta (DEL-01/DEL-02) : enregistree HORS de la chaine composite — elle n'est
+        // plus un IUsageProvider. Une DI oubliant cet enregistrement compilerait et ne planterait
+        // qu'au demarrage de l'app.
+        services.AddSingleton<ITranscriptActivitySource>(sp => new TranscriptActivityProvider(
+            sp.GetRequiredService<ChronosPaths>(),
+            sp.GetRequiredService<IClock>()));
+
+        // EXA-01 : le decorateur de persistance coiffe la chaine exacte (ici reduite au pont
+        // statusLine, seul maillon reproduit dans ce conteneur miroir).
+        services.AddSingleton(sp => new LastExactStore(
+            sp.GetRequiredService<ChronosPaths>().LastExactFile));
+        services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
+            inner: sp.GetRequiredService<ClaudeUsageObjectProvider>(),
+            store: sp.GetRequiredService<LastExactStore>(),
+            clock: sp.GetRequiredService<IClock>()));
         services.AddSingleton(RefreshOptions.Default);
         services.AddSingleton<RefreshOrchestrator>();
 
@@ -80,6 +98,14 @@ public class CompositionRootTests
         // Résolution sans exception → preuve que le graphe DI est câblé (partie « lance »).
         Assert.NotNull(provider.GetRequiredService<MainWindow>());
         Assert.NotNull(provider.GetRequiredService<MainViewModel>());
+
+        // EXA-01 : le décorateur de persistance est bien en TÊTE de chaîne, pas enterré au milieu.
+        Assert.NotNull(provider.GetRequiredService<IUsageProvider>());
+        Assert.IsType<LastExactUsageProvider>(provider.GetRequiredService<IUsageProvider>());
+        // DEL-01/DEL-02 : la source de delta se résout, hors de la chaîne d'usage.
+        Assert.NotNull(provider.GetRequiredService<ITranscriptActivitySource>());
+        // Garde anti-accident : aucun test n'écrit dans le vrai %APPDATA%\Chronos.
+        Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<LastExactStore>().Path);
 
         var marqueur = provider.GetRequiredService<MarqueurDisposable>();
         Assert.False(marqueur.Disposed);

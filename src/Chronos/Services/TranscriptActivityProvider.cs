@@ -11,7 +11,8 @@ namespace Chronos.Services;
 /// aucun instantané d'usage.
 ///
 /// POURQUOI : les limites Anthropic pondèrent par modèle (une heure d'Opus ne pèse pas comme une
-/// heure de Haiku), donc « tokens / plafond » reste faux même avec le bon plafond. Le comptage de
+/// heure de Haiku), donc le rapport d'un comptage de tokens à un plafond reste faux même avec le bon
+/// plafond — c'est le principe même du calcul qui est invalide, pas son paramètre. Le comptage de
 /// tokens ne peut servir que de DELTA, appuyé sur un relevé exact daté.
 ///
 /// Le parcours disque est celui, éprouvé, de l'ancien provider d'estimation — chaque garde
