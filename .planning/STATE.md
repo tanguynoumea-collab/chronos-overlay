@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: verifying
-stopped_at: Completed 16-04-PLAN.md
-last_updated: "2026-09-09T12:53:33.971Z"
+status: executing
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-09-09T14:03:01.439Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 12
+  completed_plans: 8
   percent: 0
 ---
 
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-09-09)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
 deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 16 — Fondations du delta
+**Current focus:** Phase 17 — Jeton toujours vivant, panne toujours visible
 
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 16 (Fondations du delta) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 17 (Jeton toujours vivant, panne toujours visible) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-09-09
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -131,6 +131,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 16 P02 | 9min | 2 tasks | 6 files |
 | Phase 16 P03 | 29min | 3 tasks | 12 files |
 | Phase 16 P04 | 24 | 3 tasks | 7 files |
+| Phase 17 P01 | 18 | 2 tasks | 2 files |
 
 ### Decisions
 
@@ -197,6 +198,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 16]: DEL-06 livré comme TEST, pas comme code : System.Text.Json ignore par défaut les membres non mappés (skip au niveau du LECTEUR, avant conversion) — un migrateur aurait été du code mort pour un problème inexistant.
 - [Phase 16]: La fixture DEL-06 est une copie octet pour octet du settings.json RÉEL de production : une fixture régénérée par sérialisation ne contiendrait pas les champs obsolètes et ne prouverait rien.
 - [Phase 16]: La garde de non-retour Budget* porte sur le NOM des types et sa falsifiabilité a été vérifiée en exécution (type témoin introduit, échec constaté, témoin retiré).
+- [Phase 17]: [17-01] Wave 0 : 3 defauts d'avant-phase graves en tests VERTS (401 muet, refresh paresseux, recul 429 inoperant sans cache). Ils seront REECRITS par 17-02/17-04, jamais supprimes — trace executable du bug avant/apres.
+- [Phase 17]: [17-01] DEFAUT NON PREVU AU PLAN : le garde-fou anti-429 (ChronosOAuthUsageProvider.cs:53) exige 'now < _nextAllowedCall ET _cached is not null'. _cached vivant en RAM, il est vide a CHAQUE demarrage de l'exe : le recul 429 ne freine alors rien du tout. 17-04 doit porter le backoff dans l'autorite de jeton, independamment de tout cache d'usage.
+- [Phase 17]: [17-01] TOK-01/TOK-02 laisses Pending malgre le frontmatter du plan : la Wave 0 ne livre que la couverture et prouve au contraire que les requirements ne sont PAS satisfaits. Ils seront coches par les plans qui livrent le correctif.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -245,7 +249,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T12:53:33.966Z
-Stopped at: Completed 16-04-PLAN.md
+Last session: 2026-09-09T14:03:01.434Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15
