@@ -197,9 +197,6 @@ public partial class App : Application
         services.AddSingleton<IAutostartService>(_ => new AutostartService());
         services.AddSingleton<IRecalibrationPrompt, RecalibrationPrompt>();
 
-        // CAL-01 : dialogue de calibration manuelle des plafonds (namespace Views, hors pureté Services).
-        services.AddSingleton<IBudgetPrompt, BudgetPrompt>();
-
         // Source EXACTE via pont statusLine Claude Code : installateur (édite ~/.claude/settings.json)
         // + setup WPF (menu + proposition au 1er lancement). C'est la voie universelle recommandée.
         services.AddSingleton<StatusLineInstaller>(_ => new StatusLineInstaller());

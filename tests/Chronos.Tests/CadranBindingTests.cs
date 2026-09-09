@@ -32,7 +32,7 @@ public class CadranBindingTests
         var settings = new SettingsService(ChronosPaths.Default());
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            new FakeBudgetPrompt(), settings,
+            settings,
             new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(Now)),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController());
         vm.ApplySnapshot(snap);

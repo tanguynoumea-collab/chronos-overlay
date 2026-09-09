@@ -303,8 +303,6 @@
             <UniformGrid Columns="2">
                 <Button Content="Recalibrer hebdo…" Style="{StaticResource Flat}" Margin="0,0,4,6" FontSize="12"
                         Command="{Binding RecalibrateCommand}"/>
-                <Button Content="Plafonds…" Style="{StaticResource Flat}" Margin="4,0,0,6" FontSize="12"
-                        Command="{Binding CalibrateBudgetsCommand}"/>
                 <Button Content="Source terminal" Style="{StaticResource Flat}" Margin="0,0,4,0" FontSize="12"
                         Command="{Binding ToggleStatusLineSourceCommand}"/>
                 <Button Content="Diagnostic…" Style="{StaticResource Flat}" Margin="4,0,0,0" FontSize="12"

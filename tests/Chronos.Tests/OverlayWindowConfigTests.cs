@@ -21,7 +21,7 @@ public class OverlayWindowConfigTests
         var settings = new SettingsService(ChronosPaths.Default());
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            new FakeBudgetPrompt(), settings,
+            settings,
             new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(DateTimeOffset.UtcNow)),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController());
         var guard = new TopmostGuard();

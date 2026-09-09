@@ -94,7 +94,7 @@ public class ThemingTests
         var clock = new FakeClock(new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero));
         var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            new FakeBudgetPrompt(), settings,
+            settings,
             new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController());
 
