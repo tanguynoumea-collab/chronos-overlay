@@ -1,0 +1,278 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Tanguy/.claude/hooks/gsd-check-update.js\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.exe\" --hook SessionStart",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.1.exe\" --hook SessionStart",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.6.exe\" --hook SessionStart",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Documents/PROGRAMMES/DEV/PROJET OVERLAY/src/Chronos/bin/Debug/net8.0-windows/Chronos.exe\" --hook SessionStart",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.8.1.exe\" --hook SessionStart",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Tanguy/.claude/hooks/gsd-context-monitor.js\"",
+            "timeout": 10
+          }
+        ],
+        "if": "always"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:/Users/Tanguy/.claude/hooks/gsd-prompt-guard.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.exe\" --hook Notification",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.1.exe\" --hook Notification",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.6.exe\" --hook Notification",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Documents/PROGRAMMES/DEV/PROJET OVERLAY/src/Chronos/bin/Debug/net8.0-windows/Chronos.exe\" --hook Notification",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.8.1.exe\" --hook Notification",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.exe\" --hook Stop",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.1.exe\" --hook Stop",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.6.exe\" --hook Stop",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Documents/PROGRAMMES/DEV/PROJET OVERLAY/src/Chronos/bin/Debug/net8.0-windows/Chronos.exe\" --hook Stop",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.8.1.exe\" --hook Stop",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.exe\" --hook UserPromptSubmit",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.1.exe\" --hook UserPromptSubmit",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.6.exe\" --hook UserPromptSubmit",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Documents/PROGRAMMES/DEV/PROJET OVERLAY/src/Chronos/bin/Debug/net8.0-windows/Chronos.exe\" --hook UserPromptSubmit",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.8.1.exe\" --hook UserPromptSubmit",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.exe\" --hook SessionEnd",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.5.1.exe\" --hook SessionEnd",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.6.exe\" --hook SessionEnd",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Documents/PROGRAMMES/DEV/PROJET OVERLAY/src/Chronos/bin/Debug/net8.0-windows/Chronos.exe\" --hook SessionEnd",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Tanguy/Downloads/Chronos-v2.8.1.exe\" --hook SessionEnd",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "\"C:\\Users\\Tanguy\\Downloads\\Chronos-v2.8.1.exe\" --statusline",
+    "padding": 2
+  },
+  "agentPushNotifEnabled": true
+}
