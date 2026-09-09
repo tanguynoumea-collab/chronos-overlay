@@ -87,6 +87,19 @@ public partial class App : Application
                                                      // recalibrage se centre sur l'overlay (Owner), ROB-03/FEN-07
         window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
 
+        // PUR-01/02/03 — réconcilier ~/.claude/settings.json AVANT de proposer la source exacte, pour que
+        // l'offre porte sur un état déjà propre (une barre Chronos périmée est repointée ici, donc
+        // IsEnabled() répond juste juste après). Mode OVERLAY UNIQUEMENT : les modes --statusline et --hook
+        // sortent bien plus haut (lignes 20 et 30) et ne doivent JAMAIS atteindre ce point — 5 processus
+        // --hook concurrents en lire-modifier-écrire perdraient les purges, et --statusline est invoqué à
+        // chaque rendu de la barre. Best-effort et silencieux : ne peut pas empêcher le démarrage.
+        try
+        {
+            _host.Services.GetRequiredService<ClaudeSettingsReconciler>()
+                 .Reconcile(settings.SessionsWidgetEnabled);
+        }
+        catch { }
+
         // Première exécution : proposer d'activer la SOURCE EXACTE (pont statusLine Claude Code).
         // Une seule fois (StatusLinePromptDismissed), non bloquant pour le rendu de l'overlay.
         _host.Services.GetRequiredService<IStatusLineSetup>().OfferOnFirstRun();
@@ -227,6 +240,12 @@ public partial class App : Application
         services.AddHostedService(sp => sp.GetRequiredService<DesktopUiaPollService>());
 
         services.AddSingleton(_ => new SessionHookInstaller());
+
+        // PUR-03 : réconciliation de ~/.claude/settings.json au démarrage (purge des entrées fantômes des
+        // versions révolues + repointage de la barre). Chemins par défaut = profil utilisateur ; les tests
+        // injectent systématiquement des chemins temp.
+        services.AddSingleton(_ => new ClaudeSettingsReconciler());
+
         services.AddSingleton<ISessionsController>(sp => new Views.SessionsController(
             sp.GetRequiredService<SessionHookInstaller>(),
             sp.GetRequiredService<SettingsService>(),

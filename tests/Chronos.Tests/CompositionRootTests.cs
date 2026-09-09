@@ -149,4 +149,30 @@ public class CompositionRootTests
 
         provider.Dispose(); // dispose le poll de fond (IDisposable) sans erreur
     }
+
+    /// <summary>
+    /// GARDE DI RÉELLE (Phase 15, PUR-03). Attrape un enregistrement manquant de
+    /// <see cref="ClaudeSettingsReconciler"/> qui COMPILERAIT — <c>App.OnStartup</c> l'invoque par
+    /// <c>GetRequiredService</c> — mais ferait échouer la résolution au DÉMARRAGE de l'app, pas au build.
+    ///
+    /// <para>Reproduit la sous-chaîne exacte d'<c>App.xaml.cs</c> avec des chemins TEMP : aucune pollution
+    /// du vrai profil de l'utilisateur, ni de son <c>~/.claude/settings.json</c>, ni de ses sauvegardes.</para>
+    /// </summary>
+    [Fact]
+    public void Le_graphe_DI_resout_le_reconciliateur_de_settings_Claude()
+    {
+        var services = new ServiceCollection();
+        var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosDI_" + System.Guid.NewGuid().ToString("N"));
+        services.AddSingleton(_ => new SessionHookInstaller(System.IO.Path.Combine(tmp, "settings.json")));
+        services.AddSingleton<StatusLineInstaller>(_ => new StatusLineInstaller(System.IO.Path.Combine(tmp, "settings.json")));
+        services.AddSingleton(_ => new ClaudeSettingsReconciler(
+            System.IO.Path.Combine(tmp, "settings.json"), System.IO.Path.Combine(tmp, "backups")));
+
+        var provider = services.BuildServiceProvider();
+        var recon = provider.GetRequiredService<ClaudeSettingsReconciler>();
+        Assert.NotNull(recon);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), recon.SettingsPath);   // garde anti-accident
+        Assert.False(recon.Reconcile(hooksWanted: true));   // fichier absent → aucune écriture, aucun crash
+        provider.Dispose();
+    }
 }
