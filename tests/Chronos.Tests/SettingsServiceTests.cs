@@ -45,8 +45,6 @@ public sealed class SettingsServiceTests : IDisposable
             Background = true,
             RefreshIntervalSeconds = 30,
             WeeklyAnchor = new DateTimeOffset(2026, 07, 06, 10, 00, 00, TimeSpan.Zero),
-            FiveHourTokenBudget = 88_000,
-            WeeklyTokenBudget = 1_200_000,
             OAuthUsageEnabled = false, // valeur ≠ défaut pour prouver la persistance du flag (INT-03)
         };
 
@@ -66,8 +64,6 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(s.Background);
         Assert.Null(s.MonitorDeviceName);
         Assert.Null(s.WeeklyAnchor);
-        Assert.Null(s.FiveHourTokenBudget);
-        Assert.Null(s.WeeklyTokenBudget);
         Assert.True(s.OAuthUsageEnabled); // défaut true : source exacte active dès l'install (INT-03)
     }
 

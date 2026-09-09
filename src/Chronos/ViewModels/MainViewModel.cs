@@ -376,7 +376,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
     }
 
-    /// <summary>Construit le rapport de diagnostic (token, appel OAuth, sources, plafonds, résultat)
+    /// <summary>Construit le rapport de diagnostic (token, appel OAuth, sources, résultat)
     /// pour affichage à l'écran (pop-up, screenshot-able). Le token n'y figure jamais.</summary>
     public Task<string> BuildDiagnosticReportAsync() => _diagnostic.BuildReportAsync();
 

@@ -11,7 +11,7 @@ namespace Chronos.Services;
 /// <summary>
 /// Diagnostic auto-explicatif (observabilité pour un outil distribué) : dit POURQUOI l'affichage
 /// n'a pas de couleurs sur une machine donnée. Rassemble l'état réel — token trouvé ? statut de
-/// l'appel OAuth ? sources présentes ? plafonds ? source active par fenêtre — et écrit un rapport
+/// l'appel OAuth ? sources présentes ? source active par fenêtre — et écrit un rapport
 /// lisible dans %APPDATA%/Chronos/diagnostic.txt, qu'il ouvre ensuite.
 ///
 /// SÉCURITÉ : le token n'est JAMAIS écrit dans le rapport (seulement « trouvé : oui/non »). Neutre
@@ -274,14 +274,12 @@ public sealed class DiagnosticService
         }
         sb.AppendLine();
 
-        // 3) Estimation — JSONL + plafonds
-        sb.AppendLine("[Estimation — transcripts JSONL (repli)]");
+        // 3) Transcripts JSONL — désormais source de DELTA (aucun plafond, aucun pourcentage)
+        sb.AppendLine("[Transcripts JSONL (source de delta)]");
         var projects = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects");
         int jsonl = 0;
         try { if (Directory.Exists(projects)) jsonl = Directory.EnumerateFiles(projects, "*.jsonl", SearchOption.AllDirectories).Take(5000).Count(); } catch { }
         sb.AppendLine("  Dossier ~/.claude/projects : " + (Directory.Exists(projects) ? jsonl + " fichier(s) .jsonl" : "ABSENT (aucun historique local)"));
-        sb.AppendLine("  Plafond 5 h   : " + (s.FiveHourTokenBudget?.ToString("N0", CultureInfo.CurrentCulture) ?? "non défini (→ pas de couleur en estimation)"));
-        sb.AppendLine("  Plafond hebdo : " + (s.WeeklyTokenBudget?.ToString("N0", CultureInfo.CurrentCulture) ?? "non défini (→ pas de couleur en estimation)"));
         sb.AppendLine();
 
         // 4) Résultat effectivement affiché (via le composite réel)
@@ -394,7 +392,6 @@ public sealed class DiagnosticService
         else
             sb.AppendLine("  → Intégration active. Si usage.json est absent, envoie un message dans Claude Code :\n" +
                           "    la barre de statut se met à jour à ce moment-là et alimente le cadran.");
-        sb.AppendLine("  (Repli : « Calibrer les plafonds… » colore une estimation quand aucune source exacte n'est là.)");
 
         return sb.ToString();
     }
@@ -468,7 +465,7 @@ public sealed class DiagnosticService
         => w.Reliability switch
         {
             SourceReliability.Exact => "EXACT — " + (w.Utilization is { } u ? (u * 100).ToString("F0") + " %" : "?"),
-            SourceReliability.Estimated => "estimé — " + (w.Utilization is { } u ? "~" + (u * 100).ToString("F0") + " %" : "% inconnu (pas de plafond → gris)"),
+            SourceReliability.Estimated => "estimé — " + (w.Utilization is { } u ? "~" + (u * 100).ToString("F0") + " %" : "% inconnu"),
             _ => "indisponible",
         };
 }

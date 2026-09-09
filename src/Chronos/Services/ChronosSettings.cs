@@ -27,6 +27,12 @@ public enum SessionStyle { Pastilles, Marge, Jetons, Sonar, Facade, Etagere, Ann
 /// <see cref="X"/>/<see cref="Y"/> sont purement indicatifs (diagnostic, non fiables seuls car
 /// dépendants du DPI/agencement des écrans). Record NEUTRE (aucun type WPF) : la seule référence
 /// externe est <see cref="Chronos.Placement.OverlayCorner"/>, un enum neutre du même assembly.
+///
+/// <para>Phase 16 (DEL-05/DEL-06) : les six champs de plafonds ont été retirés. Un settings.json
+/// antérieur qui les porte encore s'ouvre sans erreur — System.Text.Json ignore les membres non
+/// mappés (JsonUnmappedMemberHandling.Skip) — et ils disparaissent du fichier au premier Save().
+/// Aucune migration active n'est nécessaire ; la preuve est le test de non-régression
+/// SettingsServiceTests + la fixture TestData/settings-legacy-plafonds.json.</para>
 /// </summary>
 public sealed record ChronosSettings
 {
@@ -53,24 +59,6 @@ public sealed record ChronosSettings
 
     /// <summary>Ancre du recalibrage hebdomadaire best-effort (ROB-03). null = pas d'ancre.</summary>
     public DateTimeOffset? WeeklyAnchor { get; init; }
-
-    /// <summary>Plafond de tokens de la fenêtre 5 h (calibrable, Phase 9). null = pas de plafond → utilization estimée null.</summary>
-    public long? FiveHourTokenBudget { get; init; }
-
-    /// <summary>Plafond de tokens de la fenêtre hebdo (calibrable, Phase 9). null = pas de plafond → utilization estimée null.</summary>
-    public long? WeeklyTokenBudget { get; init; }
-
-    /// <summary>Provenance du plafond 5 h (None/Manual/Auto). Défaut None : la calibration auto peut écrire dessus.</summary>
-    public BudgetSource FiveHourBudgetSource { get; init; } = BudgetSource.None;
-
-    /// <summary>Horodatage de la dernière calibration du plafond 5 h. null = jamais calibré.</summary>
-    public DateTimeOffset? FiveHourBudgetCalibratedAt { get; init; }
-
-    /// <summary>Provenance du plafond hebdo (None/Manual/Auto). Défaut None : la calibration auto peut écrire dessus.</summary>
-    public BudgetSource WeeklyBudgetSource { get; init; } = BudgetSource.None;
-
-    /// <summary>Horodatage de la dernière calibration du plafond hebdo. null = jamais calibré.</summary>
-    public DateTimeOffset? WeeklyBudgetCalibratedAt { get; init; }
 
     /// <summary>Active la source EXACTE OAuth (INT-03). Défaut TRUE : vrais chiffres dès l'installation.
     /// false → comportement v1.1 strict, AUCUN accès au token (le portillon gated court-circuite).</summary>
