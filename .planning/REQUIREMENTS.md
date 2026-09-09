@@ -44,9 +44,9 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 ### Correction par delta (DEL)
 
-- [ ] **DEL-01**: Les transcripts JSONL répondent à « y a-t-il eu une **réponse assistant depuis l'instant T** ? »
+- [x] **DEL-01**: Les transcripts JSONL répondent à « y a-t-il eu une **réponse assistant depuis l'instant T** ? »
   sans produire de pourcentage.
-- [ ] **DEL-02**: Les transcripts JSONL fournissent la **somme de tokens depuis l'instant T**.
+- [x] **DEL-02**: Les transcripts JSONL fournissent la **somme de tokens depuis l'instant T**.
 - [ ] **DEL-03**: **Sans activité** depuis le dernier relevé exact, ce relevé est présenté comme **encore exact**
   (l'utilisation n'a pas bougé) — et non comme périmé.
 - [ ] **DEL-04**: **Avec activité** depuis, l'affichage est « dernier exact **+ delta estimé** », **marqué avec sa
@@ -119,8 +119,8 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | EXA-04 | Phase 19 | Pending |
 | EXA-05 | Phase 19 | Pending |
 | EXA-06 | Phase 20 | Pending |
-| DEL-01 | Phase 16 | Pending |
-| DEL-02 | Phase 16 | Pending |
+| DEL-01 | Phase 16 | Complete |
+| DEL-02 | Phase 16 | Complete |
 | DEL-03 | Phase 19 | Pending |
 | DEL-04 | Phase 19 | Pending |
 | DEL-05 | Phase 16 | Complete |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-09-09T12:05:06.273Z"
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-09-09T12:40:22.473Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 16 (Fondations du delta) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-09
 
@@ -129,6 +129,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 15 P03 | 20min | 4 tasks | 4 files |
 | Phase 16 P01 | 24min | 3 tasks | 20 files |
 | Phase 16 P02 | 9min | 2 tasks | 6 files |
+| Phase 16 P03 | 29min | 3 tasks | 12 files |
 
 ### Decisions
 
@@ -187,6 +188,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 16]: [16-02] Reliability et FractionTimeRemaining ne sont JAMAIS persistees : la premiere est forcee a Exact a la reconstruction (un fichier edite a la main ne peut pas injecter une fausse exactitude), la seconde est recalculee depuis ResetsAt et l'instant present (la persister ressusciterait une geometrie perimee).
 - [Phase 16]: [16-02] La relecture de fusion de Save est BRUTE (sans la garde resets_at <= now) : seule Load invalide une fenetre roulee, la fusion ne doit jamais purger silencieusement.
 - [Phase 16]: [16-02] Le decorateur LastExactUsageProvider rebouche UNIQUEMENT les fenetres Unavailable (jamais Estimated) et n'ecrit que de l'Exact : portee volontairement la plus etroite possible, la doctrine de choix de source reste la phase 19.
+- [Phase 16]: [16-03] La source de delta n'implemente PAS IUsageProvider et un test reflexif l'interdit : EXA-04 devient structurel des la phase 16, pas seulement documente. Rebrancher les transcripts dans la chaine casse le test.
+- [Phase 16]: [16-03] Le contrat de delta separe l'E/S (ReadAsync, une seule passe disque) de la requete (Since(t), PURE, appelable N fois) : les deux fenetres 5 h et hebdo ont des bornes basses differentes mais repondent depuis un SEUL instantane disque, donc coherentes par construction.
+- [Phase 16]: [16-03] Horizon/Covers font partie du contrat : une interrogation anterieure au filtre mtime de 8 j est declaree NON COUVERTE plutot que servie sous-evaluee. La constante 8 j est declaree UNE fois (cutoff du scan = horizon annonce, ils ne peuvent pas diverger).
+- [Phase 16]: [16-03] Borne basse STRICTEMENT exclusive, borne haute inclusive : le message pose exactement sur l'instant du releve exact a deja ete compte par le serveur, le recompter le compterait deux fois.
+- [Phase 16]: [16-03] L'isolation des chemins n'a PAS stabilise Host_resout_et_dispose_les_singletons : la cause reelle est une course du chargeur BAML de WPF (WpfXamlType.FindKnownMember) sous parallelisme xUnit. Correctif : collection 'XAML WPF' DisableParallelization sur les 4 classes qui chargent du XAML.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -235,7 +241,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T12:05:06.266Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-09-09T12:40:10.103Z
+Stopped at: Completed 16-03-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15

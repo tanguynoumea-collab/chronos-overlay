@@ -127,7 +127,7 @@ n'est calculable.
 **Plans**: 4 plans (3 vagues)
 - [x] 16-01-PLAN.md — Démolition du sous-système de plafonds : entrée « Plafonds… », dialogue, prompt, calibrateur auto et logique pure de déduction (DEL-05) (vague 1)
 - [x] 16-02-PLAN.md — Magasin persistant du dernier relevé exact : `LastExactStore` + décorateur `LastExactUsageProvider`, sans câblage DI (EXA-01) (vague 1)
-- [ ] 16-03-PLAN.md — Transcripts en source de delta : `ITranscriptActivitySource` / `TranscriptActivityLog`, sortie de la chaîne composite, décorateur de persistance en tête (DEL-01, DEL-02, EXA-01) (vague 2)
+- [x] 16-03-PLAN.md — Transcripts en source de delta : `ITranscriptActivitySource` / `TranscriptActivityLog`, sortie de la chaîne composite, décorateur de persistance en tête (DEL-01, DEL-02, EXA-01) (vague 2)
 - [ ] 16-04-PLAN.md — Retrait des six champs de plafonds + `BudgetSource`, preuve de migration sur fixture réelle et garde de non-retour (DEL-05, DEL-06) (vague 3)
 
 ### Phase 17 : Jeton toujours vivant, panne toujours visible
@@ -232,7 +232,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
-| 16. Fondations du delta — persistance & démolition des plafonds | 2/4 | In Progress|  |
+| 16. Fondations du delta — persistance & démolition des plafonds | 3/4 | In Progress|  |
 | 17. Jeton toujours vivant, panne toujours visible | 0/? | Not started | - |
 | 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |
