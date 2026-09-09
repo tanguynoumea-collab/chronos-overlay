@@ -48,9 +48,8 @@ Commande abrégée `T~X` = `dotnet test Chronos.sln -v q --nologo --filter "Full
 | 17-02 T2 | 17-02 | 2 | TOK-02 | `[Theory]` de classification | `T~ChronosOAuthClientTests` | ✅ réécrit | ⬜ pending |
 | 17-03 T1 | 17-03 | 3 | TOK-01, TOK-02 | unitaire pur + concurrence + coffre temp | `T~ChronosTokenAuthorityTests` | 🆕 créé | ⬜ pending |
 | 17-03 T2 | 17-03 | 3 | TOK-01 | `IHostedService` déterministe | `T~TokenRefreshServiceTests` | 🆕 créé | ⬜ pending |
-| 17-04 T1 | 17-04 | 4 | TOK-01, TOK-02 | unitaire (rejeu 401, états) | `T~ChronosOAuthUsageProviderTests` | ✅ réécrit | ⬜ pending |
-| 17-04 T2 | 17-04 | 4 | TOK-01, TOK-02 | garde DI réelle | `T~CompositionRootTests` | ✅ étendu | ⬜ pending |
-| 17-04 T3 | 17-04 | 4 | TOK-02 | unitaire (chaîne de rapport) | `T~DiagnosticServiceTests` | ✅ étendu | ⬜ pending |
+| 17-04 T1 | 17-04 | 4 | TOK-01, TOK-02 | unitaire (rejeu 401, états) **+** garde DI réelle — tâche fusionnée : le ctor du provider et son unique site de construction dans `App.xaml.cs` changent dans le MÊME commit | `T~ChronosOAuthUsageProviderTests\|FullyQualifiedName~CompositionRootTests` | ✅ réécrit / ✅ étendu | ⬜ pending |
+| 17-04 T2 | 17-04 | 4 | TOK-02 | unitaire (chaîne de rapport) | `T~DiagnosticServiceTests` | ✅ étendu | ⬜ pending |
 | 17-05 T1 | 17-05 | 5 | TOK-02, TOK-03 | unitaire VM (`[Fact]`, pas STA) | `T~MainViewModelTests` | ✅ étendu | ⬜ pending |
 | 17-05 T2 | 17-05 | 5 | TOK-02 | smoke `[WpfFact]` + thèmes | `T~CadranBindingTests` / `T~ThemingTests` | ✅ étendu | ⬜ pending |
 | 17-05 T3 | 17-05 | 5 | TOK-02, TOK-03 | **MANUEL** (rendu + login réel) | — (prérequis : suite complète verte) | — | ⬜ pending |
@@ -95,6 +94,15 @@ justifier nominativement.
       détruit la cause de l'échec et doit devenir un résultat typé.
 - [ ] Faux de transport couvrant les modes d'échec réels : 401, 429 `rate_limit_error` (mode d'échec
       PROUVÉ du refresh — ne doit PAS être classé « déconnecté »), timeout, `HttpRequestException` (hors ligne).
+
+## Invariant de compilation par commit
+
+Chaque tâche de la phase se termine sur un arbre **compilable** : `dotnet build Chronos.sln` rend
+0 erreur à CHAQUE frontière de commit. Ce n'est pas du confort — `tests/Chronos.Tests` porte un
+`ProjectReference` vers `Chronos`, donc la moindre erreur de compilation dans `src/Chronos/` fait
+échouer l'invocation `dotnet test` **entière** : aucune vérification automatisée n'est possible sur un
+arbre cassé. Corollaire de planification : quand une tâche change une signature publique, elle adapte
+ses sites d'appel dans la même tâche (motif 17-02 T2 étape 5, appliqué à 17-04 T1).
 
 ## Manual-Only Verifications
 
