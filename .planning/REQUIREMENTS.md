@@ -1,80 +1,144 @@
-# REQUIREMENTS.md — Chronos v1.4 « Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code) »
+# REQUIREMENTS.md — Chronos v1.5 « Exactitude permanente »
 
 ## Contexte
 
-Le widget sessions existant (livré hors GSD, « v2.5 ») détecte les sessions **Claude Code** via les
-transcripts JSONL (`~/.claude/projects`) et les hooks. v1.4 l'étend à l'**application de bureau** Claude
-(Chat / Code / Cowork) via **UI Automation** — spike prouvé sur la machine le 2026-07-10 (voir mémoire
-`chronos-desktop-uia.md`) — et ajoute la **disparition automatique** des sessions traitées (règle
-d'hystérésis décidée avec l'utilisateur). Aucune notification Windows (le signal UIA suffit) ; honnêteté
-préservée (état « indéterminé » quand la vérité-terrain n'est pas observable localement).
+Depuis le passage du forfait **Max x5 à Max x20**, Chronos affiche des pourcentages faux. Le diagnostic mené
+le 2026-09-09 sur la machine réelle montre que ce n'est pas un bug isolé mais une **panne silencieuse des trois
+sources exactes**, doublée d'une doctrine de repli défaillante :
 
-## v1.4 Requirements
+- jeton OAuth expiré le 2026-07-12 → `GET /api/oauth/usage` renvoie **HTTP 401**, sans le moindre signal ;
+- `%APPDATA%/Chronos/usage.json` figé au 2026-07-10 (`resets_at: 9`, soit epoch 1970) mais toujours servi
+  comme `Exact`, car `ClaudeUsageObjectProvider` n'applique **aucune limite d'âge** ;
+- le cache du dernier relevé exact vit **en RAM seulement** → perdu à chaque démarrage de l'exe ;
+- `CompositeUsageProvider.Best()` classant **uniquement par fiabilité**, une donnée « exacte » de deux mois
+  bat une estimation fraîche ;
+- le repli calcule `tokens / plafond` avec des plafonds calibrés sous Max x5, dont celui des 5 h est en source
+  `Manual` — donc gelé à vie par conception de `BudgetCalibration.ApplyAuto`.
 
-### App bureau via UI Automation (BUR)
+**Décision de fond :** les limites Anthropic **pondèrent par modèle**, donc `tokens / plafond` restera faux même
+avec le bon plafond. On cesse de chercher à rendre l'estimation absolue juste : elle est **supprimée**. Les
+transcripts JSONL ne savent répondre qu'à deux questions bornées — *y a-t-il eu de l'activité depuis T ?* et
+*combien de tokens depuis T ?* — et ne servent donc plus qu'à **corriger un delta** par rapport à un relevé
+exact. Doctrine cible : **exact frais → dernier exact persisté (encore exact si rien ne s'est passé) → dernier
+exact + delta borné et marqué → indisponible.** Jamais de pourcentage inventé.
 
-- [x] **BUR-01**: L'utilisateur voit dans le widget les sessions de l'**application de bureau** Claude
-  (en plus des sessions Claude Code CLI), détectées en lisant l'arbre UI Automation de la fenêtre Claude
-  (`System.Windows.Automation` — interop COM managé, pas de dépendance native de rendu, pas d'admin).
-- [x] **BUR-02**: Chaque session bureau affiche un **état honnête** : en cours (bosse), tour fini
-  (attend ton message), attend une permission, ou indéterminé — jamais un état certain quand il est inféré.
-- [x] **BUR-03**: Le widget **distingue le type** de session bureau : Chat, Code, Cowork
-  (via les libellés/affordances de l'arbre : « Mode chat », onglets Home/Code, panneaux Terminal/Diff/Cowork).
-- [x] **BUR-04**: Les **sessions agentiques actives** listées dans la barre latérale de l'app (marqueur
-  « En cours d'exécution ») sont énumérées, pas seulement la conversation au premier plan.
-- [x] **BUR-05**: Une session **Cowork en VM distante** est marquée « indéterminé » et jamais présentée
-  comme un état d'exécution certain — son exécution n'est pas observable localement (honnêteté).
+S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/claude-session-browser`
+(`clawdmeter.py:150`) : les en-têtes `anthropic-ratelimit-unified-*` d'une requête jetable, qui répondent
+**même sur un 429** et exposent le statut serveur et le dépassement.
 
-### Auto-disparition des sessions traitées (NET)
+## v1.5 Requirements
 
-- [x] **NET-01**: Une session en attente **disparaît automatiquement** de la liste dès que l'utilisateur
-  **y répond** (elle repasse en « en cours » — transition observable via transcript ou via UIA).
-- [x] **NET-02**: Une session en attente **disparaît automatiquement** dès que l'utilisateur la garde
-  **au premier plan** de l'app ≥ ~2-3 s (acquittement, avec debounce anti-survol).
-- [x] **NET-03**: Une session « traitée » qui **repart en attente** (événement d'attente plus récent que
-  le traitement) **réapparaît** dans la liste.
-- [x] **NET-04**: L'**archivage manuel** par clic droit reste disponible et **permanent**, distinct et
-  complémentaire de l'auto-disparition (ne réapparaît jamais, contrairement au « traité »).
+### Exactitude & doctrine d'affichage (EXA)
 
-### Robustesse & threading (ROB)
+- [ ] **EXA-01**: Le dernier relevé exact est **persisté sur disque** avec son horodatage et rechargé au
+  démarrage, pour que Chronos ne reparte jamais sans chiffre (tue la bascule au redémarrage de l'exe).
+- [ ] **EXA-02**: Au-delà d'un **âge maximal**, une source exacte cesse d'être présentée comme exacte —
+  fin du « 10 % vieux de deux mois marqué `Exact` ».
+- [ ] **EXA-03**: Le cadran **distingue visuellement** trois états : chiffre exact frais, chiffre exact daté,
+  état indisponible. `IsStale` (aujourd'hui calculé mais bindé nulle part) devient un signal réel à l'écran.
+- [ ] **EXA-04**: Aucune **utilization absolue dérivée d'un comptage de tokens** n'est plus jamais affichée,
+  quelle que soit la situation.
+- [ ] **EXA-05**: Si **aucun chiffre exact n'a jamais été obtenu**, l'overlay affiche « indisponible » et invite
+  à se connecter — jamais un pourcentage.
+- [ ] **EXA-06**: Le **diagnostic** indique quelle source alimente réellement l'affichage, et depuis quand.
 
-- [x] **ROB-06**: La détection UIA **résiste aux changements de version** de l'app : matching souple par
-  libellé (table fr/en, pas par `AutomationId` volatils), **test de santé au démarrage**, dégradation vers
-  « indéterminé » plutôt que d'inventer un état ; aucune source indisponible ne provoque de crash.
-- [x] **ROB-07**: La lecture UIA **ne bloque pas le thread UI** (lecture hors thread UI puis marshalling),
-  cadence alignée sur le tick existant (~1-2 s), élément racine mis en cache.
+### Correction par delta (DEL)
+
+- [ ] **DEL-01**: Les transcripts JSONL répondent à « y a-t-il eu une **réponse assistant depuis l'instant T** ? »
+  sans produire de pourcentage.
+- [ ] **DEL-02**: Les transcripts JSONL fournissent la **somme de tokens depuis l'instant T**.
+- [ ] **DEL-03**: **Sans activité** depuis le dernier relevé exact, ce relevé est présenté comme **encore exact**
+  (l'utilisation n'a pas bougé) — et non comme périmé.
+- [ ] **DEL-04**: **Avec activité** depuis, l'affichage est « dernier exact **+ delta estimé** », **marqué avec sa
+  marge d'incertitude** — jamais confondu avec un relevé exact.
+- [ ] **DEL-05**: Le **sous-système de plafonds disparaît** du code, des réglages et du menu (`BudgetCalibration`,
+  `BudgetAutoCalibrator`, `BudgetSource`, `BudgetDialog` + VM, `IBudgetPrompt`/`BudgetPrompt`, l'entrée
+  « Calibrer les plafonds… », les enregistrements DI et les tests associés).
+- [ ] **DEL-06**: Les réglages existants contenant d'anciens plafonds sont **migrés sans casse** : les champs
+  obsolètes sont ignorés et les autres préférences (coin, écran, thème, style de cadran, widget sessions)
+  survivent intactes.
+
+### Source exacte par en-têtes de rate-limit (HDR)
+
+- [ ] **HDR-01**: Chronos obtient l'usage exact via les en-têtes `anthropic-ratelimit-unified-*` d'une
+  **requête jetable** (`POST /v1/messages`, `max_tokens:1`, modèle le moins cher).
+- [ ] **HDR-02**: Les en-têtes sont exploités **même quand la réponse est un 429** — précisément l'instant où
+  l'overlay sert le plus.
+- [ ] **HDR-03**: Le **statut serveur** (`allowed` / `allowed_warning` / `rejected`) est remonté au cadran, au lieu
+  d'être déduit d'un pourcentage.
+- [ ] **HDR-04**: L'usage en **dépassement** (`overage`) est lu et affiché quand il est présent.
+- [ ] **HDR-05**: Les **unités concurrentes** sont normalisées en un point unique : `utilization` 0..1 pour les
+  en-têtes, 0..100 pour `/api/oauth/usage`, `used_percentage` 0..100 pour le pont statusLine ; `resets_at` en
+  epoch secondes pour les deux premiers, ISO 8601 pour le troisième.
+- [ ] **HDR-06**: La **cadence d'interrogation est bornée** et le **coût de la sonde** (une micro-requête par appel)
+  est indiqué honnêtement dans les réglages.
+
+### Cycle de vie du jeton (TOK)
+
+- [ ] **TOK-01**: Le jeton OAuth est **rafraîchi préventivement** avant expiration, sans attendre un échec au
+  moment du besoin.
+- [ ] **TOK-02**: Un **échec d'authentification est visible** dans l'overlay — plus jamais un 401 muet pendant
+  deux mois.
+- [ ] **TOK-03**: Le signal de déconnexion permet de **relancer le login en un clic**.
+
+### Idempotence des intégrations (PUR)
+
+- [ ] **PUR-01**: L'installation des **hooks remplace** les entrées Chronos existantes au lieu de les cumuler
+  (match sur `--hook`, pas sur le chemin d'exe).
+- [ ] **PUR-02**: L'installation du **pont statusLine remplace** l'entrée Chronos existante (match sur
+  `--statusline`).
+- [ ] **PUR-03**: Les **entrées fantômes** déjà présentes dans `~/.claude/settings.json` sont **purgées**
+  (constaté : 25 hooks Chronos au lieu de 5, pointant sur des exes de versions révolues).
 
 ## Future Requirements (différés)
 
-- Notification Windows en bonus du signal UIA (`UserNotificationListener`) — front « vient de finir ».
-- Décompte d'usage par session / ventilation Chat vs Code vs Cowork (bonus lisible dans l'arbre : `Usage: …`).
+- **Préavis avant saturation** (~90 %) et **notification au reset** — repris de `claude-session-browser` ;
+  suppose d'ouvrir le canal notification, jusqu'ici hors périmètre.
+- **Ventilation par modèle** (opus / sonnet / cowork) — dépend d'une source qui la publie.
+- **Survol / tooltip**, tray, taille réglable.
 
-## Out of Scope (v1.4)
+## Out of Scope (v1.5)
 
-- **Notifications Windows / toasts** — le signal UIA suffit pour v1.4 ; le canal notification est un bonus différé.
-- **État d'exécution des sessions Cowork en VM distante** — structurellement non observable localement (marqué « indéterminé »).
-- **Détection des conversations Chat en arrière-plan** (hors premier plan et hors sidebar) — l'app n'expose que
-  le premier plan pour le Chat pur ; le « m'attend » par session Chat n'a de sens qu'au premier plan.
-- **Historique / réouverture / navigation** des sessions depuis l'overlay — visualisation seule.
-- **Décompte d'usage par session dans le cadran** — l'usage reste agrégé (cadran v1.x inchangé).
+- **Estimation absolue par tokens / plafond** — les limites Anthropic pondèrent par modèle : le calcul reste
+  faux même avec le bon plafond. Remplacée par la correction par delta.
+- **Calibration des plafonds (manuelle ou automatique)** — supprimée avec l'estimation absolue ; c'était la
+  cause racine des pourcentages faux après un changement de forfait.
+- **Détection ou saisie du forfait (Max x5 / x20)** — inutile dès lors que les chiffres viennent du serveur,
+  qui connaît déjà le forfait. Ajouter un sélecteur reviendrait à réintroduire le problème.
+- **Réanimation du pont statusLine pour l'app de bureau** — l'app de bureau ne semble pas rendre de statusLine ;
+  le pont reste supporté pour le terminal, mais il n'est plus la voie principale.
+- **Notifications Windows / toasts** — inchangé depuis v1.4, différé.
 
 ## Traceability
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| BUR-01 | Phase 13 | Complete |
-| BUR-02 | Phase 13 | Complete |
-| BUR-03 | Phase 13 | Complete |
-| BUR-04 | Phase 13 | Complete |
-| BUR-05 | Phase 13 | Complete |
-| NET-01 | Phase 14 | Complete |
-| NET-02 | Phase 14 | Complete |
-| NET-03 | Phase 14 | Complete |
-| NET-04 | Phase 14 | Complete |
-| ROB-06 | Phase 13 | Complete |
-| ROB-07 | Phase 13 | Complete |
+| EXA-01 | TBD | Pending |
+| EXA-02 | TBD | Pending |
+| EXA-03 | TBD | Pending |
+| EXA-04 | TBD | Pending |
+| EXA-05 | TBD | Pending |
+| EXA-06 | TBD | Pending |
+| DEL-01 | TBD | Pending |
+| DEL-02 | TBD | Pending |
+| DEL-03 | TBD | Pending |
+| DEL-04 | TBD | Pending |
+| DEL-05 | TBD | Pending |
+| DEL-06 | TBD | Pending |
+| HDR-01 | TBD | Pending |
+| HDR-02 | TBD | Pending |
+| HDR-03 | TBD | Pending |
+| HDR-04 | TBD | Pending |
+| HDR-05 | TBD | Pending |
+| HDR-06 | TBD | Pending |
+| TOK-01 | TBD | Pending |
+| TOK-02 | TBD | Pending |
+| TOK-03 | TBD | Pending |
+| PUR-01 | TBD | Pending |
+| PUR-02 | TBD | Pending |
+| PUR-03 | TBD | Pending |
 
-**Couverture :** 11/11 requirements mappés · Phase 13 (7) + Phase 14 (4) · aucun orphelin, aucun doublon.
+**Couverture :** 24 requirements à mapper (roadmap à créer).
 
 ---
-*Last updated: 2026-07-10 — roadmap v1.4 créé (phases 13-14, 11 requirements mappés)*
+*Last updated: 2026-09-09 — exigences v1.5 définies (24 requirements, recherche passée : diagnostic déjà établi)*
