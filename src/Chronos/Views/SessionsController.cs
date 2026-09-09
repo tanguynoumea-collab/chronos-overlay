@@ -60,7 +60,7 @@ public sealed class SessionsController : ISessionsController
         try
         {
             Persist(s => s with { SessionsWidgetEnabled = false });
-            try { _installer.Uninstall(ExePath); } catch { }
+            try { _installer.Uninstall(); } catch { }
             _window?.Hide();
         }
         catch { }

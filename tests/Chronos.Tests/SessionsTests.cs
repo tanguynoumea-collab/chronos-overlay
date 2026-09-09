@@ -66,7 +66,7 @@ public class SessionsTests
     public void Install_ajoute_les_5_hooks_en_slashes_avant()
     {
         var outJson = SessionHookInstaller.TransformForInstall(null, Exe);
-        var hooks = (JsonNode.Parse(outJson) as JsonObject)!["hooks"] as JsonObject;
+        var hooks = (JsonNode.Parse(outJson!) as JsonObject)!["hooks"] as JsonObject;
         foreach (var ev in SessionHookInstaller.Events)
         {
             var arr = hooks![ev] as JsonArray;
@@ -87,7 +87,7 @@ public class SessionsTests
         var once = SessionHookInstaller.TransformForInstall(existing, Exe);
         var twice = SessionHookInstaller.TransformForInstall(once, Exe);
 
-        var arr = ((JsonNode.Parse(twice) as JsonObject)!["hooks"]!["SessionStart"] as JsonArray)!;
+        var arr = ((JsonNode.Parse(twice!) as JsonObject)!["hooks"]!["SessionStart"] as JsonArray)!;
         // gsd conservé + une SEULE entrée Chronos (idempotent)
         var cmds = arr.Select(e => e!["hooks"]![0]!["command"]!.GetValue<string>()).ToList();
         Assert.Contains(cmds, c => c == "node gsd.js");
@@ -99,9 +99,9 @@ public class SessionsTests
     {
         var installed = SessionHookInstaller.TransformForInstall(
             """{ "hooks": { "Stop": [ { "hooks": [ { "type":"command", "command":"node autre.js" } ] } ] } }""", Exe);
-        var cleaned = SessionHookInstaller.TransformForUninstall(installed, Exe);
+        var cleaned = SessionHookInstaller.TransformForUninstall(installed);
 
-        var stop = (JsonNode.Parse(cleaned) as JsonObject)!["hooks"]!["Stop"] as JsonArray;
+        var stop = (JsonNode.Parse(cleaned!) as JsonObject)!["hooks"]!["Stop"] as JsonArray;
         Assert.Single(stop!);
         Assert.Equal("node autre.js", stop![0]!["hooks"]![0]!["command"]!.GetValue<string>());
     }
