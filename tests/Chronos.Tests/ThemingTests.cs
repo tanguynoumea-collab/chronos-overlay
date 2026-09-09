@@ -16,6 +16,7 @@ namespace Chronos.Tests;
 /// (neutre/épuisé/rampe) selon le thème, réactivité de <see cref="WindowGaugeViewModel.ValueBrush"/>,
 /// persistance de la clé de thème, et smoke test XAML de la fenêtre de réglages.
 /// </summary>
+[Collection("XAML WPF")]   // charge du BAML : serialise avec les autres classes XAML (voir XamlWpfCollection)
 public class ThemingTests
 {
     private static string TempDir() => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "chronos-thm-" + Guid.NewGuid().ToString("N"));

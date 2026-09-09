@@ -19,6 +19,7 @@ namespace Chronos.Tests;
 /// [WpfFact] (thread STA) : la construction de MainWindow + les SolidColorBrush exigent STA.
 /// L'orchestrateur n'est PAS démarré (aucun I/O) ; le VM reçoit le snapshot via ApplySnapshot.
 /// </summary>
+[Collection("XAML WPF")]   // charge du BAML : serialise avec les autres classes XAML (voir XamlWpfCollection)
 public class CadranBindingTests
 {
     private static readonly DateTimeOffset Now = new(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);

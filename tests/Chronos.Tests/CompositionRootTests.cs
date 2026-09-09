@@ -11,6 +11,7 @@ namespace Chronos.Tests;
 /// Preuve du success criterion 3 : le conteneur résout MainWindow/MainViewModel par DI
 /// et dispose les Singletons IDisposable à la fermeture (contexte STA pour construire la Window).
 /// </summary>
+[Collection("XAML WPF")]   // charge du BAML : serialise avec les autres classes XAML (voir XamlWpfCollection)
 public class CompositionRootTests
 {
     /// <summary>Marqueur IDisposable enregistré comme Singleton pour observer la disposition du conteneur.</summary>

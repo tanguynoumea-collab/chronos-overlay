@@ -7,6 +7,7 @@ using Xunit;
 namespace Chronos.Tests;
 
 /// <summary>Vérifie que la fenêtre overlay porte bien les propriétés FEN-01 (contexte STA requis).</summary>
+[Collection("XAML WPF")]   // charge du BAML : serialise avec les autres classes XAML (voir XamlWpfCollection)
 public class OverlayWindowConfigTests
 {
     [WpfFact]
