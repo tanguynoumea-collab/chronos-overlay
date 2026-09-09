@@ -1,61 +1,111 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code)
-status: "v1.4 VALIDÉ en UAT app-réelle (2026-07-11) : sessions bureau (BUR/NET/ROB) + nombreux correctifs de test réel. Feature cadran deux modes (Normal/Étendu) ajoutée en direct (hors phases GSD). 327 tests verts."
-stopped_at: v1.4 validé (UAT app-réelle) + cadran deux modes
-last_updated: "2026-07-11"
-last_activity: 2026-07-11 — UAT app-réelle (correctifs sessions) + feature cadran deux modes ; 327 tests verts, tout committé sur main (non poussé)
+milestone: v1.5
+milestone_name: — Exactitude permanente (suppression de l'estimation pure, correction par delta)
+status: "Milestone v1.5 démarré le 2026-09-09. Définition des exigences."
+stopped_at: Milestone v1.5 initialisé
+last_updated: "2026-09-09"
+last_activity: 2026-09-09 — Milestone v1.5 démarré (diagnostic complet du pipeline d'usage + analyse de claude-session-browser)
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-10)
+See: .planning/PROJECT.md (updated 2026-09-09)
 
-**Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** v1.4 VALIDÉ en UAT app-réelle + feature cadran deux modes livrée. Prêt à shipper (versionner l'exe + push) au feu vert de l'utilisateur.
+**Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
+deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
+**Current focus:** v1.5 — éradiquer la bascule silencieuse en estimation pure.
 
 ## Current Position
 
-Milestone: v1.4 — Intégration des sessions de l'app bureau Claude (Chat / Cowork / Code) — VALIDÉ
-Phase: 13 + 14 terminées ; correctifs UAT app-réelle appliqués (voir git) ; cadran deux modes ajouté en direct
+Milestone: v1.5 — Exactitude permanente
+Phase: Not started (defining requirements)
 Plan: —
-Status: **v1.4 validé en UAT app-réelle le 2026-07-11.** Sessions bureau (BUR/NET/ROB) opérationnelles + série de correctifs trouvés en test réel (faux positif permission, priorité de type, walk UIA trop peu profond, ControlType non normalisé, pollution par le texte des messages, stabilité inter-modes, dédoublonnage, foreground Cowork supprimé, dernier état conservé). BONUS hors GSD : feature cadran **deux modes** (Normal épuré par défaut / Étendu), bascule dans les réglages, sous-tirets alignés sur la grille des resets 5 h, pastille session ORANGE pour les deux états d'attente. 327 tests verts, tout committé sur `main` (non poussé).
-Last activity: 2026-07-11 — validation utilisateur ; « tout valider »
+Status: Defining requirements
+Last activity: 2026-09-09 — Milestone v1.5 started
 
-Progress: [██████████] 100% (2/2 plans, phase 14)
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.4): 0
+- Total plans completed (v1.5): 0
 - Average duration: —
 - Total execution time: 0 h
 
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 13 | 0/TBD | - | - |
-| 14 | 0/TBD | - | - |
-
 *Updated after each plan completion*
-| Phase 13 P01 | 6 | 3 tasks | 7 files |
-| Phase 13 P02 | 4min | 2 tasks | 4 files |
-| Phase 13 P03 | 4min | 3 tasks | 6 files |
-| Phase 14 P01 | 5m | 3 tasks | 6 files |
-| Phase 14 P02 | ~2 min | 2 tasks | 3 files |
+
+## Milestone v1.4 (clos)
+
+v1.4 validé en UAT app-réelle le 2026-07-11 (phases 13-14, 5 plans, 327 tests verts). Livré hors GSD depuis :
+refonte visuelle des deux overlays + 3 thèmes, cadran deux modes, exe v2.8.1.
 
 ## Accumulated Context
+
+### Contexte technique v1.5 (diagnostic DÉJÀ ÉTABLI — ne pas re-enquêter)
+
+Diagnostic mené le 2026-09-09 sur la machine réelle. Cause racine des pourcentages faux après le passage
+Max x5 → Max x20 : **les trois sources exactes sont tombées en même temps et le composite dégrade en silence.**
+
+- **Jeton OAuth Chronos expiré le 2026-07-12.** `GET https://api.anthropic.com/api/oauth/usage` → **HTTP 401**
+  (vérifié). `ChronosOAuthUsageProvider` rafraîchit paresseusement, l'échec est totalement muet côté UI.
+- **`%APPDATA%/Chronos/usage.json` figé au 2026-07-10**, contenu
+  `{"five_hour":{"used_percentage":10,"resets_at":9}}` — `resets_at: 9` = epoch 1970. Le pont statusLine n'est
+  visiblement jamais invoqué par l'app de bureau. `ClaudeUsageObjectProvider` n'applique **aucune limite d'âge**
+  et renvoie ça marqué `Exact`.
+- **`CompositeUsageProvider.Best()` classe uniquement par fiabilité** (`Exact > Estimated > Unavailable`) :
+  une donnée « exacte » de deux mois bat donc une estimation fraîche.
+- **`ChronosOAuthUsageProvider._cached` est un champ d'instance (RAM)** → à chaque démarrage de l'exe, aucun
+  chiffre exact en mémoire, bascule immédiate sur l'estimation. Cas le plus fréquent, jamais identifié.
+- **`MainViewModel.cs:269` calcule `IsStale`** (seuil 2 min) mais la propriété n'est **bindée nulle part**.
+- **`settings.json`** : `FiveHourTokenBudget=230000000` en source `Manual` (donc `BudgetCalibration.ApplyAuto`
+  refuse par conception de l'écraser → gelé à vie), `WeeklyTokenBudget=5817635413` calibré sous Max x5.
+- **`BudgetAutoCalibrator` a un défaut logique** : il ne calibre que lorsqu'une source *exacte* est présente,
+  c'est-à-dire précisément quand l'estimation ne sert pas.
+- **`~/.claude/settings.json` contient 25 hooks Chronos au lieu de 5** (v2.5, v2.5.1, v2.6, v2.8.1 + le build
+  Debug), aucun installateur ne retire les précédents. Le `statusLine` pointe un chemin `Downloads` en dur.
+- **`.credentials.json` de Claude Code ne contient que `mcpOAuth`** sur cette machine (pas de
+  `claudeAiOauth.accessToken`) : la lecture de jeton « à la claude-session-browser » n'y marcherait pas telle
+  quelle ; il faut passer par le jeton propre de Chronos.
+
+**Technique reprise de `github.com/juppeee/claude-session-browser`** (`clawdmeter.py:150`, `poll_usage_meta`) :
+
+```
+POST https://api.anthropic.com/v1/messages
+  Authorization: Bearer <token>
+  anthropic-beta: oauth-2025-04-20
+  User-Agent: claude-code/<version>
+  body {"model":"claude-haiku-4-5-...","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}
+→ en-têtes anthropic-ratelimit-unified-{5h,7d}-{utilization,reset}, -5h-status, et variante -overage-*
+```
+
+Ils récupèrent les en-têtes **même sur un 429** (`except HTTPError: hdrs = e.headers`) — c'est l'avantage
+décisif sur `/api/oauth/usage`.
+
+**PIÈGE D'UNITÉ — trois unités pour la même donnée, à normaliser en un seul point :**
+
+| Source | Champ | Unité |
+|---|---|---|
+| En-têtes `anthropic-ratelimit-unified-*` | `utilization` | **0..1** |
+| `GET /api/oauth/usage` | `utilization` | **0..100** |
+| Pont statusLine (`rate_limits`) | `used_percentage` | **0..100** (= `utilization*100`, confirmé dans le binaire `claude-2.1.87`) |
+
+`resets_at` : **epoch secondes** pour les en-têtes et le pont statusLine, **ISO 8601** pour `/api/oauth/usage`.
+
+**Fondement de la décision « plus d'estimation absolue »** : les limites Anthropic pondèrent par modèle (une
+heure d'Opus ne pèse pas comme une heure de Haiku), donc `tokens / plafond` restera faux même avec le bon
+plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *activité depuis T ?* et
+*tokens depuis T ?* — d'où la correction par delta.
+
 
 ### Decisions
 
