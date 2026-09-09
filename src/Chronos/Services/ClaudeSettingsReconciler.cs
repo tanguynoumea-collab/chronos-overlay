@@ -40,18 +40,27 @@ public sealed class ClaudeSettingsReconciler
 
     private readonly string _settingsPath;
     private readonly string _backupDir;
+    private readonly string? _exePath;
 
     /// <summary>
     /// Chemins par défaut = profil utilisateur (aucun droit admin). Les TESTS injectent systématiquement
     /// leurs deux chemins depuis <c>Path.GetTempPath()</c> : le vrai settings.json reste hors d'atteinte
     /// de la suite.
+    ///
+    /// <para><paramref name="exePath"/> vaut <c>null</c> en production : l'exe courant est alors résolu par
+    /// <c>Environment.ProcessPath</c>. Il n'est injecté que par les tests d'E/S, et pour une raison de
+    /// fond : le processus qui héberge la suite s'appelle <c>testhost.exe</c>, un nom que le prédicat
+    /// d'identité (marqueur + <c>Chronos*.exe</c>) ne reconnaît volontairement PAS. Sans injection, la
+    /// réconciliation poserait des entrées qu'elle serait ensuite incapable de reconnaître, et son
+    /// idempotence — la propriété même que ces tests doivent prouver — serait invérifiable.</para>
     /// </summary>
-    public ClaudeSettingsReconciler(string? settingsPath = null, string? backupDir = null)
+    public ClaudeSettingsReconciler(string? settingsPath = null, string? backupDir = null, string? exePath = null)
     {
         _settingsPath = settingsPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
         _backupDir = backupDir ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "backups");
+        _exePath = exePath;
     }
 
     /// <summary>Fichier de settings de Claude Code ciblé (diagnostic + garde anti-accident en test).</summary>
@@ -99,7 +108,7 @@ public sealed class ClaudeSettingsReconciler
             if (!File.Exists(_settingsPath)) return false;   // on ne CRÉE jamais le fichier : purge seulement
 
             // Mono-fichier : Environment.ProcessPath, JAMAIS l'emplacement de l'assembly (vide en single-file).
-            var exePath = Environment.ProcessPath ?? "Chronos.exe";
+            var exePath = _exePath ?? Environment.ProcessPath ?? "Chronos.exe";
             var actuel = File.ReadAllText(_settingsPath);
             var reconcilie = ReconcileJson(actuel, exePath, hooksWanted);
             if (reconcilie is null) return false;            // inexploitable OU déjà conforme → rien à faire
