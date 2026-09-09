@@ -10,6 +10,11 @@ public sealed record WindowState
     public long? EstimatedTokens { get; init; }           // somme brute (repli) ; info honnête
     public required SourceReliability Reliability { get; init; }
 
+    /// <summary>Instant de capture de CETTE fenêtre par la source qui l'a produite. null = inconnu.
+    /// Par fenêtre et non par snapshot : le composite choisit la meilleure source PAR FENÊTRE, les
+    /// deux peuvent donc venir de sources différentes à des instants différents.</summary>
+    public DateTimeOffset? CapturedAt { get; init; }
+
     /// <summary>Épuisé si utilization connue >= 1. Inconnu (null) != épuisé.</summary>
     public bool Exhausted => Utilization is >= 1.0;
 

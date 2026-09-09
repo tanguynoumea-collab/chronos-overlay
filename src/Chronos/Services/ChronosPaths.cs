@@ -17,4 +17,11 @@ public sealed record ChronosPaths(string UsageFile, string ProjectsRoot)
     /// obtiennent aussi un SettingsFile isolé.
     /// </summary>
     public string SettingsFile => Path.Combine(Path.GetDirectoryName(UsageFile)!, "settings.json");
+
+    /// <summary>
+    /// last-exact.json colocalisé avec usage.json (même dossier %APPDATA%\Chronos). Propriété
+    /// calculée : le ctor positionnel <c>(UsageFile, ProjectsRoot)</c> reste inchangé, donc les
+    /// tests qui construisent un répertoire temp obtiennent aussi un LastExactFile isolé.
+    /// </summary>
+    public string LastExactFile => Path.Combine(Path.GetDirectoryName(UsageFile)!, "last-exact.json");
 }
