@@ -83,11 +83,11 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 ### Idempotence des intégrations (PUR)
 
-- [ ] **PUR-01**: L'installation des **hooks remplace** les entrées Chronos existantes au lieu de les cumuler
+- [x] **PUR-01**: L'installation des **hooks remplace** les entrées Chronos existantes au lieu de les cumuler
   (match sur `--hook`, pas sur le chemin d'exe).
-- [ ] **PUR-02**: L'installation du **pont statusLine remplace** l'entrée Chronos existante (match sur
+- [x] **PUR-02**: L'installation du **pont statusLine remplace** l'entrée Chronos existante (match sur
   `--statusline`).
-- [ ] **PUR-03**: Les **entrées fantômes** déjà présentes dans `~/.claude/settings.json` sont **purgées**
+- [x] **PUR-03**: Les **entrées fantômes** déjà présentes dans `~/.claude/settings.json` sont **purgées**
   (constaté : 25 hooks Chronos au lieu de 5, pointant sur des exes de versions révolues).
 
 ## Future Requirements (différés)
@@ -134,9 +134,9 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | TOK-01 | Phase 17 | Pending |
 | TOK-02 | Phase 17 | Pending |
 | TOK-03 | Phase 17 | Pending |
-| PUR-01 | Phase 15 | Pending |
-| PUR-02 | Phase 15 | Pending |
-| PUR-03 | Phase 15 | Pending |
+| PUR-01 | Phase 15 | Complete |
+| PUR-02 | Phase 15 | Complete |
+| PUR-03 | Phase 15 | Complete |
 
 **Couverture :** 24 / 24 requirements mappés — 6 phases (15 → 20), aucun orphelin, aucun doublon.
 
