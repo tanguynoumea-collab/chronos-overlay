@@ -90,8 +90,8 @@ public sealed class RefreshOrchestrator : BackgroundService
 
     private void Trigger() => _triggers.Writer.TryWrite(true);
 
-    /// <summary>Déclenche un recalcul immédiat — ex. après calibration manuelle des plafonds (CAL-01) :
-    /// le prochain GetAsync relit les settings frais et recolore les arcs sans redémarrage. Type neutre
+    /// <summary>Déclenche un recalcul immédiat — ex. après bascule de la source exacte (portillon OAuth)
+    /// ou après un login : le prochain GetAsync relit les réglages frais sans redémarrage. Type neutre
     /// (void) → garde de pureté inchangée.</summary>
     public void RequestRefresh() => _triggers.Writer.TryWrite(true);
 

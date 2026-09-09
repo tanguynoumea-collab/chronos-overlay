@@ -4,7 +4,7 @@ namespace Chronos.Services;
 
 /// <summary>
 /// Portillon (INT-03) autour du provider OAuth EXACT. À CHAQUE GetAsync, relit OAuthUsageEnabled
-/// FRAIS depuis settings.json (comme JsonlEstimationProvider relit ses plafonds). Si désactivé,
+/// FRAIS depuis settings.json à chaque appel (aucun cache de réglage). Si désactivé,
 /// retourne UsageSnapshot.Empty SANS JAMAIS appeler le provider interne — donc sans lire ni
 /// déchiffrer le token, sans le moindre appel réseau. Off = v1.1 strict, ZÉRO accès token.
 /// Type NEUTRE (aucun type WPF) : la garde de pureté Services/Models reste verte.
