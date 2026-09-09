@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-09-09T10:34:12.673Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-09-09T10:43:49.762Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 15 (Idempotence des intégrations) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-09
 
@@ -125,6 +125,7 @@ heure d'Opus ne pèse pas comme une heure de Haiku), donc `tokens / plafond` res
 plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *activité depuis T ?* et
 *tokens depuis T ?* — d'où la correction par delta.
 | Phase 15 P01 | 12min | 3 tasks | 3 files |
+| Phase 15 P02 | 7min | 3 tasks | 6 files |
 
 ### Decisions
 
@@ -170,6 +171,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 15]: [15-01] Une entree Chronos s'identifie par le MARQUEUR d'argument (--hook/--statusline) + le NOM de fichier Chronos*.exe, JAMAIS par le chemin : le chemin est la variable qui a produit 25 groupes de hooks au lieu de 5.
 - [Phase 15]: [15-01] ParseOrNull renvoie null (= NE RIEN ECRIRE) et jamais un objet vide : le repli 'objet vide' des installateurs actuels ecrase integralement le settings.json de l'utilisateur. Catch LARGE + materialisation forcee (_ = o.Count) car les cles dupliquees levent une ArgumentException, pas une JsonException.
 - [Phase 15]: [15-01] Appartenance (IsChronosCommand) et fraicheur (PointsToExe) sont deux predicats distincts ; Serialize impose UnsafeRelaxedJsonEscaping pour ne pas mutiler les accents des valeurs des autres outils.
+- [Phase 15]: [15-02] L'installation ne cherche plus si un groupe Chronos existe : elle retire TOUS les groupes Chronos puis ajoute le sien. Idempotent par construction — la robustesse ne depend plus de l'exactitude du predicat mais de la forme de l'algorithme.
+- [Phase 15]: [15-02] TransformForUninstall / Uninstall perdent exePath des deux cotes : le retrait est volontairement LARGE (toutes les versions), sinon desactiver depuis une nouvelle version laisserait les hooks et la barre de toutes les anciennes.
+- [Phase 15]: [15-02] statusLine est mute sur la seule cle command (padding et cles futures survivent) ; ApplyStatusLine repointe mais n'installe JAMAIS — le consentement reste porte par le menu, pas par la reconciliation.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -218,7 +222,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T10:34:05.209Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-09-09T10:43:42.608Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15

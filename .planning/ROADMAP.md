@@ -94,7 +94,7 @@ et **purge** les entrées fantômes pointant sur des exes de versions révolues.
      provoque aucun crash au démarrage.
 **Plans**: 3 plans (3 vagues)
 - [x] 15-01-PLAN.md — Socle neutre : prédicat d'identité marqueur+nom d'exe, analyse tolérante « ne rien écrire », sérialisation fidèle, fixture de l'état réel pollué (vague 1)
-- [ ] 15-02-PLAN.md — Installateurs idempotents : hooks en retirer-puis-ajouter (PUR-01), statusLine repointée par mutation ciblée (PUR-02) (vague 2)
+- [x] 15-02-PLAN.md — Installateurs idempotents : hooks en retirer-puis-ajouter (PUR-01), statusLine repointée par mutation ciblée (PUR-02) (vague 2)
 - [ ] 15-03-PLAN.md — Réconciliateur au démarrage : purge des fantômes, sauvegarde horodatée conditionnelle, câblage overlay-only (PUR-03) (vague 3)
 
 ### Phase 16 : Fondations du delta — persistance & démolition des plafonds
@@ -225,7 +225,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Idempotence des intégrations | 1/3 | In Progress|  |
+| 15. Idempotence des intégrations | 2/3 | In Progress|  |
 | 16. Fondations du delta — persistance & démolition des plafonds | 0/? | Not started | - |
 | 17. Jeton toujours vivant, panne toujours visible | 0/? | Not started | - |
 | 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
