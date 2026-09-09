@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: verifying
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-09-09T11:00:15.193Z"
+status: executing
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-09-09T11:50:30.987Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 0
 ---
 
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-09-09)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
 deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 15 — Idempotence des intégrations
+**Current focus:** Phase 16 — Fondations du delta
 
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 15 (Idempotence des intégrations) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 16 (Fondations du delta) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-09-09
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -127,6 +127,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 15 P01 | 12min | 3 tasks | 3 files |
 | Phase 15 P02 | 7min | 3 tasks | 6 files |
 | Phase 15 P03 | 20min | 4 tasks | 4 files |
+| Phase 16 P01 | 24min | 3 tasks | 20 files |
 
 ### Decisions
 
@@ -178,6 +179,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 15]: [15-03] La comparaison avant/apres se fait sur la forme NORMALISEE (serialiser avant/apres mutation), jamais sur le texte lu : une simple reindentation de Claude Code declencherait sinon une ecriture ET une sauvegarde a chaque demarrage, evincant la sauvegarde du premier passage — la seule a contenir l'etat pre-purge complet.
 - [Phase 15]: [15-03] Sauvegarde BLOQUANTE (pas d'ecriture sans sauvegarde reussie) mais retention NON bloquante ; le reconciliateur ne cree jamais le fichier absent — purge et repointage seulement, jamais d'installation silencieuse.
 - [Phase 15]: [15-03] Point d'appel unique dans App.OnStartup, apres window.Show() et avant OfferOnFirstRun() : atteint en mode overlay UNIQUEMENT, donc jamais 5 processus --hook concurrents en lire-modifier-ecrire.
+- [Phase 16]: [16-01] Le recul 405 -> 384 tests est le LIVRABLE : les 21 tests supprimes couvraient exclusivement du code supprime (3 CalibrateBudgets, 3 BudgetAutoCalibrator, 15 BudgetCalibration). Critere = 0 echec + justification nominative, PAS >= 405.
+- [Phase 16]: [16-01] BudgetSource.cs et les 6 champs de ChronosSettings laisses INTACTS : ChronosSettings les reference encore, les supprimer ici casserait la compilation. Verifie : exactement 3 occurrences de BudgetSource dans src/ -> le plan 16-04 a bien son objet.
+- [Phase 16]: [16-01] dotnet clean ne nettoie QUE la configuration courante (Debug) : 2 des 3 copies obj/**/BudgetDialog.g.cs survivaient. Apres suppression d'un .xaml, nettoyer Debug ET Release puis purger explicitement les *.g.cs orphelins.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -226,7 +230,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T11:00:15.188Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-09-09T11:50:20.126Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15
