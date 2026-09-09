@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-09-09T10:43:49.762Z"
+status: verifying
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-09-09T11:00:15.193Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 15 (Idempotence des intégrations) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-09
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -126,6 +126,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 *tokens depuis T ?* — d'où la correction par delta.
 | Phase 15 P01 | 12min | 3 tasks | 3 files |
 | Phase 15 P02 | 7min | 3 tasks | 6 files |
+| Phase 15 P03 | 20min | 4 tasks | 4 files |
 
 ### Decisions
 
@@ -174,6 +175,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 15]: [15-02] L'installation ne cherche plus si un groupe Chronos existe : elle retire TOUS les groupes Chronos puis ajoute le sien. Idempotent par construction — la robustesse ne depend plus de l'exactitude du predicat mais de la forme de l'algorithme.
 - [Phase 15]: [15-02] TransformForUninstall / Uninstall perdent exePath des deux cotes : le retrait est volontairement LARGE (toutes les versions), sinon desactiver depuis une nouvelle version laisserait les hooks et la barre de toutes les anciennes.
 - [Phase 15]: [15-02] statusLine est mute sur la seule cle command (padding et cles futures survivent) ; ApplyStatusLine repointe mais n'installe JAMAIS — le consentement reste porte par le menu, pas par la reconciliation.
+- [Phase 15]: [15-03] La comparaison avant/apres se fait sur la forme NORMALISEE (serialiser avant/apres mutation), jamais sur le texte lu : une simple reindentation de Claude Code declencherait sinon une ecriture ET une sauvegarde a chaque demarrage, evincant la sauvegarde du premier passage — la seule a contenir l'etat pre-purge complet.
+- [Phase 15]: [15-03] Sauvegarde BLOQUANTE (pas d'ecriture sans sauvegarde reussie) mais retention NON bloquante ; le reconciliateur ne cree jamais le fichier absent — purge et repointage seulement, jamais d'installation silencieuse.
+- [Phase 15]: [15-03] Point d'appel unique dans App.OnStartup, apres window.Show() et avant OfferOnFirstRun() : atteint en mode overlay UNIQUEMENT, donc jamais 5 processus --hook concurrents en lire-modifier-ecrire.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -222,7 +226,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T10:43:42.608Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-09-09T11:00:15.188Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15

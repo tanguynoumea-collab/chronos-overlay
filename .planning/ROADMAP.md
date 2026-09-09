@@ -65,7 +65,7 @@ et la garde de composition `CompositionRootTests`.
 - Phases entières (15→20) : travail de milestone planifié — continue après la Phase 14 (v1.4)
 - Phases décimales (15.1, 15.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 15 : Idempotence des intégrations** - Les installateurs de hooks et de statusLine remplacent l'entrée Chronos existante au lieu de la cumuler, et purgent les entrées fantômes déjà présentes
+- [x] **Phase 15 : Idempotence des intégrations** - Les installateurs de hooks et de statusLine remplacent l'entrée Chronos existante au lieu de la cumuler, et purgent les entrées fantômes déjà présentes (completed 2026-09-09)
 - [ ] **Phase 16 : Fondations du delta — persistance & démolition des plafonds** - Le dernier relevé exact survit au redémarrage de l'exe, les transcripts JSONL ne produisent plus qu'« activité depuis T ? » et « tokens depuis T ? », le sous-système de plafonds disparaît et les réglages existants migrent sans casse
 - [ ] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
 - [ ] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement
@@ -95,7 +95,7 @@ et **purge** les entrées fantômes pointant sur des exes de versions révolues.
 **Plans**: 3 plans (3 vagues)
 - [x] 15-01-PLAN.md — Socle neutre : prédicat d'identité marqueur+nom d'exe, analyse tolérante « ne rien écrire », sérialisation fidèle, fixture de l'état réel pollué (vague 1)
 - [x] 15-02-PLAN.md — Installateurs idempotents : hooks en retirer-puis-ajouter (PUR-01), statusLine repointée par mutation ciblée (PUR-02) (vague 2)
-- [ ] 15-03-PLAN.md — Réconciliateur au démarrage : purge des fantômes, sauvegarde horodatée conditionnelle, câblage overlay-only (PUR-03) (vague 3)
+- [x] 15-03-PLAN.md — Réconciliateur au démarrage : purge des fantômes, sauvegarde horodatée conditionnelle, câblage overlay-only (PUR-03) (vague 3)
 
 ### Phase 16 : Fondations du delta — persistance & démolition des plafonds
 **Goal**: Chronos dispose d'un **instant T de référence persistant** (le dernier relevé exact, sur disque avec
@@ -225,7 +225,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Idempotence des intégrations | 2/3 | In Progress|  |
+| 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
 | 16. Fondations du delta — persistance & démolition des plafonds | 0/? | Not started | - |
 | 17. Jeton toujours vivant, panne toujours visible | 0/? | Not started | - |
 | 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
