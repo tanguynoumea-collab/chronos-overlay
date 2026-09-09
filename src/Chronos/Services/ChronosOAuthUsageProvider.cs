@@ -60,7 +60,9 @@ public sealed class ChronosOAuthUsageProvider : IUsageProvider
         // Rafraîchissement silencieux si l'access token est expiré ou proche de l'être.
         if (tokens.ExpiresAt - RefreshMargin <= now)
         {
-            var refreshed = await _client.RefreshAsync(tokens.RefreshToken, ct);
+            // ADAPTATION MINIMALE (plan 17-02). Ce bloc de rafraîchissement paresseux est SUPPRIMÉ
+            // en entier par le plan 17-04 : le provider deviendra un simple consommateur de l'autorité.
+            var refreshed = (await _client.RefreshAsync(tokens.RefreshToken, ct)).Jetons;
             if (refreshed is null)
             {
                 // Refresh échoué → on tente quand même l'appel avec le jeton courant (peut encore marcher),

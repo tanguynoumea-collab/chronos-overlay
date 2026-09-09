@@ -87,12 +87,12 @@ public class ChronosOAuthClientTests
     private const string CorpsTronque = "{\"access_token\":\"ACC-2\"";
 
     /// <summary>
-    /// Helper UNIQUE de construction : aucun réseau réel, aucun coffre. Le plan 17-02 ne changera
-    /// que la ligne de retour quand RefreshAsync deviendra typé (ResultatRafraichissement).
+    /// Helper UNIQUE de construction : aucun réseau réel, aucun coffre. Seule sa ligne de retour a
+    /// changé au plan 17-02, quand RefreshAsync est devenu typé (ResultatRafraichissement).
     /// </summary>
-    private static async Task<OAuthTokens?> RefreshAvec(FakeHttpMessageHandler handler)
+    private static async Task<ResultatRafraichissement> RefreshAvec(FakeHttpMessageHandler handler, IClock? horloge = null)
     {
-        var client = new ChronosOAuthClient(new HttpClient(handler));
+        var client = new ChronosOAuthClient(new HttpClient(handler), horloge);
         return await client.RefreshAsync("REF-VIEUX-BIDON");
     }
 
@@ -100,27 +100,33 @@ public class ChronosOAuthClientTests
     public async Task Refresh_200_rend_des_jetons_ET_fait_tourner_le_refresh_token()
     {
         var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsNominal);
+        // Horloge figée : ExpiresAt devient vérifiable à la seconde près, l'InRange approximatif
+        // de la Wave 0 n'a plus lieu d'être.
+        var horloge = new FakeClock(new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero));
 
-        var jetons = await RefreshAvec(handler);
+        var res = await RefreshAvec(handler, horloge);
 
-        Assert.NotNull(jetons);
-        Assert.Equal("ACC-2", jetons!.AccessToken);
-        Assert.Equal("REF-2", jetons.RefreshToken);            // ROTATION : ce n'est plus REF-VIEUX-BIDON
-        Assert.NotEqual("REF-VIEUX-BIDON", jetons.RefreshToken);
-        Assert.InRange(jetons.ExpiresAt,
-            DateTimeOffset.UtcNow.AddMinutes(50), DateTimeOffset.UtcNow.AddMinutes(70));
+        Assert.Equal(IssueRafraichissement.Succes, res.Issue);
+        Assert.NotNull(res.Jetons);
+        Assert.Equal("ACC-2", res.Jetons!.AccessToken);
+        Assert.Equal("REF-2", res.Jetons.RefreshToken);            // ROTATION : ce n'est plus REF-VIEUX-BIDON
+        Assert.NotEqual("REF-VIEUX-BIDON", res.Jetons.RefreshToken);
+        Assert.Equal(horloge.UtcNow.AddSeconds(3600), res.Jetons.ExpiresAt);
         Assert.Equal(1, handler.SendCount);
     }
 
     [Fact]
     public async Task Refresh_200_sans_refresh_token_est_rejete()
     {
-        // ChronosOAuthClient.cs:114 — access ET refresh sont obligatoires. Un 200 amputé du refresh
-        // n'est pas exploitable : sans nouveau refresh, l'appel SUIVANT échouerait (rotation).
+        // access ET refresh sont obligatoires. Un 200 amputé du refresh n'est pas exploitable : le
+        // serveur a déjà roulé le jeton de son côté, l'ancien est mort — réessayer est vain.
         var handler = FakeHttpMessageHandler.Json(HttpStatusCode.OK,
             """{"access_token":"ACC-2","expires_in":3600}""");
 
-        Assert.Null(await RefreshAvec(handler));
+        var res = await RefreshAvec(handler);
+
+        Assert.Equal(IssueRafraichissement.IdentifiantsRejetes, res.Issue);
+        Assert.Null(res.Jetons);
     }
 
     [Fact]
@@ -130,7 +136,10 @@ public class ChronosOAuthClientTests
             await RefreshAvec(FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsTronque)));
 
         Assert.Null(ex);
-        Assert.Null(await RefreshAvec(FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsTronque)));
+
+        var res = await RefreshAvec(FakeHttpMessageHandler.Json(HttpStatusCode.OK, CorpsTronque));
+        Assert.Equal(IssueRafraichissement.IdentifiantsRejetes, res.Issue);
+        Assert.Null(res.Jetons);
     }
 
     [Fact]
@@ -140,7 +149,11 @@ public class ChronosOAuthClientTests
             await RefreshAvec(FakeHttpMessageHandler.Throws(new HttpRequestException("réseau"))));
 
         Assert.Null(ex);
-        Assert.Null(await RefreshAvec(FakeHttpMessageHandler.Throws(new HttpRequestException("réseau"))));
+
+        // Wifi coupé : le jeton est peut-être parfaitement bon. Surtout pas « déconnecté ».
+        var res = await RefreshAvec(FakeHttpMessageHandler.Throws(new HttpRequestException("réseau")));
+        Assert.Equal(IssueRafraichissement.EchecTemporaire, res.Issue);
+        Assert.Null(res.Jetons);
     }
 
     [Fact]
@@ -150,30 +163,43 @@ public class ChronosOAuthClientTests
             await RefreshAvec(FakeHttpMessageHandler.Throws(new TaskCanceledException())));
 
         Assert.Null(ex);
-        Assert.Null(await RefreshAvec(FakeHttpMessageHandler.Throws(new TaskCanceledException())));
+
+        var res = await RefreshAvec(FakeHttpMessageHandler.Throws(new TaskCanceledException()));
+        Assert.Equal(IssueRafraichissement.EchecTemporaire, res.Issue);
+        Assert.Null(res.Jetons);
     }
 
     /// <summary>
-    /// DÉFAUT DOCUMENTÉ (état AVANT la phase 17). Le <c>catch { return null; }</c> de PostTokenAsync
-    /// (ChronosOAuthClient.cs:119), doublé du <c>if (!resp.IsSuccessStatusCode) return null;</c>
-    /// (ligne 106), confond cinq causes qui appellent des réactions OPPOSÉES :
-    /// « refresh token révoqué » (seule une reconnexion répare), « identifiants rejetés »,
-    /// « rate limité » (attendre suffit), « panne serveur » (réessayer), « corps illisible après une
-    /// rotation déjà faite côté serveur » (irréparable). Sans cause, TOK-02 — rendre la panne visible
-    /// et actionnable — est mécaniquement impossible : on ne peut pas afficher ce qui a été détruit.
-    /// Le plan 17-02 RÉÉCRIT ce test (il ne le supprime pas) avec un résultat typé par cause.
+    /// TOK-02 — RÉÉCRITURE du [Theory] de la Wave 0 (plan 17-01, commit cef82e1), qui prouvait que les
+    /// cinq causes se confondaient en un seul null. Chaque cause appelle désormais une réaction différente : reconnexion
+    /// pour l'une, patience pour l'autre. Le cas 429 est le plus important : c'est un mode d'échec
+    /// RÉEL et vérifié du point de terminaison de jeton — le classer « déconnecté » afficherait une
+    /// fausse alerte sur un compte parfaitement sain.
     /// </summary>
     [Theory]
-    [InlineData(400, """{"error":"invalid_grant"}""")]              // identifiants révoqués
-    [InlineData(401, """{"error":"invalid_client"}""")]             // identifiants rejetés
-    [InlineData(429, """{"error":{"type":"rate_limit_error"}}""")]  // TEMPORAIRE — mode d'échec RÉEL
-    [InlineData(500, "")]                                           // panne serveur
-    [InlineData(200, CorpsTronque)]                                 // rotation déjà faite, corps perdu
-    public async Task Toutes_les_causes_d_echec_se_confondent_en_un_seul_null(int statut, string corps)
+    [InlineData(400, """{"error":"invalid_grant"}""",              IssueRafraichissement.IdentifiantsRejetes)]
+    [InlineData(401, """{"error":"invalid_client"}""",             IssueRafraichissement.IdentifiantsRejetes)]
+    [InlineData(429, """{"error":{"type":"rate_limit_error"}}""",  IssueRafraichissement.EchecTemporaire)]
+    [InlineData(500, "",                                           IssueRafraichissement.EchecTemporaire)]
+    [InlineData(200, CorpsTronque,                                 IssueRafraichissement.IdentifiantsRejetes)]
+    [InlineData(200, """{"access_token":"ACC-2"}""",               IssueRafraichissement.IdentifiantsRejetes)]
+    public async Task Chaque_cause_d_echec_est_desormais_distinguee(int statut, string corps, IssueRafraichissement attendue)
     {
-        var jetons = await RefreshAvec(FakeHttpMessageHandler.Json((HttpStatusCode)statut, corps));
+        var res = await RefreshAvec(FakeHttpMessageHandler.Json((HttpStatusCode)statut, corps));
 
-        Assert.Null(jetons);   // <- LE DÉFAUT : aucune de ces cinq situations n'est distinguable
+        Assert.Equal(attendue, res.Issue);
+        Assert.Null(res.Jetons);
+    }
+
+    /// <summary>SÉCURITÉ : impossible de faire fuiter un corps HTTP ou un message d'exception par ce
+    /// type — il ne contient aucune propriété texte. Ce test échoue si quelqu'un ajoute un champ.</summary>
+    [Fact]
+    public void Le_resultat_de_rafraichissement_ne_peut_transporter_aucun_texte()
+    {
+        var proprietes = typeof(ResultatRafraichissement).GetProperties();
+
+        Assert.DoesNotContain(proprietes, p => p.PropertyType == typeof(string));
+        Assert.Equal(2, proprietes.Length);   // Issue + Jetons, rien d'autre
     }
 
     [Fact]
