@@ -66,7 +66,7 @@ et la garde de composition `CompositionRootTests`.
 - Phases décimales (15.1, 15.2) : insertions urgentes (marquées INSERTED)
 
 - [x] **Phase 15 : Idempotence des intégrations** - Les installateurs de hooks et de statusLine remplacent l'entrée Chronos existante au lieu de la cumuler, et purgent les entrées fantômes déjà présentes (completed 2026-09-09)
-- [ ] **Phase 16 : Fondations du delta — persistance & démolition des plafonds** - Le dernier relevé exact survit au redémarrage de l'exe, les transcripts JSONL ne produisent plus qu'« activité depuis T ? » et « tokens depuis T ? », le sous-système de plafonds disparaît et les réglages existants migrent sans casse
+- [x] **Phase 16 : Fondations du delta — persistance & démolition des plafonds** - Le dernier relevé exact survit au redémarrage de l'exe, les transcripts JSONL ne produisent plus qu'« activité depuis T ? » et « tokens depuis T ? », le sous-système de plafonds disparaît et les réglages existants migrent sans casse (completed 2026-09-09)
 - [ ] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
 - [ ] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement
 - [ ] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens
@@ -128,7 +128,7 @@ n'est calculable.
 - [x] 16-01-PLAN.md — Démolition du sous-système de plafonds : entrée « Plafonds… », dialogue, prompt, calibrateur auto et logique pure de déduction (DEL-05) (vague 1)
 - [x] 16-02-PLAN.md — Magasin persistant du dernier relevé exact : `LastExactStore` + décorateur `LastExactUsageProvider`, sans câblage DI (EXA-01) (vague 1)
 - [x] 16-03-PLAN.md — Transcripts en source de delta : `ITranscriptActivitySource` / `TranscriptActivityLog`, sortie de la chaîne composite, décorateur de persistance en tête (DEL-01, DEL-02, EXA-01) (vague 2)
-- [ ] 16-04-PLAN.md — Retrait des six champs de plafonds + `BudgetSource`, preuve de migration sur fixture réelle et garde de non-retour (DEL-05, DEL-06) (vague 3)
+- [x] 16-04-PLAN.md — Retrait des six champs de plafonds + `BudgetSource`, preuve de migration sur fixture réelle et garde de non-retour (DEL-05, DEL-06) (vague 3)
 
 ### Phase 17 : Jeton toujours vivant, panne toujours visible
 **Goal**: L'utilisateur n'est plus jamais laissé deux mois avec un jeton mort sans le savoir : le jeton OAuth
@@ -232,7 +232,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
-| 16. Fondations du delta — persistance & démolition des plafonds | 3/4 | In Progress|  |
+| 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 0/? | Not started | - |
 | 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |

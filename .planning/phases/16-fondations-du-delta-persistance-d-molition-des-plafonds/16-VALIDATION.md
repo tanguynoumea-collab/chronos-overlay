@@ -3,7 +3,7 @@ phase: 16
 slug: fondations-du-delta-persistance-d-molition-des-plafonds
 status: planned
 nyquist_compliant: true
-wave_0_complete: false   # fixture DEL-06 à créer en 16-04 T2 ; fixtures JSONL déjà en place
+wave_0_complete: true    # fixture DEL-06 créée en 16-04 T2 (TestData/settings-legacy-plafonds.json)
 created: 2026-09-09
 ---
 
@@ -61,9 +61,9 @@ Un écart à la baisse du nombre total est légitime ici et ne doit pas être tr
 | 16-03 T1 — Contrat de delta + conversion du provider | 16-03 | 2 | DEL-01, DEL-02 | build | `dotnet build Chronos.sln -v q --nologo` | n/a (compilation ; les tests arrivent en T2) | ⬜ pending |
 | 16-03 T2 — Réécriture des tests JSONL en preuves de delta | 16-03 | 2 | DEL-01, DEL-02 | unit | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~TranscriptActivity"` | ❌ Wave 0 — TranscriptActivityProviderTests (10) + TranscriptActivityLogTests (5) | ⬜ pending |
 | 16-03 T3 — Recâblage DI (sortie du JSONL, décorateur en tête) | 16-03 | 2 | EXA-01, DEL-01 | integration (DI) | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~CompositionRootTests"` | ✅ existant — à réécrire | ⬜ pending |
-| 16-04 T1 — Retrait des 6 champs + BudgetSource + purge du diagnostic | 16-04 | 3 | DEL-05 | unit + smoke | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~SettingsServiceTests"` puis suite complète | ✅ existant — à adapter (5 tests) | ⬜ pending |
-| 16-04 T2 — Fixture réelle + preuve DEL-06 | 16-04 | 3 | DEL-06 | unit | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~SettingsServiceTests"` | ❌ Wave 0 — fixture `TestData/settings-legacy-plafonds.json` + 4 tests | ⬜ pending |
-| 16-04 T3 — Garde de non-retour DEL-05 (réflexion Budget*) | 16-04 | 3 | DEL-05 | unit (réflexion) | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~ServicesLayerPurityTests"` | ✅ existant — 1 `[Fact]` à ajouter | ⬜ pending |
+| 16-04 T1 — Retrait des 6 champs + BudgetSource + purge du diagnostic | 16-04 | 3 | DEL-05 | unit + smoke | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~SettingsServiceTests"` puis suite complète | ✅ 5 tests adaptés | ✅ green (414/0, commit d6023d3) |
+| 16-04 T2 — Fixture réelle + preuve DEL-06 | 16-04 | 3 | DEL-06 | unit | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~SettingsServiceTests"` | ✅ fixture `TestData/settings-legacy-plafonds.json` créée + 4 tests | ✅ green (9/0, commit a94793d) |
+| 16-04 T3 — Garde de non-retour DEL-05 (réflexion Budget*) | 16-04 | 3 | DEL-05 | unit (réflexion) | `dotnet test Chronos.sln -v q --nologo --filter "FullyQualifiedName~ServicesLayerPurityTests"` | ✅ 1 `[Fact]` ajouté, falsifiabilité vérifiée | ✅ green (2/0, commit 2383a98) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -101,6 +101,30 @@ L'infrastructure xUnit existe déjà. Wave 0 se limite aux fixtures :
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Disposition de la fenêtre de réglages après retrait du bouton « Plafonds… » | DEL-05 | La `UniformGrid` passe de 4 à 3 boutons — rendu visuel non assertable | Lancer l'app, ouvrir les réglages, vérifier qu'aucun trou disgracieux ni bouton fantôme ne subsiste |
+
+### Résultat de l'inspection (plan 16-04, exécution du 2026-09-09)
+
+Inspection statique du XAML (`src/Chronos/Views/SettingsWindow.xaml:302-310`) — **la vérification à
+l'œil reste due**, l'exécuteur n'ayant pas de retour visuel :
+
+- **Aucun bouton fantôme** : la `UniformGrid` « RÉGLAGES » contient exactement 3 `Button`
+  (« Recalibrer hebdo… », « Source terminal », « Diagnostic… »). L'entrée « Plafonds… » a bien
+  disparu du balisage (plan 16-01), et plus aucune commande de calibration n'est référencée.
+- **Trou résiduel constaté** : la grille est restée en `Columns="2"`. Avec 3 boutons, la cellule
+  bas-droite est vide. Ce n'est pas un bouton fantôme (rien n'est rendu) mais un déséquilibre visuel.
+- **Non corrigé volontairement.** Passer à `Columns="3"` tiendrait mal : le panneau fait 330 px de
+  large (16 px de marge de chaque côté), soit ~99 px par colonne, alors que « Recalibrer hebdo… » à
+  `FontSize=12` en Segoe UI demande ~105 px → libellé tronqué. La correction propre (grille 2×2 avec
+  « Diagnostic… » en `ColumnSpan=2`, ou raccourcissement des libellés) est un **arbitrage de design**
+  qui demande un œil sur l'écran. Le plan 16-04 pose comme règle « ici on retire, on n'invente pas » ;
+  la refonte du panneau relève d'EXA-06 (phase 20).
+- **À trancher par l'utilisateur** : garder le vide bas-droite, ou basculer en 2×2 avec Diagnostic
+  pleine largeur.
+
+Le second volet de la vérification manuelle — *« le diagnostic ne mentionne plus aucun plafond »* — est
+lui **prouvé statiquement** : `grep -rn "Budget" src/Chronos` ne renvoie plus rien, et les trois
+accroches de `DiagnosticService` (lignes « Plafond 5 h / hebdo », conseil « Calibrer les plafonds… »,
+libellé « pas de plafond → gris ») ont été retirées au commit d6023d3.
 
 ---
 

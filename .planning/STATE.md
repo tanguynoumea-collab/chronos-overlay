@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-09-09T12:40:22.473Z"
+status: verifying
+stopped_at: Completed 16-04-PLAN.md
+last_updated: "2026-09-09T12:53:33.971Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 16 (Fondations du delta) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-09
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -130,6 +130,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 16 P01 | 24min | 3 tasks | 20 files |
 | Phase 16 P02 | 9min | 2 tasks | 6 files |
 | Phase 16 P03 | 29min | 3 tasks | 12 files |
+| Phase 16 P04 | 24 | 3 tasks | 7 files |
 
 ### Decisions
 
@@ -193,6 +194,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 16]: [16-03] Horizon/Covers font partie du contrat : une interrogation anterieure au filtre mtime de 8 j est declaree NON COUVERTE plutot que servie sous-evaluee. La constante 8 j est declaree UNE fois (cutoff du scan = horizon annonce, ils ne peuvent pas diverger).
 - [Phase 16]: [16-03] Borne basse STRICTEMENT exclusive, borne haute inclusive : le message pose exactement sur l'instant du releve exact a deja ete compte par le serveur, le recompter le compterait deux fois.
 - [Phase 16]: [16-03] L'isolation des chemins n'a PAS stabilise Host_resout_et_dispose_les_singletons : la cause reelle est une course du chargeur BAML de WPF (WpfXamlType.FindKnownMember) sous parallelisme xUnit. Correctif : collection 'XAML WPF' DisableParallelization sur les 4 classes qui chargent du XAML.
+- [Phase 16]: DEL-06 livré comme TEST, pas comme code : System.Text.Json ignore par défaut les membres non mappés (skip au niveau du LECTEUR, avant conversion) — un migrateur aurait été du code mort pour un problème inexistant.
+- [Phase 16]: La fixture DEL-06 est une copie octet pour octet du settings.json RÉEL de production : une fixture régénérée par sérialisation ne contiendrait pas les champs obsolètes et ne prouverait rien.
+- [Phase 16]: La garde de non-retour Budget* porte sur le NOM des types et sa falsifiabilité a été vérifiée en exécution (type témoin introduit, échec constaté, témoin retiré).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -241,7 +245,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T12:40:10.103Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-09-09T12:53:33.966Z
+Stopped at: Completed 16-04-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15

@@ -54,7 +54,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 - [x] **DEL-05**: Le **sous-système de plafonds disparaît** du code, des réglages et du menu (`BudgetCalibration`,
   `BudgetAutoCalibrator`, `BudgetSource`, `BudgetDialog` + VM, `IBudgetPrompt`/`BudgetPrompt`, l'entrée
   « Calibrer les plafonds… », les enregistrements DI et les tests associés).
-- [ ] **DEL-06**: Les réglages existants contenant d'anciens plafonds sont **migrés sans casse** : les champs
+- [x] **DEL-06**: Les réglages existants contenant d'anciens plafonds sont **migrés sans casse** : les champs
   obsolètes sont ignorés et les autres préférences (coin, écran, thème, style de cadran, widget sessions)
   survivent intactes.
 
@@ -124,7 +124,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | DEL-03 | Phase 19 | Pending |
 | DEL-04 | Phase 19 | Pending |
 | DEL-05 | Phase 16 | Complete |
-| DEL-06 | Phase 16 | Pending |
+| DEL-06 | Phase 16 | Complete |
 | HDR-01 | Phase 18 | Pending |
 | HDR-02 | Phase 18 | Pending |
 | HDR-03 | Phase 18 | Pending |
