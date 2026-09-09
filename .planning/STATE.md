@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: Completed 17-02-PLAN.md
+status: paused
+stopped_at: Phase 17 apres le plan 17-02 — reprendre au plan 17-03
 last_updated: "2026-09-09T14:14:35.551Z"
-last_activity: 2026-09-09
+last_activity: 2026-09-09 — PAUSE propre apres 17-02 (445 tests verts, arbre propre) ; reprise : .planning/RESUME-HERE.md
 progress:
   total_phases: 6
   completed_phases: 2
