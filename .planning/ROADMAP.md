@@ -148,7 +148,12 @@ de la sonde d'en-têtes de la Phase 18 : sans jeton vivant, aucune source exacte
   4. **Robustesse préservée** : une panne réseau, un refresh token invalide ou un serveur injoignable ne
      provoquent aucun crash ni gel de l'overlay — la dégradation reste silencieuse côté logs et explicite
      côté pastille.
-**Plans**: TBD
+**Plans**: 5 plans (5 vagues)
+- [ ] 17-01-PLAN.md — Wave 0 : couverture de `ChronosOAuthUsageProvider` (aucun test) et de `RefreshAsync` (non testé), avant toute modification (vague 1)
+- [ ] 17-02-PLAN.md — Contrats neutres `EtatAuthentification` / `IAuthStatus` + `RefreshAsync` qui rend sa CAUSE au lieu d'un null muet (vague 2)
+- [ ] 17-03-PLAN.md — `ChronosTokenAuthority` (autorité UNIQUE : sémaphore, rotation persistée, recul) + `TokenRefreshService` (tick 60 s, premier tick immédiat) — TOK-01 (vague 3)
+- [ ] 17-04-PLAN.md — Le provider devient consommateur (rejeu unique sur 401), câblage DI, diagnostic qui nomme l'état réel (vague 4)
+- [ ] 17-05-PLAN.md — Pastille ambre actionnable / grise informative + `ReconnecterCommand` dédiée — TOK-02, TOK-03 (vague 5, checkpoint humain)
 **UI hint**: yes
 
 ### Phase 18 : Source exacte par en-têtes de rate-limit
@@ -233,7 +238,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 |-------|----------------|--------|-----------|
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
-| 17. Jeton toujours vivant, panne toujours visible | 0/? | Not started | - |
+| 17. Jeton toujours vivant, panne toujours visible | 0/5 | Planned | - |
 | 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
