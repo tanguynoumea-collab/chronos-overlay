@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-09-09T11:50:30.987Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-09-09T12:05:06.273Z"
 last_activity: 2026-09-09
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 16 (Fondations du delta) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-09
 
@@ -128,6 +128,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 15 P02 | 7min | 3 tasks | 6 files |
 | Phase 15 P03 | 20min | 4 tasks | 4 files |
 | Phase 16 P01 | 24min | 3 tasks | 20 files |
+| Phase 16 P02 | 9min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -182,6 +183,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 16]: [16-01] Le recul 405 -> 384 tests est le LIVRABLE : les 21 tests supprimes couvraient exclusivement du code supprime (3 CalibrateBudgets, 3 BudgetAutoCalibrator, 15 BudgetCalibration). Critere = 0 echec + justification nominative, PAS >= 405.
 - [Phase 16]: [16-01] BudgetSource.cs et les 6 champs de ChronosSettings laisses INTACTS : ChronosSettings les reference encore, les supprimer ici casserait la compilation. Verifie : exactement 3 occurrences de BudgetSource dans src/ -> le plan 16-04 a bien son objet.
 - [Phase 16]: [16-01] dotnet clean ne nettoie QUE la configuration courante (Debug) : 2 des 3 copies obj/**/BudgetDialog.g.cs survivaient. Apres suppression d'un .xaml, nettoyer Debug ET Release puis purger explicitement les *.g.cs orphelins.
+- [Phase 16]: [16-02] Une fenetre n'est persistable que si elle est Exact ET porte utilization ET resets_at : sans resets_at, ni detection de la remise a zero ni recalcul de la geometrie -> chiffre invérifiable. Meme regle au chargement.
+- [Phase 16]: [16-02] Reliability et FractionTimeRemaining ne sont JAMAIS persistees : la premiere est forcee a Exact a la reconstruction (un fichier edite a la main ne peut pas injecter une fausse exactitude), la seconde est recalculee depuis ResetsAt et l'instant present (la persister ressusciterait une geometrie perimee).
+- [Phase 16]: [16-02] La relecture de fusion de Save est BRUTE (sans la garde resets_at <= now) : seule Load invalide une fenetre roulee, la fusion ne doit jamais purger silencieusement.
+- [Phase 16]: [16-02] Le decorateur LastExactUsageProvider rebouche UNIQUEMENT les fenetres Unavailable (jamais Estimated) et n'ecrit que de l'Exact : portee volontairement la plus etroite possible, la doctrine de choix de source reste la phase 19.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -230,7 +235,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T11:50:20.126Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-09-09T12:05:06.266Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15

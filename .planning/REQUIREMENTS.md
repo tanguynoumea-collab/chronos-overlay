@@ -30,7 +30,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 ### Exactitude & doctrine d'affichage (EXA)
 
-- [ ] **EXA-01**: Le dernier relevé exact est **persisté sur disque** avec son horodatage et rechargé au
+- [x] **EXA-01**: Le dernier relevé exact est **persisté sur disque** avec son horodatage et rechargé au
   démarrage, pour que Chronos ne reparte jamais sans chiffre (tue la bascule au redémarrage de l'exe).
 - [ ] **EXA-02**: Au-delà d'un **âge maximal**, une source exacte cesse d'être présentée comme exacte —
   fin du « 10 % vieux de deux mois marqué `Exact` ».
@@ -113,7 +113,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| EXA-01 | Phase 16 | Pending |
+| EXA-01 | Phase 16 | Complete |
 | EXA-02 | Phase 19 | Pending |
 | EXA-03 | Phase 20 | Pending |
 | EXA-04 | Phase 19 | Pending |
