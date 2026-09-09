@@ -15,8 +15,8 @@ public class StatusLineInstallerTests
     private const string Exe = @"C:\Apps\Chronos.exe";
     private static string ChronosCmd => StatusLineInstaller.ChronosCommand(Exe);
 
-    private static JsonNode Root(string json) => JsonNode.Parse(json)!;
-    private static string? Cmd(string json) => Root(json)["statusLine"]?["command"]?.GetValue<string>();
+    private static JsonNode Root(string? json) => JsonNode.Parse(json!)!;
+    private static string? Cmd(string? json) => Root(json)["statusLine"]?["command"]?.GetValue<string>();
 
     // Construit un settings.json valide (échappement correct des guillemets de la commande Chronos).
     private static string SettingsWith(string command, string? extraKey = null, string? extraVal = null)
@@ -64,7 +64,7 @@ public class StatusLineInstallerTests
     {
         var installed = SettingsWith(ChronosCmd);
 
-        var outJson = StatusLineInstaller.TransformForUninstall(installed, Exe, innerCommand: "node gsd.js");
+        var outJson = StatusLineInstaller.TransformForUninstall(installed, innerCommand: "node gsd.js");
 
         Assert.Equal("node gsd.js", Cmd(outJson));
     }
@@ -74,7 +74,7 @@ public class StatusLineInstallerTests
     {
         var installed = SettingsWith(ChronosCmd, "model", "opus");
 
-        var outJson = StatusLineInstaller.TransformForUninstall(installed, Exe, innerCommand: null);
+        var outJson = StatusLineInstaller.TransformForUninstall(installed, innerCommand: null);
 
         Assert.Null(Root(outJson)["statusLine"]);                       // statusLine retirée
         Assert.Equal("opus", Root(outJson)["model"]!.GetValue<string>()); // reste préservé
@@ -85,7 +85,7 @@ public class StatusLineInstallerTests
     {
         var tierce = """{ "statusLine": { "type": "command", "command": "node autre-barre.js" } }""";
 
-        var outJson = StatusLineInstaller.TransformForUninstall(tierce, Exe, innerCommand: "peu importe");
+        var outJson = StatusLineInstaller.TransformForUninstall(tierce, innerCommand: "peu importe");
 
         Assert.Equal("node autre-barre.js", Cmd(outJson)); // pas Chronos → intouchée
     }

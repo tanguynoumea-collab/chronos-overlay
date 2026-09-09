@@ -54,7 +54,7 @@ public sealed class StatusLineSetup : IStatusLineSetup
         try
         {
             var s = _settings.Load();
-            _installer.Uninstall(ExePath, s.InnerStatusLineCommand);
+            _installer.Uninstall(s.InnerStatusLineCommand);
             Persist(x => x with { StatusLinePromptDismissed = true });
         }
         catch (Exception ex)
