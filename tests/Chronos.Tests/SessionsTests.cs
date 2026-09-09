@@ -106,6 +106,119 @@ public class SessionsTests
         Assert.Equal("node autre.js", stop![0]!["hooks"]![0]!["command"]!.GetValue<string>());
     }
 
+    // PUR-01 — critère de succès 1 : trois installations depuis trois chemins d'exe DIFFÉRENTS
+    // laissent exactement 1 groupe Chronos par événement (5 au total), et non 3 par événement.
+    // C'est très exactement la régression qui a produit 25 groupes sur la vraie machine.
+    [Fact]
+    public void Trois_chemins_dexe_successifs_ne_laissent_que_cinq_hooks()
+    {
+        var v25 = SessionHookInstaller.TransformForInstall(null, @"C:\DL\Chronos-v2.5.exe");
+        var v26 = SessionHookInstaller.TransformForInstall(v25, @"C:\DL\Chronos-v2.6.exe");
+        var v281 = SessionHookInstaller.TransformForInstall(v26, @"C:\DL\Chronos-v2.8.1.exe");
+
+        var hooks = (JsonNode.Parse(v281!) as JsonObject)!["hooks"] as JsonObject;
+        foreach (var ev in SessionHookInstaller.Events)
+        {
+            var arr = (hooks![ev] as JsonArray)!;
+            Assert.Single(arr);                                   // 1 seul groupe Chronos, jamais 3
+            var cmd = arr[0]!["hooks"]![0]!["command"]!.GetValue<string>();
+            Assert.Contains("C:/DL/Chronos-v2.8.1.exe", cmd);     // et il pointe le DERNIER exe
+        }
+    }
+
+    // PUR-01 — un groupe d'un autre outil (GSD) survit intégralement : « matcher », « timeout »,
+    // et sa POSITION (les survivants gardent leur ordre, le groupe Chronos est ajouté en fin).
+    [Fact]
+    public void Install_preserve_un_groupe_tiers_avec_son_matcher_et_son_timeout()
+    {
+        const string existing =
+            """{"hooks":{"SessionStart":[{"matcher":"Write|Edit","hooks":[{"type":"command","command":"node gsd.js","timeout":5}]}]}}""";
+
+        var outJson = SessionHookInstaller.TransformForInstall(existing, Exe);
+        var arr = ((JsonNode.Parse(outJson!) as JsonObject)!["hooks"]!["SessionStart"] as JsonArray)!;
+
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("Write|Edit", arr[0]!["matcher"]!.GetValue<string>());          // matcher préservé
+        Assert.Equal(5, arr[0]!["hooks"]![0]!["timeout"]!.GetValue<int>());          // timeout préservé
+        Assert.Equal("node gsd.js", arr[0]!["hooks"]![0]!["command"]!.GetValue<string>());
+        Assert.Contains("--hook SessionStart", arr[1]!["hooks"]![0]!["command"]!.GetValue<string>());
+    }
+
+    // PUR-01 — le schéma officiel autorise des handlers SANS champ « command » (http/mcp_tool/prompt/
+    // agent). L'ancien prédicat faisait GetValue<string>() dessus et aurait levé.
+    [Fact]
+    public void Install_ne_leve_pas_sur_un_handler_sans_command()
+    {
+        const string existing = """{"hooks":{"Stop":[{"hooks":[{"type":"http","url":"https://x"}]}]}}""";
+
+        var outJson = SessionHookInstaller.TransformForInstall(existing, Exe);
+        var arr = ((JsonNode.Parse(outJson!) as JsonObject)!["hooks"]!["Stop"] as JsonArray)!;
+
+        Assert.Equal(2, arr.Count);
+        Assert.Equal("https://x", arr[0]!["hooks"]![0]!["url"]!.GetValue<string>());  // groupe voisin intact
+    }
+
+    // PUR-03 — un settings.json INEXPLOITABLE ne produit AUCUNE écriture : les cœurs purs renvoient
+    // null. Le repli historique « repartir d'un objet vide » effaçait tout le fichier de l'utilisateur.
+    [Theory]
+    [InlineData("""{"a":1,"a":2}""")]
+    [InlineData("[1,2,3]")]
+    [InlineData("{ cassé")]
+    [InlineData("\"scalaire\"")]
+    public void Install_sur_json_inexploitable_ne_produit_rien(string json)
+    {
+        Assert.Null(SessionHookInstaller.TransformForInstall(json, Exe));
+        Assert.Null(SessionHookInstaller.TransformForUninstall(json));
+    }
+
+    // PUR-01 — la purge est volontairement LARGE : elle retire les hooks de TOUTES les versions,
+    // pas seulement ceux de l'exe courant, sinon désactiver depuis une nouvelle version laisserait
+    // derrière lui les hooks de toutes les anciennes.
+    [Fact]
+    public void Uninstall_retire_les_hooks_de_toutes_les_versions()
+    {
+        const string tiers =
+            """{"hooks":{"SessionStart":[{"matcher":"Write|Edit","hooks":[{"type":"command","command":"node gsd.js","timeout":5}]}]}}""";
+
+        var v25 = SessionHookInstaller.TransformForInstall(tiers, @"C:\DL\Chronos-v2.5.exe");
+        var v26 = SessionHookInstaller.TransformForInstall(v25, @"C:\DL\Chronos-v2.6.exe");
+        var v281 = SessionHookInstaller.TransformForInstall(v26, @"C:\DL\Chronos-v2.8.1.exe");
+
+        var cleaned = SessionHookInstaller.TransformForUninstall(v281);
+
+        Assert.DoesNotContain("--hook", cleaned!);                       // plus AUCUNE commande Chronos
+        var hooks = (JsonNode.Parse(cleaned!) as JsonObject)!["hooks"] as JsonObject;
+        var arr = (hooks!["SessionStart"] as JsonArray)!;
+        Assert.Single(arr);
+        Assert.Equal("node gsd.js", arr[0]!["hooks"]![0]!["command"]!.GetValue<string>()); // tiers survivant
+        Assert.Null(hooks["Stop"]);                                       // clé devenue vide → retirée
+    }
+
+    // PUR-03 — désinstaller sur un fichier sans hooks ne DOIT PAS créer la clé « hooks », ni toucher
+    // aux autres réglages.
+    [Fact]
+    public void Uninstall_sur_settings_sans_hooks_ne_cree_pas_la_cle()
+    {
+        var outJson = SessionHookInstaller.TransformForUninstall("""{"model":"opus"}""");
+        var root = (JsonNode.Parse(outJson!) as JsonObject)!;
+
+        Assert.Null(root["hooks"]);
+        Assert.Equal("opus", root["model"]!.GetValue<string>());
+    }
+
+    // PUR-01 — FRAÎCHEUR : un groupe Chronos d'une AUTRE version ne compte pas comme « installé ici ».
+    // Chemin injecté depuis Path.GetTempPath() : ce test ne peut pas atteindre le vrai ~/.claude.
+    [Fact]
+    public void IsInstalled_est_faux_quand_le_groupe_pointe_une_autre_version()
+    {
+        var fichier = Path.Combine(TempDir(), "settings.json");
+        File.WriteAllText(fichier, SessionHookInstaller.TransformForInstall(null, @"C:\DL\Chronos-v2.8.1.exe")!);
+
+        var installer = new SessionHookInstaller(fichier);   // chemin TEMP, jamais le profil utilisateur
+        Assert.False(installer.IsInstalled(Exe));                              // pas CET exe
+        Assert.True(installer.IsInstalled(@"C:\DL\Chronos-v2.8.1.exe"));       // mais bien celui-là
+    }
+
     // --- SessionMonitor ---
 
     private static string TempDir() { var d = Path.Combine(Path.GetTempPath(), "chronos-sess-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(d); return d; }
