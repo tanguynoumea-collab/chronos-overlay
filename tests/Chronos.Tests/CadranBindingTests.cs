@@ -169,4 +169,117 @@ public class CadranBindingTests
         Assert.False(vm.HasTokens);
         Assert.Equal("", vm.TokensText);
     }
+
+    // ================== TOK-02 / TOK-03 : les pastilles d'authentification ==================
+
+    /// <summary>
+    /// Monte la fenêtre dans l'état d'authentification voulu et met en page la GRILLE RACINE dans
+    /// l'empreinte réelle 170x170.
+    ///
+    /// Pourquoi poser le DataContext sur la grille : une fenêtre jamais affichée n'a pas de template
+    /// appliqué, donc son <c>Content</c> n'a AUCUN parent visuel — le DataContext ne se propage pas et
+    /// aucun binding ne s'évalue (Command resterait null, Visibility resterait à son défaut Visible,
+    /// et les tests seraient verts pour de mauvaises raisons). Les enfants d'un Panel, eux, SONT des
+    /// enfants visuels : poser le DataContext sur la grille rétablit une évaluation RÉELLE.
+    /// </summary>
+    private static (MainWindow fenetre, FrameworkElement racine) MonterPastille(
+        EtatAuthentification etat, out MainViewModel vm)
+    {
+        var fenetre = BuildWindow(UsageSnapshot.Empty, out vm);
+        vm.AppliquerEtatAuth(etat);
+
+        var racine = (FrameworkElement)fenetre.Content!;
+        racine.DataContext = vm;
+
+        // Une réévaluation de binding déclenchée par un changement de DataContext est une opération
+        // DIFFÉRÉE du Dispatcher : sans purge de la file, Command resterait null et Visibility à son
+        // défaut (Visible) — le test serait vert pour de mauvaises raisons.
+        racine.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+        racine.Measure(new Size(170, 170));
+        racine.Arrange(new Rect(0, 0, 170, 170));
+        return (fenetre, racine);
+    }
+
+    /// <summary>
+    /// TOK-02 : la pastille se met en page sans exception, SANS changer l'empreinte 170x170 (donc sans
+    /// toucher au placement, à l'ancrage ni à OverlayController.RestorePlacement), et — surtout — sans
+    /// MASQUER un anneau : son centre est mesuré à plus de 71,5 px du centre du cadran, rayon extrême
+    /// de l'élément le plus externe (TickRing Radius=68 + TickLength=7). C'est la moitié automatisable
+    /// de la vérification visuelle.
+    /// </summary>
+    [WpfFact]
+    public void La_pastille_de_deconnexion_se_met_en_page_hors_de_toute_geometrie_d_anneau()
+    {
+        var (fenetre, racine) = MonterPastille(EtatAuthentification.Deconnecte, out var vm);
+        var pastille = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
+
+        Assert.True(vm.AfficherPastilleDeconnexion);
+        Assert.False(vm.AfficherPastilleHorsLigne);
+        Assert.Equal(170d, fenetre.Width);    // empreinte intacte : ancrage et placement préservés
+        Assert.Equal(170d, fenetre.Height);
+
+        // Position réelle après Arrange, exprimée dans la boîte du cadran.
+        var coin = pastille.TransformToAncestor(racine).Transform(new Point(0, 0));
+        var centre = new Point(coin.X + pastille.ActualWidth / 2, coin.Y + pastille.ActualHeight / 2);
+        Assert.InRange(centre.X, 140d, 170d);   // bas-DROITE, dans l'empreinte
+        Assert.InRange(centre.Y, 140d, 170d);
+
+        var distanceAuCentre = (centre - new Point(85, 85)).Length;
+        Assert.True(distanceAuCentre > 71.5,
+            $"la pastille empiète sur la géométrie des anneaux (distance {distanceAuCentre:F1} px)");
+    }
+
+    /// <summary>
+    /// TOK-03 — LE piège de la phase, verrouillé au niveau du XAML et non seulement du ViewModel :
+    /// la pastille doit porter <c>ReconnecterCommand</c>. Bindée sur <c>LoginClaudeCommand</c>, qui
+    /// BASCULE sur <c>IsLoggedIn == _store.Exists</c> (vrai même avec un jeton expiré), un clic
+    /// SUPPRIMERAIT le coffre de jetons de l'utilisateur au lieu de le reconnecter.
+    /// Le <c>Background</c> non-null est l'autre invariant : sans lui, la pastille ne serait pas
+    /// hit-testable sur une fenêtre <c>AllowsTransparency</c> et le clic traverserait vers le bureau.
+    /// </summary>
+    [WpfFact]
+    public void La_pastille_est_bindee_sur_ReconnecterCommand_et_JAMAIS_sur_LoginClaudeCommand()
+    {
+        var (fenetre, _) = MonterPastille(EtatAuthentification.Deconnecte, out var vm);
+        var pastille = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
+
+        Assert.Same(vm.ReconnecterCommand, pastille.Command);
+        Assert.NotSame(vm.LoginClaudeCommand, pastille.Command);
+        Assert.NotNull(pastille.Background);                  // hit-testable (Transparent suffit)
+        Assert.Equal(Visibility.Visible, pastille.Visibility);
+        Assert.Equal(HorizontalAlignment.Right, pastille.HorizontalAlignment);
+        Assert.Equal(VerticalAlignment.Bottom, pastille.VerticalAlignment);
+    }
+
+    /// <summary>TOK-02 : « hors ligne » n'allume PAS la pastille actionnable. Vérifié sur les
+    /// Visibility RÉSOLUES : rien à cliquer quand seul le wifi est coupé, mais l'utilisateur est tout
+    /// de même prévenu par la pastille grise et inerte.</summary>
+    [WpfFact]
+    public void Hors_ligne_laisse_la_pastille_actionnable_COLLAPSED()
+    {
+        var (fenetre, _) = MonterPastille(EtatAuthentification.HorsLigne, out var vm);
+
+        var actionnable = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
+        var informative = Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleHorsLigne"));
+
+        Assert.Equal(Visibility.Collapsed, actionnable.Visibility);
+        Assert.Equal(Visibility.Visible, informative.Visibility);
+        Assert.True(vm.AfficherPastilleHorsLigne);
+        Assert.Equal(170d, fenetre.Width);
+    }
+
+    /// <summary>TOK-02 : à l'état CONNECTÉ, les DEUX pastilles sont éteintes — l'overlay ne porte aucun
+    /// badge permanent. Contre-épreuve directe des deux tests ci-dessus.</summary>
+    [WpfFact]
+    public void A_l_etat_Connecte_les_DEUX_pastilles_sont_eteintes()
+    {
+        var (fenetre, _) = MonterPastille(EtatAuthentification.Connecte, out _);
+
+        var actionnable = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
+        var informative = Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleHorsLigne"));
+
+        Assert.Equal(Visibility.Collapsed, actionnable.Visibility);
+        Assert.Equal(Visibility.Collapsed, informative.Visibility);
+    }
 }

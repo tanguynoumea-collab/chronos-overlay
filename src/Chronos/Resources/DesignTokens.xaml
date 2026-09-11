@@ -19,6 +19,10 @@
     <!-- Deux nuances secondaires verrouillées, chacune un usage distinct (aucun token orphelin) : -->
     <SolidColorBrush x:Key="TexteSecondaireClair" Color="#C7C6D0"/>   <!-- countdown hebdo (vivant mais secondaire) -->
     <SolidColorBrush x:Key="TexteSecondaire"      Color="#A9A8B2"/>   <!-- badges/mentions annexes (estimée, épuisé, indisponible, périmée) -->
+    <SolidColorBrush x:Key="Alerte"               Color="#EFA23A"/>   <!-- pastille de déconnexion (TOK-02). Repli STATIQUE = RampAmber du thème
+                                                                           par défaut « minuit » ; ChronosTheme.BrushTokens() l'écrase par le RampAmber
+                                                                           du thème actif. AMBRE et non rouge : le rouge signifie déjà « quota épuisé »
+                                                                           dans la rampe d'usage, un rouge d'auth entrerait en collision sémantique. -->
 
     <!-- Converters : rampe d'utilization (05-02) + BooleanToVisibility intégré WPF. -->
     <conv:UtilizationToBrushConverter x:Key="UtilBrush"/>

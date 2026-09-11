@@ -68,6 +68,8 @@ public sealed class ChronosTheme
         ["TextePrincipal"] = Frozen(TextePrincipal),
         ["TexteSecondaireClair"] = Frozen(TexteSecondaireClair),
         ["TexteSecondaire"] = Frozen(TexteSecondaire),
+        ["Alerte"] = Frozen(RampAmber),   // TOK-02 : la pastille de déconnexion suit les 9 thèmes.
+                                          // Précédent exact : SessionBrushTokens()["SessAttention"].
     };
 
     /// <summary>Pinceaux du WIDGET DE SESSIONS (l'autre overlay), dérivés du thème pour que l'ensemble soit

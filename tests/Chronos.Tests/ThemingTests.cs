@@ -43,6 +43,22 @@ public class ThemingTests
         Assert.Equal(0xE6, ThemeCatalog.ByKey("minuit").FondCadran.A);
     }
 
+    /// <summary>TOK-02 : le token « Alerte » de la pastille de déconnexion suit les 9 thèmes. Un thème
+    /// où il manquerait rendrait la pastille invisible (pinceau non résolu) précisément chez les
+    /// utilisateurs qui n'ont pas gardé « minuit » — panne silencieuse d'un signal anti-silence.
+    /// AMBRE et non rouge : le rouge signifie déjà « quota épuisé » dans la rampe d'usage.</summary>
+    [Fact]
+    public void Le_token_Alerte_existe_dans_les_neuf_themes_et_vaut_l_ambre_du_theme()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var tokens = t.BrushTokens();
+            Assert.True(tokens.ContainsKey("Alerte"), $"thème {t.Key} : token Alerte manquant");
+            Assert.Equal(t.RampAmber, ((SolidColorBrush)tokens["Alerte"]).Color);
+            Assert.NotEqual(t.RampRed, ((SolidColorBrush)tokens["Alerte"]).Color);
+        }
+    }
+
     [Fact]
     public void ArcColor_gere_neutre_epuise_et_rampe()
     {

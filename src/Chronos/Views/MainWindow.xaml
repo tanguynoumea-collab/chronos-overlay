@@ -132,5 +132,47 @@
         <Ellipse x:Name="CentreHit" Width="66" Height="66" Fill="Transparent" Cursor="Hand"
                  ToolTip="Cliquer : basculer pourcentage / temps avant reset"
                  MouseLeftButtonDown="CentreHit_MouseLeftButtonDown"/>
+
+        <!-- ============ PASTILLES D'AUTHENTIFICATION (TOK-02 / TOK-03) ============
+             DERNIERS enfants du Grid racine => au-dessus de TOUS les styles de cadran : uniques pour
+             les 5 styles (Anneaux/Braises/Fusible/Marée/Volets) et les 2 modes, sans duplication, et
+             sans toucher aux UserControl de Views/Cadrans (la galerie de cadrans reste intacte).
+             Géométrie : l'anneau le plus externe culmine vers (136,136) dans la boîte 170x170 ; une
+             pastille de 14 px ancrée bas-droite occupe ≈ (150..164) — franchement à l'écart.
+             Le coin BAS-droite plutôt que haut-droite : l'overlay s'ancre le plus souvent en haut à
+             droite de l'écran, le bas-droite est donc le moins susceptible d'être mordu par un bord. -->
+
+        <!-- DÉCONNECTÉ : ACTIONNABLE. Button (pas Ellipse nue) car ButtonBase marque
+             MouseLeftButtonDown comme Handled => aucun DragMove parasite (le handler de fenêtre
+             bloquerait jusqu'au relâchement au lieu de lancer le login).
+             Background non-null => hit-testable sur fenêtre AllowsTransparency (Transparent suffit
+             en WPF ; seul {x:Null} ne l'est pas — CentreHit le prouve en production).
+             Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE et
+             supprimerait le coffre puisque IsLoggedIn ne teste que l'existence du fichier. -->
+        <Button x:Name="PastilleDeconnexion"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
+                Cursor="Hand" Focusable="False"
+                ToolTip="Connexion à Claude perdue — cliquer pour se reconnecter"
+                Command="{Binding ReconnecterCommand}"
+                Visibility="{Binding AfficherPastilleDeconnexion, Converter={StaticResource BoolToVis}}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Grid Background="Transparent">
+                        <Ellipse Fill="{DynamicResource Alerte}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+
+        <!-- HORS LIGNE : INFORMATIF, gris, NON actionnable. Ne crie jamais « reconnecte-toi » à
+             quelqu'un dont le wifi est coupé : il relancerait un login, échouerait, et perdrait
+             confiance dans le signal. TexteSecondaire est déjà le token des mentions annexes
+             (estimée, épuisé, indisponible, périmée) — aucun nouveau token nécessaire. -->
+        <Ellipse x:Name="PastilleHorsLigne"
+                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                 Width="10" Height="10" Fill="{DynamicResource TexteSecondaire}"
+                 ToolTip="Hors ligne — chiffres non rafraîchis"
+                 Visibility="{Binding AfficherPastilleHorsLigne, Converter={StaticResource BoolToVis}}"/>
     </Grid>
 </Window>
