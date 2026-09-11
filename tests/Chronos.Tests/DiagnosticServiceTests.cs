@@ -58,4 +58,25 @@ public class DiagnosticServiceTests
         Assert.Contains("Token déchiffré : NON", report);
         Assert.Contains("Conseil", report);
     }
+
+    /// <summary>TOK-02 : le rapport nomme l'état d'authentification RÉEL, pas la seule présence
+    /// du fichier oauth.dat — c'est cette confusion qui a laissé l'utilisateur deux mois dans le noir
+    /// (jeton expiré le 2026-07-12, oauth.dat parfaitement présent, diagnostic affichant « Connecté :
+    /// OUI »). Montage à Token = null : la sonde réseau est gardée par `if (token is not null)`,
+    /// donc ce test n'émet AUCUNE requête.</summary>
+    [Fact]
+    public async Task Le_rapport_nomme_l_etat_d_authentification_reel()
+    {
+        var paths = TempPaths();
+        var settings = new SettingsService(paths);
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         settings, new StubProvider(UsageSnapshot.Empty),
+                                         new FakeClock(DateTimeOffset.UtcNow), auth);
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("État d'authentification : DÉCONNECTÉ", report);
+        Assert.Contains("Token déchiffré : NON", report);   // assertion existante préservée
+    }
 }

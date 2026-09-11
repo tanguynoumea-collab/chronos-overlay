@@ -342,6 +342,7 @@ public partial class App : Application
             sp.GetRequiredService<ChronosPaths>(),
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IUsageProvider>(),
-            sp.GetRequiredService<IClock>()));
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<IAuthStatus>()));   // TOK-02 : le rapport dit l'état RÉEL
     }
 }

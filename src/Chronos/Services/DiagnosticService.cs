@@ -26,15 +26,21 @@ public sealed class DiagnosticService
     private readonly SettingsService _settings;
     private readonly IUsageProvider _composite;
     private readonly IClock _clock;
+    private readonly IAuthStatus? _authStatus;
 
+    /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
+    /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
+    /// tests) compilent sans retouche, et la DI passe le vrai service.</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
-                             SettingsService settings, IUsageProvider composite, IClock clock)
+                             SettingsService settings, IUsageProvider composite, IClock clock,
+                             IAuthStatus? authStatus = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
         _settings = settings;
         _composite = composite;
         _clock = clock;
+        _authStatus = authStatus;
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -90,6 +96,10 @@ public sealed class DiagnosticService
         sb.AppendLine("  Connecté : " + (File.Exists(oauthDat)
             ? "OUI (jeton chiffré présent) — les chiffres exacts arrivent au prochain rafraîchissement"
             : "non (menu clic droit → « Se connecter à Claude »)"));
+        // TOK-02 : « le fichier existe » n'a JAMAIS voulu dire « authentifié ». Le jeton de cette
+        // machine a expiré le 2026-07-12 alors que oauth.dat était bien présent : c'est exactement le
+        // silence que la phase 17 brise. On affiche donc l'état RÉEL, pas la présence d'un fichier.
+        sb.AppendLine("  État d'authentification : " + LibelleAuth(_authStatus?.Etat));
         sb.AppendLine();
 
         // 2b) Source exacte secondaire : pont statusLine Claude Code (usage.json), terminal uniquement.
@@ -395,6 +405,18 @@ public sealed class DiagnosticService
 
         return sb.ToString();
     }
+
+    // Libellé français de l'état d'authentification. Chaque branche dit à l'utilisateur s'il a
+    // quelque chose à FAIRE : « hors ligne » est informatif, « déconnecté » est actionnable —
+    // les confondre ferait relancer un login voué à l'échec sur un simple wifi coupé.
+    private static string LibelleAuth(EtatAuthentification? etat) => etat switch
+    {
+        EtatAuthentification.Connecte    => "CONNECTÉ (jeton valide, chiffres exacts en circulation)",
+        EtatAuthentification.HorsLigne   => "HORS LIGNE (réseau ou serveur indisponible — le jeton est peut-être bon)",
+        EtatAuthentification.Deconnecte  => "DÉCONNECTÉ (le serveur a refusé les identifiants — reconnexion nécessaire)",
+        EtatAuthentification.NonConnecte => "jamais connecté (clic droit → « Se connecter à Claude »)",
+        _                                => "(inconnu — autorité de jeton non injectée)",
+    };
 
     // Cherche (profondeur bornée, dossiers volumineux ignorés) les fichiers config.json contenant
     // « oauth:tokenCache » → révèle où l'app bureau range son coffre, quel que soit son nom/emplacement.
