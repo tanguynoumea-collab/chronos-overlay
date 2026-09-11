@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: paused
-stopped_at: Phase 17 apres le plan 17-02 — reprendre au plan 17-03
-last_updated: "2026-09-09T14:14:35.551Z"
-last_activity: 2026-09-09 — PAUSE propre apres 17-02 (445 tests verts, arbre propre) ; reprise : .planning/RESUME-HERE.md
+status: executing
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-09-11T22:32:23.983Z"
+last_activity: 2026-09-11
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -28,9 +28,9 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 17 (Jeton toujours vivant, panne toujours visible) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
-Last activity: 2026-09-09
+Last activity: 2026-09-11
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -133,6 +133,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 16 P04 | 24 | 3 tasks | 7 files |
 | Phase 17 P01 | 18 | 2 tasks | 2 files |
 | Phase 17 P02 | 7min | 2 tasks | 6 files |
+| Phase 17 P03 | 10min | 2 tasks | 4 files |
 
 ### Decisions
 
@@ -206,6 +207,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 17]: [17-02] ResultatRafraichissement n'expose AUCUNE propriete string, et un test reflexif (GetProperties) l'impose : un corps d'erreur peut echoiser la requete, donc le refresh token. La securite est structurelle, pas conventionnelle.
 - [Phase 17]: [17-02] EtatAuthentification a 4 valeurs et pas 3 : HorsLigne et Deconnecte sont irreductibles. IAuthStatus copie le motif RefreshOrchestrator.SnapshotChanged (le service expose l'event, l'abonne marshalle) — ServicesLayerPurityTests reste vert sans toucher son allow-list.
 - [Phase 17]: [17-02] TOK-01/TOK-02 laisses Pending : ce plan ne cree ni autorite, ni service de fond, ni pastille. IAuthStatus et EtatAuthentification sont des contrats sans implementation a ce commit — intentionnel, 17-03 implemente, 17-05 consomme.
+- [Phase 17]: [17-03] Autorite UNIQUE de jeton : SemaphoreSlim(1,1) + double-verification => N demandes concurrentes produisent UNE rotation, jamais N. Parade structurelle a la course de rotation du refresh token (bug claude-code#25609) qui fabriquerait une FAUSSE deconnexion sur un compte sain.
+- [Phase 17]: [17-03] Le recul (backoff 2->30 min) vit DANS l'autorite et ne consulte AUCUN cache d'usage : c'est la reponse directe au defaut n.3 decouvert par 17-01 (le garde-fou du provider exige un _cached en RAM, donc vide a chaque demarrage de l'exe). Un recul adosse a un cache disparait precisement au redemarrage, c'est-a-dire quand le martelement se produit.
+- [Phase 17]: [17-03] Aucun .Clear() dans l'autorite, et c'est teste : apres un 400 invalid_grant, oauth.dat existe toujours ET contient encore l'ancien refresh token. Parade au faux positif serveur documente (claude-code#54443). Un Save en echec ne fait pas croire a un echec de refresh : les jetons neufs restent en memoire.
+- [Phase 17]: [17-03] TokenRefreshService : tick FIXE 60 s + predicat pur d'horloge murale, dueTime ZERO (premier tick immediat), TickAsync public et non-levant. Pas de reveil calcule sur ExpiresAt (casse a la mise en veille) ; RefreshOrchestrator (horloge DONNEES) laisse intact.
+- [Phase 17]: [17-03] TOK-01/TOK-02 laisses Pending : les deux types existent et sont prouves (39 tests) mais AUCUN n'est enregistre dans le graphe DI. Un TokenRefreshService que le host ne demarre jamais ne rafraichit rien — le cablage est le plan 17-04, en un seul commit avec le rebranchement du provider.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -254,7 +260,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-09T14:14:24.909Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-09-11T22:32:23.977Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15
