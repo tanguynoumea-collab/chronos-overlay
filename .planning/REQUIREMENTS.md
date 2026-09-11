@@ -79,7 +79,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
   moment du besoin.
 - [x] **TOK-02**: Un **échec d'authentification est visible** dans l'overlay — plus jamais un 401 muet pendant
   deux mois.
-- [ ] **TOK-03**: Le signal de déconnexion permet de **relancer le login en un clic**.
+- [x] **TOK-03**: Le signal de déconnexion permet de **relancer le login en un clic**.
 
 ### Idempotence des intégrations (PUR)
 
@@ -133,7 +133,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | HDR-06 | Phase 18 | Pending |
 | TOK-01 | Phase 17 | Complete |
 | TOK-02 | Phase 17 | Complete |
-| TOK-03 | Phase 17 | Pending |
+| TOK-03 | Phase 17 | Complete |
 | PUR-01 | Phase 15 | Complete |
 | PUR-02 | Phase 15 | Complete |
 | PUR-03 | Phase 15 | Complete |

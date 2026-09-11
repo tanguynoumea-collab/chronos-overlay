@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: Completed 17-04-PLAN.md
-last_updated: "2026-09-11T22:49:31.805Z"
+status: verifying
+stopped_at: Completed 17-05-PLAN.md
+last_updated: "2026-09-11T23:13:51.510Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 17 (Jeton toujours vivant, panne toujours visible) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-11
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -39,9 +39,9 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
 | Phase | Titre | Requirements | Statut |
 |-------|-------|--------------|--------|
-| 15 | Idempotence des intégrations | PUR-01..03 | Not started |
-| 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Not started |
-| 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Not started |
+| 15 | Idempotence des intégrations | PUR-01..03 | Complete (3/3) |
+| 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Complete (4/4) |
+| 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
 | 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Not started |
 | 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Not started |
 | 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Not started |
@@ -135,6 +135,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 17 P02 | 7min | 2 tasks | 6 files |
 | Phase 17 P03 | 10min | 2 tasks | 4 files |
 | Phase 17 P04 | 26min | 2 tasks | 7 files |
+| Phase 17 P05 | 19min | 3 tasks | 9 files |
 
 ### Decisions
 
@@ -218,6 +219,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 17]: [17-04] Le garde-fou de debit du provider ne consulte PLUS le cache : 'ai-je le droit d'appeler' est decouple de 'ai-je un cache a servir'. Le cache vivant en RAM, le frein disparaissait a chaque demarrage de l'exe — precisement quand le martelement se produit (defaut n.3 de 17-01, dernier segment non corrige).
 - [Phase 17]: [17-04] IAuthStatus est un ALIAS de l'instance d'autorite (jamais une seconde) et TokenRefreshService est enregistre ET heberge : la garde DI le prouve par Assert.Same + Assert.Contains sur IHostedService, ce qu'un dotnet build ne voit pas. TOK-01 fonctionnellement acquis, seule la visibilite manque (17-05).
 - [Phase 17]: [17-04] DiagnosticService : parametre IAuthStatus OPTIONNEL en DERNIERE position => 9 sites de construction preexistants compilent sans retouche. 'Le fichier oauth.dat existe' n'a jamais voulu dire 'authentifie' : le rapport nomme desormais l'etat reel, HORS LIGNE (informatif) distingue de DECONNECTE (actionnable).
+- [Phase 17]: [17-05] La pastille porte une commande DEDIEE (ReconnecterCommand) et JAMAIS LoginClaudeCommand : cette derniere bascule sur IsLoggedIn == _store.Exists, vrai meme avec un jeton expire -> un clic aurait SUPPRIME le coffre de jetons. Verrouille a deux niveaux : LogoutCount == 0 cote VM, et un [WpfFact] qui compare l'instance de commande reellement bindee dans le XAML.
+- [Phase 17]: [17-05] Deux booleens de pastille et non un enum binde : Deconnecte est ACTIONNABLE (ambre, cliquable), HorsLigne est INFORMATIF (gris, inerte). Etat applique DES le ctor : sur cette machine le jeton est mort depuis le 2026-07-12, l'autorite est deja en echec au demarrage et n'emettra aucune transition. NonConnecte n'allume rien (EXA-05, phase 19).
+- [Phase 17]: [17-05] ReinitialiserApresLogin a enfin un appelant (aucun depuis 17-02), suivi de RequestRefresh : sans quoi le verrou Deconnecte et le recul restaient poses et la pastille survivait a sa propre reparation. L'ORDRE des deux est reel en production mais INOBSERVABLE en test (RequestRefresh ne fait qu'empiler, consommation asynchrone) : declare non couvert plutot que teste faussement.
+- [Phase 17]: [17-05] DEUX gardes de test MUETTES attrapees par mutation : (1) RefreshOrchestrator.TryTrigger ne renvoie PAS false quand le channel est plein (DropWrite renvoie true) ; (2) une fenetre WPF jamais affichee n'a pas de parent visuel pour son Content, donc le DataContext ne se propage pas et AUCUN binding ne s'evalue (Command null, Visibility=Visible par defaut). Parade : DataContext sur la grille racine + purge du Dispatcher.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -254,7 +259,13 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- Prochaine action v1.5 : `/gsd:plan-phase 15` (idempotence des installateurs de hooks / statusLine).
+- Prochaine action v1.5 : `/gsd:plan-phase 18` (source exacte par en-têtes de rate-limit).
+- **À faire par l'utilisateur, hors GSD** : les deux vérifications manuelles de la phase 17, listées sous
+  « À VÉRIFIER PAR L'UTILISATEUR » dans `17-05-SUMMARY.md` — (1) lisibilité de la pastille de
+  déconnexion dans les 3 thèmes × 5 styles × 2 modes, (2) parcours de reconnexion en un clic de bout en
+  bout (login navigateur réel). Ne bloquent aucune phase suivante, **mais** sans reconnexion réelle, ni
+  `/api/oauth/usage` ni la sonde d'en-têtes de la phase 18 ne répondront sur cette machine.
+- ~~Prochaine action v1.5 : `/gsd:plan-phase 15`~~ (fait, phases 15/16/17 closes).
 - ~~Phase 13 (tout début) : capturer le snapshot UIA en état **repos**~~ (fait, v1.4 clos).
 
 ### Blockers/Concerns
@@ -266,7 +277,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-11T22:49:18.679Z
-Stopped at: Completed 17-04-PLAN.md
+Last session: 2026-09-11T23:13:37.899Z
+Stopped at: Completed 17-05-PLAN.md
 Resume file: None
-Next: /gsd:plan-phase 15
+Next: /gsd:plan-phase 18

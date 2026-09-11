@@ -67,7 +67,7 @@ et la garde de composition `CompositionRootTests`.
 
 - [x] **Phase 15 : Idempotence des intégrations** - Les installateurs de hooks et de statusLine remplacent l'entrée Chronos existante au lieu de la cumuler, et purgent les entrées fantômes déjà présentes (completed 2026-09-09)
 - [x] **Phase 16 : Fondations du delta — persistance & démolition des plafonds** - Le dernier relevé exact survit au redémarrage de l'exe, les transcripts JSONL ne produisent plus qu'« activité depuis T ? » et « tokens depuis T ? », le sous-système de plafonds disparaît et les réglages existants migrent sans casse (completed 2026-09-09)
-- [ ] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
+- [x] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic (completed 2026-09-11)
 - [ ] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement
 - [ ] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens
 - [ ] **Phase 20 : Honnêteté visible — cadran & diagnostic** - Le cadran distingue à l'œil chiffre frais / chiffre daté / indisponible, et le diagnostic nomme la source réellement affichée et son âge
@@ -153,7 +153,7 @@ de la sonde d'en-têtes de la Phase 18 : sans jeton vivant, aucune source exacte
 - [x] 17-02-PLAN.md — Contrats neutres `EtatAuthentification` / `IAuthStatus` + `RefreshAsync` qui rend sa CAUSE au lieu d'un null muet (vague 2)
 - [x] 17-03-PLAN.md — `ChronosTokenAuthority` (autorité UNIQUE : sémaphore, rotation persistée, recul) + `TokenRefreshService` (tick 60 s, premier tick immédiat) — TOK-01 (vague 3)
 - [x] 17-04-PLAN.md — Le provider devient consommateur (rejeu unique sur 401), câblage DI, diagnostic qui nomme l'état réel (vague 4)
-- [ ] 17-05-PLAN.md — Pastille ambre actionnable / grise informative + `ReconnecterCommand` dédiée — TOK-02, TOK-03 (vague 5, checkpoint humain)
+- [x] 17-05-PLAN.md — Pastille ambre actionnable / grise informative + `ReconnecterCommand` dédiée — TOK-02, TOK-03 (vague 5, checkpoint humain)
 **UI hint**: yes
 
 ### Phase 18 : Source exacte par en-têtes de rate-limit
@@ -238,7 +238,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 |-------|----------------|--------|-----------|
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
-| 17. Jeton toujours vivant, panne toujours visible | 4/5 | In Progress|  |
+| 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |

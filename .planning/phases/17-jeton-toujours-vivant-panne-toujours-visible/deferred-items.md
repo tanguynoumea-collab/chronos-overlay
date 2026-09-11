@@ -27,3 +27,37 @@ n'auto-corriger que ce que la tâche courante a causé).
 - **Impact :** aucun risque de fuite. Le critère `grep` est simplement plus large que son intention.
 - **Pourquoi non corrigé ici :** `DiagnosticService.cs` est hors du périmètre de 17-03 ; le plan 17-04
   le modifie (« diagnostic qui nomme l'état réel ») et pourra reformuler cette ligne à cette occasion.
+
+## Découvert au plan 17-05
+
+### 3. La XML-doc de `RefreshOrchestrator.TryTrigger` (ligne 105) affirme le contraire de la réalité
+
+- **Constat :** elle annonce « Retourne false si un rafraîchissement est déjà en file (DropWrite) ».
+  C'est **faux** : avec `BoundedChannelFullMode.DropWrite`, `TryWrite` **abandonne l'élément entrant et
+  renvoie `true`**. Seul le mode `Wait` renvoie `false`. Découvert en écrivant une garde de test qui
+  s'appuyait sur cette doc : elle était **muette** (verte quoi qu'il arrive), et il a fallu la remplacer
+  par une preuve de bout en bout (orchestrateur démarré, comptage des `GetAsync`).
+- **Pré-existant :** oui — la doc date du plan 04-01, jamais relue depuis.
+- **Impact :** aucun effet fonctionnel (le comportement de coalescence est correct et testé par
+  `RefreshOrchestratorTests`). Le risque est de faire écrire, à quiconque s'y fie, une garde de test
+  qui ne garde rien — c'est exactement ce qui s'est produit ici.
+- **Pourquoi non corrigé ici :** `RefreshOrchestrator.cs` n'est pas dans le périmètre du plan 17-05
+  (règle de portée) et le corriger ferait apparaître un fichier hors plan dans le diff. Correction
+  d'une ligne, à saisir au prochain plan qui touche ce fichier — ou en `/gsd:quick`.
+
+### 4. Les bindings ne s'évaluent pas sur une fenêtre WPF jamais affichée
+
+- **Constat :** une `Window` construite sans `Show()` n'a pas de template appliqué, donc son `Content`
+  n'a **aucun parent visuel** : le `DataContext` ne se propage pas et **aucun** binding ne s'évalue
+  (`Command` reste `null`, `Visibility` reste à son défaut `Visible`). Tout test d'affichage qui
+  asserte une valeur bindée sur une telle fenêtre est vert pour de mauvaises raisons.
+- **Pré-existant :** oui — les smoke tests XAML existants (`CadranBindingTests`, `ThemingTests`)
+  n'assertent que l'état du ViewModel et l'absence d'exception, donc aucun n'est faux. Mais rien ne
+  documentait le piège.
+- **Contournement retenu en 17-05 :** poser le `DataContext` sur la grille racine (ses enfants SONT des
+  enfants visuels), **purger la file du Dispatcher** (`Invoke(..., ApplicationIdle)` — une réévaluation
+  déclenchée par un changement de `DataContext` est une opération différée), puis `Measure`/`Arrange`.
+  Consigné dans la XML-doc de `CadranBindingTests.MonterPastille`.
+- **Pourquoi non généralisé ici :** rétrofitter ce montage sur les smoke tests existants les ferait
+  passer d'« aucune exception » à « valeurs bindées vérifiées » — un gain réel, mais hors périmètre du
+  plan 17-05. Candidat naturel pour la phase 20 (rendu visible).
