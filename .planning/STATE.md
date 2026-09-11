@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-09-11T22:32:23.983Z"
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-09-11T22:49:31.805Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 17 (Jeton toujours vivant, panne toujours visible) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-11
 
@@ -134,6 +134,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 17 P01 | 18 | 2 tasks | 2 files |
 | Phase 17 P02 | 7min | 2 tasks | 6 files |
 | Phase 17 P03 | 10min | 2 tasks | 4 files |
+| Phase 17 P04 | 26min | 2 tasks | 7 files |
 
 ### Decisions
 
@@ -212,6 +213,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 17]: [17-03] Aucun .Clear() dans l'autorite, et c'est teste : apres un 400 invalid_grant, oauth.dat existe toujours ET contient encore l'ancien refresh token. Parade au faux positif serveur documente (claude-code#54443). Un Save en echec ne fait pas croire a un echec de refresh : les jetons neufs restent en memoire.
 - [Phase 17]: [17-03] TokenRefreshService : tick FIXE 60 s + predicat pur d'horloge murale, dueTime ZERO (premier tick immediat), TickAsync public et non-levant. Pas de reveil calcule sur ExpiresAt (casse a la mise en veille) ; RefreshOrchestrator (horloge DONNEES) laisse intact.
 - [Phase 17]: [17-03] TOK-01/TOK-02 laisses Pending : les deux types existent et sont prouves (39 tests) mais AUCUN n'est enregistre dans le graphe DI. Un TokenRefreshService que le host ne demarre jamais ne rafraichit rien — le cablage est le plan 17-04, en un seul commit avec le rebranchement du provider.
+- [Phase 17]: [17-04] UN SEUL rafraichisseur : le provider d'usage perd _store/_client et son refresh paresseux dans le MEME commit ou l'autorite est cablee. Une demi-mesure aurait fait coexister deux rotations du refresh token, donc un invalid_grant sur la seconde, donc une FAUSSE deconnexion sur un compte sain (claude-code#25609).
+- [Phase 17]: [17-04] Le rejeu sur 401 n'est pas un raffinement mais une obligation : le serveur peut revoquer un jeton AVANT son ExpiresAt local (claude-code#54443), donc le preventif seul ne suffit jamais. UN SEUL rejeu (garde locale non rearmable) ; 403 sans rejeu ; 429/5xx/reseau ne declarent JAMAIS Deconnecte.
+- [Phase 17]: [17-04] Le garde-fou de debit du provider ne consulte PLUS le cache : 'ai-je le droit d'appeler' est decouple de 'ai-je un cache a servir'. Le cache vivant en RAM, le frein disparaissait a chaque demarrage de l'exe — precisement quand le martelement se produit (defaut n.3 de 17-01, dernier segment non corrige).
+- [Phase 17]: [17-04] IAuthStatus est un ALIAS de l'instance d'autorite (jamais une seconde) et TokenRefreshService est enregistre ET heberge : la garde DI le prouve par Assert.Same + Assert.Contains sur IHostedService, ce qu'un dotnet build ne voit pas. TOK-01 fonctionnellement acquis, seule la visibilite manque (17-05).
+- [Phase 17]: [17-04] DiagnosticService : parametre IAuthStatus OPTIONNEL en DERNIERE position => 9 sites de construction preexistants compilent sans retouche. 'Le fichier oauth.dat existe' n'a jamais voulu dire 'authentifie' : le rapport nomme desormais l'etat reel, HORS LIGNE (informatif) distingue de DECONNECTE (actionnable).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -260,7 +266,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-11T22:32:23.977Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-09-11T22:49:18.679Z
+Stopped at: Completed 17-04-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 15
