@@ -87,6 +87,9 @@ public class CompositionRootTests
         services.AddSingleton<IStatusLineSetup>(_ => new FakeStatusLineSetup());
         // Login OAuth intégré : le ctor de MainViewModel dépend d'IOAuthLogin.
         services.AddSingleton<IOAuthLogin>(_ => new FakeOAuthLogin());
+        // Phase 17 : le ctor de MainViewModel dépendra d'IAuthStatus (plan 17-05). L'enregistrer dès
+        // maintenant évite une rupture de garde au plan suivant ; le faux suffit ici.
+        services.AddSingleton<IAuthStatus>(_ => new FakeAuthStatus());
         // Widget de sessions : le ctor de MainViewModel dépend d'ISessionsController.
         services.AddSingleton<ISessionsController>(_ => new FakeSessionsController());
 
@@ -188,5 +191,53 @@ public class CompositionRootTests
         Assert.StartsWith(System.IO.Path.GetTempPath(), recon.SettingsPath);   // garde anti-accident
         Assert.False(recon.Reconcile(hooksWanted: true));   // fichier absent → aucune écriture, aucun crash
         provider.Dispose();
+    }
+
+    /// <summary>
+    /// GARDE DI RÉELLE (phase 17). Reproduit la sous-chaîne OAuth d'App.ConfigureServices : coffre
+    /// (sur chemin TEMPORAIRE), client, autorité unique, service de fond hébergé, provider consommateur.
+    /// Prouve trois choses qu'un <c>dotnet build</c> ne prouve pas : que le graphe se résout, que
+    /// <see cref="ChronosTokenAuthority"/> et <see cref="IAuthStatus"/> sont bien LA MÊME instance (une
+    /// seconde autorité rouvrirait la course de rotation du refresh token, donc la fausse déconnexion
+    /// du bug claude-code#25609), et que le service de fond est bien enregistré comme
+    /// <c>IHostedService</c> — un <see cref="TokenRefreshService"/> que le host ne démarre jamais ne
+    /// rafraîchit rien du tout, et TOK-01 resterait lettre morte sans que rien ne le signale.
+    ///
+    /// SÉCURITÉ : le coffre pointe dans <c>Path.GetTempPath()</c> et ce test n'appelle JAMAIS
+    /// <c>GetAccessTokenAsync</c> — aucune requête ne part, le refresh token réel de l'utilisateur
+    /// n'est ni lu, ni déchiffré, ni présenté au serveur (la rotation le tuerait définitivement).
+    /// </summary>
+    [Fact]
+    public void Le_graphe_DI_resout_l_autorite_de_jeton_et_son_service_de_fond()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosDiTest_" + System.Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IClock>(_ => new SystemClock());
+        services.AddSingleton(_ => new ChronosOAuthStore(System.IO.Path.Combine(dir, "oauth.dat")));
+        services.AddSingleton(sp => new ChronosOAuthClient(new System.Net.Http.HttpClient(), sp.GetRequiredService<IClock>()));
+        services.AddSingleton(sp => new ChronosTokenAuthority(
+            sp.GetRequiredService<ChronosOAuthStore>(),
+            sp.GetRequiredService<ChronosOAuthClient>(),
+            sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IAuthStatus>(sp => sp.GetRequiredService<ChronosTokenAuthority>());
+        services.AddSingleton(sp => new TokenRefreshService(sp.GetRequiredService<ChronosTokenAuthority>()));
+        services.AddHostedService(sp => sp.GetRequiredService<TokenRefreshService>());
+        services.AddSingleton(sp => new ChronosOAuthUsageProvider(
+            sp.GetRequiredService<ChronosTokenAuthority>(),
+            new System.Net.Http.HttpClient(),
+            sp.GetRequiredService<IClock>()));
+
+        using var provider = services.BuildServiceProvider();
+
+        // Garde anti-accident : aucun test n'écrit dans le vrai %APPDATA%\Chronos.
+        Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<ChronosOAuthStore>().Path);
+
+        var autorite = provider.GetRequiredService<ChronosTokenAuthority>();
+        Assert.NotNull(autorite);
+        Assert.Same(autorite, provider.GetRequiredService<IAuthStatus>());   // UNE seule autorité
+        Assert.NotNull(provider.GetRequiredService<ChronosOAuthUsageProvider>());
+        Assert.Contains(provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>(), s => s is TokenRefreshService);
     }
 }

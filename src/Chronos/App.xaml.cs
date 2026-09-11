@@ -276,15 +276,35 @@ public partial class App : Application
             sp.GetRequiredService<ClaudeOAuthUsageProvider>(),
             sp.GetRequiredService<SettingsService>()));
 
-        // v2.1 : SOURCE EXACTE PRIMAIRE = login OAuth propre à Chronos (jeton obtenu par login navigateur,
-        // rafraîchi tout seul, stocké chiffré DPAPI). Marche que l'utilisateur soit en app bureau OU terminal.
+        // v2.1 : SOURCE EXACTE PRIMAIRE = login OAuth propre à Chronos (jeton obtenu par login
+        // navigateur, stocké chiffré DPAPI). Marche que l'utilisateur soit en app bureau OU terminal.
         services.AddSingleton<ChronosOAuthStore>(_ => new ChronosOAuthStore());
-        services.AddSingleton(_ => new ChronosOAuthClient(new HttpClient()));
-        services.AddSingleton(sp => new ChronosOAuthUsageProvider(
+        services.AddSingleton(sp => new ChronosOAuthClient(new HttpClient(), sp.GetRequiredService<IClock>()));
+
+        // TOK-01/TOK-02 — AUTORITÉ UNIQUE DE JETON. Un seul objet du processus a le droit de
+        // rafraîchir et d'écrire dans le coffre. Deux rafraîchisseurs présenteraient le même refresh
+        // token et le second récolterait un invalid_grant : une FAUSSE déconnexion sur un compte sain
+        // (bug documenté anthropics/claude-code#25609). Enregistrée UNE fois et réexposée comme
+        // IAuthStatus sur la MÊME instance — surtout pas une seconde autorité.
+        services.AddSingleton(sp => new ChronosTokenAuthority(
             sp.GetRequiredService<ChronosOAuthStore>(),
             sp.GetRequiredService<ChronosOAuthClient>(),
+            sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IAuthStatus>(sp => sp.GetRequiredService<ChronosTokenAuthority>());
+
+        // TOK-01 — horloge de fond du jeton : tick 60 s, PREMIER TICK IMMÉDIAT. Même motif d'instance
+        // unique réexposée en IHostedService que RefreshOrchestrator ci-dessous.
+        services.AddSingleton(sp => new TokenRefreshService(sp.GetRequiredService<ChronosTokenAuthority>()));
+        services.AddHostedService(sp => sp.GetRequiredService<TokenRefreshService>());
+
+        // Le provider d'usage n'est plus qu'un CONSOMMATEUR de l'autorité : il ne connaît ni le coffre,
+        // ni le refresh token, ni le client OAuth.
+        services.AddSingleton(sp => new ChronosOAuthUsageProvider(
+            sp.GetRequiredService<ChronosTokenAuthority>(),
             new HttpClient(),
             sp.GetRequiredService<IClock>()));
+
+        // Le login reste l'écrivain du PREMIER jeton : il parle au coffre et au client directement.
         services.AddSingleton<IOAuthLogin>(sp => new Views.OAuthLogin(
             sp.GetRequiredService<ChronosOAuthClient>(),
             sp.GetRequiredService<ChronosOAuthStore>()));

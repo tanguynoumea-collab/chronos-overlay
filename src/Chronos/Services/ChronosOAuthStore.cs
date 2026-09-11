@@ -18,8 +18,12 @@ public sealed class ChronosOAuthStore
     private readonly string _path;
 
     public ChronosOAuthStore(string? path = null)
-        => _path = path ?? Path.Combine(
+        => _path = path ?? System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "oauth.dat");
+
+    /// <summary>Chemin du coffre. Exposé pour les GARDES DE TEST (« ce test écrit-il bien dans un
+    /// dossier temporaire ? ») — SÉCURITÉ : c'est le CHEMIN qui sort, jamais le contenu.</summary>
+    public string Path => _path;
 
     /// <summary>Un jeton est-il enregistré (l'utilisateur s'est-il connecté) ?</summary>
     public bool Exists => File.Exists(_path);
@@ -27,7 +31,7 @@ public sealed class ChronosOAuthStore
     /// <summary>Chiffre et enregistre les jetons (écriture atomique).</summary>
     public void Save(OAuthTokens tokens)
     {
-        var dir = Path.GetDirectoryName(_path)!;
+        var dir = System.IO.Path.GetDirectoryName(_path)!;
         Directory.CreateDirectory(dir);
         var plain = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(tokens));
         var enc = ProtectedData.Protect(plain, optionalEntropy: null, DataProtectionScope.CurrentUser);
