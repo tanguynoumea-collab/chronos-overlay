@@ -31,6 +31,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IStatusLineSetup _statusLineSetup;
     private readonly IOAuthLogin _oauthLogin;
     private readonly ISessionsController _sessions;
+    private readonly IAuthStatus _authStatus;
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
     private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
@@ -62,6 +63,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     // État reflété dans l'item « Se connecter à Claude » : un jeton OAuth Chronos est-il présent ?
     [ObservableProperty] private bool _isLoggedIn;
+
+    // TOK-02 — DEUX booléens et non un seul : « déconnecté » est ACTIONNABLE (le serveur a refusé les
+    // identifiants, seule une reconnexion répare), « hors ligne » est INFORMATIF (réseau/serveur ;
+    // le jeton est peut-être parfaitement bon). Les confondre ferait relancer un login inutile.
+    // Deux booléens plutôt qu'un enum bindé : cohérent avec IsStyleArcs / IsModeNormal, zéro converter.
+    [ObservableProperty] private bool _afficherPastilleDeconnexion;
+    [ObservableProperty] private bool _afficherPastilleHorsLigne;
 
     // État reflété dans l'item « Sessions Claude Code » : le widget de sessions est-il activé ?
     [ObservableProperty] private bool _isSessionsWidgetEnabled;
@@ -183,7 +191,7 @@ public sealed partial class MainViewModel : ObservableObject
         IWindowController controller, IAutostartService autostart,
         IRecalibrationPrompt prompt, SettingsService settings,
         DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
-        ISessionsController sessions)
+        ISessionsController sessions, IAuthStatus authStatus)
     {
         _ui = ui;
         _clock = clock;
@@ -237,10 +245,28 @@ public sealed partial class MainViewModel : ObservableObject
         SevenDay.SetTheme(active);
 
         orchestrator.SnapshotChanged += OnSnapshotChanged; // callback thread pool (horloge données)
+
+        // TOK-02 : canal d'état d'authentification. MÊME motif que l'horloge données ci-dessus —
+        // le service expose l'événement (émis sur le thread pool), le VM marshalle lui-même.
+        _authStatus = authStatus;
+        authStatus.EtatChange += SurEtatAuthChange;
+        AppliquerEtatAuth(authStatus.Etat);   // état initial, sans attendre la première transition
     }
 
     // FRONTIÈRE DE THREAD — franchie UNE seule fois (RAF-04). Aucune mutation d'ObservableProperty hors d'ici.
     private void OnSnapshotChanged(object? sender, UsageSnapshot snap) => _ui.Post(() => ApplySnapshot(snap));
+
+    // FRONTIÈRE DE THREAD — franchie UNE seule fois (RAF-04), comme OnSnapshotChanged.
+    private void SurEtatAuthChange(object? s, EtatAuthentification e) => _ui.Post(() => AppliquerEtatAuth(e));
+
+    /// <summary>Thread UI uniquement. NonConnecte n'allume RIEN en phase 17 : l'invite « jamais
+    /// connecté » est EXA-05 (phase 19) ; l'allumer ici créerait un badge permanent pour un
+    /// utilisateur qui a délibérément choisi de ne pas se connecter.</summary>
+    internal void AppliquerEtatAuth(EtatAuthentification e)
+    {
+        AfficherPastilleDeconnexion = e == EtatAuthentification.Deconnecte;
+        AfficherPastilleHorsLigne   = e == EtatAuthentification.HorsLigne;
+    }
 
     /// <summary>Applique un snapshot (thread UI) : recalibre le repli hebdo, pousse chaque fenêtre, l'état global, puis rend.</summary>
     internal void ApplySnapshot(UsageSnapshot snap)
@@ -364,6 +390,26 @@ public sealed partial class MainViewModel : ObservableObject
         else await _oauthLogin.LoginAsync();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
         _orchestrator.RequestRefresh(); // application immédiate (le provider relit le coffre à chaque GetAsync)
+    }
+
+    /// <summary>
+    /// TOK-03 : relance le parcours de login depuis la pastille de déconnexion. Ne déconnecte JAMAIS —
+    /// contrairement à <see cref="LoginClaudeCommand"/>, qui BASCULE sur IOAuthLogin.IsLoggedIn, lequel
+    /// vaut _store.Exists (la seule présence du fichier) et donc « true » avec un jeton expiré : un clic
+    /// y aurait SUPPRIMÉ le coffre de l'utilisateur. La pastille n'a qu'un sens : « répare-moi ».
+    ///
+    /// Le prochain GetAsync ne suffirait pas : l'autorité VERROUILLE l'état « Deconnecte » et pose un
+    /// recul ; sans réarmement explicite, le jeton tout neuf ne serait pas utilisé et la pastille
+    /// survivrait à sa propre réparation. Et RequestRefresh évite d'attendre le tick de 60 s.
+    /// </summary>
+    [RelayCommand]
+    private async Task ReconnecterAsync()
+    {
+        var ok = await _oauthLogin.LoginAsync();
+        IsLoggedIn = _oauthLogin.IsLoggedIn;
+        if (!ok) return;
+        _authStatus.ReinitialiserApresLogin();
+        _orchestrator.RequestRefresh();
     }
 
     /// <summary>Active/désactive la SOURCE EXACTE via le pont statusLine de Claude Code (installe ou

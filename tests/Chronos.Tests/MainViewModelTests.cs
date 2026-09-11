@@ -60,12 +60,19 @@ public class MainViewModelTests
     private static MainViewModel Build(
         FakeUiDispatcher ui, FakeClock clock, FakeUsageProvider provider,
         FakeWindowController controller, FakeAutostartService autostart,
-        FakeRecalibrationPrompt prompt, SettingsService settings)
+        FakeRecalibrationPrompt prompt, SettingsService settings,
+        FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
+        RefreshOrchestrator? orchestrator = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
-        var orch = new RefreshOrchestrator(provider, TempPaths(), options);
+        // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
+        // l'orchestrateur et en comptant les GetAsync. Sans cette prise, « un rafraîchissement a été
+        // demandé » serait invérifiable depuis l'extérieur du VM.
+        var orch = orchestrator ?? new RefreshOrchestrator(provider, TempPaths(), options);
         var diag = new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock);
-        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag, new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController());
+        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
+            new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
+            auth ?? new FakeAuthStatus());
     }
 
     private static MainViewModel NewVmFull(
@@ -109,7 +116,8 @@ public class MainViewModelTests
             new FakeWindowController(), new FakeAutostartService(),
             new FakeRecalibrationPrompt(), settings,
             new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
-            new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController());
+            new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
+            new FakeAuthStatus());
         try
         {
             await orch.StartAsync(CancellationToken.None); // charge initiale → SnapshotChanged (thread pool)
@@ -444,5 +452,167 @@ public class MainViewModelTests
         var apres = settings.Load();
         Assert.False(apres.OAuthUsageEnabled);                 // flag bien persisté…
         Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);  // …SANS écraser le coin du drag (GAP-1)
+    }
+
+    // ================== TOK-02 / TOK-03 : la panne visible et réparable ==================
+    // Le 401 muet de deux mois n'était pas seulement un défaut de service : rien, dans la couche
+    // présentation, ne pouvait le DIRE. Ces tests verrouillent les deux moitiés du remède :
+    // deux états visuels distincts (ambre actionnable / gris informatif) et une commande de
+    // reconnexion qui ne peut pas, par construction, supprimer le coffre de jetons.
+
+    /// <summary>Monte un VM de test avec un FakeAuthStatus (et éventuellement un FakeOAuthLogin
+    /// observable). Tous les fakes non observés sont neutres ; l'orchestrateur n'est PAS démarré.</summary>
+    private static MainViewModel VmAuth(FakeUiDispatcher ui, FakeAuthStatus auth,
+                                        FakeOAuthLogin? login = null)
+        => Build(ui, new FakeClock(Now), new FakeUsageProvider(), new FakeWindowController(),
+                 new FakeAutostartService(), new FakeRecalibrationPrompt(),
+                 new SettingsService(TempPaths()), login: login, auth: auth);
+
+    [Fact]
+    public void L_etat_d_authentification_initial_est_applique_DES_le_ctor()
+    {
+        // L'autorité peut déjà être en échec au démarrage de l'exe (jeton expiré sur disque) : attendre
+        // la première TRANSITION laisserait l'overlay muet jusqu'au prochain changement d'état.
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth);
+
+        Assert.True(vm.AfficherPastilleDeconnexion);
+        Assert.False(vm.AfficherPastilleHorsLigne);
+    }
+
+    [Fact]
+    public void L_etat_Deconnecte_franchit_la_frontiere_de_thread_UNE_fois_et_allume_la_pastille()
+    {
+        var ui = new FakeUiDispatcher { OnUiThread = false };   // simule le thread pool de l'autorité
+        var auth = new FakeAuthStatus();
+        var vm = VmAuth(ui, auth);
+        var avant = ui.PostCount;
+
+        auth.Declencher(EtatAuthentification.Deconnecte);
+
+        Assert.Equal(avant + 1, ui.PostCount);   // RAF-04 : une seule frontière, un seul Post
+        Assert.True(vm.AfficherPastilleDeconnexion);
+        Assert.False(vm.AfficherPastilleHorsLigne);
+    }
+
+    [Fact]
+    public void HorsLigne_allume_la_pastille_INFORMATIVE_et_JAMAIS_l_alerte_de_deconnexion()
+    {
+        // Le cœur de la distinction à 4 valeurs : crier « reconnecte-toi » à quelqu'un dont le wifi est
+        // coupé le ferait relancer un login qui échouerait — et lui ferait perdre confiance dans le signal.
+        var auth = new FakeAuthStatus();
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = false }, auth);
+
+        auth.Declencher(EtatAuthentification.HorsLigne);
+
+        Assert.True(vm.AfficherPastilleHorsLigne);
+        Assert.False(vm.AfficherPastilleDeconnexion);
+    }
+
+    [Fact]
+    public void Connecte_apres_Deconnecte_eteint_les_DEUX_pastilles()
+    {
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = false }, auth);
+        Assert.True(vm.AfficherPastilleDeconnexion);   // état de départ : la panne est visible
+
+        auth.Declencher(EtatAuthentification.Connecte);
+
+        Assert.False(vm.AfficherPastilleDeconnexion);
+        Assert.False(vm.AfficherPastilleHorsLigne);
+    }
+
+    [Fact]
+    public void NonConnecte_n_allume_AUCUNE_pastille()
+    {
+        // L'invite « jamais connecté » est EXA-05 (phase 19). L'allumer ici créerait un badge PERMANENT
+        // pour un utilisateur qui a délibérément choisi de ne pas se connecter.
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = false }, auth);
+
+        auth.Declencher(EtatAuthentification.NonConnecte);
+
+        Assert.False(vm.AfficherPastilleDeconnexion);
+        Assert.False(vm.AfficherPastilleHorsLigne);
+    }
+
+    [Fact]
+    public async Task ReconnecterCommand_relance_le_login_et_ne_deconnecte_JAMAIS()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = true };   // jeton présent mais MORT : le cas réel
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login);
+
+        await vm.ReconnecterCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, login.LoginCount);
+        Assert.Equal(0, login.LogoutCount);   // <- LE piège : LoginClaudeCommand aurait supprimé le coffre
+        Assert.Equal(1, auth.ReinitCount);    // l'autorité est réarmée, la pastille ne survit pas
+        Assert.True(vm.IsLoggedIn);
+    }
+
+    [Fact]
+    public async Task LoginClaudeCommand_DECONNECTE_bel_et_bien_quand_un_jeton_est_present()
+    {
+        // Contre-épreuve du piège TOK-03, et garde de non-régression sur la commande du MENU : c'est
+        // exactement ce comportement de BASCULE (IsLoggedIn == la seule présence du fichier) qui aurait
+        // supprimé le coffre si la pastille avait été bindée dessus. La commande reste intacte.
+        var login = new FakeOAuthLogin { LoggedIn = true };
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, new FakeAuthStatus(), login: login);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, login.LogoutCount);   // la bascule déconnecte…
+        Assert.Equal(0, login.LoginCount);    // …et ne relance AUCUN login
+        Assert.False(vm.IsLoggedIn);
+    }
+
+    [Fact]
+    public async Task ReconnecterCommand_sur_login_reussi_demande_un_rafraichissement_IMMEDIAT()
+    {
+        // Sans RequestRefresh, il faudrait attendre le tick de 60 s avant de revoir des chiffres exacts —
+        // la pastille survivrait plus d'une minute à sa propre réparation. Preuve DE BOUT EN BOUT :
+        // l'orchestrateur est démarré et un GetAsync SUPPLÉMENTAIRE doit survenir après la commande.
+        // (Ne pas se fier à TryTrigger : le channel est en DropWrite, où TryWrite renvoie true même plein.)
+        var provider = new FakeUsageProvider();
+        var orch = new RefreshOrchestrator(provider, TempPaths(),
+                                           new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+        var vm = Build(new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), provider,
+                       new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
+                       new SettingsService(TempPaths()),
+                       login: new FakeOAuthLogin { LoggedIn = true }, auth: auth, orchestrator: orch);
+        try
+        {
+            await orch.StartAsync(CancellationToken.None);
+            Assert.True(await WaitUntilAsync(() => provider.GetCount >= 1, 2000), "charge initiale");
+            var avant = provider.GetCount;
+
+            await vm.ReconnecterCommand.ExecuteAsync(null);
+
+            Assert.True(await WaitUntilAsync(() => provider.GetCount > avant, 2000),
+                        "un rafraîchissement doit être demandé sans attendre le tick périodique");
+        }
+        finally { await orch.StopAsync(CancellationToken.None); }
+
+        Assert.Equal(1, auth.ReinitCount);
+    }
+
+    [Fact]
+    public async Task ReconnecterCommand_sur_login_ECHOUE_ne_rearme_rien_et_laisse_la_panne_visible()
+    {
+        // Réarmer l'autorité sur un échec relâcherait le verrou « Deconnecte » et le recul sans qu'aucun
+        // jeton neuf n'ait été écrit : l'overlay se tairait en prétendant être réparé.
+        var login = new FakeOAuthLogin { LoggedIn = true, LoginDoitReussir = false };
+        var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login);
+
+        await vm.ReconnecterCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, login.LoginCount);
+        Assert.Equal(0, login.LogoutCount);   // jamais de déconnexion, même sur échec
+        Assert.Equal(0, auth.ReinitCount);    // l'autorité reste verrouillée sur « Deconnecte »
+        Assert.True(vm.AfficherPastilleDeconnexion);   // la panne reste visible
     }
 }
