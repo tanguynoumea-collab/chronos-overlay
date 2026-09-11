@@ -571,10 +571,18 @@ public class MainViewModelTests
     [Fact]
     public async Task ReconnecterCommand_sur_login_reussi_demande_un_rafraichissement_IMMEDIAT()
     {
-        // Sans RequestRefresh, il faudrait attendre le tick de 60 s avant de revoir des chiffres exacts —
+        // Sans RequestRefresh, il faudrait attendre le tick de 60 s avant de revoir un chiffre exact —
         // la pastille survivrait plus d'une minute à sa propre réparation. Preuve DE BOUT EN BOUT :
-        // l'orchestrateur est démarré et un GetAsync SUPPLÉMENTAIRE doit survenir après la commande.
+        // l'orchestrateur est réellement démarré et un GetAsync SUPPLÉMENTAIRE doit survenir.
         // (Ne pas se fier à TryTrigger : le channel est en DropWrite, où TryWrite renvoie true même plein.)
+        //
+        // NON couvert ici, faute d'être observable : l'ORDRE réarmement -> rafraîchissement. La source
+        // appelle bien ReinitialiserApresLogin() AVANT RequestRefresh() — nécessaire, sinon la boucle
+        // consommatrice pourrait lire l'usage alors que l'autorité est encore verrouillée sur
+        // « Deconnecte » — mais RequestRefresh ne fait qu'EMPILER un déclencheur : la consommation
+        // étant asynchrone, inverser les deux lignes ne change AUCUN résultat de test (vérifié par
+        // mutation). Un test d'ordre serait donc une fausse assurance ; l'invariant est tenu par la
+        // lecture du code et par la XML-doc de ReconnecterAsync.
         var provider = new FakeUsageProvider();
         var orch = new RefreshOrchestrator(provider, TempPaths(),
                                            new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
