@@ -11,24 +11,31 @@ namespace Chronos.Services;
 /// neutre et prend <c>now</c> en paramètre → testable en [Fact] sans horloge.
 ///
 /// Pitfall 7 (honnêteté des chiffres — Core Value) : le recalibrage NE DOIT PAS « mentir ».
-/// - Si la fenêtre est déjà <see cref="SourceReliability.Exact"/> AVEC un resets_at, on la laisse
-///   strictement inchangée : les chiffres exacts priment toujours.
-/// - Sinon (repli / estimation), on synthétise un resets_at mais on CONSERVE
-///   <see cref="SourceReliability.Estimated"/> → le badge « estimée » reste affiché.
+/// - Si la fenêtre porte déjà un resets_at, quelle que soit sa fiabilité, on la laisse strictement
+///   inchangée : un reset connu est un FAIT, et une synthèse ne remplace jamais un fait.
+/// - Sinon (aucun reset exposé par la source), on synthétise un resets_at mais on CONSERVE la
+///   fiabilité d'origine → le badge « estimée » reste affiché, le recalibrage donne une date et
+///   ne prétend pas donner un chiffre.
 /// </summary>
 public static class WeeklyRecalibration
 {
     private static readonly TimeSpan Week = TimeSpan.FromDays(7);
 
     /// <summary>
-    /// Applique le recalibrage. Renvoie <paramref name="weekly"/> inchangée si elle est déjà
-    /// exacte avec un reset, ou si aucune ancre n'est fournie. Sinon, remplace ResetsAt par le
-    /// prochain reset strictement futur (ancre + n×7j) EN RESTANT Estimated.
+    /// Applique le recalibrage. Renvoie <paramref name="weekly"/> inchangée si elle porte déjà un
+    /// reset, ou si aucune ancre n'est fournie. Sinon, remplace ResetsAt par le prochain reset
+    /// strictement futur (ancre + n×7j) SANS toucher à la fiabilité.
     /// </summary>
     public static WindowState Apply(WindowState weekly, DateTimeOffset? anchor, DateTimeOffset now)
     {
-        // Les chiffres exacts priment : on ne recalibre jamais par-dessus un resets_at fiable.
-        if (weekly.Reliability == SourceReliability.Exact && weekly.ResetsAt is not null)
+        // Phase 19 — la garde porte desormais sur le RESET SEUL, plus sur la fiabilite. Un resets_at
+        // connu est un FAIT, quelle que soit la fraicheur du pourcentage qui l'accompagne : les fenetres
+        // hebdo corrigees par delta en portent un, et la garde precedente (exacte ET datee) les aurait
+        // fait tomber dans le chemin de synthese, remplacant le reset reel du serveur par « ancre + n
+        // semaines ». Le compte a rebours serait devenu une supposition la ou la reponse existait.
+        // Le recalibrage existe pour les sources qui n'exposent PAS de reset hebdo — pas pour corriger
+        // celles qui en exposent un.
+        if (weekly.ResetsAt is not null)
             return weekly;
 
         // Pas d'ancre → rien à synthétiser (on n'invente pas de date).
@@ -36,7 +43,7 @@ public static class WeeklyRecalibration
             return weekly;
 
         var next = NextReset(anchor.Value, now);
-        return weekly with { ResetsAt = next }; // reste Estimated → badge « estimée » conservé
+        return weekly with { ResetsAt = next }; // fiabilité inchangée → badge « estimée » conservé
     }
 
     /// <summary>
