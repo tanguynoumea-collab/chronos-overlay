@@ -85,7 +85,7 @@ sur les **8 styles de session** (galerie `--sessions`) et les **9 thèmes**.
 - [x] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes
  (completed 2026-09-12)
 - [x] **Phase 23 : Un magasin qui ne croît plus et n'oublie plus** - Les états expirés et les `.tmp` orphelins sont balayés, et une écriture de hook ne peut plus être perdue en silence (completed 2026-09-12)
-- [ ] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables
+- [x] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables (completed 2026-09-12)
 - [ ] **Phase 25 : Le contrat d'événements refondé** - `PermissionRequest` au lieu du proxy `Notification`, « réfléchit » observé par battements de cœur, interruption utilisateur couverte, contrat documenté
 - [ ] **Phase 26 : « Traité » veut enfin dire quelque chose** - Déduit d'une transition observée sur la même source, persistant au redémarrage, assorti d'un geste explicite et d'un contrat d'archivage unique
 
@@ -215,7 +215,7 @@ il lui faut le 4e champ de `LectureSessions`. Les fichiers des deux plans sont p
 
 Plans:
 - [x] 24-01-PLAN.md — FUS-01 : l'arbitrage se fait sur la fraîcheur, l'égalité d'âge a une règle nommée, et l'ordre d'insertion ne revient pas
-- [ ] 24-02-PLAN.md — FUS-02 : le diagnostic nomme la source retenue, la source écartée et l'écart d'âge
+- [x] 24-02-PLAN.md — FUS-02 : le diagnostic nomme la source retenue, la source écartée et l'écart d'âge
 
 ### Phase 25 : Le contrat d'événements refondé
 **Goal**: Les états du widget viennent d'événements qui veulent **vraiment** dire ce qu'on leur fait dire :
@@ -278,7 +278,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 | 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
 | 22. Un instrument de mesure qui ne ment plus | 3/3 | Complete   | 2026-09-12 |
 | 23. Un magasin qui ne croît plus et n'oublie plus | 2/2 | Complete   | 2026-09-12 |
-| 24. L'arbitrage par fraîcheur | 1/2 | In Progress|  |
+| 24. L'arbitrage par fraîcheur | 2/2 | Complete   | 2026-09-12 |
 | 25. Le contrat d'événements refondé | 0/? | Not started | - |
 | 26. « Traité » veut enfin dire quelque chose | 0/? | Not started | - |
 

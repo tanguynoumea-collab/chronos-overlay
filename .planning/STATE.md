@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
 status: verifying
-stopped_at: Complete 24-01-PLAN.md
-last_updated: "2026-09-12T18:12:06.985Z"
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-09-12T18:26:20.106Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 50
 ---
 
@@ -173,6 +173,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 23 P01 | 6min | 2 tasks | 4 files |
 | Phase 23 P02 | 14min | 3 tasks | 6 files |
 | Phase 24 P01 | 41min | 3 tasks | 7 files |
+| Phase 24 P02 | 10min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -407,6 +408,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 24]: FUS-01 : la FRAICHEUR tranche entre sources ; la specificite de la source ne departage qu'a age strictement egal
 - [Phase 24]: L'ordre d'arbitrage est TOTAL sur le contenu du signal : la permutation (720 ordres) est vraie par construction, pas par chance
 - [Phase 24]: Un fragment illisible est une ABSENCE de signal : ni vieux signal date au minimum, ni signal retenu
+- [Phase 24]: Un ecart d'age se dit en DISTANCE (7 h), jamais en instant (il y a 7 h) ; le zero se dit 0 s pour que l'egalite d'age se voie.
+- [Phase 24]: Un desaccord a son PROPRE bloc dans le rapport : la session reste comptee parmi les AFFICHEES, le vocabulaire de masquage n'est pas elargi.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -495,7 +498,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T18:12:06.979Z
-Stopped at: Complete 24-01-PLAN.md
+Last session: 2026-09-12T18:26:13.931Z
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
