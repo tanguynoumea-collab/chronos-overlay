@@ -37,7 +37,7 @@
                     Background="{Binding FiveHour.ValueBrush}">
                 <Grid>
                     <Rectangle Fill="{StaticResource GrainHatch}" RadiusX="5" RadiusY="5"
-                               Visibility="{Binding FiveHour.IsEstimated, Converter={StaticResource BoolToVis}}"/>
+                               Visibility="{Binding FiveHour.EstPlancher, Converter={StaticResource BoolToVis}}"/>
                     <Border Height="1" VerticalAlignment="Center" Background="#33000000"/>
                     <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="#161019"
                                FontSize="15" FontWeight="SemiBold"
@@ -69,7 +69,7 @@
                     Background="{Binding SevenDay.ValueBrush}">
                 <Grid>
                     <Rectangle Fill="{StaticResource GrainHatch}" RadiusX="5" RadiusY="5"
-                               Visibility="{Binding SevenDay.IsEstimated, Converter={StaticResource BoolToVis}}"/>
+                               Visibility="{Binding SevenDay.EstPlancher, Converter={StaticResource BoolToVis}}"/>
                     <Border Height="1" VerticalAlignment="Center" Background="#33000000"/>
                     <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="#161019"
                                FontSize="15" FontWeight="SemiBold"

@@ -5,13 +5,18 @@ using Xunit;
 
 namespace Chronos.Tests;
 
-/// <summary>Prouve INT-02 : une fenêtre EXACT (issue de l'OAuth) éteint le badge « estimée »
-/// (IsEstimated == false) et porte l'utilisation réelle (couleur de rampe) ; une fenêtre ESTIMÉE
-/// rallume le badge. L'honnêteté joue dans les deux sens. Tests PURS ([Fact]).</summary>
+/// <summary>Prouve INT-02, rédigé dans le vocabulaire de la phase 20 : une fenêtre EXACTE ne porte PAS
+/// la marque de plancher (<c>EstPlancher == false</c>) et porte l'utilisation réelle (couleur de rampe) ;
+/// une fenêtre PLANCHER la rallume. L'honnêteté joue dans les deux sens.
+///
+/// Le vocabulaire de ces deux tests a été amendé par le plan 20-03 : le « badge estimée » n'existe plus
+/// depuis le centre épuré de la v1.3, et l'ancienne marque d'estimation désignait un concept supprimé
+/// par la phase 19. Aucune assertion n'a changé de sens : seul le nom de la propriété a changé.
+/// Tests PURS ([Fact]).</summary>
 public class WindowGaugeViewModelTests
 {
     [Fact]
-    public void Fenetre_exacte_masque_le_badge_estimee_et_porte_utilisation_reelle()
+    public void Fenetre_exacte_ne_porte_PAS_la_marque_de_plancher_et_porte_l_utilisation_reelle()
     {
         var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
         vm.Apply(new WindowState
@@ -22,17 +27,17 @@ public class WindowGaugeViewModelTests
             ResetsAt = DateTimeOffset.UtcNow + TimeSpan.FromHours(2),
         });
 
-        Assert.False(vm.IsEstimated);              // badge « estimée » masqué (INT-02)
+        Assert.False(vm.EstPlancher);              // aucune marque de plancher sur un exact (INT-02)
         Assert.Equal(0.74, vm.Utilization);        // arc en vraie couleur (utilization exacte)
         Assert.False(vm.HasTokens);                // pas de surfaçage tokens estimés en Exact
     }
 
     [Fact]
-    public void Fenetre_estimee_rallume_le_badge()
+    public void Fenetre_plancher_rallume_la_marque()
     {
         var vm = new WindowGaugeViewModel(TimeSpan.FromDays(7));
         vm.Apply(new WindowState { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated });
-        Assert.True(vm.IsEstimated);               // honnêteté dans l'autre sens
+        Assert.True(vm.EstPlancher);               // honnêteté dans l'autre sens
     }
 
     // --- VIS-05 : PercentFormatter pur (honnêteté : null → rien, « ~ » si estimé, arrondi entier) ---
@@ -101,7 +106,7 @@ public class WindowGaugeViewModelTests
         });
 
         Assert.Equal("≥ 42 %", plancher.UtilizationText);
-        Assert.True(plancher.IsEstimated);
+        Assert.True(plancher.EstPlancher);
         Assert.True(plancher.HasUtilizationText);
 
         var exact = new WindowGaugeViewModel(TimeSpan.FromHours(5));
@@ -114,7 +119,7 @@ public class WindowGaugeViewModelTests
         });
 
         Assert.Equal("42 %", exact.UtilizationText);
-        Assert.False(exact.IsEstimated);
+        Assert.False(exact.EstPlancher);
     }
 
     // --- VIS-01 : FractionElapsed = clamp(1 − FractionRemaining) recalculée à chaque Interpolate ---

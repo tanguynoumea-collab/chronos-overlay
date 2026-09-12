@@ -109,7 +109,7 @@ public class CadranBindingTests
 
         // Centre épuré (v1.3) : plus de badge « estimée » — l'honnêteté passe par le « ~ » du %.
         // Utilization null → PAS de % (texte vide), et le converter sur null n'a pas levé (fenêtre construite).
-        Assert.True(vm.FiveHour.IsEstimated);
+        Assert.True(vm.FiveHour.EstPlancher);
         Assert.Equal("", vm.FiveHour.UtilizationText);           // aucune valeur inventée
         Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc); // la fenêtre s'est construite sans crash
     }
@@ -146,8 +146,8 @@ public class CadranBindingTests
         var fenetre = BuildWindow(snap, out var vm);
 
         // 5 h exacte et fraîche → « 40 % », aucune marque ; hebdo plancher → « ≥ 90 % ».
-        Assert.False(vm.FiveHour.IsEstimated);
-        Assert.True(vm.SevenDay.IsEstimated);
+        Assert.False(vm.FiveHour.EstPlancher);
+        Assert.True(vm.SevenDay.EstPlancher);
         Assert.Equal("40 %", vm.FiveHour.UtilizationText);
         Assert.DoesNotContain("~", vm.SevenDay.UtilizationText);   // jamais une incertitude symétrique
         Assert.StartsWith("≥", vm.SevenDay.UtilizationText);

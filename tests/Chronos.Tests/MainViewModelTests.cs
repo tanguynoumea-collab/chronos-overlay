@@ -280,7 +280,7 @@ public class MainViewModelTests
             SourceCapturedAt = Now,
         });
         var avant = vm.SevenDay.CountdownText;
-        Assert.True(vm.SevenDay.IsEstimated);
+        Assert.True(vm.SevenDay.EstPlancher);
 
         var ancre = Now - TimeSpan.FromDays(3);     // prochain reset synthétisé strictement futur
         prompt.Result = ancre;
@@ -288,7 +288,7 @@ public class MainViewModelTests
 
         Assert.Equal(1, prompt.AskCount);
         Assert.NotEqual(avant, vm.SevenDay.CountdownText);      // arc/compte à rebours recalé
-        Assert.True(vm.SevenDay.IsEstimated);                  // badge « estimée » CONSERVÉ (honnêteté)
+        Assert.True(vm.SevenDay.EstPlancher);                  // marque de plancher CONSERVÉE (honnêteté)
         Assert.Equal(ancre, settings.Load().WeeklyAnchor);     // ancre persistée dans settings.json
     }
 
@@ -376,13 +376,13 @@ public class MainViewModelTests
             SourceCapturedAt = Now,
         });
         var avant = vm.SevenDay.CountdownText;
-        Assert.False(vm.SevenDay.IsEstimated);
+        Assert.False(vm.SevenDay.EstPlancher);
 
         prompt.Result = Now - TimeSpan.FromDays(3);
         vm.RecalibrateCommand.Execute(null);
 
         Assert.Equal(avant, vm.SevenDay.CountdownText); // inchangé : la valeur exacte prime
-        Assert.False(vm.SevenDay.IsEstimated);
+        Assert.False(vm.SevenDay.EstPlancher);
     }
 
     // --- JOUR-01/02 : Interpolate pose DayFraction + DayResetAngles (angles vides si ResetsAt 5 h inconnu) ---

@@ -28,7 +28,8 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     [ObservableProperty] private string _countdownText = "—";
     [ObservableProperty] private bool _exhausted;
     [ObservableProperty] private SourceReliability _reliability = SourceReliability.Unavailable;
-    [ObservableProperty] private bool _isEstimated;                             // provenance → marquage « estimé » (DAT-08 Phase 5)
+    [ObservableProperty] private bool _estPlancher;                             // DEL-04 — le chiffre est une BORNE
+                                                                                // INFÉRIEURE (« au moins X »), jamais une estimation
     [ObservableProperty] private string _tokensText = "";                       // « ≈ N M/k tokens » ; vide si masqué (NET-02)
     [ObservableProperty] private bool _hasTokens;                               // vrai SSI TokensDepuisReleve>0 (pilote la visibilité)
 
@@ -66,7 +67,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         Utilization = s.Utilization;
         Exhausted = s.Exhausted;
         Reliability = s.Reliability;
-        IsEstimated = s.Reliability == SourceReliability.Estimated; // pré-câble DAT-08 (Phase 5)
+        // DEL-04 — depuis la phase 19, SourceReliability.Estimated n'est plus produit qu'en UN SEUL
+        // endroit de la production : la branche 3 de la doctrine, le plancher avec activité. Cette
+        // propriété porte donc enfin le nom du fait qu'elle décrit — une BORNE INFÉRIEURE — là où
+        // l'ancienne marque d'estimation désignait un concept que la phase 19 a supprimé.
+        EstPlancher = s.Reliability == SourceReliability.Estimated;
 
         // VIS-05 + DEL-04 : le préfixe est décidé par la PROVENANCE et non par la fiabilité — « ≥ » ne
         // doit apparaître que sur un plancher, jamais sur un exact encore valide (DEL-03), qui est un
