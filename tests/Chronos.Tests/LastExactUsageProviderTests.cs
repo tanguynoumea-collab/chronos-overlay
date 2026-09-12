@@ -289,4 +289,90 @@ public class LastExactUsageProviderTests : IDisposable
         Assert.Null(snap.SourceCapturedAt);              // inconnu reste inconnu
         Assert.Equal(capture, snap.FiveHour.CapturedAt); // l'âge honnête vit sur la fenêtre
     }
+
+    // --- COÛT : la paresse n'est pas une optimisation, c'est une contrainte de forme ---
+
+    /// <summary>
+    /// Une passe réelle coûte 2,7 à 3,2 s et lit 536 Mo (mesuré le 2026-09-12 sur la machine cible :
+    /// 474 fichiers, 155 171 lignes). Au tick de 60 s, une lecture inconditionnelle serait une E/S
+    /// permanente sur un overlay. En régime nominal, la doctrine ne doit donc RIEN lire.
+    /// </summary>
+    [Fact]
+    public async Task Chemin_nominal_ne_lit_JAMAIS_les_transcripts()
+    {
+        _activite.Journal = Journal();
+        var inner = new FakeUsageProvider
+        {
+            Next = Snap(Win(WindowKind.FiveHour, SourceReliability.Exact, 0.42, Now.AddHours(3), Now),
+                        Win(WindowKind.SevenDay, SourceReliability.Exact, 0.63, Now.AddDays(4), Now)),
+        };
+
+        await Deco(inner).GetAsync();
+
+        Assert.Equal(0, _activite.Lectures);
+    }
+
+    /// <summary>
+    /// UNE passe, pas deux. C'est exactement pour cela que la phase 16 a séparé la lecture disque
+    /// de l'interrogation : les deux fenêtres ont des bornes basses différentes mais doivent répondre
+    /// depuis un SEUL instantané, sinon leurs réponses peuvent être incohérentes entre elles — et deux
+    /// passes coûteraient 5,8 s.
+    /// </summary>
+    [Fact]
+    public async Task Les_deux_fenetres_degradees_partagent_UNE_SEULE_passe_disque()
+    {
+        var capture = Now.AddHours(-3);
+        _store.Save(Snap(Win(WindowKind.FiveHour, SourceReliability.Exact, 0.42, Now.AddHours(1), capture),
+                         Win(WindowKind.SevenDay, SourceReliability.Exact, 0.63, Now.AddDays(4), capture)));
+        _activite.Journal = Journal();
+        var inner = new FakeUsageProvider { Next = UsageSnapshot.Empty };
+
+        await Deco(inner).GetAsync();
+
+        Assert.Equal(1, _activite.Lectures);
+    }
+
+    // --- ROBUSTESSE : aucune source disponible n'est jamais un crash (ROB-01) ---
+
+    /// <summary>
+    /// Le mémoïseur laisse délibérément remonter l'IOException quand il ne connaît AUCUN journal : il
+    /// n'invente jamais un journal vide, qui se lirait « aucune activité », c'est-à-dire une
+    /// affirmation. Convertir ce silence en branche « indisponible » est le travail de CETTE couche.
+    /// </summary>
+    [Fact]
+    public async Task Une_source_d_activite_en_panne_degrade_sans_lever()
+    {
+        var capture = Now.AddHours(-3);
+        _store.Save(Snap(Win(WindowKind.FiveHour, SourceReliability.Exact, 0.42, Now.AddHours(1), capture),
+                         WindowState.Unavailable(WindowKind.SevenDay)));
+        _activite.Journal = null;   // l'inner lève une IOException
+        var inner = new FakeUsageProvider { Next = UsageSnapshot.Empty };
+
+        var snap = await Deco(inner).GetAsync();
+
+        Assert.Equal(1, _activite.Lectures);       // la passe a bien été TENTÉE…
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+        Assert.Null(snap.FiveHour.Utilization);   // rien de prouvable ⇒ aucun chiffre affiché
+    }
+
+    // --- EXA-05 : le bit remonte, et il ne MENT pas quand le magasin est muet ---
+
+    [Fact]
+    public async Task Sans_magasin_le_snapshot_declare_qu_aucun_exact_n_a_JAMAIS_ete_obtenu()
+    {
+        var snap = await Deco(new FakeUsageProvider { Next = UsageSnapshot.Empty }).GetAsync();
+
+        Assert.False(snap.UnExactADejaEteObtenu);   // false, PAS null : le magasin a bien répondu
+    }
+
+    [Fact]
+    public async Task Un_magasin_portant_un_releve_declare_qu_un_exact_a_deja_ete_obtenu()
+    {
+        _store.Save(Snap(Win(WindowKind.FiveHour, SourceReliability.Exact, 0.42, Now.AddHours(3), Now),
+                         WindowState.Unavailable(WindowKind.SevenDay)));
+
+        var snap = await Deco(new FakeUsageProvider { Next = UsageSnapshot.Empty }).GetAsync();
+
+        Assert.True(snap.UnExactADejaEteObtenu);
+    }
 }
