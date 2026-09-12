@@ -138,6 +138,64 @@ public class GardesDoctrineTests
         Assert.Equal(0.11, snap.SevenDay.Utilization);
     }
 
+    // ==================== Phase 20 : le champ mort ne revient pas ====================
+
+    /// <summary>
+    /// GARDE 3, STRUCTURELLE — le champ qui portait la somme de l'estimation ABSOLUE ne peut pas
+    /// réapparaître dans le modèle ni dans les services.
+    ///
+    /// Elle REMPLACE une garde de COMPORTEMENT (<c>CadranBindingTests</c>, phase 19) qui vérifiait que
+    /// ce champ ne surfaçait plus rien au cadran. Le champ a été supprimé en phase 20, donc ce test-là
+    /// ne compilait plus ; il n'a pas été retiré sans remplaçant, il a CHANGÉ DE NIVEAU. Un champ absent
+    /// est une garantie plus forte qu'un champ mort surveillé : la garde de comportement laissait
+    /// subsister l'emplacement, avec sa tentation de réemploi.
+    ///
+    /// Balayage du TEXTE source, comme les deux gardes ci-dessus, via le chemin injecté par MSBuild.
+    /// Le littéral vit ICI, en chaîne de caractères, et NULLE PART dans src/Chronos : c'est ce qui rend
+    /// le critère « zéro occurrence » atteignable (doctrine phase 19 — un commentaire qui reproduit
+    /// l'expression fautive tue le critère de non-retour).
+    /// </summary>
+    [Fact]
+    public void Aucun_champ_nomme_EstimatedTokens_ne_reapparait_dans_Models_ni_Services()
+    {
+        const string interdit = "EstimatedTokens";
+
+        var racine = CheminSources();
+
+        var fichiers = new[] { "Services", "Models" }
+            .Select(d => Path.Combine(racine, d))
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.cs"))   // dossiers plats, non récursif
+            .ToList();
+
+        // Un chemin valide pointant sur un dossier vide rendrait la garde muette.
+        Assert.True(fichiers.Count >= 40,
+            $"Seulement {fichiers.Count} fichiers balayés sous {racine} : la garde ne voit manifestement "
+            + "pas la vraie arborescence des sources.");
+
+        var infractions = new List<string>();
+
+        foreach (var fichier in fichiers)
+        {
+            var texte = File.ReadAllText(fichier);
+            var index = texte.IndexOf(interdit, StringComparison.Ordinal);
+            while (index >= 0)
+            {
+                var ligne = texte.Take(index).Count(c => c == '\n') + 1;
+                infractions.Add($"{Path.GetFileName(fichier)}:{ligne}");
+                index = texte.IndexOf(interdit, index + 1, StringComparison.Ordinal);
+            }
+        }
+
+        Assert.True(infractions.Count == 0,
+            "Ce champ portait la somme de l'estimation ABSOLUE supprimée en phase 16 : un nombre de "
+            + "tokens rapporté à un plafond, c'est-à-dire un chiffre que la mesure terrain falsifie d'un "
+            + "facteur supérieur à 2,8. Il est mort en production depuis, et supprimé du modèle depuis la "
+            + "phase 20. Le chiffre de DEL-04 est TokensDepuisReleve — les tokens observés DEPUIS le "
+            + "relevé exact, matière d'une BORNE INFÉRIEURE et jamais d'un pourcentage. Réutiliser "
+            + "l'ancien nom rattacherait au nouveau chiffre la sémantique que ce milestone a tuée.\n  "
+            + string.Join("\n  ", infractions));
+    }
+
     // ==================== EXA-06 (phase 20) : le NOM de la source ====================
 
     /// <summary>

@@ -125,7 +125,6 @@ public static class DoctrineFraicheur
         {
             Reliability = SourceReliability.Unavailable,
             Utilization = null,
-            EstimatedTokens = null,
             TokensDepuisReleve = null,
             Provenance = null,
             // EXA-06, cohérence avec la provenance ci-dessus : une fenêtre dont on efface le chiffre

@@ -158,12 +158,16 @@ public class CadranBindingTests
     // NET-02 + DEL-04 : la matière première brute surfacée en texte secondaire discret, dérivée dans
     // WindowGaugeViewModel.Apply. Ces [Fact] testent directement le sous-VM (pas de STA requis : pur).
     //
-    // CHANGEMENT DE CHAMP (phase 19) : les trois tests ci-dessous pilotaient « EstimatedTokens », qui
-    // portait la somme de l'estimation ABSOLUE (tokens / plafond) supprimée en phase 16 — champ mort en
-    // production depuis. Le chiffre de DEL-04 est « TokensDepuisReleve » : les tokens observés DEPUIS le
-    // relevé exact, matière d'une borne inférieure et non d'un pourcentage. Les trois tests sont
+    // CHANGEMENT DE CHAMP (phase 19) : les trois tests ci-dessous pilotaient le champ qui portait la
+    // somme de l'estimation ABSOLUE supprimée en phase 16 — mort en production depuis, et supprimé du
+    // modèle en phase 20. Le chiffre de DEL-04 est « TokensDepuisReleve » : les tokens observés DEPUIS
+    // le relevé exact, matière d'une borne inférieure et non d'un pourcentage. Les trois tests sont
     // RÉÉCRITS et non supprimés : ils restent la preuve que la matière brute n'est surfacée ni sur un
     // exact, ni à zéro token.
+    //
+    // Le quatrième — la garde de non-retour par COMPORTEMENT — a suivi le champ dans sa tombe : un champ
+    // absent est une garantie plus forte qu'un champ mort surveillé. Son remplaçant est STRUCTUREL et
+    // vit dans GardesDoctrineTests, où il balaie le texte source de Models/ et Services/.
 
     [Fact]
     public void Plancher_avec_tokens_depuis_releve_expose_HasTokens_et_TokensText_abrege()
@@ -211,25 +215,6 @@ public class CadranBindingTests
             Reliability = SourceReliability.Estimated,
             Provenance = ProvenanceReleve.PlancherAvecActivite,
             TokensDepuisReleve = 0, // 0 = MESURÉ à zéro (≠ null, non mesuré) : rien à afficher non plus
-        });
-
-        Assert.False(vm.HasTokens);
-        Assert.Equal("", vm.TokensText);
-    }
-
-    /// <summary>DEL-04 — garde de non-retour : l'ancien champ <c>EstimatedTokens</c>, mort en production
-    /// depuis la phase 16, ne doit PLUS rien surfacer au cadran. S'il était encore lu, ce test
-    /// exposerait « ≈ 99 M tokens » sous un chiffre qui n'en a pas la sémantique.</summary>
-    [Fact]
-    public void EstimatedTokens_seul_ne_surface_PLUS_rien_au_cadran()
-    {
-        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
-
-        vm.Apply(new WindowState
-        {
-            Kind = WindowKind.FiveHour,
-            Reliability = SourceReliability.Estimated,
-            EstimatedTokens = 99_000_000, // champ LEGACY : plus aucune lecture côté présentation
         });
 
         Assert.False(vm.HasTokens);

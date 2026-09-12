@@ -82,9 +82,9 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         HasStatutServeur = s.StatutServeur is not null;
 
         // NET-02 + DEL-04 : la matière première brute est le compte de tokens observés DEPUIS le relevé,
-        // et non EstimatedTokens, qui portait la somme de l'estimation ABSOLUE supprimée en phase 16.
-        // Réutiliser l'ancien champ rattacherait au nouveau chiffre une sémantique que ce milestone a
-        // tuée. Aucune conversion : ce compte est affiché tel quel, il ne devient JAMAIS un pourcentage
+        // et non la somme de l'estimation ABSOLUE supprimée en phase 16. Le champ qui la portait a
+        // lui-même été supprimé en phase 20 : il rattachait au nouveau chiffre une sémantique que ce
+        // milestone a tuée. Aucune conversion : ce compte est affiché tel quel, il ne devient JAMAIS un pourcentage
         // (les limites Anthropic pondèrent par modèle — tokens / plafond restera faux à jamais).
         // Seule une fenêtre corrigée par delta en porte un : aucun test de fiabilité n'est nécessaire.
         HasTokens = s.TokensDepuisReleve is > 0;
