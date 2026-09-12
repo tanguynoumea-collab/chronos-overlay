@@ -286,6 +286,18 @@ d'événements).
      widget (TRT-03).
   5. **« Archiver » fait ce qu'il annonce** : soit l'entrée ne revient jamais, soit la durée est annoncée —
      plus de menu qui promet « permanent » pendant qu'un TTL de 6 h la fait réapparaître (TRT-04).
+**Plans**: 4 plans, 4 vagues strictement sérielles. Les quatre se disputent `App.xaml.cs`, `TreatedStore.cs`,
+`ArchiveStore.cs` et les mêmes fichiers de tests : la propriété exclusive des fichiers impose l'ordre. Cet
+ordre est aussi celui de la dépendance logique — le détecteur (26-01) doit dire la vérité avant que le
+magasin d'archives puisse tenir sa promesse (26-02), et le geste explicite (26-03) ne peut annoncer
+« réversible » et « définitif » que si les deux contrats sont déjà vrais. Le document (26-04) ne décrit
+que ce qui a été livré.
+
+Plans:
+- [ ] 26-01-PLAN.md — TRT-01 + TRT-02 : la transition observée sur la MÊME source, le scénario mesuré des 478 minutes rejoué en rouge, et l'épisode daté par le signal qui survit au redémarrage
+- [ ] 26-02-PLAN.md — TRT-04 : le magasin d'archives perd sa durée de vie de six heures et gagne une horloge injectable — ce qui est archivé ne revient jamais
+- [ ] 26-03-PLAN.md — TRT-03 (+ volet UI de TRT-04) : le geste explicite et le geste de masse sur les 8 styles et les 9 thèmes, avec des libellés qui disent s'ils reviennent
+- [ ] 26-04-PLAN.md — le §3 du contrat des hooks suit le câblage, une garde croisée document/code le tient, et la carte de validation se clot sur des chiffres mesurés
 **UI hint**: yes
 
 ### Progress
@@ -302,7 +314,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 | 23. Un magasin qui ne croît plus et n'oublie plus | 2/2 | Complete   | 2026-09-12 |
 | 24. L'arbitrage par fraîcheur | 2/2 | Complete   | 2026-09-12 |
 | 25. Le contrat d'événements refondé | 4/4 | Complete   | 2026-09-12 |
-| 26. « Traité » veut enfin dire quelque chose | 0/? | Not started | - |
+| 26. « Traité » veut enfin dire quelque chose | 0/4 | Planned | - |
 
 ### Couverture des exigences
 
