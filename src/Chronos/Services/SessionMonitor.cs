@@ -113,7 +113,8 @@ public sealed class SessionMonitor
             if (treatedMap is not null && treatedMap.ContainsKey(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Traitee)); continue; }
             visibles.Add(s);
         }
-        return new LectureSessions(visibles, masquees, ecartesParAnciennete);
+        return new LectureSessions(visibles, masquees, ecartesParAnciennete,
+            System.Array.Empty<DesaccordSources>());
     }
 
     // <paramref name="perimee"/> distingue « lu, mais trop vieux pour valoir quelque chose » de

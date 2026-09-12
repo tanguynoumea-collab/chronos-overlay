@@ -35,8 +35,14 @@ public sealed record SessionMasquee(SessionSnapshot Session, MotifMasquage Motif
 /// signal a expiré n'est pas cachée, elle est inconnue. Le compteur est là parce que sur la machine
 /// mesurée il valait 52 sur 54 fichiers — un fait qui explique l'écart entre « 54 fichiers sur disque »
 /// et « 1 ligne à l'écran », et que rien ne disait.</para>
+///
+/// <para><see cref="Desaccords"/> (FUS-02) n'est PAS un motif de masquage et ne doit jamais être compté
+/// comme tel : la session concernée est AFFICHÉE. Ce qui a été écarté, c'est l'un de ses signaux. Le relevé
+/// du 2026-09-12 est le cas d'école : un fichier de hook figé depuis 7 h annonçait « à toi » pendant qu'un
+/// transcript de 10 s prouvait le contraire — le désaccord gagnait, et rien ne le disait.</para>
 /// </summary>
 public sealed record LectureSessions(
     IReadOnlyList<SessionSnapshot> Visibles,
     IReadOnlyList<SessionMasquee> Masquees,
-    int FichiersEcartesParAnciennete);
+    int FichiersEcartesParAnciennete,
+    IReadOnlyList<DesaccordSources> Desaccords);
