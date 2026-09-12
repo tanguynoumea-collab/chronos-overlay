@@ -29,6 +29,20 @@ public sealed record WindowState
     /// écarterait ce champ. Un champ et un canal, parce qu'aucun des deux ne suffit seul.</summary>
     public EtatDepassement? Depassement { get; init; }
 
+    /// <summary>Phase 19 — provenance fine décidée par la doctrine. null = non statué. Porté par
+    /// WindowState et NON par UsageSnapshot, pour la raison mécanique déjà établie pour StatutServeur :
+    /// Best() rend l'INSTANCE gagnante PAR RÉFÉRENCE, donc ce champ traverse gratuitement les trois
+    /// composites imbriqués, là où un champ de snapshot serait détruit par la recomposition.</summary>
+    public ProvenanceReleve? Provenance { get; init; }
+
+    /// <summary>Phase 19 (DEL-04) — tokens de réponses assistant observés depuis CapturedAt. BORNE
+    /// INFÉRIEURE et matière première BRUTE, jamais exprimée en points de pourcentage (EXA-04) : les
+    /// limites Anthropic pondèrent par modèle, et les transcripts ignorent l'app de bureau et Cowork,
+    /// qui consomment pourtant le même pool. Champ DISTINCT d'EstimatedTokens, qui portait la somme de
+    /// l'estimation absolue supprimée en phase 16 — réutiliser ce dernier rattacherait au nouveau chiffre
+    /// la sémantique que le milestone a tuée.</summary>
+    public long? TokensDepuisReleve { get; init; }
+
     /// <summary>Épuisé si utilization connue >= 1. Inconnu (null) != épuisé.</summary>
     public bool Exhausted => Utilization is >= 1.0;
 

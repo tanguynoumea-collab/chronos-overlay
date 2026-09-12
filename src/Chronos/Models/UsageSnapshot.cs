@@ -6,9 +6,23 @@ public sealed record UsageSnapshot
     public required WindowState FiveHour { get; init; }
     public required WindowState SevenDay { get; init; }
 
-    /// <summary>Horodatage de capture de la source (bridge capturedAt / lecture JSONL) ; null si inconnu.
-    /// La staleness (IsStale) en est dérivée côté VM — aucun champ Age materialisé.</summary>
+    /// <summary>LEGACY (phase 19). Horodatage de capture au niveau SNAPSHOT. La vérité de la doctrine est
+    /// désormais PAR FENÊTRE (WindowState.CapturedAt + Provenance) ; ce champ et le IsStale du ViewModel
+    /// qui en dérive ne sont bindés nulle part et sont conservés tels quels pour ne rien casser. La
+    /// phase 20 les retire en bindant la provenance par fenêtre. Ne pas le croire canonique.</summary>
     public DateTimeOffset? SourceCapturedAt { get; init; }
+
+    /// <summary>EXA-05 — un relevé exact a-t-il déjà été obtenu au moins une fois ? <c>null</c> = non
+    /// évalué (tout snapshot produit SOUS la couche de doctrine, dont <see cref="Empty"/>). <c>false</c> =
+    /// jamais : l'overlay doit inviter à se connecter et ne JAMAIS afficher de pourcentage.
+    ///
+    /// bool? et non bool : avec bool, Empty vaudrait false, c'est-à-dire « jamais eu d'exact » — une
+    /// AFFIRMATION produite par une absence, exactement ce que le projet proscrit.
+    ///
+    /// Sur UsageSnapshot et non WindowState : c'est un fait de COMPTE, pas de fenêtre. Sans danger malgré
+    /// la recomposition par « new » de CompositeUsageProvider.GetAsync, parce que ce champ est posé par la
+    /// couche de doctrine, qui est AU-DESSUS du composite : aucun composite ne le reverra jamais.</summary>
+    public bool? UnExactADejaEteObtenu { get; init; }
 
     /// <summary>Snapshot « données indisponibles » : deux fenêtres Unavailable, aucun crash (ROB-01).</summary>
     public static UsageSnapshot Empty => new()
