@@ -82,7 +82,7 @@ sur les **8 styles de session** (galerie `--sessions`) et les **9 thèmes**.
 - Phases décimales (21.1, 21.2) : insertions urgentes (marquées INSERTED)
 
 - [x] **Phase 21 : Périmètre — le widget ne parle que de Claude Code** - La source app-bureau par UI Automation disparaît avec ses entrées fantômes, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents (completed 2026-09-12)
-- [ ] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes
+- [x] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes (completed 2026-09-12)
 - [ ] **Phase 23 : Un magasin qui ne croît plus et n'oublie plus** - Les états expirés et les `.tmp` orphelins sont balayés, et une écriture de hook ne peut plus être perdue en silence
 - [ ] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables
 - [ ] **Phase 25 : Le contrat d'événements refondé** - `PermissionRequest` au lieu du proxy `Notification`, « réfléchit » observé par battements de cœur, interruption utilisateur couverte, contrat documenté
@@ -157,7 +157,7 @@ automatiquement chaque changement ultérieur, sans retouche et sans jamais figer
 Plans:
 - [x] 22-01-PLAN.md — OBS-01 (1/2) : le moniteur devient inspectable (ce qu'il masque, par quel filtre) et sa mise en forme devient partageable
 - [x] 22-02-PLAN.md — OBS-01 (2/2) : partage d'instance — le rapport interroge le moniteur du conteneur, nomme les masquages, deux gardes de non-retour falsifiables
-- [ ] 22-03-PLAN.md — OBS-02 : des fichiers d'état choisis par pertinence au lieu de l'ordre alphabétique, et la carte de vérification de la phase
+- [x] 22-03-PLAN.md — OBS-02 : des fichiers d'état choisis par pertinence au lieu de l'ordre alphabétique, et la carte de vérification de la phase
 
 ### Phase 23 : Un magasin qui ne croît plus et n'oublie plus
 **Goal**: `%APPDATA%\Chronos\sessions` cesse d'être un dépotoir qui ne fait que grandir, et une écriture
@@ -262,7 +262,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
-| 22. Un instrument de mesure qui ne ment plus | 2/3 | In Progress|  |
+| 22. Un instrument de mesure qui ne ment plus | 3/3 | Complete   | 2026-09-12 |
 | 23. Un magasin qui ne croît plus et n'oublie plus | 0/? | Not started | - |
 | 24. L'arbitrage par fraîcheur | 0/? | Not started | - |
 | 25. Le contrat d'événements refondé | 0/? | Not started | - |

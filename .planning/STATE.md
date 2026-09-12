@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: executing
-stopped_at: Completed 22-02-PLAN.md
-last_updated: "2026-09-12T16:09:08.932Z"
+status: verifying
+stopped_at: Completed 22-03-PLAN.md
+last_updated: "2026-09-12T16:19:25.509Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
-  percent: 17
+  completed_plans: 7
+  percent: 33
 ---
 
 # Project State
@@ -29,14 +29,15 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 22 (Un instrument de mesure qui ne ment plus) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [█░░░░░░░░░] 17%  (1 phase sur 6 — phase 21 close, 4 plans sur 4)
+Progress: [███░░░░░░░] 33%  (2 phases sur 6 — phases 21 et 22 closes, 7 plans sur 7)
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 5
+- Total plans completed (v1.6): 7
+- Suite de tests : **747 verts / 0 échec** (baseline d'entrée de phase 22 : 719)
 
 ## Milestone v1.5 (clos)
 
@@ -168,6 +169,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 21 P04 | 9min | 3 tasks | 5 files |
 | Phase 22 P01 | 6 min | 2 tasks | 6 files |
 | Phase 22 P02 | 6 min | 2 tasks | 5 files |
+| Phase 22 P03 | 9 min | 2 tasks | 3 files |
 
 ### Decisions
 
@@ -388,6 +390,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 22]: OBS-01 reste Pending apres 22-01 — L'exigence est partagee avec le plan 22-02, qui porte le cablage du diagnostic. La cocher ici affirmerait une capacite qui n'existe pas encore.
 - [Phase 22]: OBS-01 livré en PARTAGE D'INSTANCE : le diagnostic interroge le SessionMonitor du conteneur DI, sans aucun repli — sans moniteur il dit « MONITEUR NON INJECTÉ » au lieu d'en fabriquer un
 - [Phase 22]: Les gardes de non-retour sont falsifiées avant commit : trois mutations appliquées, rouge observé, révocation vérifiée par checksum
+- [Phase 22]: Le rapport de diagnostic choisit ses exemples de fichiers d'etat par PERTINENCE (attente d'abord, puis fraicheur, bareme partage avec le widget) et annonce combien il n'en montre pas — fin du tirage alphabetique des UUID (OBS-02)
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -476,7 +479,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T16:09:03.008Z
-Stopped at: Completed 22-02-PLAN.md
+Last session: 2026-09-12T16:19:25.407Z
+Stopped at: Completed 22-03-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
