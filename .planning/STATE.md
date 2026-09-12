@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: verifying
-stopped_at: Completed 17-05-PLAN.md
-last_updated: "2026-09-11T23:13:51.510Z"
-last_activity: 2026-09-11
+status: executing
+stopped_at: Completed 18-01-PLAN.md
+last_updated: "2026-09-12T00:41:06.862Z"
+last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 18
+  completed_plans: 13
   percent: 0
 ---
 
@@ -22,15 +22,15 @@ See: .planning/PROJECT.md (updated 2026-09-09)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
 deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 17 — Jeton toujours vivant, panne toujours visible
+**Current focus:** Phase 18 — Source exacte par en-tetes de rate-limit
 
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 17 (Jeton toujours vivant, panne toujours visible) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-09-11
+Phase: 18 (Source exacte par en-tetes de rate-limit) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-09-12
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
@@ -136,6 +136,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 17 P03 | 10min | 2 tasks | 4 files |
 | Phase 17 P04 | 26min | 2 tasks | 7 files |
 | Phase 17 P05 | 19min | 3 tasks | 9 files |
+| Phase 18 P01 | 14min | 3 tasks | 8 files |
 
 ### Decisions
 
@@ -223,6 +224,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 17]: [17-05] Deux booleens de pastille et non un enum binde : Deconnecte est ACTIONNABLE (ambre, cliquable), HorsLigne est INFORMATIF (gris, inerte). Etat applique DES le ctor : sur cette machine le jeton est mort depuis le 2026-07-12, l'autorite est deja en echec au demarrage et n'emettra aucune transition. NonConnecte n'allume rien (EXA-05, phase 19).
 - [Phase 17]: [17-05] ReinitialiserApresLogin a enfin un appelant (aucun depuis 17-02), suivi de RequestRefresh : sans quoi le verrou Deconnecte et le recul restaient poses et la pastille survivait a sa propre reparation. L'ORDRE des deux est reel en production mais INOBSERVABLE en test (RequestRefresh ne fait qu'empiler, consommation asynchrone) : declare non couvert plutot que teste faussement.
 - [Phase 17]: [17-05] DEUX gardes de test MUETTES attrapees par mutation : (1) RefreshOrchestrator.TryTrigger ne renvoie PAS false quand le channel est plein (DropWrite renvoie true) ; (2) une fenetre WPF jamais affichee n'a pas de parent visuel pour son Content, donc le DataContext ne se propage pas et AUCUN binding ne s'evalue (Command null, Visibility=Visible par defaut). Parade : DataContext sur la grille racine + purge du Dispatcher.
+- [Phase 18]: [18-01] Le plancher d'epoch 2020-01-01 vit DANS le point unique UsageNormalization, pas dans le provider fautif : il corrige le bug reel resets_at: 9 pour TOUTES les sources d'un coup, y compris celles qui n'existent pas encore (la sonde du plan 18-03 lit un epoch en TEXTE et en herite gratuitement).
+- [Phase 18]: [18-01] InstantDepuisEpochMillisecondes n'est pas un confort mais une CONDITION de la garde : sans elle, les 3 horodatages en ms du rapport de diagnostic auraient force l'exemption de DiagnosticService.cs — et une garde qui exempte le plus gros fichier de la couche ne garde rien.
+- [Phase 18]: [18-01] Aucun clamp dans la porte de validation, ni haut ni bas : Exhausted teste >= 1.0 donc un depassement reel doit rester visible, et une valeur negative est un symptome de source incoherente, pas un zero (null != 0).
+- [Phase 18]: [18-01] Etape RED jouee contre un SQUELETTE compilable (NotImplementedException) et non contre une classe absente : tests/Chronos.Tests reference Chronos, donc un commit non compilable rendrait dotnet test non invocable. RED = 25 echecs / 1 succes, donc comportemental et non de compilation.
+- [Phase 18]: [18-01] Garde de non-retour HDR-05 prouvee FALSIFIABLE par mutation reelle (p / 100.0 reintroduit -> echec nommant ChronosOAuthUsageProvider.cs:174) puis revoquee (git diff vide). Exemptions NOMINATIVES : point unique + ClaudeTokenReader (expiration de jeton) + SessionMonitor + TranscriptActivityProvider (dates qui ne sont pas des quotas).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -265,6 +271,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
   déconnexion dans les 3 thèmes × 5 styles × 2 modes, (2) parcours de reconnexion en un clic de bout en
   bout (login navigateur réel). Ne bloquent aucune phase suivante, **mais** sans reconnexion réelle, ni
   `/api/oauth/usage` ni la sonde d'en-têtes de la phase 18 ne répondront sur cette machine.
+
 - ~~Prochaine action v1.5 : `/gsd:plan-phase 15`~~ (fait, phases 15/16/17 closes).
 - ~~Phase 13 (tout début) : capturer le snapshot UIA en état **repos**~~ (fait, v1.4 clos).
 
@@ -277,7 +284,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-11T23:13:37.899Z
-Stopped at: Completed 17-05-PLAN.md
+Last session: 2026-09-12T00:40:54.318Z
+Stopped at: Completed 18-01-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18

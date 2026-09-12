@@ -67,7 +67,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 - [ ] **HDR-03**: Le **statut serveur** (`allowed` / `allowed_warning` / `rejected`) est remonté au cadran, au lieu
   d'être déduit d'un pourcentage.
 - [ ] **HDR-04**: L'usage en **dépassement** (`overage`) est lu et affiché quand il est présent.
-- [ ] **HDR-05**: Les **unités concurrentes** sont normalisées en un point unique : `utilization` 0..1 pour les
+- [x] **HDR-05**: Les **unités concurrentes** sont normalisées en un point unique : `utilization` 0..1 pour les
   en-têtes, 0..100 pour `/api/oauth/usage`, `used_percentage` 0..100 pour le pont statusLine ; `resets_at` en
   epoch secondes pour les deux premiers, ISO 8601 pour le troisième.
 - [ ] **HDR-06**: La **cadence d'interrogation est bornée** et le **coût de la sonde** (une micro-requête par appel)
@@ -129,7 +129,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | HDR-02 | Phase 18 | Pending |
 | HDR-03 | Phase 18 | Pending |
 | HDR-04 | Phase 18 | Pending |
-| HDR-05 | Phase 18 | Pending |
+| HDR-05 | Phase 18 | Complete |
 | HDR-06 | Phase 18 | Pending |
 | TOK-01 | Phase 17 | Complete |
 | TOK-02 | Phase 17 | Complete |
