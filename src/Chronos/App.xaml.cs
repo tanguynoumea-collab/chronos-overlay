@@ -108,6 +108,15 @@ public partial class App : Application
         try { _host.Services.GetRequiredService<ArchiveStore>().PurgerPrefixe("desktop:"); }
         catch { }
 
+        // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la purge
+        // ci-dessus : mode OVERLAY uniquement (les modes --hook et --statusline sortent bien plus haut),
+        // best-effort et silencieux, il ne peut pas empêcher le démarrage. Mesuré le 2026-09-12 : 54 états,
+        // dont 48 de plus de sept jours, plus 12 fichiers temporaires abandonnés.
+        //
+        // Expirer, c'est ne plus savoir : ce qui est balayé disparaît, rien n'est déclaré terminé ni traité.
+        try { _host.Services.GetRequiredService<BalayageMagasinSessions>().Balayer(); }
+        catch { }
+
         // Première exécution : proposer d'activer la SOURCE EXACTE (pont statusLine Claude Code).
         // Une seule fois (StatusLinePromptDismissed), non bloquant pour le rendu de l'overlay.
         _host.Services.GetRequiredService<IStatusLineSetup>().OfferOnFirstRun();
@@ -245,6 +254,16 @@ public partial class App : Application
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
             sp.GetRequiredService<SessionTreatmentTracker>()));
+
+        // CYC-01 — balayage du magasin d'états au démarrage. Le dossier balayé est celui DU MONITEUR du
+        // widget, jamais un second chemin déduit : deux chemins pour un seul widget rouvriraient l'écart
+        // que la phase 22 vient de fermer, et un balayage qui se tromperait de dossier effacerait les
+        // fichiers de quelqu'un d'autre. L'attestation de vie vient des transcripts — c'est ce qui permet
+        // à une session vivante depuis plusieurs jours de survivre au nettoyage.
+        services.AddSingleton(sp => new BalayageMagasinSessions(
+            sp.GetRequiredService<SessionMonitor>().Directory,
+            new TranscriptSessionSource(),
+            sp.GetRequiredService<IClock>()));
 
         services.AddSingleton(_ => new SessionHookInstaller());
 

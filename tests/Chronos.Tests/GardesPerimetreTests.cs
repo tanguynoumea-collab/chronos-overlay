@@ -173,6 +173,26 @@ public class GardesPerimetreTests
         Assert.DoesNotContain(".tmp-", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE CÂBLAGE (CYC-01, phase 23). Un balayage parfaitement testé mais jamais appelé ne balaie
+    /// rien, et le défaut ne se verrait que chez l'utilisateur, sur ses propres données, en silence — c'est
+    /// exactement ce qui s'est produit pendant deux mois avec le magasin de sessions. La seconde assertion
+    /// est la plus importante : le balayage doit viser le dossier DU MONITEUR du widget, jamais un chemin
+    /// déduit dans son coin.
+    /// </summary>
+    [Fact]
+    public void Le_demarrage_balaie_le_magasin_de_sessions_sur_le_dossier_du_moniteur()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        Assert.Contains("OnStartup", texte, StringComparison.Ordinal);   // garde muette sinon
+        Assert.Contains("GetRequiredService<BalayageMagasinSessions>().Balayer()", texte, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredService<SessionMonitor>().Directory", texte, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()

@@ -136,6 +136,13 @@ public class CompositionRootTests
     /// Phase 21 : la sous-chaîne app-bureau (phases 13-14) a été retirée du graphe de production ; la garde
     /// couvre désormais ce qui subsiste — <c>ArchiveStore</c>, <c>TreatedStore</c>,
     /// <c>SessionTreatmentTracker</c> et <c>SessionMonitor</c>.
+    ///
+    /// <para>Phase 23 (CYC-01) : le balayeur du magasin de sessions rejoint le graphe. Il dérive son dossier
+    /// de CE moniteur, et il SUPPRIME des fichiers — d'où deux précautions. Le moniteur du miroir reçoit
+    /// désormais un dossier TEMPORAIRE et non « null » comme en production, sans quoi la garde pointerait
+    /// sur le vrai magasin de l'utilisateur ; et ce test ne demande jamais au balayeur d'agir. Une garde DI
+    /// prouve la RÉSOLUTION du graphe, pas le comportement — celui-ci est couvert par
+    /// <c>BalayageMagasinSessionsTests</c>, en dossier temporaire.</para>
     /// </summary>
     [Fact]
     public void Le_graphe_DI_resout_la_chaine_de_sessions()
@@ -148,14 +155,31 @@ public class CompositionRootTests
         services.AddSingleton(_ => new TreatedStore(
             System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosTreated_" + System.Guid.NewGuid().ToString("N") + ".json")));
         services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
-        services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
+
+        // Dossier TEMPORAIRE et non « null » comme en production : le balayeur enregistré ci-dessous dérive
+        // son dossier de CE moniteur, et ce code supprime des fichiers. Aucune garde DI ne doit pouvoir
+        // viser le vrai magasin de l'utilisateur.
+        var dossierSessions = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+            "ChronosSessions_" + System.Guid.NewGuid().ToString("N"));
+        services.AddSingleton(sp => new SessionMonitor(dossierSessions, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
             sp.GetRequiredService<SessionTreatmentTracker>()));
+
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(sp => new BalayageMagasinSessions(
+            sp.GetRequiredService<SessionMonitor>().Directory,
+            new TranscriptSessionSource(),
+            sp.GetRequiredService<IClock>()));
 
         var provider = services.BuildServiceProvider();
 
         // Résolution sans exception = graphe câblé dans le BON ORDRE (aucun service manquant/mal ordonné).
         Assert.NotNull(provider.GetRequiredService<SessionMonitor>());
+
+        var balayeur = provider.GetRequiredService<BalayageMagasinSessions>();
+        Assert.NotNull(balayeur);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), balayeur.Dossier);   // garde anti-accident
+        Assert.Equal(provider.GetRequiredService<SessionMonitor>().Directory, balayeur.Dossier);
 
         // OBS-01 — le partage d'instance repose entièrement sur la portée : passer ce moniteur en transient
         // donnerait au diagnostic un exemplaire distinct de celui du widget, avec ses propres magasins
