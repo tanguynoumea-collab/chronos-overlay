@@ -1,11 +1,11 @@
 ---
 phase: 22
 slug: un-instrument-de-mesure-qui-ne-ment-plus
-status: planned
+status: validated
 nyquist_compliant: true
 wave_0_complete: n/a
 created: 2026-09-12
-validated: (à remplir au plan 22-03, tâche 2)
+validated: 2026-09-12
 ---
 
 # Phase 22 — Validation Strategy
@@ -19,6 +19,7 @@ validated: (à remplir au plan 22-03, tâche 2)
 | **Quick run (sessions + diagnostic)** | `… --filter "FullyQualifiedName~Inspection\|FullyQualifiedName~Affichage\|FullyQualifiedName~Diagnostic\|FullyQualifiedName~Sessions\|FullyQualifiedName~Treated\|FullyQualifiedName~GardesPerimetre\|FullyQualifiedName~CompositionRoot"` |
 | **Baseline d'entrée de phase** | **719 tests / 0 échec / ~5 s** (fin de phase 21) |
 | **Cible de fin de phase** | **0 échec, aucun test supprimé** — environ **+22** attendus (13 en 22-01, 5 en 22-02, 5 en 22-03, dont un test existant étendu) |
+| **Résultat mesuré (2026-09-12)** | **747 tests / 0 échec / 4 s**, sur **deux exécutions consécutives**. Soit **+28** sur la baseline de 719 : +16 en 22-01, +7 en 22-02, +5 en 22-03. **Aucun test supprimé.** |
 
 ## Le critère de cette phase n'est PAS un chiffre de couverture
 
@@ -95,10 +96,17 @@ l'autre. La sérialisation supprime cette classe de faux négatifs.
 
 | # | Critère (ROADMAP) | Preuve nommée | Résultat mesuré |
 |---|---|---|---|
-| 1 | **Diagnostic et widget disent la même chose** : liste, états et âges identiques des deux côtés, comparables ligne à ligne | `Read_rend_exactement_les_sessions_visibles_d_Inspecter`, `Le_widget_affiche_ce_que_la_couche_neutre_produit`, `Le_rapport_decrit_les_sessions_du_moniteur_qu_on_lui_donne` ; `grep -cF "GetRequiredService<SessionMonitor>()" src/Chronos/App.xaml.cs` → 2 | (à mesurer) |
-| 2 | **Ce qui est masqué est dit, et pourquoi** : `e465420e` devient lisible en une lecture | `Le_cas_e465420e_devient_lisible_en_une_lecture`, `Le_cas_e465420e_se_lit_en_une_ligne_du_rapport`, `Une_session_archivee_est_annoncee_masquee_par_le_magasin_d_archives` | (à mesurer) |
-| 3 | **Des sessions pertinentes, pas les huit premières de l'alphabet** | `Les_fichiers_listes_sont_ceux_qui_attendent_et_les_plus_recents`, `Le_rapport_ne_tronque_plus_la_liste_des_sessions_affichees` ; `grep -cF "files.Take(8)" src/Chronos/Services/DiagnosticService.cs` → 0 | (à mesurer) |
-| 4 | **Non-retour garanti** : le diagnostic ne peut plus reconstruire son moniteur, et une garde le prouve | `Le_diagnostic_ne_fabrique_aucun_moniteur_de_sessions`, `Le_diagnostic_recoit_le_moniteur_du_conteneur`, `Assert.Same` dans `Le_graphe_DI_resout_la_chaine_de_sessions` | (à mesurer) |
+| 1 | **Diagnostic et widget disent la même chose** : liste, états et âges identiques des deux côtés, comparables ligne à ligne | `Read_rend_exactement_les_sessions_visibles_d_Inspecter`, `Le_widget_affiche_ce_que_la_couche_neutre_produit`, `Le_rapport_decrit_les_sessions_du_moniteur_qu_on_lui_donne` ; `grep -cF "GetRequiredService<SessionMonitor>()" src/Chronos/App.xaml.cs` → 2 | **VERT** — les 3 tests passent ; grep → **2** (une occurrence pour le contrôleur du widget, une pour le diagnostic : le partage est lisible à l'œil nu). Reste à confirmer **in vivo** par l'utilisateur, point 1 ci-dessous. |
+| 2 | **Ce qui est masqué est dit, et pourquoi** : `e465420e` devient lisible en une lecture | `Le_cas_e465420e_devient_lisible_en_une_lecture`, `Le_cas_e465420e_se_lit_en_une_ligne_du_rapport`, `Une_session_archivee_est_annoncee_masquee_par_le_magasin_d_archives` | **VERT** — les 3 tests passent. Ligne livrée, chaque fragment asserté : `· e465420e PROJET ADVANCED SHEET — à toi (il y a 10 min) — masquée par treated.json (hystérésis « traité » — posée automatiquement)`. Le filtre est nommé **avec son fichier** : « absent » n'apprend rien, « masquée par treated.json » dit quoi ouvrir. |
+| 3 | **Des sessions pertinentes, pas les huit premières de l'alphabet** | `Les_fichiers_listes_sont_ceux_qui_attendent_et_les_plus_recents`, `Le_rapport_ne_tronque_plus_la_liste_des_sessions_affichees` ; `grep -cF "files.Take(8)" src/Chronos/Services/DiagnosticService.cs` → 0 | **VERT** — les 2 tests passent, plus 4 autres ajoutés en 22-03. `files.Take(8)` → **0** ; `Take(8)` → **1** (la seule survivante décrit la forme d'un blob d'identifiant, `DescribeBlobShape` — sans rapport avec les sessions) ; `Take(MaxFichiersEtat)` → **1** ; `AffichageSessions.Urgence` → **2** (voir la note d'écart ci-dessous). |
+| 4 | **Non-retour garanti** : le diagnostic ne peut plus reconstruire son moniteur, et une garde le prouve | `Le_diagnostic_ne_fabrique_aucun_moniteur_de_sessions`, `Le_diagnostic_recoit_le_moniteur_du_conteneur`, `Assert.Same` dans `Le_graphe_DI_resout_la_chaine_de_sessions` | **VERT ET FALSIFIÉ** — les 3 tests passent, et les 3 mutations correspondantes ont été observées ROUGES puis révoquées (tableau ci-dessous). `grep -cF "new SessionMonitor" src/Chronos/Services/DiagnosticService.cs` → **0**. |
+
+**Écart de comptage assumé, critère n°3.** Le plan 22-03 attendait `AffichageSessions.Urgence` → **1** dans
+`DiagnosticService.cs`. Le compte mesuré est **2**, et c'est correct : le plan 22-02 avait déjà introduit une
+première occurrence pour trier les sessions MASQUÉES. L'esprit du critère — « l'ordre d'urgence vient de la
+couche partagée, il n'est pas recopié » — est tenu strictement : **zéro** recopie du barème d'urgence dans
+`DiagnosticService.cs`, les deux occurrences étant deux appels au producteur unique. Le chiffre attendu du
+plan était faux, pas le code ; il est corrigé ici plutôt qu'absorbé en silence.
 
 ## Falsification des gardes — obligatoire, pas facultative
 
@@ -107,11 +115,38 @@ observée ROUGE, puis **révoquée** (motif établi au plan 21-03) :
 
 | # | Mutation | Garde qui doit rougir | Observé |
 |---|---|---|---|
-| a | Retirer `moniteurSessions: …` de l'enregistrement dans `App.xaml.cs` | `Le_diagnostic_recoit_le_moniteur_du_conteneur` | (à mesurer) |
-| b | Remplacer `_moniteurSessions.Inspecter(…)` par une construction locale dans `DiagnosticService.cs` | `Le_diagnostic_ne_fabrique_aucun_moniteur_de_sessions` | (à mesurer) |
-| c | Passer le `SessionMonitor` en `AddTransient` dans le miroir DI | `Assert.Same` de `Le_graphe_DI_resout_la_chaine_de_sessions` | (à mesurer) |
+| a | Retirer `moniteurSessions: …` de l'enregistrement dans `App.xaml.cs` | `Le_diagnostic_recoit_le_moniteur_du_conteneur` | **ROUGE observé** (plan 22-02) — 1 échec / 6, **et lui seul** |
+| b | Remplacer `_moniteurSessions.Inspecter(…)` par une construction locale dans `DiagnosticService.cs` | `Le_diagnostic_ne_fabrique_aucun_moniteur_de_sessions` | **ROUGE observé** (plan 22-02) — 1 échec / 6, **et lui seul** |
+| c | Passer le `SessionMonitor` en `AddTransient` dans le miroir DI | `Assert.Same` de `Le_graphe_DI_resout_la_chaine_de_sessions` | **ROUGE observé** (plan 22-02) — 1 échec / 5, **et lui seul** |
 
-Après révocation, `git diff` sur `src/` ne doit montrer que les modifications prévues par les plans.
+Aucune mutation n'a fait tomber autre chose que la garde visée : ce ne sont pas des détecteurs de bruit. La
+mutation (b) mérite une note — elle **compile et démarre parfaitement**. Un rapport ainsi muté redeviendrait
+faux en silence, exactement comme avant cette phase ; c'est la raison d'être de la garde.
+
+Révocation vérifiée : checksums MD5 identiques avant/après dans les trois cas, `grep -rn "MUTATION (" src/ tests/`
+→ **0**, `git status --porcelain` → **vide**. `git diff --name-only` sur toute la phase ne montre que les
+**11 fichiers** prévus par les trois plans.
+
+## Preuve de PARTAGE D'INSTANCE — la condition de placement de la phase
+
+Trois commandes, exécutées le 2026-09-12 à la clôture de la phase. Elles sont indépendantes du CONTENU du
+rapport : c'est ce qui distingue un partage d'instance d'une copie de comportement, que la seule comparaison
+de deux sorties le jour J ne saurait pas séparer.
+
+| Commande | Attendu | Mesuré |
+|---|---|---|
+| `grep -cF "new SessionMonitor" src/Chronos/Services/DiagnosticService.cs` | 0 | **0** |
+| `grep -cF "GetRequiredService<SessionMonitor>()" src/Chronos/App.xaml.cs` | 2 | **2** |
+| `grep -cF "=> Inspecter(now).Visibles;" src/Chronos/Services/SessionMonitor.cs` | 1 | **1** |
+
+La troisième est la moins évidente et la plus importante : partager une instance ne suffirait pas si chaque
+appelant refaisait le tri dans son coin. `Read` ne contient plus aucune logique de filtre — il délègue.
+
+**Conséquence, et livrable de long terme de cette phase :** les phases 23 à 26 pourront changer le câblage du
+widget **sans qu'une ligne de `DiagnosticService.cs` ne change**, et le rapport suivra. Ce n'est pas une
+promesse : c'est une **attente vérifiable**, et sa vérification est datée — point 4 de la section utilisateur,
+à la fin de la phase 26. Si le rapport devait être retouché entre-temps pour rester juste, cette phase aurait
+livré une copie de comportement déguisée, et il faudrait le dire.
 
 ## Gardes à ne pas casser
 
@@ -171,12 +206,17 @@ git status --porcelain                        # rien hors src/, tests/, .plannin
 
 | Invariant | Attendu | Résultat mesuré |
 |---|---|---|
-| `sessions\` | 66 entrées | (à mesurer) |
-| `archived.json` | 84 octets | (à mesurer) |
-| `oauth.dat` | 518 octets (taille seule) | (à mesurer) |
-| Overlay pid 119412 | vivant, non touché | (à mesurer) |
-| Suite, passe 1 | 0 échec | (à mesurer) |
-| Suite, passe 2 | 0 échec | (à mesurer) |
+| `sessions\` | 66 entrées | **66** — INCHANGÉ (rien n'a été supprimé : le balayage appartient à la phase 23) |
+| `archived.json` | 84 octets | **84** — INCHANGÉ (ses deux fantômes attendent le prochain lancement volontaire) |
+| `oauth.dat` | 518 octets (taille seule) | **518** — mtime NON vérifié, à dessein |
+| Overlay pid 119412 | vivant, non touché | **vivant** — `Chronos-v3.0.2.exe`, ni lancé ni tué |
+| `git status --porcelain` | rien hors `src/`, `tests/`, `.planning/` | **vide** après commits ; diff de la phase = 11 fichiers, tous sous `src/` ou `tests/` |
+| Requêtes réseau émises par un test | 0 | **0** — `Token = null` partout, sonde gardée par `if (token is not null)` |
+| Écritures de test dans le vrai `%APPDATA%\Chronos` | 0 | **0** — tous les chemins sous `Path.GetTempPath()`, avec `Assert.StartsWith` en garde-fou |
+| Suite, passe 1 | 0 échec | **747 réussis / 0 échec / 4 s** |
+| Suite, passe 2 | 0 échec | **747 réussis / 0 échec / 4 s** |
+| Six gardes nommées de la phase | vertes | **24 tests, 0 échec** (`ServicesLayerPurityTests`, `CompositionRootTests`, `NormalisationUniqueTests`, `GardesDoctrineTests`, `GardesPerimetreTests`, `La_sonde_d_en_tetes_est_le_PRIMAIRE_de_la_chaine_exacte`) |
+| `SessionsTests.cs` / `TreatedSessionsTests.cs` / `SessionStylesBindingTests.cs` dans le diff de la phase | absents | **absents** — le widget n'a changé en rien, comme prévu |
 
 ## À VÉRIFIER PAR L'UTILISATEUR
 
@@ -192,6 +232,13 @@ Ce que seul un vrai lancement peut établir, et que la contrainte de phase inter
 3. **Des exemples qui servent à quelque chose (critère n°3, in vivo).** Dans « Fichiers d'état » : les
    lignes listées doivent être des sessions récentes ou en attente — plus d'entrées vieilles de plusieurs
    semaines — et la ligne « … et N autre(s) non listé(s) » doit apparaître (attendu : ~46 sur 54).
+   Repères de lecture du nouveau format :
+   - l'en-tête doit nommer **le dossier du moniteur** : `Fichiers d'état (…\Chronos\sessions) : 54`
+     (les 12 `.tmp` orphelins ne sont pas comptés — ils appartiennent à la phase 23) ;
+   - chaque ligne se lit `· projet — Activité (maj il y a N min)`, et une ligne `(date inconnue)` signale un
+     fichier sans `updated_at` lisible : **c'est un fait à signaler**, pas un détail de mise en forme ;
+   - si la liste contient encore des entrées de plusieurs semaines **alors qu'une session récente tourne**,
+     le critère n°3 n'est PAS tenu et il faut le dire.
 4. **Le non-retour, à l'échelle du milestone.** À la fin de la phase 26, rouvrir le diagnostic : il doit
    décrire le nouveau widget alors qu'aucune ligne de `DiagnosticService.cs` n'aura changé entre-temps.
    C'est la vérification décisive de cette phase, et elle ne peut être faite qu'à la fin.
