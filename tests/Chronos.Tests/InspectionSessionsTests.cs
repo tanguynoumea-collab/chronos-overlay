@@ -156,4 +156,190 @@ public class InspectionSessionsTests
         Assert.Equal(monitor.Inspecter(Maintenant).Visibles.Select(s => s.SessionId),
                      monitor.Read(Maintenant).Select(s => s.SessionId));
     }
+
+    // --- FUS-01 : les cinq lignes MESURÉES le 2026-09-12, rejouées contre les classes réelles ---
+    //
+    // Vérité terrain commune aux cinq : le modèle TRAVAILLE, le transcript a été écrit 10 secondes plus
+    // tôt. Ce qui change d'une ligne à l'autre, c'est le fichier de hook qui traîne à côté.
+    //
+    // Trois de ces cinq tests étaient ROUGES avant le correctif (les trois inversions du ROADMAP). Le
+    // premier est un TÉMOIN — il passait déjà —, le dernier un CONTRÔLE de non-régression dont la seule
+    // assertion neuve est « 0 désaccord ». Écrire que les cinq seraient rouges serait exactement le genre
+    // d'affirmation non observée que ce milestone bannit.
+
+    private const string Mesuree = "session-mesuree";
+
+    /// <summary>Le transcript frais et CORRECT : le modèle travaille, il l'a écrit il y a 10 secondes.</summary>
+    private static SourceFixe TranscriptFrais()
+        => new(Snap(Mesuree, SessionActivity.Working, Maintenant.AddSeconds(-10)));
+
+    /// <summary>Écrit un fichier d'état de hook au format RÉEL, dans un dossier TEMPORAIRE.</summary>
+    private static void EcritEtat(string dir, string id, SessionActivity a, DateTimeOffset maj, string? motif = null)
+        => File.WriteAllText(Path.Combine(dir, id + ".json"),
+               SessionHookProcessor.BuildStateJson(id, "Proj-" + id, a, motif, maj.ToUnixTimeMilliseconds()));
+
+    private static LectureSessions Lire(string hookDir)
+        => new SessionMonitor(hookDir, TranscriptFrais(), new ArchiveStore(TempFichier())).Inspecter(Maintenant);
+
+    [Fact]
+    public void Un_transcript_frais_seul_est_annonce_en_cours()
+    {
+        // TÉMOIN : vert avant comme après. Sans lui, les quatre suivants ne prouveraient rien — on ne
+        // saurait pas si le bon état vient de l'arbitrage ou d'une source déjà fautive.
+        var lecture = Lire(TempDir());
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        Assert.Empty(lecture.Desaccords);
+    }
+
+    [Fact]
+    public void Un_hook_Working_de_25_min_ne_rend_plus_un_transcript_frais_inconnu()
+    {
+        // ROUGE AVANT LE CORRECTIF. Le hook, périmé au-delà du seuil de 20 min, était ramené à « inconnu »
+        // — et c'est cet « inconnu » qui écrasait un « en cours » frais ET correct.
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-25));
+
+        var lecture = Lire(dir);
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        var desaccord = Assert.Single(lecture.Desaccords);
+        Assert.Equal(SessionActivity.Unknown, desaccord.EtatEcarte);
+        Assert.Equal(SourceSession.Hook, desaccord.SourceEcartee);
+    }
+
+    [Fact]
+    public void Un_hook_WaitingTurn_de_7_h_ne_bat_plus_un_transcript_de_10_s()
+    {
+        // ROUGE AVANT LE CORRECTIF : « tour fini » s'affichait pendant que le modèle travaillait.
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.WaitingTurn, Maintenant.AddHours(-7));
+
+        var lecture = Lire(dir);
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        var desaccord = Assert.Single(lecture.Desaccords);
+        Assert.Equal(SessionActivity.WaitingTurn, desaccord.EtatEcarte);
+        Assert.Equal(SourceSession.Transcript, desaccord.SourceRetenue);
+    }
+
+    [Fact]
+    public void Un_hook_WaitingAttention_de_7_h_ne_bat_plus_un_transcript_de_10_s()
+    {
+        // ROUGE AVANT LE CORRECTIF, et le plus coûteux des trois : « à toi » sans qu'aucune permission
+        // n'ait été demandée. Le motif porté par le hook ne change rien — la précision ne bat pas la
+        // fraîcheur, elle ne départage que des signaux du MÊME âge.
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.WaitingAttention, Maintenant.AddHours(-7), "permission_prompt");
+
+        var lecture = Lire(dir);
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        var desaccord = Assert.Single(lecture.Desaccords);
+        Assert.Equal(SessionActivity.WaitingAttention, desaccord.EtatEcarte);
+        Assert.Equal(TimeSpan.FromHours(7) - TimeSpan.FromSeconds(10), desaccord.EcartAge);
+    }
+
+    [Fact]
+    public void Un_hook_de_9_h_n_est_plus_candidat_du_tout_et_ne_produit_aucun_desaccord()
+    {
+        // CONTRÔLE DE NON-RÉGRESSION : le résultat était déjà bon, pour une mauvaise raison (le hook
+        // s'effaçait de lui-même au-delà du seuil de 8 h). Seule l'assertion « 0 désaccord » est neuve :
+        // un fichier écarté pour son âge n'a pas perdu un arbitrage, il n'y a jamais participé.
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.WaitingTurn, Maintenant.AddHours(-9));
+
+        var lecture = Lire(dir);
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        Assert.Empty(lecture.Desaccords);
+        Assert.Equal(1, lecture.FichiersEcartesParAnciennete);
+    }
+
+    [Fact]
+    public void Un_fragment_illisible_est_une_ABSENCE_de_signal_jamais_un_vieux_signal()
+    {
+        // CONTREPARTIE ASSUMÉE de l'écriture directe livrée en phase 23 : elle tronque la cible avant de
+        // la réécrire, donc un lecteur malchanceux lit un fragment. Le compter comme un signal sans date
+        // en ferait un « très vieux signal » perdant contre n'importe quoi — une déposition fabriquée là
+        // où il n'y a rien à déposer. Il n'est ni écarté pour son âge, ni retenu : il n'existe pas.
+        var dir = TempDir();
+        File.WriteAllText(Path.Combine(dir, Mesuree + ".json"),
+            "{\"session_id\":\"" + Mesuree + "\",\"project\":\"P\",\"activ");
+
+        var lecture = Lire(dir);
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        Assert.Equal(0, lecture.FichiersEcartesParAnciennete);
+        Assert.Empty(lecture.Desaccords);
+    }
+
+    [Fact]
+    public void Un_hook_sans_updated_at_ne_gagne_jamais()
+    {
+        // JSON parfaitement VALIDE, mais muet sur son instant. Un signal qui ne sait pas quand il a été
+        // observé ne peut pas prétendre l'emporter sur un signal daté : faute de date, il tombe sous le
+        // seuil d'ancienneté et se compte comme écarté pour cela.
+        var dir = TempDir();
+        File.WriteAllText(Path.Combine(dir, Mesuree + ".json"),
+            "{\"session_id\":\"" + Mesuree + "\",\"project\":\"P\",\"activity\":\"WaitingAttention\"}");
+
+        var lecture = Lire(dir);
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        Assert.Equal(1, lecture.FichiersEcartesParAnciennete);
+        Assert.Empty(lecture.Desaccords);
+    }
+
+    // --- FUS-01, versant « ordre » : le critère n°2 au niveau du MONITEUR ---
+
+    /// <summary>Corpus IMPOSÉ : deux sessions EX AEQUO sur (urgence, horodatage). Un corpus aux couples
+    /// tous distincts aurait été vert avant comme après — une garde muette. C'est l'égalité qui prouve.</summary>
+    private static SessionSnapshot[] Trois() => new[]
+    {
+        Snap("b-deux",   SessionActivity.Working,     Maintenant.AddMinutes(-1)),  // ex aequo…
+        Snap("a-un",     SessionActivity.Working,     Maintenant.AddMinutes(-1)),  // …avec b-deux
+        Snap("c-trois",  SessionActivity.WaitingTurn, Maintenant.AddMinutes(-1)),
+    };
+
+    private static IEnumerable<T[]> Permutations<T>(T[] source)
+    {
+        if (source.Length <= 1) { yield return source; yield break; }
+        for (var i = 0; i < source.Length; i++)
+        {
+            var tete = source[i];
+            var reste = source.Take(i).Concat(source.Skip(i + 1)).ToArray();
+            foreach (var suite in Permutations(reste))
+                yield return new[] { tete }.Concat(suite).ToArray();
+        }
+    }
+
+    private static string Sequence(IEnumerable<SessionSnapshot> sessions)
+        => string.Join(" | ", sessions.Select(s => $"{s.SessionId}={s.Activity}"));
+
+    [Fact]
+    public void Permuter_l_ordre_rendu_par_la_source_ne_change_pas_l_affichage()
+    {
+        // Deux couches sont canonisées : celle que l'arbitrage contrôle (Visibles) ET celle que l'écran
+        // montre (Ordonner). Avant le correctif, une entrée indexée par identifiant rendait l'ordre
+        // d'insertion, et le tri d'affichage est stable : les deux ex aequo sortaient dans l'ordre où la
+        // source les avait rendues. Le test était donc ROUGE.
+        var distincts = new HashSet<string>(StringComparer.Ordinal);
+        var distinctsAffiches = new HashSet<string>(StringComparer.Ordinal);
+        var vues = 0;
+
+        foreach (var permutation in Permutations(Trois()))
+        {
+            var visibles = new SessionMonitor(TempDir(), new SourceFixe(permutation),
+                                              new ArchiveStore(TempFichier())).Inspecter(Maintenant).Visibles;
+
+            distincts.Add(Sequence(visibles));
+            distinctsAffiches.Add(Sequence(AffichageSessions.Ordonner(visibles)));
+            vues++;
+        }
+
+        Assert.Equal(6, vues);                  // 3! — une garde qui n'énumérerait rien serait muette
+        Assert.Single(distincts);               // la couche que l'arbitrage contrôle
+        Assert.Single(distinctsAffiches);       // …et ce que l'écran montre
+    }
 }
