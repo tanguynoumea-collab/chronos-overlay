@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: verifying
-stopped_at: Completed 19-05-PLAN.md (phase 19 close, constat humain delegue)
-last_updated: "2026-09-12T05:15:56.241Z"
+status: executing
+stopped_at: "Completed 20-01-PLAN.md (vague 0 : suite 2 min 12 s -> 2 s, 700 tests verts)"
+last_updated: "2026-09-12T06:27:36.995Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 28
+  completed_plans: 24
   percent: 100
 ---
 
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-09-09)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
 deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 20 — Honnêteté visible (cadran & diagnostic). Phase 19 close.
+**Current focus:** Phase 20 — Honnetete visible - cadran et diagnostic
 
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 19 (Nouvelle doctrine du composite) — COMPLETE (5/5)
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 20 (Honnetete visible - cadran et diagnostic) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-09-12
 
 Progress: [██████████] 100% (5/6 phases closes ; 23/23 plans planifies)
@@ -147,6 +147,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 19 P03 | 38 min | 3 tasks | 6 files |
 | Phase 19 P04 | 19min | 2 tasks | 7 files |
 | Phase 19 P05 | 16min | 2 tasks | 2 files |
+| Phase 20 P01 | 34min | 3 tasks | 9 files |
 
 ### Decisions
 
@@ -280,6 +281,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 19]: [19-05] Le constat humain de la bascule est SUBSTITUE et non simule : lancer l'overlay declencherait la purge des 25 groupes de hooks de ~/.claude/settings.json (phase 15, App.OnStartup) hors supervision. La ligne 19-05 T2 de la carte porte un statut DISTINCT, jamais un vert usurpe.
 - [Phase 19]: [19-05] DEL-04 : la moitie invisible est DITE plutot que masquee. Le « + delta estime » de la lettre a ete amende pour cause (280 % mesure), et la matiere brute de substitution (TokensText/HasTokens) est calculee, testee et bindee NULLE PART — 0 occurrence dans les XAML. Dette n.1 de la phase 20.
 - [Phase 19]: [19-05] EXA-06 n'est couverte qu'a moitie et c'est verifie : ProvenanceReleve ne compte que 3 membres, tous des ETATS ; le NOM de la source alimentant l'affichage n'est porte par aucun champ. Il faut un champ de plus en phase 20.
+- [Phase 20]: [20-01] Substitution sous test, JAMAIS memoisation en production : cacher le balayage d'environnement aurait donne le meme gain ET un diagnostic capable de mentir. InventaireMachine ne garde rien entre deux appels. Suite complete 2 min 12 s -> 2 s (700 tests).
+- [Phase 20]: [20-01] 3e application du parametre optionnel TERMINAL (authStatus 17, etatServeur 18, machine 20) : les 15 sites de construction de DiagnosticService compilent sans retouche, zero inscription DI, CompositionRootTests immobile. C'est desormais LA maniere d'ouvrir une couture dans ce depot.
+- [Phase 20]: [20-01] CadranBindingTests lisait les reglages REELS de la machine (MainViewModel appelle settings.Load() dans son ctor) : tout test de style des plans 03/04 y aurait ete vert PAR ACCIDENT. Piege du montage : DEUX SettingsService dans BuildWindow, le second alimentant OverlayController.
+- [Phase 20]: [20-01] Le conteneur a cellules uniformes ignore SILENCIEUSEMENT Grid.ColumnSpan : c'est le CONTENEUR qui change, pas l'enfant annote. Preuve par LARGEUR MESUREE (ActualWidth apres Measure/Arrange), falsifiabilite jouee puis revoquee. 3 colonnes exclu par la mesure (98,7 px de cellule pour 107 px de libelle).
+- [Phase 20]: [20-01] EXA-03/EXA-06 laisses Pending malgre le frontmatter du plan : cette vague ne leve que des dettes d'outillage et n'a touche ni la distinction visuelle frais/date/indisponible, ni le nom de la source. Precedents 17-01, 18-02, 19-01/19-02.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -322,6 +328,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
   dans `19-05-SUMMARY.md`. **Attention** : lancer l'overlay purge les 25 groupes de hooks de
   `~/.claude/settings.json` (reconciliation de la phase 15) — c'est voulu, mais a faire en connaissance
   de cause. Ne bloque pas la phase 20.
+
 - **À faire par l'utilisateur, hors GSD** : les deux vérifications manuelles de la phase 17, listées sous
   « À VÉRIFIER PAR L'UTILISATEUR » dans `17-05-SUMMARY.md` — (1) lisibilité de la pastille de
   déconnexion dans les 3 thèmes × 5 styles × 2 modes, (2) parcours de reconnexion en un clic de bout en
@@ -340,7 +347,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T05:15:56.235Z
-Stopped at: Completed 19-05-PLAN.md (phase 19 close, constat humain delegue)
+Last session: 2026-09-12T06:27:36.989Z
+Stopped at: Completed 20-01-PLAN.md (vague 0 : suite 2 min 12 s -> 2 s, 700 tests verts)
 Resume file: None
 Next: /gsd:plan-phase 20 (Honnetete visible — cadran & diagnostic, EXA-03 + EXA-06)

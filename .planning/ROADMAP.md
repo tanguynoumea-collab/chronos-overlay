@@ -252,7 +252,7 @@ et `GardesDoctrineTests` sont touchés par presque tous les plans — et la cont
 chaque commit rendent le parallélisme illusoire ici)
 
 Plans:
-- [ ] 20-01-PLAN.md — Vague 0 : les trois dettes sans dépendance — couture `IInventaireMachine`
+- [x] 20-01-PLAN.md — Vague 0 : les trois dettes sans dépendance — couture `IInventaireMachine`
       (la suite passe de 2 min 10 à quelques secondes), `CadranBindingTests` isolé du vrai
       `settings.json`, trou de la `UniformGrid` des réglages (vague 1)
 - [ ] 20-02-PLAN.md — Le modèle de la source : `SourceUsage` posée sur `WindowState` (0 site cassé sur
@@ -283,7 +283,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
 | 19. Nouvelle doctrine du composite | 5/5 | Complete   | 2026-09-12 |
-| 20. Honnêteté visible — cadran & diagnostic | 0/5 | Planned | - |
+| 20. Honnêteté visible — cadran & diagnostic | 1/5 | In Progress|  |
 
 ### Couverture des exigences
 
