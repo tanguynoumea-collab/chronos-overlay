@@ -255,6 +255,41 @@ public class GardesPerimetreTests
             + string.Join("\n  ", contrebande));
     }
 
+    /// <summary>
+    /// GARDE DE CÂBLAGE (TRT-03, phase 26). Le geste explicite n'existe pour l'utilisateur que s'il est
+    /// LIÉ : une commande peut être parfaitement testée et n'être offerte nulle part, et le défaut ne se
+    /// verrait alors que chez lui, en silence — c'est le motif exact des gardes de câblage des phases 21
+    /// et 23. La réflexion ne voit pas un binding XAML, d'où ce contrôle de SOURCE.
+    ///
+    /// <para>L'ORDRE et les libellés sont la sécurité, pas la décoration : le geste RÉVERSIBLE en tête, le
+    /// geste DÉFINITIF en queue derrière un séparateur, et chacun annonce s'il revient. Le verrou établi
+    /// dans ce projet — <c>LoginClaudeCommand</c> bascule, et un clic effacerait le coffre de jetons —
+    /// s'applique ici mot pour mot.</para>
+    /// </summary>
+    [Fact]
+    public void Les_huit_menus_offrent_le_geste_explicite_et_disent_la_verite()
+    {
+        var fichier = Path.Combine(CheminSources(), "Resources", "SessionStyles.xaml");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Une garde qui lirait un fichier vide serait muette : on exige d'abord les 8 templates.
+        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(texte, "DataTemplate x:Key=").Count);
+
+        // Trois entrées par menu, sur les huit menus.
+        Assert.Equal(24, System.Text.RegularExpressions.Regex.Matches(texte, "<MenuItem").Count);
+        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(texte, "MarquerTraiteeCommand").Count);
+        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(texte, "MarquerToutTraiteCommand").Count);
+        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(texte, "ArchiveCommand").Count);
+
+        // Le séparateur écarte le geste définitif du geste ordinaire.
+        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(texte, "<Separator/>").Count);
+
+        // L'ancien libellé promettait dans son menu ce que le code ne tenait pas (TRT-04).
+        Assert.DoesNotContain("retirer de l'overlay", texte, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()

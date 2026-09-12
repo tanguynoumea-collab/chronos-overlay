@@ -97,6 +97,21 @@ public class SessionStylesBindingTests
         }
     }
 
+    // Parcourt l'arbre VISUEL et rend les menus contextuels attachés. Un ContextMenu n'est PAS dans
+    // l'arbre visuel de la fenêtre (il a le sien, créé à l'ouverture) : il est la VALEUR d'une propriété,
+    // et c'est là qu'on va le chercher — ce qui permet de le vérifier sans jamais ouvrir de menu, donc
+    // sans afficher quoi que ce soit.
+    private static IEnumerable<ContextMenu> MenusContextuels(DependencyObject racine)
+    {
+        var n = VisualTreeHelper.GetChildrenCount(racine);
+        for (var i = 0; i < n; i++)
+        {
+            var enfant = VisualTreeHelper.GetChild(racine, i);
+            if (enfant is FrameworkElement fe && fe.ContextMenu is { } menu) yield return menu;
+            foreach (var petit in MenusContextuels(enfant)) yield return petit;
+        }
+    }
+
     [WpfFact]
     public void Les_8_styles_et_les_9_themes_se_chargent_se_mesurent_et_se_disposent()
     {
@@ -134,5 +149,41 @@ public class SessionStylesBindingTests
         // 5 sessions × 1 séparateur (état · détail). Deux par session = un orphelin laissé par le retrait
         // du libellé de type ; zéro = on a supprimé le mauvais TextBlock.
         Assert.Equal(5, separateurs);
+    }
+
+    /// <summary>
+    /// TRT-03, versant ÉCRAN. La garde de SOURCE compte le câblage dans le texte du XAML ; celle-ci monte
+    /// les 72 combinaisons et exige que CHAQUE menu trouvé porte bien ses trois entrées. Aucun menu n'est
+    /// ouvert et aucune fenêtre n'est affichée : un <c>ContextMenu</c> est la VALEUR d'une propriété,
+    /// peuplée par le BAML au chargement.
+    /// </summary>
+    [WpfFact]
+    public void Les_trois_gestes_sont_offerts_sur_les_8_styles_et_les_9_themes()
+    {
+        var styles = Enum.GetValues<SessionStyle>();
+        var themes = ThemeCatalog.All;
+        Assert.Equal(8, styles.Length);
+        Assert.Equal(9, themes.Count);
+
+        var stylesCouverts = new HashSet<SessionStyle>();
+
+        foreach (var theme in themes)
+        foreach (var style in styles)
+        {
+            var vm = Vm();
+            vm.Style = style;
+            vm.SetTheme(theme);
+            var (_, racine) = Monter(vm, theme);
+
+            var menus = MenusContextuels(racine).ToList();
+            Assert.True(menus.Count >= 1,
+                $"aucun menu contextuel pour le style {style} et le thème {theme.Key} : le geste explicite "
+                + "n'y est pas offert");
+            foreach (var menu in menus)
+                Assert.Equal(3, menu.Items.OfType<MenuItem>().Count());
+            stylesCouverts.Add(style);
+        }
+
+        Assert.Equal(8, stylesCouverts.Count);   // la matrice n'a pas été traversée à vide
     }
 }
