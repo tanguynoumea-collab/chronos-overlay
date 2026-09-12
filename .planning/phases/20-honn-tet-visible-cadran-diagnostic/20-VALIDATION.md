@@ -1,7 +1,7 @@
 ---
 phase: 20
 slug: honn-tet-visible-cadran-diagnostic
-status: draft
+status: planned
 nyquist_compliant: false
 wave_0_complete: false
 created: 2026-09-12
@@ -64,11 +64,26 @@ pas 3 comme le disait le contexte. Les tests doivent balayer le catalogue, pas u
 
 ## Per-Task Verification Map
 
-*Rempli par le planner.*
+Rempli par le planner (2026-09-12). Toutes les commandes se préfixent de
+`dotnet test tests/Chronos.Tests/Chronos.Tests.csproj -c Debug --nologo -v q`.
 
-| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| — | — | — | — | — | — | — | ⬜ pending |
+| Task ID | Plan | Wave | Requirement | Test Type | Automated Command (`--filter …`) | File Exists | Status |
+|---------|------|------|-------------|-----------|----------------------------------|-------------|--------|
+| 20-01 T1 — couture `IInventaireMachine` | 01 | 1 | EXA-06 (infra) | unité + perf | `~DiagnosticServiceTests` · `~ServicesLayerPurityTests` · `~CompositionRootTests` | ❌ à créer (`Fakes/FakeInventaireMachine.cs`) | ⬜ pending |
+| 20-01 T2 — `CadranBindingTests` → `TempPaths()` | 01 | 1 | EXA-03 (infra) | BAML | `~CadranBindingTests` | ✅ | ⬜ pending |
+| 20-01 T3 — `UniformGrid` → `Grid` 2×2 | 01 | 1 | EXA-03 (dette) | BAML `Measure/Arrange` | `~ReglagesBindingTests` | ✅ | ⬜ pending |
+| 20-02 T1 — `SourceUsage` + 5 producteurs + doctrine | 02 | 2 | EXA-06 | unité | `~GardesDoctrineTests` · `~DoctrineFraicheurTests` · `~LastExactStoreTests` | ❌ à créer (`Models/SourceUsage.cs`) | ⬜ pending |
+| 20-02 T2 — `LibelleSource` (vocabulaire FR unique) | 02 | 2 | EXA-06 | unité | `~LibelleSourceTests` | ❌ à créer | ⬜ pending |
+| 20-02 T3 — mort d'`EstimatedTokens` + garde structurelle | 02 | 2 | EXA-04 (non-retour) | garde de source | `~GardesDoctrineTests` | ✅ | ⬜ pending |
+| 20-03 T1 — `IsEstimated` → `EstPlancher` (8 bindings, 11 assertions) | 03 | 3 | EXA-03 | unité + BAML | `~WindowGaugeViewModelTests` · `~MainViewModelTests` · `~CadranBindingTests` | ✅ | ⬜ pending |
+| 20-03 T2 — mort d'`IsStale` + `EstDate` + garde du seuil | 03 | 3 | EXA-03 | unité + garde de source | `~GardesDoctrineTests` · `~MainViewModelTests` · `~WindowGaugeViewModelTests` | ✅ | ⬜ pending |
+| 20-03 T3 — `AfficherReleveDate` + `InfobulleReleve` | 03 | 3 | EXA-03, EXA-06 | unité | `~MainViewModelTests` | ✅ | ⬜ pending |
+| 20-04 T1 — pointillé de plancher aux Anneaux | 04 | 4 | EXA-03 | BAML `[WpfFact]` | `~CadranBindingTests` | ✅ | ⬜ pending |
+| 20-04 T2 — rangée de pastilles + marque d'âge | 04 | 4 | EXA-03 | BAML `[WpfFact]` (géométrie) | `~CadranBindingTests` | ✅ | ⬜ pending |
+| 20-04 T3 — mot « indisponible » | 04 | 4 | EXA-03 | BAML `[WpfFact]` | `~CadranBindingTests` · `~ThemingTests` | ✅ | ⬜ pending |
+| 20-05 T1 — diagnostic : source + ancienneté, « ≥ » et non « ~ » | 05 | 5 | EXA-06 | unité | `~DiagnosticServiceTests` · `~NormalisationUniqueTests` | ✅ | ⬜ pending |
+| 20-05 T2 — porte de phase (suite ×2, 5 gardes, comptage) | 05 | 5 | EXA-03, EXA-06 | suite complète | *(aucun filtre — suite entière, deux fois)* | ✅ | ⬜ pending |
+| 20-05 T3 — constat visuel + vérifications héritées 17/18/19 | 05 | 5 | EXA-03 | **manuel** | — (protocole remis à l'utilisateur) | — | ⏳ à vérifier par l'utilisateur |
 
 ## Gardes permanentes
 

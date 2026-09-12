@@ -70,7 +70,8 @@ et la garde de composition `CompositionRootTests`.
 - [x] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
  (completed 2026-09-11)
 - [x] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement (completed 2026-09-12)
-- [x] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens (completed 2026-09-12)
+- [x] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens
+ (completed 2026-09-12)
 - [ ] **Phase 20 : Honnêteté visible — cadran & diagnostic** - Le cadran distingue à l'œil chiffre frais / chiffre daté / indisponible, et le diagnostic nomme la source réellement affichée et son âge
 
 ### Phase Details
@@ -246,7 +247,26 @@ l'affichage ainsi que son ancienneté.
      quand — l'utilisateur peut constater seul une panne de source sans instrumenter le code (EXA-06).
   4. **Aucune fuite de WPF dans les services** : le nouveau signal visuel passe par les ViewModels ;
      `ServicesLayerPurityTests` reste vert.
-**Plans**: TBD
+**Plans**: 5 plans (5 vagues, séquentielles : l'enchevêtrement des fichiers de test — `CadranBindingTests`
+et `GardesDoctrineTests` sont touchés par presque tous les plans — et la contrainte de compilabilité à
+chaque commit rendent le parallélisme illusoire ici)
+
+Plans:
+- [ ] 20-01-PLAN.md — Vague 0 : les trois dettes sans dépendance — couture `IInventaireMachine`
+      (la suite passe de 2 min 10 à quelques secondes), `CadranBindingTests` isolé du vrai
+      `settings.json`, trou de la `UniformGrid` des réglages (vague 1)
+- [ ] 20-02-PLAN.md — Le modèle de la source : `SourceUsage` posée sur `WindowState` (0 site cassé sur
+      48), les 5 producteurs, vocabulaire FR unique dans `Chronos.Text`, mort d'`EstimatedTokens`
+      remplacée par une garde structurelle — EXA-06 (vague 2)
+- [ ] 20-03-PLAN.md — Le ViewModel : `IsEstimated` → `EstPlancher`, mort d'`IsStale` (une seule notion
+      de « périmé », gardée), `EstDate` rapporté et non calculé, infobulle qui binde enfin
+      `TokensText` — EXA-03 (vague 3)
+- [ ] 20-04-PLAN.md — Le dessin : pointillé de plancher aux Anneaux (le 5ᵉ style enfin marqué), rangée
+      de pastilles qui rend la superposition structurellement impossible + marque d'âge, mot
+      « indisponible » — EXA-03 (vague 4)
+- [ ] 20-05-PLAN.md — Le diagnostic nomme la source et l'ancienneté (« ≥ » et non « ~ »), porte de
+      phase, et protocole de vérification humaine consolidant les constats hérités des phases 17, 18
+      et 19 — EXA-03, EXA-06 (vague 5, checkpoint humain)
 **UI hint**: yes
 
 ### Progress
@@ -263,7 +283,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
 | 19. Nouvelle doctrine du composite | 5/5 | Complete   | 2026-09-12 |
-| 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
+| 20. Honnêteté visible — cadran & diagnostic | 0/5 | Planned | - |
 
 ### Couverture des exigences
 
