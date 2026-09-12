@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: Completed 18-05-PLAN.md
-last_updated: "2026-09-12T02:06:23.587Z"
+status: verifying
+stopped_at: Completed 18-06-PLAN.md
+last_updated: "2026-09-12T02:29:58.870Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 18 (Source exacte par en-tetes de rate-limit) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
 Progress: [░░░░░░░░░░] 0% (0/6 phases)
@@ -141,6 +141,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 18 P03 | 18min | 3 tasks | 3 files |
 | Phase 18 P04 | 22min | 2 tasks | 2 files |
 | Phase 18 P05 | 24min | 2 tasks | 5 files |
+| Phase 18 P06 | 18min | 3 tasks | 6 files |
 
 ### Decisions
 
@@ -245,6 +246,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 18]: [18-05] Position prouvee par le COMPORTEMENT, pas par la reflexion (champs du composite prives) : deux sources Exact aux chiffres differents (0,01 contre 0,42), l'inversion primary/fallback mesuree (0,42 sortait) puis revoquee.
 - [Phase 18]: [18-05] Statut serveur et depassement du snapshot affiches en etendant Describe(), PAS dans la section de la sonde : celle-ci est ecrite avant l'appel au composite, donc un second GetAsync aurait DOUBLE la depense de quota a chaque ouverture du diagnostic (grep GetAsync == 1 grave la contrainte).
 - [Phase 18]: [18-05] Cadence et cout annonces a l'utilisateur DERIVES de CadenceNominale et non recopies ; l'inventaire des noms d'en-tetes de /api/oauth/usage tranchera si la sonde est gratuite (suppression possible du cout en phase 19+).
+- [Phase 18]: HDR-02 reste « implémenté et testé sur faux transport, NON prouvé en production » : qu'un 429 RÉEL d'Anthropic porte la famille d'en-têtes unified exige un jeton valide et un compte saturé — le point de vérification humaine du plan 18-06 est consigné, non simulé.
+- [Phase 18]: L'interrupteur de la sonde est un réglage DISTINCT de la source OAuth, et un test le documente : leurs profils de coût sont opposés (une micro-requête par passage contre rien), donc les fusionner priverait l'utilisateur du seul interrupteur qui gouverne une dépense.
+- [Phase 18]: Le ViewModel franchit TROIS frontières de thread et non deux : la formule « seconde et dernière » du plan 17-05 est explicitement amendée plutôt que laissée en contradiction dans l'historique.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -300,7 +304,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T02:06:12.929Z
-Stopped at: Completed 18-05-PLAN.md
+Last session: 2026-09-12T02:29:50.635Z
+Stopped at: Completed 18-06-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18
