@@ -150,19 +150,26 @@ l'endroit où elle se vérifie.
 Son rang d'urgence est **3**, derrière `Working` (2) : **une déduction ne passe jamais devant une
 observation.**
 
-### ⚠ Divergence connue — transmise à la phase 26, NON corrigée ici
+### Ce que « traité » veut dire (phase 26 — TRT-01, TRT-02)
 
-`SessionTreatmentTracker` (`src/Chronos/Services/SessionTreatmentTracker.cs`, prédicat `IsWaiting`,
-l. 38) ne reconnaît comme attentes que `WaitingTurn` et `WaitingAttention` : **`WaitingDeduced` en est
-exclue**, alors que `SessionsViewModel.WaitingCount` la **compte** comme attente.
+Une session quitte le widget pour deux raisons seulement : un geste de l'utilisateur, ou une
+**transition observée sur la MÊME source**. Concrètement, `SessionTreatmentTracker` n'inscrit une
+session comme traitée que si la source qui a parlé au cycle précédent disait une attente, que c'est
+**la même** qui parle maintenant, et qu'elle dit `Working`.
 
-Conséquence concrète : une session déduite **n'ouvre pas d'épisode d'attente** pour le suivi de « traité ».
-Elle est comptée dans le bandeau d'alerte, mais le détecteur d'hystérésis ne la voit pas passer en attente,
-donc il ne la marquera pas « traitée » quand elle en sortira.
-
-**Elle n'est pas corrigée dans cette phase, et c'est délibéré** : la phase 26 redéfinit précisément ce que
-« traité » veut dire. Corriger le tracker ici, ce serait anticiper cette phase à moitié. Le diff de
-`SessionTreatmentTracker.cs` est **vide** sur toute la phase 25, vérifié. **Entrée ouverte de la phase 26.**
+- **`WaitingDeduced` est une attente pour le détecteur.** L'exclure revenait à lire « l'attente est
+  devenue déduite » comme « l'utilisateur a répondu ». La divergence signalée par la vérification de
+  la phase 25 est refermée ici.
+- **`Unknown` ne ferme aucun épisode.** Un signal illisible ou indéterminé n'affirme rien ; le lire
+  comme une réponse, c'est conclure d'une absence de lecture.
+- **Une bascule de source n'est pas une transition.** Un fichier de hook qui franchit `DropAfter`
+  pendant qu'un transcript reprend la main, ce n'est pas quelqu'un qui répond : c'est une source qui
+  se tait pendant qu'une autre parle. Le relevé du 2026-09-12 en donne la mesure — une attente
+  enregistrée quatre cent soixante-dix-huit minutes avant un seuil de quatre cent quatre-vingts, puis
+  la bascule, et six heures de masquage sur une session réellement en attente de permission.
+- **L'épisode d'attente est daté par l'instant que le SIGNAL porte**, jamais par l'horloge du
+  guetteur, et il n'avance que lorsque la source affirme quelque chose de plus récent. C'est ce qui
+  fait survivre le « traité » à un redémarrage de l'overlay sans lui interdire de revenir.
 
 ---
 

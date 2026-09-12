@@ -264,4 +264,91 @@ public sealed class ContratHooksDocumenteTests
 
         Assert.NotEmpty(TableDocumentee(texte));
     }
+
+    /// <summary>
+    /// GARDE DE NON-DÉRIVE (phase 26). Le §3 portait, en toutes lettres, une divergence connue LAISSÉE
+    /// OUVERTE et léguée à la phase 26 : le détecteur d'hystérésis ne reconnaissait pas l'attente déduite.
+    /// Les plans 26-01 à 26-03 l'ont refermée. Un document qui annonce encore un défaut corrigé est aussi
+    /// faux qu'un document qui tait un défaut réel — dans les deux cas, il fait croire qu'on sait.
+    ///
+    /// <para>Les deux assertions ANTI-MUETTES viennent d'abord : sans elles, « la chaîne est absente »
+    /// serait vraie pour la pire des raisons — un document vidé ou tronqué.</para>
+    /// </summary>
+    [Fact]
+    public void Le_document_ne_transmet_plus_de_divergence_a_la_phase_26()
+    {
+        var texte = LireDocument();
+        var lignes = texte.Replace("\r\n", "\n").Split('\n').Length;
+
+        Assert.True(lignes >= LignesMinimum,
+            $"docs/hooks-contract.md ne fait que {lignes} lignes (minimum {LignesMinimum}) : un document "
+            + "vidé rendrait cette garde verte pour la pire des raisons.");
+        Assert.Contains("## 3.", texte, StringComparison.Ordinal);
+
+        Assert.False(texte.Contains("transmise à la phase 26", StringComparison.Ordinal),
+            "Le §3 annonce encore une divergence TRANSMISE à la phase 26. Elle y a été refermée dès le "
+            + "plan 26-01 : le détecteur reconnaît l'attente déduite. Annoncer un défaut corrigé, c'est "
+            + "décrire un câblage qui n'existe plus — la faute même que ce document existe pour empêcher.");
+        Assert.False(texte.Contains("NON corrigée ici", StringComparison.Ordinal),
+            "Le §3 annonce encore un défaut NON corrigé dans le document. Il l'est.");
+
+        Assert.Contains("TRT-01", texte, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (phase 26). Les trois affirmations du §3 sur la règle de traitement
+    /// doivent avoir chacune leur contrepartie dans <c>SessionTreatmentTracker</c>. Ce que la garde du §1
+    /// fait pour la table des événements, celle-ci le fait pour la règle qui décide ce que « traité »
+    /// veut dire — et c'est la règle la plus coûteuse du projet quand elle ment : une session réellement
+    /// en attente disparaît de l'écran sans que rien ne le dise.
+    ///
+    /// <para><b>Pourquoi la chaîne cherchée porte des capitales.</b> Le §5 emploie déjà deux fois les mots
+    /// « même source », dans un sens sans aucun rapport (le relevé de la référence officielle, lu deux
+    /// fois à la même source). Une garde qui se contenterait de ces deux mots aurait été VERTE avant même
+    /// que le §3 ne soit réécrit — c'est-à-dire vacueuse. Elle porte donc sur la formulation exacte de la
+    /// règle, et le compte des deux occurrences du §5 reste inchangé.</para>
+    /// </summary>
+    [Fact]
+    public void Le_document_dit_la_regle_de_traitement_reellement_cablee()
+    {
+        var texte = LireDocument();
+
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas le détecteur et ne croise donc rien.");
+
+        var fichier = Path.Combine(racineSources, "Services", "SessionTreatmentTracker.cs");
+        Assert.True(File.Exists(fichier), $"Détecteur introuvable : {fichier}");
+
+        var code = File.ReadAllText(fichier);
+        Assert.False(string.IsNullOrWhiteSpace(code), $"Détecteur vide : {fichier}");
+        Assert.Contains("public void Observe(", code, StringComparison.Ordinal);
+
+        // 1. La transition doit être observée sur la MÊME source — le document l'écrit, le code l'applique.
+        Assert.Contains("transition observée sur la MÊME source", texte, StringComparison.Ordinal);
+        Assert.Contains("prec.Source == v.Source", code, StringComparison.Ordinal);
+
+        // 2. L'attente déduite EST une attente. Le prédicat est DÉCOUPÉ avant d'être lu : le nom de l'état
+        //    figure aussi dans les commentaires du fichier, et un commentaire ne câble rien.
+        Assert.Contains("`WaitingDeduced` est une attente pour le détecteur", texte, StringComparison.Ordinal);
+
+        var debutPredicat = code.IndexOf("EstAttente(SessionActivity", StringComparison.Ordinal);
+        Assert.True(debutPredicat >= 0,
+            "Le prédicat EstAttente a disparu du détecteur : le document décrirait alors une règle qui "
+            + "n'a plus de siège dans le code.");
+        var finPredicat = code.IndexOf(';', debutPredicat);
+        Assert.True(finPredicat > debutPredicat, "Le corps du prédicat EstAttente est illisible.");
+        var predicat = code.Substring(debutPredicat, finPredicat - debutPredicat);
+
+        Assert.True(predicat.Contains("WaitingDeduced", StringComparison.Ordinal),
+            "Le §3 écrit que l'attente déduite est une attente pour le détecteur, et le prédicat "
+            + "EstAttente ne la reconnaît pas. C'est exactement la divergence que la phase 26 a refermée : "
+            + "l'exclure fait lire « l'attente est devenue déduite » comme « l'utilisateur a répondu », "
+            + "c'est-à-dire masquer une session qui attend. Prédicat lu : " + predicat);
+
+        // 3. L'épisode d'attente est daté par l'instant que le SIGNAL porte — document ET code.
+        Assert.Contains("daté par l'instant que le SIGNAL porte", texte, StringComparison.Ordinal);
+        Assert.Contains("InstantDuSignal", code, StringComparison.Ordinal);
+    }
 }
