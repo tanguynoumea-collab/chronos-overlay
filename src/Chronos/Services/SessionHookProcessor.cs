@@ -21,6 +21,8 @@ public sealed record SessionHookResult(string? SessionId, bool Delete, string? S
 ///   Stop                              → WaitingTurn (le tour s'est terminé, c'est OBSERVÉ)
 ///   UserPromptSubmit / SessionStart   → Working
 ///   SessionEnd                        → suppression du fichier
+///   sous-agent (agent_id / agent_type présent)
+///                                     → ignoré, SAUF demande de permission ou demande du bus
 ///   inconnu                           → ignoré
 /// </summary>
 public static class SessionHookProcessor
@@ -46,7 +48,7 @@ public static class SessionHookProcessor
 
     public static SessionHookResult Process(string? eventName, string? stdinJson, long nowMs)
     {
-        string sid = "", cwd = "", notifType = "";
+        string sid = "", cwd = "", notifType = "", agentId = "", agentType = "";
         try
         {
             if (!string.IsNullOrWhiteSpace(stdinJson))
@@ -59,6 +61,10 @@ public static class SessionHookProcessor
                     sid = Str(r, "session_id");
                     cwd = Str(r, "cwd");
                     notifType = Str(r, "notification_type");
+                    // Str rend une chaîne VIDE pour un champ absent ou non textuel — c'est exactement le
+                    // comportement voulu : un marqueur illisible ne doit pas fabriquer un veto.
+                    agentId = Str(r, "agent_id");
+                    agentType = Str(r, "agent_type");
                     // l'événement peut aussi venir du stdin plutôt que de l'argument
                     if (string.IsNullOrEmpty(eventName)) eventName = Str(r, "hook_event_name");
                 }
@@ -69,6 +75,21 @@ public static class SessionHookProcessor
         if (string.IsNullOrEmpty(sid)) return SessionHookResult.Ignored; // sans session_id, rien à faire
 
         var ev = (eventName ?? "").Trim();
+
+        // PIÈGE SRC-03 CÔTÉ HOOKS. Un sous-agent porte le MÊME identifiant de session que son parent
+        // (relevé du 2026-09-12) et ne s'en distingue QUE par la présence de ces deux champs. Sur cette
+        // machine, quatre-vingt-quatorze pour cent des transcripts sont des sous-agents : sans ce veto, une
+        // vague d'agents parallèles réaffirmerait « en cours » sur une session parente qui n'y est plus, et
+        // écraserait un « à toi » encore en attente. Deux événements échappent au veto, et deux seulement :
+        // ceux qui réclament MON intervention. Un sous-agent ne peut pas parler de l'activité ni du cycle de
+        // vie de son parent, mais il peut parfaitement avoir besoin de moi.
+        //
+        // Le placement est ESSENTIEL : après le garde session_id, et AVANT le court-circuit SessionEnd —
+        // un SessionEnd de sous-agent ne doit jamais supprimer le fichier d'état de son parent.
+        var estSousAgent = agentId.Length > 0 || agentType.Length > 0;
+        if (estSousAgent && ev is not ("PermissionRequest" or "Notification"))
+            return SessionHookResult.Ignored;
+
         if (ev is "SessionEnd") return new SessionHookResult(sid, Delete: true, null, false);
 
         // VETO de second rideau. Le sens EXACT de ce test : il ne produit JAMAIS d'état, il n'en retire
