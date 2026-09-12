@@ -323,63 +323,10 @@ public class SessionsTests
         finally { Directory.Delete(hookDir, true); }
     }
 
-    // Faux ISessionSource : rend une liste FIXE de snapshots (simule le cache de la source bureau UIA,
-    // sans aucune fenêtre Claude ni dépendance UIA). Sert à prouver la fusion dans SessionMonitor.
-    private sealed class FakeSessionSource : ISessionSource
-    {
-        private readonly IReadOnlyList<SessionSnapshot> _snaps;
-        public FakeSessionSource(params SessionSnapshot[] snaps) => _snaps = snaps;
-        public IReadOnlyList<SessionSnapshot> Read(DateTimeOffset now) => _snaps;
-    }
-
     [Fact]
-    public void Monitor_source_bureau_ignoree_si_sessions_locales_presentes()
+    public void Monitor_lit_une_session_du_transcript_sans_hook()
     {
-        // ANTI-DOUBLON : la source bureau (UIA) est un REPLI. Les transcripts couvrent déjà l'app bureau,
-        // donc fusionner l'UIA quand une session locale existe re-listerait la MÊME session sous une clé
-        // `desktop:...` → doublon. Attendu : seule la session locale, l'entrée bureau écartée.
-        var hookDir = TempDir();
-        var projRoot = TempDir();
-        var now = DateTimeOffset.UtcNow;
-        try
-        {
-            WriteTranscript(projRoot, "cli-1", new[] { CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
-            var bureau = new FakeSessionSource(new SessionSnapshot(
-                "desktop:foreground:chat", "Claude (bureau)", SessionActivity.WaitingTurn, null, now,
-                SessionKind.Chat, SessionOrigin.Desktop));
-
-            var monitor = new SessionMonitor(hookDir, new TranscriptSessionSource(projRoot),
-                new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
-            var snaps = monitor.Read(now).ToDictionary(s => s.SessionId);
-
-            Assert.Single(snaps);
-            Assert.Equal(SessionActivity.Working, snaps["cli-1"].Activity);
-            Assert.Equal(SessionOrigin.Cli, snaps["cli-1"].Origin);
-            Assert.False(snaps.ContainsKey("desktop:foreground:chat")); // doublon écarté
-        }
-        finally { Directory.Delete(hookDir, true); Directory.Delete(projRoot, true); }
-    }
-
-    [Fact]
-    public void Monitor_source_bureau_utilisee_en_repli_si_aucune_session_locale()
-    {
-        // Aucune session locale (transcript/hook) → la source bureau alimente la liste (ex. Cowork VM pur,
-        // distant, sans transcript local). Le repli reste donc utile là où il n'y a pas de doublon possible.
-        var now = DateTimeOffset.UtcNow;
-        var bureau = new FakeSessionSource(new SessionSnapshot(
-            "desktop:session:X", "X", SessionActivity.Working, null, now, SessionKind.Cowork, SessionOrigin.Desktop));
-        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()),
-            new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
-
-        var snaps = monitor.Read(now).ToDictionary(s => s.SessionId);
-        Assert.Single(snaps);
-        Assert.True(snaps.ContainsKey("desktop:session:X"));
-    }
-
-    [Fact]
-    public void Monitor_sans_source_bureau_ne_regresse_pas()
-    {
-        // desktop = null (défaut) → comportement identique à aujourd'hui (sessions CLI seules), aucun crash.
+        // Cas NOMINAL : un transcript seul, aucun fichier de hook → la session est lue et rendue telle quelle.
         var projRoot = TempDir();
         var now = DateTimeOffset.UtcNow;
         try
@@ -390,65 +337,6 @@ public class SessionsTests
             Assert.Equal("cli-only", snaps[0].SessionId);
         }
         finally { Directory.Delete(projRoot, true); }
-    }
-
-    [Fact]
-    public void Monitor_archive_une_session_bureau()
-    {
-        // Les clés desktop:... sont archivables comme les autres (le filtre archived s'applique à l'ensemble fusionné).
-        var now = DateTimeOffset.UtcNow;
-        var archPath = Path.Combine(TempDir(), "archived.json");
-        var bureau = new FakeSessionSource(new SessionSnapshot(
-            "desktop:foreground:code", "Claude (bureau)", SessionActivity.Working, null, now,
-            SessionKind.Code, SessionOrigin.Desktop));
-        var archive = new ArchiveStore(archPath);
-        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()), archive, bureau);
-
-        Assert.Single(monitor.Read(now));
-        archive.Add("desktop:foreground:code");
-        Assert.Empty(monitor.Read(now));
-    }
-
-    // --- SessionsViewModel : affichage du TYPE (BUR-03) ---
-
-    [WpfFact]
-    public void Widget_affiche_le_type_de_session_bureau()
-    {
-        var now = DateTimeOffset.UtcNow;
-        // Une session bureau Kind=Code + une session bureau Kind=Unknown (comme une CLI) → le VM doit
-        // exposer KindLabel="Code" pour la première et "" pour la seconde (pas de bruit).
-        var bureau = new FakeSessionSource(
-            new SessionSnapshot("desktop:foreground:code", "Claude (bureau)", SessionActivity.Working, null, now,
-                SessionKind.Code, SessionOrigin.Desktop),
-            new SessionSnapshot("cli-x", "MonProjet", SessionActivity.WaitingTurn, null, now,
-                SessionKind.Unknown, SessionOrigin.Cli));
-        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()),
-            new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
-        var vm = new SessionsViewModel(monitor, new FakeClock(now), new ArchiveStore(Path.Combine(TempDir(), "b.json")));
-
-        vm.Refresh(now);
-
-        var byId = vm.Items.ToDictionary(i => i.SessionId);
-        Assert.Equal("Code", byId["desktop:foreground:code"].KindLabel);
-        Assert.Equal("", byId["cli-x"].KindLabel);   // Unknown → rien affiché
-    }
-
-    [WpfFact]
-    public void Widget_mappe_chaque_type_bureau_vers_son_libelle()
-    {
-        var now = DateTimeOffset.UtcNow;
-        var bureau = new FakeSessionSource(
-            new SessionSnapshot("desktop:foreground:chat", "Claude (bureau)", SessionActivity.WaitingTurn, null, now, SessionKind.Chat, SessionOrigin.Desktop),
-            new SessionSnapshot("desktop:foreground:cowork", "Claude (bureau)", SessionActivity.Unknown, null, now, SessionKind.Cowork, SessionOrigin.Desktop));
-        var monitor = new SessionMonitor(TempDir(), new TranscriptSessionSource(TempDir()),
-            new ArchiveStore(Path.Combine(TempDir(), "a.json")), bureau);
-        var vm = new SessionsViewModel(monitor, new FakeClock(now), new ArchiveStore(Path.Combine(TempDir(), "b.json")));
-
-        vm.Refresh(now);
-
-        var byId = vm.Items.ToDictionary(i => i.SessionId);
-        Assert.Equal("Chat", byId["desktop:foreground:chat"].KindLabel);
-        Assert.Equal("Cowork", byId["desktop:foreground:cowork"].KindLabel);
     }
 
     [Fact]

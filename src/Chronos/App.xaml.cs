@@ -204,33 +204,15 @@ public partial class App : Application
         // installateur des hooks, contrôleur du panneau flottant.
         services.AddSingleton(_ => new ArchiveStore());
 
-        // Source BUREAU (UIA) — chaîne complète (Phase 13) :
-        //   provider réel (arbre a11y de la fenêtre Claude) → source (cache) → poll de fond (HORS thread UI,
-        //   ROB-07) → SessionMonitor (fusion) → widget. L'ordre d'ENREGISTREMENT importe : IUiaTreeProvider et
-        //   DesktopUiaSessionSource sont déclarés AVANT le SessionMonitor qui les consomme.
-        services.AddSingleton<IUiaTreeProvider>(_ => new WindowsUiaTreeProvider());
-        services.AddSingleton(sp => new DesktopUiaSessionSource(sp.GetRequiredService<IUiaTreeProvider>()));
-
-        // Hystérésis (Phase 14) : magasin RÉVERSIBLE des sessions traitées + détecteur STATEFUL + focus
-        // premier-plan OS RÉEL (plan 02). Déclarés AVANT le SessionMonitor qui les consomme. Le focus réel
-        // (WindowsForegroundWatch, Win32) rend la branche NET-02 VIVANTE : une session bureau en attente
-        // gardée au premier plan de l'OS ≥ ~2,5 s est acquittée. Best-effort : indisponible → NET-02 ne
-        // déclenche pas, sans erreur.
+        // Hystérésis (phase 14, réduite en phase 21) : magasin RÉVERSIBLE des sessions traitées + détecteur
+        // STATEFUL. Déclarés AVANT le SessionMonitor qui les consomme. L'acquittement par focus est tombé
+        // avec la source app-bureau : il exigeait une origine qu'aucune session Claude Code ne porte (SRC-01).
         services.AddSingleton(_ => new TreatedStore());
         services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
-        services.AddSingleton<IForegroundWatch>(_ => new WindowsForegroundWatch());
 
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
-            sp.GetRequiredService<DesktopUiaSessionSource>(),
             sp.GetRequiredService<TreatedStore>(),
-            sp.GetRequiredService<SessionTreatmentTracker>(),
-            sp.GetRequiredService<IForegroundWatch>()));
-        // Poll de fond : IHostedService démarré/arrêté par le host (comme RefreshOrchestrator). Le Timer .NET
-        // remplit le cache de la source ~1,5 s sur un thread du pool → jamais le thread UI (ROB-07).
-        services.AddSingleton(sp => new DesktopUiaPollService(
-            sp.GetRequiredService<DesktopUiaSessionSource>(),
-            sp.GetRequiredService<IClock>()));
-        services.AddHostedService(sp => sp.GetRequiredService<DesktopUiaPollService>());
+            sp.GetRequiredService<SessionTreatmentTracker>()));
 
         services.AddSingleton(_ => new SessionHookInstaller());
 
