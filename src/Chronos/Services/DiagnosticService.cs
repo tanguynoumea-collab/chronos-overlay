@@ -21,6 +21,10 @@ public sealed class DiagnosticService
 {
     private const string UsageUrl = "https://api.anthropic.com/api/oauth/usage";
 
+    // Combien de fichiers d'état le rapport détaille. Une borne de LISIBILITÉ, pas une troncature muette :
+    // le reste est annoncé sur une ligne dédiée, et le compte total du dossier est donné avant la liste.
+    private const int MaxFichiersEtat = 8;
+
     private readonly IClaudeTokenReader _tokenReader;
     private readonly ChronosPaths _paths;
     private readonly SettingsService _settings;
@@ -448,13 +452,26 @@ public sealed class DiagnosticService
         }
         catch { sb.AppendLine("  (lecture settings.json impossible)"); }
 
-        // Fichiers d'état écrits par le mode --hook.
-        var sessDir = Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "sessions");
+        // Fichiers d'état écrits par le mode --hook. OBS-02 — les fichiers PERTINENTS : ce qui attend
+        // d'abord, puis le plus récent. L'ancien tri était celui de Directory.GetFiles, c'est-à-dire
+        // l'ordre alphabétique des UUID. Sur la machine mesurée le 2026-09-12 (54 fichiers, dont 48 de
+        // plus de sept jours), les huit retenus étaient tous vieux de plusieurs semaines : un échantillon
+        // tiré par le hasard d'un nom de fichier, présenté comme un état des lieux. C'est cette liste-là
+        // que l'utilisateur lisait quand il croyait voir des sessions mortes dans son widget.
+        //
+        // Le dossier lu est celui du MONITEUR quand il est injecté : lire un autre dossier que celui du
+        // widget rouvrirait exactement l'écart qu'OBS-01 vient de fermer.
+        var sessDir = _moniteurSessions?.Directory
+                      ?? Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "sessions");
         try
         {
             var files = Directory.Exists(sessDir) ? Directory.GetFiles(sessDir, "*.json") : System.Array.Empty<string>();
             sb.AppendLine($"  Fichiers d'état ({sessDir}) : {files.Length}");
-            foreach (var f in files.Take(8))
+
+            // Lire les 54 fichiers coûte 15,15 ms (mesure du 2026-09-12) : négligeable sur un rapport qui
+            // dure des secondes, et c'est le prix d'un choix motivé plutôt que d'un tirage alphabétique.
+            var lus = new List<(string Projet, string Activite, System.DateTimeOffset? Maj, int Urgence)>();
+            foreach (var f in files)
             {
                 try
                 {
@@ -462,15 +479,34 @@ public sealed class DiagnosticService
                     var r = d.RootElement;
                     string P(string k) => r.TryGetProperty(k, out var v) ? v.ToString() : "?";
                     // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
-                    var age = r.TryGetProperty("updated_at", out var ua) && ua.TryGetInt64(out var ms)
-                        && UsageNormalization.InstantDepuisEpochMillisecondes(ms) is { } maj
-                        ? $"{(_clock.UtcNow - maj).TotalMinutes:F0} min" : "?";
-                    sb.AppendLine($"    · {P("project")} — {P("activity")} (maj il y a {age})");
+                    var maj = r.TryGetProperty("updated_at", out var ua) && ua.TryGetInt64(out var ms)
+                        ? UsageNormalization.InstantDepuisEpochMillisecondes(ms)
+                        : null;
+                    var activite = P("activity");
+                    // Le rang d'urgence vient de la couche partagée avec le widget : une activité que le
+                    // moniteur ne saurait pas relire est reléguée au dernier rang plutôt que devinée.
+                    var urgence = System.Enum.TryParse<SessionActivity>(activite, ignoreCase: true, out var a)
+                        ? AffichageSessions.Urgence(a) : 3;
+                    lus.Add((P("project"), activite, maj, maj is null ? 3 : urgence));
                 }
-                catch { }
+                catch { }   // fichier illisible : ignoré, jamais fatal au rapport
             }
+
+            // NB : l'itérateur s'appelle « fic » et non « e » — un `e` est déjà déclaré plus haut dans
+            // cette même méthode (l'expiration du jeton), et C# interdit d'en masquer la portée (CS0136).
+            foreach (var fic in lus.OrderBy(x => x.Urgence)
+                                   .ThenByDescending(x => x.Maj ?? System.DateTimeOffset.MinValue)
+                                   .Take(MaxFichiersEtat))
+            {
+                // Une date absente reste absente. La remplacer par l'instant courant ferait passer un
+                // fichier muet pour un fichier frais — exactement ce que la doctrine du milestone interdit.
+                var age = fic.Maj is { } maj ? "maj " + AffichageSessions.Age(_clock.UtcNow - maj) : "date inconnue";
+                sb.AppendLine($"    · {fic.Projet} — {fic.Activite} ({age})");
+            }
+            if (lus.Count > MaxFichiersEtat)
+                sb.AppendLine($"    … et {lus.Count - MaxFichiersEtat} autre(s) non listé(s) : ni en attente, ni parmi les plus récents");
             if (files.Length == 0)
-                sb.AppendLine("    (aucun — normal en app bureau : la détection passe par les transcripts, pas les hooks)");
+                sb.AppendLine("    (aucun — les hooks n'ont encore rien écrit dans ce dossier)");
         }
         catch { }
 

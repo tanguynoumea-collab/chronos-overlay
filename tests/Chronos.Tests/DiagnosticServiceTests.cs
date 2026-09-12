@@ -627,6 +627,16 @@ public class DiagnosticServiceTests
     private static SessionMonitor MoniteurSur(string dir)
         => new(dir, new SourceFixe22(), new ArchiveStore(TempFichier22()));
 
+    /// <summary>Les lignes à puce du SEUL bloc « Fichiers d'état ». Le rapport en compte d'autres bien
+    /// avant (les chemins de l'app bureau, par exemple) : prendre « les premières puces du rapport »
+    /// mesurerait une autre section et rendrait ces tests verts ou rouges pour de mauvaises raisons.</summary>
+    private static List<string> LignesFichiersEtat(string report)
+        => report.Split('\n')
+                 .SkipWhile(l => !l.Contains("Fichiers d'état ("))
+                 .Skip(1)
+                 .TakeWhile(l => l.TrimStart().StartsWith("· "))
+                 .ToList();
+
     /// <summary>OBS-02 — le défaut mesuré : sur 54 fichiers dont 48 vieux de plus de sept jours, le rapport
     /// montrait les huit premiers par ordre alphabétique d'UUID. Ici les identifiants sont choisis pour que
     /// l'ordre alphabétique et l'ordre de pertinence soient OPPOSÉS : « aaa… » est le plus vieux et le plus
@@ -643,9 +653,8 @@ public class DiagnosticServiceTests
 
         Assert.Contains("Fichiers d'état", report);
         Assert.Contains($"({dir}) : 10", report);   // le compte TOTAL reste celui du dossier
-        // Le bloc des fichiers d'état PRÉCÈDE celui des sessions dans le rapport : les premières lignes
-        // à puce sont donc bien les siennes.
-        var lignes = report.Split('\n').Where(l => l.TrimStart().StartsWith("· ")).ToList();
+        var lignes = LignesFichiersEtat(report);
+        Assert.Equal(8, lignes.Count);                         // la borne de lisibilité, annoncée juste après
         Assert.Contains("PROJET QUI ATTEND", lignes[0]);        // l'attente passe devant, malgré son âge
         Assert.Contains("… et 2 autre(s) non listé(s)", report);
     }
@@ -660,7 +669,12 @@ public class DiagnosticServiceTests
         var report = await Rapport(MoniteurSur(dir));
 
         Assert.DoesNotContain("non listé(s)", report);
-        for (var i = 0; i < 8; i++) Assert.Contains($"p-{i}", report);
+        // Assertions portées sur le BLOC, pas sur le rapport entier : ces mêmes projets reparaissent plus
+        // bas dans la liste des sessions du widget, et un test qui s'en contenterait serait vert même si
+        // le bloc des fichiers d'état était vide.
+        var lignes = LignesFichiersEtat(report);
+        Assert.Equal(8, lignes.Count);
+        for (var i = 0; i < 8; i++) Assert.Contains(lignes, l => l.Contains($"p-{i}"));
     }
 
     /// <summary>Doctrine du milestone : une date absente reste absente. Lui attribuer l'instant courant
@@ -675,7 +689,7 @@ public class DiagnosticServiceTests
 
         var report = await Rapport(MoniteurSur(dir));
 
-        var lignes = report.Split('\n').Where(l => l.TrimStart().StartsWith("· ")).ToList();
+        var lignes = LignesFichiersEtat(report);
         Assert.Contains("AVEC DATE", lignes[0]);                          // le daté passe devant
         Assert.Contains("SANS DATE", lignes[1]);
         Assert.Contains("date inconnue", lignes[1]);
@@ -705,7 +719,7 @@ public class DiagnosticServiceTests
 
         var report = await Rapport(MoniteurSur(dir));
 
-        Assert.Contains(dir, report);
-        Assert.Contains("PROJET DU MONITEUR", report);
+        Assert.Contains($"Fichiers d'état ({dir}) : 1", report);
+        Assert.Contains(LignesFichiersEtat(report), l => l.Contains("PROJET DU MONITEUR"));
     }
 }
