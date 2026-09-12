@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: verifying
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-09-12T16:19:25.509Z"
+status: executing
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-09-12T16:58:28.347Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 33
 ---
 
@@ -22,22 +22,22 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** Phase 22 — Un instrument de mesure qui ne ment plus
+**Current focus:** Phase 23 — Un magasin qui ne croit plus et n oublie plus
 
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: 22 (Un instrument de mesure qui ne ment plus) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 23 (Un magasin qui ne croit plus et n oublie plus) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-09-12
 
-Progress: [███░░░░░░░] 33%  (2 phases sur 6 — phases 21 et 22 closes, 7 plans sur 7)
+Progress: [███░░░░░░░] 33%  (2 phases sur 6 — phases 21 et 22 closes ; 8 plans sur 9, plan 23-01 livré)
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 7
-- Suite de tests : **747 verts / 0 échec** (baseline d'entrée de phase 22 : 719)
+- Total plans completed (v1.6): 8
+- Suite de tests : **754 verts / 0 échec** (baseline d'entrée de phase 23 : 747 ; +6 en 23-01 T1, +1 en 23-01 T2)
 
 ## Milestone v1.5 (clos)
 
@@ -170,6 +170,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 22 P01 | 6 min | 2 tasks | 6 files |
 | Phase 22 P02 | 6 min | 2 tasks | 5 files |
 | Phase 22 P03 | 9 min | 2 tasks | 3 files |
+| Phase 23 P01 | 6min | 2 tasks | 4 files |
 
 ### Decisions
 
@@ -391,6 +392,13 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 22]: OBS-01 livré en PARTAGE D'INSTANCE : le diagnostic interroge le SessionMonitor du conteneur DI, sans aucun repli — sans moniteur il dit « MONITEUR NON INJECTÉ » au lieu d'en fabriquer un
 - [Phase 22]: Les gardes de non-retour sont falsifiées avant commit : trois mutations appliquées, rouge observé, révocation vérifiée par checksum
 - [Phase 22]: Le rapport de diagnostic choisit ses exemples de fichiers d'etat par PERTINENCE (attente d'abord, puis fraicheur, bareme partage avec le widget) et annonce combien il n'en montre pas — fin du tirage alphabetique des UUID (OBS-02)
+- [Phase 23]: [23-01] L'ecriture d'etat de hook est DIRECTE (FileMode.Create / FileShare.Read) et non plus par fichier temporaire deplace par-dessus la cible : 200 ecritures sous un lecteur tenu en FileShare.ReadWrite (mode exact de SessionMonitor.TryRead) rendent 0 echec, contre 290 pertes sur 500 mesurees avec l'ancienne mecanique.
+- [Phase 23]: [23-01] Contrepartie ASSUMEE et ecrite dans le code : l'ecriture directe tronque la cible avant de la reecrire, donc un lecteur malchanceux lit un fragment et relira 2 s plus tard. Une lecture manquee sur un cycle n'est pas du meme ordre qu'une perte definitive et silencieuse.
+- [Phase 23]: [23-01] ResultatEcritureEtat porte la cause REELLE (type + message de l'exception levee), jamais un libelle fabrique : c'est la seule chose qui distingue « rien a faire » d'« impossible » (meme motif qu'au plan 17-02).
+- [Phase 23]: [23-01] Le hook sort 1 et JAMAIS 2 : le contrat Claude Code fait de 2 une erreur BLOQUANTE (stderr renvoye a Claude, action bloquee). Constatable ne doit pas devenir bloquant — grep 'return 2;' dans App.xaml.cs = 0.
+- [Phase 23]: [23-01] ArchiveStore.Add garde volontairement son ecriture par fichier temporaire : methode void appelee depuis l'UI, aucun canal pour rendre un echec constatable — changer sa mecanique aurait produit un correctif invérifiable.
+- [Phase 23]: [23-01] DiagnosticService.cs est ABSENT du diff : le rapport reflete le changement sans qu'une ligne n'y bouge. C'est la premiere preuve a l'usage du partage d'instance livre en phase 22.
+- [Phase 23]: [23-01] La mutation de falsification a ete jouee avec un ALIAS TEMPORAIRE (AppliquerMUTANT => Appliquer) pour que le depot reste compilable : sans cela dotnet test aurait echoue a la compilation et n'aurait rien dit de la garde. Echec constate nominativement, puis alias et mutation revoques (git diff vide).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -479,7 +487,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T16:19:25.407Z
-Stopped at: Completed 22-03-PLAN.md
+Last session: 2026-09-12T16:58:12.262Z
+Stopped at: Completed 23-01-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)

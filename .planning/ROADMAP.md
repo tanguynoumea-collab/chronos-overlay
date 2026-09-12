@@ -187,7 +187,7 @@ une dépendance.
 23-01 ait d'abord rendu ces dates fiables)
 
 Plans:
-- [ ] 23-01-PLAN.md — CYC-02 : l'écriture d'état quitte la couche WPF, devient directe, et son échec se voit
+- [x] 23-01-PLAN.md — CYC-02 : l'écriture d'état quitte la couche WPF, devient directe, et son échec se voit
 - [ ] 23-02-PLAN.md — CYC-01 : balayage des états périmés et des débris temporaires, sur critère double, sans jamais conclure
 
 ### Phase 24 : L'arbitrage par fraîcheur
@@ -271,7 +271,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 |-------|----------------|--------|-----------|
 | 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
 | 22. Un instrument de mesure qui ne ment plus | 3/3 | Complete   | 2026-09-12 |
-| 23. Un magasin qui ne croît plus et n'oublie plus | 0/? | Not started | - |
+| 23. Un magasin qui ne croît plus et n'oublie plus | 1/2 | In Progress|  |
 | 24. L'arbitrage par fraîcheur | 0/? | Not started | - |
 | 25. Le contrat d'événements refondé | 0/? | Not started | - |
 | 26. « Traité » veut enfin dire quelque chose | 0/? | Not started | - |

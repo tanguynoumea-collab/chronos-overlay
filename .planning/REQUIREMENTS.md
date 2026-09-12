@@ -74,7 +74,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 - [ ] **CYC-01**: Les fichiers d'état expirés et les `.tmp` orphelins sont **balayés** — `SessionEnd` ne peut
   pas être garanti (il ne couvre ni terminal tué, ni crash, ni redémarrage machine), donc le magasin ne peut
   aujourd'hui que croître : 54 fichiers dont 48 de plus de 7 jours, plus 12 `.tmp`.
-- [ ] **CYC-02**: L'écriture d'un état de hook ne peut plus être **perdue en silence**.
+- [x] **CYC-02**: L'écriture d'un état de hook ne peut plus être **perdue en silence**.
 
 ### Observabilité (OBS)
 
@@ -117,7 +117,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | TRT-03 | Phase 26 | Pending |
 | TRT-04 | Phase 26 | Pending |
 | CYC-01 | Phase 23 | Pending |
-| CYC-02 | Phase 23 | Pending |
+| CYC-02 | Phase 23 | Complete |
 | OBS-01 | Phase 22 | Complete |
 | OBS-02 | Phase 22 | Complete |
 
