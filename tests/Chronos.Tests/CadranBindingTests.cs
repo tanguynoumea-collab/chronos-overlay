@@ -124,6 +124,15 @@ public class CadranBindingTests
         Assert.Equal("", vm.FiveHour.UtilizationText);
         Assert.Equal("", vm.SevenDay.UtilizationText);
         Assert.NotNull(fenetre.FindName("ArcHebdo") as RingArc);
+
+        // EXA-03 : le MOT existe et il est CÂBLÉ sur l'état d'indisponibilité. La Visibility RÉSOLUE se
+        // vérifie dans les tests MONTÉS ci-dessous — ce test-ci n'utilise que BuildWindow, la fenêtre n'a
+        // donc aucun parent visuel, sa Visibility resterait à son défaut Visible et l'assertion serait
+        // vraie pour une mauvaise raison (Piège 4). Ce qui se prouve ici, c'est le CÂBLAGE.
+        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        Assert.Equal("indisponible", mot.Text);
+        Assert.Equal(nameof(vm.DataUnavailable),
+            System.Windows.Data.BindingOperations.GetBinding(mot, UIElement.VisibilityProperty)!.Path.Path);
     }
 
     /// <summary>
@@ -691,5 +700,78 @@ public class CadranBindingTests
         Assert.Null(typeof(System.Windows.Shapes.Ellipse).GetProperty("Command"));
         Assert.NotNull(pastille.Fill);            // hit-testable (Transparent suffit, {x:Null} non)
         Assert.True(pastille.IsHitTestVisible);
+    }
+
+    // ============ EXA-03 / M-INDISPO : le MOT, parce que l'absence de chiffre est AMBIGUË ============
+    //
+    // M-indispo était à moitié livrée : Utilization null ⇒ arc neutre et texte vide. Mais l'absence de
+    // chiffre se confond avec l'état « en attente » (HasData=false ⇒ WaitFill), qui rend exactement le
+    // même neutre dans les quatre styles alternatifs. Le mot lève l'ambiguïté : sans lui, la quatrième
+    // apparence d'EXA-03 n'existe pas.
+
+    /// <summary>EXA-03 — deux fenêtres indisponibles : « je ne sais pas » se LIT. Visibility RÉSOLUE
+    /// sur une fenêtre réellement montée, jamais sur le défaut d'un binding jamais évalué.</summary>
+    [WpfFact]
+    public void Deux_fenetres_indisponibles_allument_le_mot_indisponible()
+    {
+        var (fenetre, _) = MonterCadran(UsageSnapshot.Empty, out var vm);
+        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+
+        Assert.True(vm.DataUnavailable);
+        Assert.Equal("indisponible", mot.Text);
+        Assert.Equal(Visibility.Visible, mot.Visibility);
+    }
+
+    /// <summary>EXA-03 — contre-épreuve : dès qu'UN chiffre est exploitable, le mot s'éteint. Un overlay
+    /// qui annonce « indisponible » à côté d'un pourcentage bien réel serait pire que muet.</summary>
+    [WpfFact]
+    public void Un_chiffre_exploitable_eteint_le_mot_indisponible()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetreFraiche(WindowKind.FiveHour, 0.3),
+            SevenDay = FenetreFraiche(WindowKind.SevenDay, 0.6),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm);
+        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+
+        Assert.False(vm.DataUnavailable);
+        Assert.Equal(Visibility.Collapsed, mot.Visibility);
+    }
+
+    /// <summary>
+    /// EXA-03 — géométrie du mot, dans le cas RÉEL où il cohabite avec une pastille : « jamais d'exact »
+    /// allume à la fois le mot ET l'invitation à se connecter. Le mot est au BAS-GAUCHE précisément pour
+    /// cela — un mot centré en bas entrerait en collision avec la rangée dès trois pastilles, et le
+    /// bas-droite lui est interdit par construction.
+    /// </summary>
+    [WpfFact]
+    public void Le_mot_indisponible_n_empiete_ni_sur_les_anneaux_ni_sur_la_rangee_de_pastilles()
+    {
+        var (fenetre, racine) = MonterCadran(JamaisDExact(), out var vm);
+        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
+
+        Assert.True(vm.DataUnavailable);
+        Assert.True(vm.AfficherInvitationConnexion);          // les deux sont bien allumés ENSEMBLE
+        Assert.Equal(Visibility.Visible, mot.Visibility);
+
+        var rMot = RectangleMisEnPage(mot, racine);
+        var rRangee = RectangleMisEnPage(rangee, racine);
+        Assert.False(rMot.IsEmpty);
+        Assert.False(rRangee.IsEmpty);
+        Assert.True(Rect.Intersect(rMot, rRangee).IsEmpty,
+            $"le mot recouvre la rangée de pastilles : {rMot} ∩ {rRangee}");
+
+        var centre = new Point(rMot.X + rMot.Width / 2, rMot.Y + rMot.Height / 2);
+        var distanceAuCentre = (centre - new Point(85, 85)).Length;
+        Assert.True(distanceAuCentre > 71.5,
+            $"le mot empiète sur la géométrie des anneaux (distance {distanceAuCentre:F1} px)");
+
+        // Il ne vole aucun clic : la zone centrale continue de basculer % / temps.
+        Assert.False(mot.IsHitTestVisible);
+        Assert.Equal(170d, fenetre.Width);
     }
 }
