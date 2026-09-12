@@ -33,10 +33,36 @@
                  (VIS-01) → FractionElapsed, se remplit à l'approche du reset. Couleur = utilization hebdo. -->
             <ctrl:RingArc Fraction="1" Radius="38"
                           Stroke="{DynamicResource PisteHebdo}" StrokeThickness="8"/>
+            <!-- M-PLANCHER (EXA-03) — LA TEXTURE, troisième canal de Bertin, libre par construction :
+                 la géométrie dit le TEMPS, la luminance dit le QUOTA, le grain dit « borne inférieure ».
+                 La loi d'encodage du projet est donc respectée sans détourner aucun de ses deux canaux.
+                 Les quatre styles alternatifs (braises, fusible, marée, volets) portaient DÉJÀ ce canal ;
+                 les Anneaux étaient le seul style aveugle au plancher.
+                 Le pointillé dit « au moins », JAMAIS « vieux » : un chiffre daté mais VÉRIFIÉ
+                 (EncoreValide) reste un trait PLEIN — la doctrine est allée prouver qu'il est juste, et
+                 le démotiser serait une régression d'honnêteté. L'âge se dit ailleurs, par une pastille
+                 ADDITIVE qui ne retire ni luminance ni netteté au chiffre.
+                 UNITÉS : multiples de l'épaisseur du trait, PAS des pixels. À 8 px d'épaisseur,
+                 « 0.55 0.45 » donne des tirets de 4,4 px espacés de 3,6 px — comparable au grain des
+                 braises (tirets 1,4 / 1,4 sur un trait de 1,4). Une valeur en pixels (« 4 3 ») produirait
+                 des tirets de 32 px : l'anneau paraîtrait cassé.
+                 De la GÉOMÉTRIE pure : aucun effet, aucune animation, donc gratuit sous le rendu
+                 logiciel qu'impose AllowsTransparency. -->
             <ctrl:RingArc x:Name="ArcHebdo" Radius="38" StrokeThickness="8"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           Fraction="{Binding SevenDay.FractionElapsed}"
-                          Stroke="{Binding SevenDay.ValueBrush}"/>
+                          Stroke="{Binding SevenDay.ValueBrush}">
+                <ctrl:RingArc.Style>
+                    <Style TargetType="ctrl:RingArc">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SevenDay.EstPlancher}" Value="True">
+                                <Setter Property="StrokeDashArray" Value="0.55 0.45"/>
+                                <Setter Property="StrokeDashCap" Value="Round"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ctrl:RingArc.Style>
+            </ctrl:RingArc>
 
             <!-- ===== MODE ÉTENDU (3 anneaux) : 5 h (milieu, épais) + timeline 24 h (externe, fine). ===== -->
             <Grid Visibility="{Binding IsModeEtendu, Converter={StaticResource BoolToVis}}">
@@ -46,11 +72,28 @@
                 <ctrl:RingArc x:Name="ArcCinqHeures" Radius="54" StrokeThickness="8"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                               Fraction="{Binding FiveHour.FractionElapsed}"
-                              Stroke="{Binding FiveHour.ValueBrush}"/>
+                              Stroke="{Binding FiveHour.ValueBrush}">
+                    <!-- M-PLANCHER de la fenêtre 5 h (voir la doctrine au-dessus de l'arc hebdo). -->
+                    <ctrl:RingArc.Style>
+                        <Style TargetType="ctrl:RingArc">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FiveHour.EstPlancher}" Value="True">
+                                    <Setter Property="StrokeDashArray" Value="0.55 0.45"/>
+                                    <Setter Property="StrokeDashCap" Value="Round"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ctrl:RingArc.Style>
+                </ctrl:RingArc>
                 <!-- Marques horaires 5 h (Count=5, tous les 72°), bord externe de l'anneau 5 h. -->
                 <ctrl:TickRing Count="5" Radius="59" TickLength="7"
                                Stroke="{DynamicResource TickVisible}" StrokeThickness="2.5"/>
-                <!-- Timeline 24 h (R64, fine) : fraction du jour (JOUR-01), couleur = utilization 5 h (JOUR-03). -->
+                <!-- Timeline 24 h (R64, fine) : fraction du jour (JOUR-01), couleur = utilization 5 h (JOUR-03).
+                     DÉLIBÉRÉMENT NON MARQUÉE et ce n'est pas un oubli : en mode Étendu la fenêtre 5 h a déjà
+                     son arc ÉPAIS marqué juste en dessous (R54, 8 px). Répéter la marque sur un anneau de
+                     4 px produirait des tirets de 2,2 px — illisibles — et une redondance bruyante. Décision
+                     verrouillée par une assertion (Le_plancher_5h_marque_l_anneau_du_mode_ETENDU), pas par
+                     ce seul commentaire. -->
                 <ctrl:RingArc x:Name="ArcVingtQuatreHeures" Radius="64" StrokeThickness="4"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                               Fraction="{Binding DayFraction}"
@@ -69,7 +112,23 @@
                 <ctrl:RingArc x:Name="ArcTimelineNormal" Radius="52" StrokeThickness="7"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                               Fraction="{Binding DayFraction}"
-                              Stroke="{Binding FiveHour.ValueBrush}"/>
+                              Stroke="{Binding FiveHour.ValueBrush}">
+                    <!-- M-PLANCHER de la fenêtre 5 h en mode NORMAL (le mode par DÉFAUT). Sa GÉOMÉTRIE est
+                         celle du jour, mais sa COULEUR est celle de l'usage 5 h : il n'existe aucun anneau
+                         5 h dédié dans ce mode, l'usage 5 h passe entièrement par cet anneau-ci. C'est donc
+                         lui — et lui seul — qui doit porter la marque du plancher 5 h ; sans cela le mode
+                         par défaut serait le seul des deux à ne rien dire. -->
+                    <ctrl:RingArc.Style>
+                        <Style TargetType="ctrl:RingArc">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FiveHour.EstPlancher}" Value="True">
+                                    <Setter Property="StrokeDashArray" Value="0.55 0.45"/>
+                                    <Setter Property="StrokeDashCap" Value="Round"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ctrl:RingArc.Style>
+                </ctrl:RingArc>
                 <!-- Sous-tirets HORAIRES alignés sur la grille des resets 5 h (DaySubTickAngles) : ils subdivisent
                      chaque intervalle de 5 h entre deux marques principales (PAS un cadran 24 h fixe). Sur le trait
                      de l'anneau (bande R48,5–R55,5 : Radius=55,5, TickLength=7), gris secondaire, premier plan. -->
