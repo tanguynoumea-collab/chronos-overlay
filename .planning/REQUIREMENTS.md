@@ -64,9 +64,9 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
   **requête jetable** (`POST /v1/messages`, `max_tokens:1`, modèle le moins cher).
 - [ ] **HDR-02**: Les en-têtes sont exploités **même quand la réponse est un 429** — précisément l'instant où
   l'overlay sert le plus.
-- [ ] **HDR-03**: Le **statut serveur** (`allowed` / `allowed_warning` / `rejected`) est remonté au cadran, au lieu
+- [x] **HDR-03**: Le **statut serveur** (`allowed` / `allowed_warning` / `rejected`) est remonté au cadran, au lieu
   d'être déduit d'un pourcentage.
-- [ ] **HDR-04**: L'usage en **dépassement** (`overage`) est lu et affiché quand il est présent.
+- [x] **HDR-04**: L'usage en **dépassement** (`overage`) est lu et affiché quand il est présent.
 - [x] **HDR-05**: Les **unités concurrentes** sont normalisées en un point unique : `utilization` 0..1 pour les
   en-têtes, 0..100 pour `/api/oauth/usage`, `used_percentage` 0..100 pour le pont statusLine ; `resets_at` en
   epoch secondes pour les deux premiers, ISO 8601 pour le troisième.
@@ -127,8 +127,8 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | DEL-06 | Phase 16 | Complete |
 | HDR-01 | Phase 18 | Complete |
 | HDR-02 | Phase 18 | Pending |
-| HDR-03 | Phase 18 | Pending |
-| HDR-04 | Phase 18 | Pending |
+| HDR-03 | Phase 18 | Complete |
+| HDR-04 | Phase 18 | Complete |
 | HDR-05 | Phase 18 | Complete |
 | HDR-06 | Phase 18 | Complete |
 | TOK-01 | Phase 17 | Complete |

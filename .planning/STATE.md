@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 18-03-PLAN.md
-last_updated: "2026-09-12T01:26:43.342Z"
+stopped_at: Completed 18-04-PLAN.md
+last_updated: "2026-09-12T01:42:55.948Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 18 (Source exacte par en-tetes de rate-limit) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -139,6 +139,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 18 P01 | 14min | 3 tasks | 8 files |
 | Phase 18 P02 | 18min | 3 tasks | 10 files |
 | Phase 18 P03 | 18min | 3 tasks | 3 files |
+| Phase 18 P04 | 22min | 2 tasks | 2 files |
 
 ### Decisions
 
@@ -237,6 +238,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 18]: Sonde : une fenetre dont SEULE l'utilization est illisible reste Exact avec Utilization null — jeter un reset reellement obtenu serait une perte d'information
 - [Phase 18]: Un 429 PORTEUR d'en-tetes appelle SignalerSucces() : il prouve que le jeton est valide, donc la pastille ne mentira pas pendant la saturation
 - [Phase 18]: Les criteres grep du plan sont devenus un test permanent balayant le texte source de la sonde (horloge systeme, controle de succes par exception, lecture du corps, rafraichisseur)
+- [Phase 18]: 18-04 : PublierDepassement en tete des branches 2xx et 429 (avant le test d'exploitabilite) — un serveur qui repond sans en-tete de depassement DIT quelque chose ; seules les pannes de transport et le frein preservent l'etat
+- [Phase 18]: 18-04 : le statut serveur n'a PAS de canal lateral, le depassement si — un statut DECRIT une fenetre et meurt avec elle, un depassement decrit le COMPTE et doit survivre a un Best() defavorable
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -292,7 +295,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T01:26:43.337Z
-Stopped at: Completed 18-03-PLAN.md
+Last session: 2026-09-12T01:42:55.943Z
+Stopped at: Completed 18-04-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18
