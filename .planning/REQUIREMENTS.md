@@ -34,7 +34,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
   démarrage, pour que Chronos ne reparte jamais sans chiffre (tue la bascule au redémarrage de l'exe).
 - [x] **EXA-02**: Au-delà d'un **âge maximal**, une source exacte cesse d'être présentée comme exacte —
   fin du « 10 % vieux de deux mois marqué `Exact` ».
-- [ ] **EXA-03**: Le cadran **distingue visuellement** trois états : chiffre exact frais, chiffre exact daté,
+- [x] **EXA-03**: Le cadran **distingue visuellement** trois états : chiffre exact frais, chiffre exact daté,
   état indisponible. `IsStale` (aujourd'hui calculé mais bindé nulle part) devient un signal réel à l'écran.
 - [x] **EXA-04**: Aucune **utilization absolue dérivée d'un comptage de tokens** n'est plus jamais affichée,
   quelle que soit la situation.
@@ -115,7 +115,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 |--------|-------|--------|
 | EXA-01 | Phase 16 | Complete |
 | EXA-02 | Phase 19 | Complete |
-| EXA-03 | Phase 20 | Pending |
+| EXA-03 | Phase 20 | Complete |
 | EXA-04 | Phase 19 | Complete |
 | EXA-05 | Phase 19 | Complete |
 | EXA-06 | Phase 20 | Pending |

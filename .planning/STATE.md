@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 20-03-PLAN.md (EstPlancher, mort d'IsStale, EstDate + infobulle, 733 tests verts)
-last_updated: "2026-09-12T06:58:33.700Z"
+stopped_at: "Completed 20-04-PLAN.md (le dessin : pointille de plancher, rangee de pastilles, mot indisponible ; 744 tests verts)"
+last_updated: "2026-09-12T07:16:17.202Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 27
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 20 (Honnetete visible - cadran et diagnostic) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -150,6 +150,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 20 P01 | 34min | 3 tasks | 9 files |
 | Phase 20 P02 | 10min | 3 tasks | 15 files |
 | Phase 20 P03 | 16min | 3 tasks | 12 files |
+| Phase 20 P04 | 18min | 3 tasks | 2 files |
 
 ### Decisions
 
@@ -298,6 +299,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 20]: [20-03] La matiere brute de DEL-04 (TokensText/HasTokens) devient visible A LA DEMANDE en infobulle, pas en permanence : une ligne de tokens au centre annulerait la decision de design 'centre epure' de la v1.3 pour une exigence qui ne la demande pas. Dette n.1 de la phase 19 levee.
 - [Phase 20]: [20-03] UsageSnapshot.SourceCapturedAt CONSERVE et son commentaire amende : ce champ dit quelque chose de vrai (anciennete de SOURCE). Ce qui est mort, c'est la seconde notion de perime que le ViewModel en derivait.
 - [Phase 20]: [20-03] EXA-03 laisse Pending malgre le frontmatter : ce plan livre le CONTRAT de presentation complet, aucun pixel n'a bouge (AfficherReleveDate et InfobulleReleve bindes dans aucun XAML). Precedents 17-01, 18-02, 19-01, 19-02, 20-01, 20-02. Coche par le plan 20-04.
+- [Phase 20]: 20-04 : l'anneau 24 h fin (4 px) n'est DELIBEREMENT pas marque par le pointillé de plancher - le 5 h a déjà son arc épais marqué juste en dessous ; décision verrouillée par un Assert.Empty, pas par un commentaire
+- [Phase 20]: 20-04 : les deux pastilles qui se recouvraient ne sont PAS rendues mutuellement exclusives mais mises en RANGEE - elles disent des choses différentes et peuvent coexister ; c'est le recouvrement qui était le défaut
+- [Phase 20]: 20-04 : les commentaires de sécurité qui NOMMENT LoginClaudeCommand pour l'interdire sont conservés - un critère grep littéral ne justifie pas de supprimer l'avertissement qui protège le coffre de jetons
+- [Phase 20]: 20-04 : TDD RED/GREEN RÉEL pour la première fois du milestone - le dessin ne crée aucun symbole de production, donc l'étape rouge compile et la falsifiabilité est portée par l'historique git
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -359,7 +364,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T06:58:19.104Z
-Stopped at: Completed 20-03-PLAN.md (EstPlancher, mort d'IsStale, EstDate + infobulle, 733 tests verts)
+Last session: 2026-09-12T07:16:09.628Z
+Stopped at: Completed 20-04-PLAN.md (le dessin : pointille de plancher, rangee de pastilles, mot indisponible ; 744 tests verts)
 Resume file: None
 Next: /gsd:plan-phase 20 (Honnetete visible — cadran & diagnostic, EXA-03 + EXA-06)

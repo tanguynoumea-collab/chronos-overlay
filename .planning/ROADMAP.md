@@ -261,7 +261,7 @@ Plans:
 - [x] 20-03-PLAN.md — Le ViewModel : `IsEstimated` → `EstPlancher`, mort d'`IsStale` (une seule notion
       de « périmé », gardée), `EstDate` rapporté et non calculé, infobulle qui binde enfin
       `TokensText` — EXA-03 (vague 3)
-- [ ] 20-04-PLAN.md — Le dessin : pointillé de plancher aux Anneaux (le 5ᵉ style enfin marqué), rangée
+- [x] 20-04-PLAN.md — Le dessin : pointillé de plancher aux Anneaux (le 5ᵉ style enfin marqué), rangée
       de pastilles qui rend la superposition structurellement impossible + marque d'âge, mot
       « indisponible » — EXA-03 (vague 4)
 - [ ] 20-05-PLAN.md — Le diagnostic nomme la source et l'ancienneté (« ≥ » et non « ~ »), porte de
@@ -283,7 +283,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
 | 19. Nouvelle doctrine du composite | 5/5 | Complete   | 2026-09-12 |
-| 20. Honnêteté visible — cadran & diagnostic | 3/5 | In Progress|  |
+| 20. Honnêteté visible — cadran & diagnostic | 4/5 | In Progress|  |
 
 ### Couverture des exigences
 
