@@ -264,7 +264,7 @@ Plans:
 - [x] 20-04-PLAN.md — Le dessin : pointillé de plancher aux Anneaux (le 5ᵉ style enfin marqué), rangée
       de pastilles qui rend la superposition structurellement impossible + marque d'âge, mot
       « indisponible » — EXA-03 (vague 4)
-- [ ] 20-05-PLAN.md — Le diagnostic nomme la source et l'ancienneté (« ≥ » et non « ~ »), porte de
+- [x] 20-05-PLAN.md — Le diagnostic nomme la source et l'ancienneté (« ≥ » et non « ~ »), porte de
       phase, et protocole de vérification humaine consolidant les constats hérités des phases 17, 18
       et 19 — EXA-03, EXA-06 (vague 5, checkpoint humain)
 **UI hint**: yes

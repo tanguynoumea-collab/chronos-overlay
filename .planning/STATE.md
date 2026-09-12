@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: "Completed 20-04-PLAN.md (le dessin : pointille de plancher, rangee de pastilles, mot indisponible ; 744 tests verts)"
-last_updated: "2026-09-12T07:16:17.202Z"
+status: verifying
+stopped_at: Completed 20-05-PLAN.md — dernier plan du milestone v1.5 ; 9 constats humains en attente
+last_updated: "2026-09-12T07:30:24.242Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 28
-  completed_plans: 27
+  completed_plans: 28
   percent: 100
 ---
 
@@ -27,12 +27,17 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 20 (Honnetete visible - cadran et diagnostic) — EXECUTING
+Phase: 20 (Honnetete visible - cadran et diagnostic) — COMPLETE (porte franchie 2026-09-12)
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [██████████] 100% (5/6 phases closes ; 23/23 plans planifies)
+Progress: [██████████] 100% (6/6 phases closes ; 28/28 plans executes)
+
+**Milestone v1.5 — Exactitude permanente : les 24 exigences sont implementees et testees (748 tests verts).**
+NEUF constats humains restent en attente : ils sont listes, ordonnes et actionnables dans
+`.planning/phases/20-honn-tet-visible-cadran-diagnostic/20-05-SUMMARY.md`, section
+**« A VERIFIER PAR L'UTILISATEUR »**. Aucun n'a ete simule.
 
 **Ordre d'exécution :** 15 (indépendante) → 16 (fondations : persistance + delta + démolition des plafonds)
 → 17 (jeton vivant) → 18 (source en-têtes) → 19 (doctrine du composite, exige 16 et 18) → 20 (rendu visible).
@@ -44,15 +49,22 @@ Progress: [██████████] 100% (5/6 phases closes ; 23/23 plans
 | 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
 | 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Complete (6/6) |
 | 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Complete (5/5) — porte verte, constat humain delegue |
-| 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | In Progress (3/5) |
+| 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Complete (5/5) — porte verte, 9 constats humains delegues |
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v1.5): 0
-- Average duration: —
-- Total execution time: 0 h
+- Total plans completed (v1.5): **28 / 28**
+- Tests: **699 → 748**, suite en **3 s** (contre 2 min 12 s avant 20-01)
+
+| Phase | Plan | Durée | Tâches | Fichiers |
+|-------|------|-------|--------|----------|
+| 20 | 01 | 34min | 3 | 9 |
+| 20 | 02 | 10min | 3 | 15 |
+| 20 | 03 | 16min | 3 | 12 |
+| 20 | 04 | 18min | 3 | 2 |
+| 20 | 05 | 14min | 3 (dont 1 substituée) | 5 |
 
 *Updated after each plan completion*
 
@@ -151,6 +163,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 20 P02 | 10min | 3 tasks | 15 files |
 | Phase 20 P03 | 16min | 3 tasks | 12 files |
 | Phase 20 P04 | 18min | 3 tasks | 2 files |
+| Phase 20 P05 | 14min | 3 tasks | 5 files |
 
 ### Decisions
 
@@ -303,6 +316,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 20]: 20-04 : les deux pastilles qui se recouvraient ne sont PAS rendues mutuellement exclusives mais mises en RANGEE - elles disent des choses différentes et peuvent coexister ; c'est le recouvrement qui était le défaut
 - [Phase 20]: 20-04 : les commentaires de sécurité qui NOMMENT LoginClaudeCommand pour l'interdire sont conservés - un critère grep littéral ne justifie pas de supprimer l'avertissement qui protège le coffre de jetons
 - [Phase 20]: 20-04 : TDD RED/GREEN RÉEL pour la première fois du milestone - le dessin ne crée aucun symbole de production, donc l'étape rouge compile et la falsifiabilité est portée par l'historique git
+- [Phase 20]: Le tilde du diagnostic etait un OUBLI de la phase 19 : « >= » partout, un seul vocabulaire pour dire borne inferieure
+- [Phase 20]: Les deux segments d'EXA-06 (source, anciennete) sont INCONDITIONNELS : une fenetre sans source dit « non renseignee » plutot que de se taire
+- [Phase 20]: HDR-02 reste NON prouvee en production : le 429 reel exige une saturation du compte, la nuance est ecrite plutot que cochee en silence
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -357,6 +373,19 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Blockers/Concerns
 
+- **NEUF constats humains en attente, seul reste du milestone v1.5.** Protocole consolide (phases 17 a 20)
+  dans `20-05-SUMMARY.md`. Deux d'entre eux ne peuvent PAS etre refermes par un agent :
+  **HDR-02** (un 429 REEL porte-t-il bien les en-tetes `anthropic-ratelimit-unified-*` ?) et le **parcours
+  de reconnexion** de bout en bout. Ne pas les cocher sur la foi d'un test a reponse fabriquee.
+- **L'exe deploye (`~/Downloads/Chronos-v2.8.1.exe`) est anterieur a TOUT le milestone v1.5** : tant qu'il
+  n'est pas republie, rien des phases 15 a 20 n'est visible. La version du `.csproj` est encore 2.8.1 —
+  une release v1.5 doit la monter.
+- **Le premier lancement purgera les 25 groupes de hooks** de `~/.claude/settings.json` (attendu, PUR-01 /
+  PUR-03, avec sauvegarde horodatee). L'agent ne l'a pas declenche : le fichier est intact
+  (6872 o, mtime 1785403369).
+- **Economie possible, a trancher apres constat** : si `/api/oauth/usage` sert deja la famille
+  `anthropic-ratelimit-unified-*`, les ~288 micro-requetes/jour de la sonde deviennent redondantes.
+
 - Le mapping d'états UIA dépend de Names **localisés** ; prévoir la table fr/en (ROB-06) dès la Phase 13
   pour ne pas coder en dur des libellés qui changent à une MAJ de l'app.
 
@@ -364,7 +393,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T07:16:09.628Z
-Stopped at: Completed 20-04-PLAN.md (le dessin : pointille de plancher, rangee de pastilles, mot indisponible ; 744 tests verts)
+Last session: 2026-09-12T07:30:16.591Z
+Stopped at: Completed 20-05-PLAN.md — dernier plan du milestone v1.5 ; 9 constats humains en attente
 Resume file: None
-Next: /gsd:plan-phase 20 (Honnetete visible — cadran & diagnostic, EXA-03 + EXA-06)
+Next: /gsd:verify-phase 20 — puis les 9 constats humains du protocole de 20-05-SUMMARY.md avant de clore v1.5
