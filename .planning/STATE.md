@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 18-01-PLAN.md
-last_updated: "2026-09-12T00:41:06.862Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-09-12T01:02:52.579Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 18
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 18 (Source exacte par en-tetes de rate-limit) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -137,6 +137,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 17 P04 | 26min | 2 tasks | 7 files |
 | Phase 17 P05 | 19min | 3 tasks | 9 files |
 | Phase 18 P01 | 14min | 3 tasks | 8 files |
+| Phase 18 P02 | 18min | 3 tasks | 10 files |
 
 ### Decisions
 
@@ -229,6 +230,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 18]: [18-01] Aucun clamp dans la porte de validation, ni haut ni bas : Exhausted teste >= 1.0 donc un depassement reel doit rester visible, et une valeur negative est un symptome de source incoherente, pas un zero (null != 0).
 - [Phase 18]: [18-01] Etape RED jouee contre un SQUELETTE compilable (NotImplementedException) et non contre une classe absente : tests/Chronos.Tests reference Chronos, donc un commit non compilable rendrait dotnet test non invocable. RED = 25 echecs / 1 succes, donc comportemental et non de compilation.
 - [Phase 18]: [18-01] Garde de non-retour HDR-05 prouvee FALSIFIABLE par mutation reelle (p / 100.0 reintroduit -> echec nommant ChronosOAuthUsageProvider.cs:174) puis revoquee (git diff vide). Exemptions NOMINATIVES : point unique + ClaudeTokenReader (expiration de jeton) + SessionMonitor + TranscriptActivityProvider (dates qui ne sont pas des quotas).
+- [Phase 18]: 18-02 : le statut serveur et le depassement vont sur WindowState (transmis PAR REFERENCE par Best()) et non sur UsageSnapshot, que le composite reconstruit -- contrainte mecanique, pas preference
+- [Phase 18]: 18-02 : vocabulaire de statut OUVERT (NonReconnu) et null distinct de NonReconnu -- un statut inconnu n'est jamais range d'autorite dans « autorise »
+- [Phase 18]: 18-02 : HDR-03/HDR-04 restent Pending -- ce plan livre leurs contrats, c'est au plan 18-06 de les cocher quand la remontee au cadran sera livree
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -284,7 +288,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T00:40:54.318Z
-Stopped at: Completed 18-01-PLAN.md
+Last session: 2026-09-12T01:02:45.187Z
+Stopped at: Completed 18-02-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18

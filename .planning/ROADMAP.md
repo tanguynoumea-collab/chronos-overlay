@@ -182,7 +182,7 @@ déconnexion, elle retombe dans la panne silencieuse qu'on éradique).
      les réglages indiquent honnêtement que chaque appel consomme une micro-requête sur le compte (HDR-06).
 **Plans**: 6 plans (5 vagues)
 - [x] 18-01-PLAN.md — Point unique de normalisation des unités : 12 conversions rapatriées, piège de culture fr-FR gravé, garde de non-retour par balayage de source (HDR-05) (vague 1)
-- [ ] 18-02-PLAN.md — Vocabulaire ouvert du statut serveur (`NonReconnu`) + dépassement, 2 champs sur `WindowState`, canal latéral `IEtatServeur`, faux de transport porteur d'en-têtes sur 429 et 8 jeux de référence (HDR-03, HDR-04) (vague 1)
+- [x] 18-02-PLAN.md — Vocabulaire ouvert du statut serveur (`NonReconnu`) + dépassement, 2 champs sur `WindowState`, canal latéral `IEtatServeur`, faux de transport porteur d'en-têtes sur 429 et 8 jeux de référence (HDR-03, HDR-04) (vague 1)
 - [ ] 18-03-PLAN.md — La sonde `RateLimitHeaderUsageProvider` : en-têtes lus AVANT l'aiguillage par code, frein 300 s, interrupteur `SondeEnTetesActivee` (HDR-01, HDR-02, HDR-06) (vague 2)
 - [ ] 18-04-PLAN.md — Statut serveur par fenêtre (3 noms candidats) et dépassement par les deux canaux, sans `elif` (HDR-03, HDR-04) (vague 3)
 - [ ] 18-05-PLAN.md — Câblage DI : la sonde en PRIMAIRE d'un nouveau composite externe, garde de position par le comportement, diagnostic qui nomme l'issue et les NOMS d'en-têtes (HDR-01, HDR-02, HDR-06) (vague 4)
@@ -246,7 +246,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
-| 18. Source exacte par en-têtes de rate-limit | 1/6 | In Progress|  |
+| 18. Source exacte par en-têtes de rate-limit | 2/6 | In Progress|  |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 
