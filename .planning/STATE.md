@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 20-02-PLAN.md (SourceUsage + LibelleSource + mort d'EstimatedTokens, 724 tests verts)
-last_updated: "2026-09-12T06:41:57.766Z"
+stopped_at: Completed 20-03-PLAN.md (EstPlancher, mort d'IsStale, EstDate + infobulle, 733 tests verts)
+last_updated: "2026-09-12T06:58:33.700Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 28
-  completed_plans: 25
+  completed_plans: 26
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 20 (Honnetete visible - cadran et diagnostic) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -44,7 +44,7 @@ Progress: [██████████] 100% (5/6 phases closes ; 23/23 plans
 | 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
 | 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Complete (6/6) |
 | 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Complete (5/5) — porte verte, constat humain delegue |
-| 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Not started |
+| 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | In Progress (3/5) |
 
 ## Performance Metrics
 
@@ -149,6 +149,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 19 P05 | 16min | 2 tasks | 2 files |
 | Phase 20 P01 | 34min | 3 tasks | 9 files |
 | Phase 20 P02 | 10min | 3 tasks | 15 files |
+| Phase 20 P03 | 16min | 3 tasks | 12 files |
 
 ### Decisions
 
@@ -290,6 +291,13 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 20]: Le nom de la source est un axe DISTINCT de la provenance : les fusionner produirait un enum de 15 membres et rendrait le diagnostic incapable de dire lequel des deux points OAuth repond
 - [Phase 20]: EstimatedTokens supprime plutot que conserve sous garde comportementale : la garde a CHANGE DE NIVEAU (structurelle), elle n'a pas disparu
 - [Phase 20]: Aucun membre fourre-tout dans SourceUsage : l'absence de source se dit par null, jamais par une valeur d'enum qui affirmerait quelque chose
+- [Phase 20]: [20-03] La doctrine a l'AUTORITE : le seuil concurrent de 2 min du ViewModel n'a pas ete aligne sur les 6 min de LimiteAge, il a ete SUPPRIME. Aligner deux autorites les laisse diverger au refactor suivant ; il ne doit en rester qu'une.
+- [Phase 20]: [20-03] La garde de non-retour balaie DEUX fichiers NOMMES (MainViewModel, WindowGaugeViewModel) et non le dossier ViewModels : SessionsViewModel compare legitimement des durees (l. 190-191). Une garde rouge sur du code correct est une garde qu'on apprend a ignorer.
+- [Phase 20]: [20-03] EstDate et EstPlancher se COMPOSENT (plancher inclus dans date) : un EncoreValide est date SANS etre un plancher — la doctrine est allee VERIFIER qu'aucune reponse assistant n'est survenue depuis la capture. Le griser serait mentir sur une preuve positive.
+- [Phase 20]: [20-03] AfficherReleveDate est GLOBALE et conservatrice (le plus vieux des deux, jamais le plus jeune) : l'age est une propriete du PIPELINE, pas de la fenetre. Le detail par fenetre passe par l'infobulle.
+- [Phase 20]: [20-03] La matiere brute de DEL-04 (TokensText/HasTokens) devient visible A LA DEMANDE en infobulle, pas en permanence : une ligne de tokens au centre annulerait la decision de design 'centre epure' de la v1.3 pour une exigence qui ne la demande pas. Dette n.1 de la phase 19 levee.
+- [Phase 20]: [20-03] UsageSnapshot.SourceCapturedAt CONSERVE et son commentaire amende : ce champ dit quelque chose de vrai (anciennete de SOURCE). Ce qui est mort, c'est la seconde notion de perime que le ViewModel en derivait.
+- [Phase 20]: [20-03] EXA-03 laisse Pending malgre le frontmatter : ce plan livre le CONTRAT de presentation complet, aucun pixel n'a bouge (AfficherReleveDate et InfobulleReleve bindes dans aucun XAML). Precedents 17-01, 18-02, 19-01, 19-02, 20-01, 20-02. Coche par le plan 20-04.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -351,7 +359,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T06:41:52.304Z
-Stopped at: Completed 20-02-PLAN.md (SourceUsage + LibelleSource + mort d'EstimatedTokens, 724 tests verts)
+Last session: 2026-09-12T06:58:19.104Z
+Stopped at: Completed 20-03-PLAN.md (EstPlancher, mort d'IsStale, EstDate + infobulle, 733 tests verts)
 Resume file: None
 Next: /gsd:plan-phase 20 (Honnetete visible — cadran & diagnostic, EXA-03 + EXA-06)
