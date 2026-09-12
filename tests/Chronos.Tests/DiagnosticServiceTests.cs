@@ -17,6 +17,13 @@ public class DiagnosticServiceTests
         return new ChronosPaths(System.IO.Path.Combine(dir, "usage.json"), System.IO.Path.Combine(dir, "projects"));
     }
 
+    /// <summary>Extrait la ligne « 5 h » de la section « Ce qui est affiché maintenant ». Le rapport
+    /// ENTIER contient légitimement un tilde — « Dossier ~/.claude/projects » — donc une assertion
+    /// posée sur le rapport entier serait rouge pour une raison ÉTRANGÈRE à ce qu'elle prouve. On
+    /// restreint la preuve à la ligne concernée plutôt que de l'affaiblir en la supprimant.</summary>
+    private static string LigneCinqHeures(string report)
+        => report.Split('\n').Single(l => l.TrimStart().StartsWith("5 h"));
+
     private sealed class StubProvider : IUsageProvider
     {
         private readonly UsageSnapshot _snap;
@@ -44,7 +51,12 @@ public class DiagnosticServiceTests
         Assert.Contains("Usage exact (OAuth)", report);
         Assert.Contains("Token déchiffré : OUI", report);          // présence signalée…
         Assert.DoesNotContain("SECRET-TOKEN", report);              // …mais JAMAIS la valeur
-        Assert.Contains("estimé", report);                          // résultat affiché décrit
+        // 19-04/20-05 : le mot « estimé » n'existe plus, et le tilde non plus — l'incertitude d'un
+        // plancher est UNILATÉRALE. Forme DÉGRADÉE (ni Source ni Provenance), qui doit rester lisible.
+        Assert.Contains("PLANCHER", report);                        // résultat affiché décrit
+        Assert.DoesNotContain("~", LigneCinqHeures(report));
+        Assert.Contains("source : non renseignée", LigneCinqHeures(report));
+        Assert.Contains("relevé de date inconnue", LigneCinqHeures(report));
     }
 
     [Fact]
@@ -195,7 +207,127 @@ public class DiagnosticServiceTests
 
         Assert.Contains("pas encore sondé", report);
         Assert.Contains("aucun dépassement rapporté", report);
-        Assert.Contains("estimé", report);                   // assertion existante préservée
+        Assert.Contains("PLANCHER", report);                 // assertion existante, vocabulaire 19-04
+        Assert.DoesNotContain("~", LigneCinqHeures(report));  // « ≥ » partout, plus jamais « ~ »
         Assert.Contains("Token déchiffré : NON", report);    // assertion existante préservée
+    }
+    // --- Phase 20 (EXA-06) : le rapport nomme QUI alimente chaque fenêtre, et DEPUIS QUAND ---
+    //
+    // SÉCURITÉ, commune aux quatre tests : Token = null, donc la sonde réseau de la section
+    // « endpoint OAuth » — gardée par « if (token is not null) » — n'est jamais atteinte. Aucune
+    // requête ne part. Le faux inventaire de machine évite les 18 s de sondage d'environnement réel.
+
+    /// <summary>EXA-06, première moitié : le rapport nomme la source de CHAQUE fenêtre, et les deux
+    /// peuvent différer — le composite choisit la meilleure source PAR FENÊTRE.</summary>
+    [Fact]
+    public async Task Le_rapport_nomme_la_SOURCE_qui_alimente_chaque_fenetre()
+    {
+        var paths = TempPaths();
+        var now = new DateTimeOffset(2026, 9, 12, 10, 0, 0, TimeSpan.Zero);
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+                Utilization = 0.42, Source = SourceUsage.SondeEnTetes, CapturedAt = now,
+            },
+            SevenDay = new WindowState
+            {
+                Kind = WindowKind.SevenDay, Reliability = SourceReliability.Exact,
+                Utilization = 0.10, Source = SourceUsage.MagasinDernierExact, CapturedAt = now,
+            },
+        };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(snap),
+                                         new FakeClock(now), machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("source : sonde d'en-têtes de rate-limit", report);
+        Assert.Contains("source : dernier exact persisté", report);
+    }
+
+    /// <summary>EXA-06, seconde moitié : un chiffre exact sans son âge ne vaut rien — c'est exactement
+    /// la panne de deux mois (un « 10 % » figé, parfaitement affiché, jamais daté).</summary>
+    [Fact]
+    public async Task Le_rapport_donne_l_ANCIENNETE_du_releve_de_chaque_fenetre()
+    {
+        var paths = TempPaths();
+        var now = new DateTimeOffset(2026, 9, 12, 10, 0, 0, TimeSpan.Zero);
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+                Utilization = 0.42, Source = SourceUsage.SondeEnTetes,
+                CapturedAt = now - TimeSpan.FromMinutes(12),
+            },
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(snap),
+                                         new FakeClock(now), machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("relevé il y a 12 min", report);
+    }
+
+    /// <summary>Règle de non-retour : une absence de source ne produit JAMAIS d'affirmation. Le dernier
+    /// Assert vise la LIGNE de résultat et non la section de la sonde, qui porte légitimement le même
+    /// libellé entre crochets (« [Source exacte — sonde d'en-têtes de rate-limit] »).</summary>
+    [Fact]
+    public async Task Une_source_absente_se_dit_non_renseignee_et_JAMAIS_un_nom_par_defaut()
+    {
+        var paths = TempPaths();
+        var now = new DateTimeOffset(2026, 9, 12, 10, 0, 0, TimeSpan.Zero);
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+                Utilization = 0.42, Source = null, CapturedAt = null,
+            },
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(snap),
+                                         new FakeClock(now), machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("source : non renseignée", report);
+        Assert.Contains("relevé de date inconnue", report);
+        Assert.DoesNotContain("sonde d'en-têtes de rate-limit · relevé", report);
+    }
+
+    /// <summary>Le diagnostic et le cadran parlent le MÊME français : « ≥ », jamais « ~ ». Un tilde
+    /// dirait « autour de 42 », ce qui autoriserait la lecture « peut-être 38 » — or on SAIT que le
+    /// quota consommé vaut au moins 42 %, c'est la borne supérieure qui est inconnue (19-04).</summary>
+    [Fact]
+    public async Task Un_plancher_est_decrit_avec_superieur_ou_egal_et_sa_provenance()
+    {
+        var paths = TempPaths();
+        var now = new DateTimeOffset(2026, 9, 12, 10, 0, 0, TimeSpan.Zero);
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Estimated,
+                Utilization = 0.42, Source = SourceUsage.MagasinDernierExact,
+                CapturedAt = now - TimeSpan.FromMinutes(12),
+                Provenance = ProvenanceReleve.PlancherAvecActivite,
+            },
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(snap),
+                                         new FakeClock(now), machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("PLANCHER — ≥ 42 %", report);
+        Assert.Contains("borne inférieure (activité depuis)", report);
+        Assert.DoesNotContain("~", LigneCinqHeures(report));
     }
 }
