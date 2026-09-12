@@ -397,4 +397,175 @@ public class CadranBindingTests
         Assert.Equal(170d, fenetre.Width);
         Assert.Equal(170d, fenetre.Height);
     }
+
+    // ============ EXA-03 / M-PLANCHER : la texture du style « Anneaux » ============
+    //
+    // Les quatre styles alternatifs (braises, fusible, marée, volets) portaient déjà un canal
+    // TEXTURE bindé sur EstPlancher. Les Anneaux étaient le seul style aveugle au plancher : le
+    // pointillé des trois arcs de VALEUR comble ce trou, et ces cinq tests le verrouillent.
+
+    /// <summary>
+    /// Montage des tests de TEXTURE. Passe par <see cref="MonterPastille"/> — et jamais par
+    /// <see cref="BuildWindow"/> seul — parce qu'une fenêtre jamais affichée n'a pas de template :
+    /// son <c>Content</c> n'aurait aucun parent visuel, le DataContext ne se propagerait pas, et le
+    /// déclencheur de style ne s'évaluerait JAMAIS. Un tel test serait vert pour une mauvaise raison.
+    ///
+    /// Le style et le mode sont posés EXPLICITEMENT ici, après le montage, plutôt que laissés au
+    /// réglage persisté : la migration vers <see cref="TempPaths"/> a supprimé la dépendance au
+    /// profil réel, mais l'explicite reste la règle. Le paramètre de mode est OPTIONNEL et en
+    /// dernière position à dessein — la signature à deux arguments reste celle que décrit le plan.
+    /// </summary>
+    private static (MainWindow fenetre, FrameworkElement racine) MonterCadran(
+        UsageSnapshot snap, out MainViewModel vm, bool modeEtendu = false)
+    {
+        var monte = MonterPastille(EtatAuthentification.Connecte, snap, out vm);
+
+        vm.CadranStyle  = CadranStyle.Arcs;
+        vm.IsModeEtendu = modeEtendu;
+
+        // Deuxième purge : les deux affectations ci-dessus sont POSTÉRIEURES à celle de MonterPastille.
+        monte.racine.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        monte.racine.Measure(new Size(170, 170));
+        monte.racine.Arrange(new Rect(0, 0, 170, 170));
+        return monte;
+    }
+
+    // Trois fenêtres de référence, une par apparence de la doctrine. EstPlancher se dérive de la
+    // FIABILITÉ (Estimated), EstDate de la PROVENANCE : les deux sont posées, jamais devinées.
+    private static WindowState FenetrePlancher(WindowKind k, double util) => new()
+    {
+        Kind = k,
+        Reliability = SourceReliability.Estimated,
+        Provenance = ProvenanceReleve.PlancherAvecActivite,
+        Utilization = util,
+        ResetsAt = Now + TimeSpan.FromHours(2),
+    };
+
+    private static WindowState FenetreFraiche(WindowKind k, double util) => new()
+    {
+        Kind = k,
+        Reliability = SourceReliability.Exact,
+        Provenance = ProvenanceReleve.Frais,
+        Utilization = util,
+        ResetsAt = Now + TimeSpan.FromHours(2),
+    };
+
+    private static WindowState FenetreEncoreValide(WindowKind k, double util) => new()
+    {
+        Kind = k,
+        Reliability = SourceReliability.Exact,
+        Provenance = ProvenanceReleve.EncoreValide,
+        Utilization = util,
+        ResetsAt = Now + TimeSpan.FromHours(2),
+    };
+
+    /// <summary>EXA-03 — le plancher hebdo rend l'arc interne en pointillé. C'est la marque que les
+    /// quatre autres styles portaient déjà et que celui-ci ignorait.</summary>
+    [WpfFact]
+    public void Le_plancher_hebdo_rend_l_arc_des_Anneaux_en_pointille()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetreFraiche(WindowKind.FiveHour, 0.3),
+            SevenDay = FenetrePlancher(WindowKind.SevenDay, 0.9),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm);
+        var arc = Assert.IsType<RingArc>(fenetre.FindName("ArcHebdo"));
+
+        Assert.True(vm.SevenDay.EstPlancher);
+        Assert.Equal(2, arc.StrokeDashArray.Count);
+    }
+
+    /// <summary>EXA-03 — contre-épreuve : le cas NOMINAL ne porte aucune marque. Un overlay qui
+    /// décore son cas normal fabrique du bruit permanent, et l'absence de marque EST la marque de
+    /// la fraîcheur.</summary>
+    [WpfFact]
+    public void Un_exact_frais_laisse_l_arc_des_Anneaux_PLEIN()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetreFraiche(WindowKind.FiveHour, 0.3),
+            SevenDay = FenetreFraiche(WindowKind.SevenDay, 0.6),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm);
+        var arc = Assert.IsType<RingArc>(fenetre.FindName("ArcHebdo"));
+
+        Assert.False(vm.SevenDay.EstPlancher);
+        Assert.Empty(arc.StrokeDashArray);
+    }
+
+    /// <summary>
+    /// EXA-03 — NON-RÉGRESSION D'HONNÊTETÉ. « EncoreValide » signifie que la doctrine est ALLÉE
+    /// VÉRIFIER et a PROUVÉ que l'utilisation n'a pas bougé depuis la capture. Le chiffre est DATÉ
+    /// mais EXACT : le marquer comme un plancher serait une fausse démotion, exactement l'inverse
+    /// de ce que DEL-03 a conquis. La marque d'âge s'ajoute À CÔTÉ (rangée de pastilles) ; le
+    /// trait, lui, reste PLEIN.
+    /// </summary>
+    [WpfFact]
+    public void Un_EncoreValide_laisse_l_arc_PLEIN_car_il_n_est_PAS_un_plancher()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetreFraiche(WindowKind.FiveHour, 0.3),
+            SevenDay = FenetreEncoreValide(WindowKind.SevenDay, 0.6),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm);
+        var arc = Assert.IsType<RingArc>(fenetre.FindName("ArcHebdo"));
+
+        Assert.True(vm.SevenDay.EstDate);        // daté : la marque d'âge, elle, s'allumera
+        Assert.False(vm.SevenDay.EstPlancher);   // mais PROUVÉ juste : aucune texture
+        Assert.Empty(arc.StrokeDashArray);
+    }
+
+    /// <summary>EXA-03 — mode NORMAL : il n'existe aucun anneau 5 h dédié, l'usage 5 h passe dans la
+    /// COULEUR de l'anneau de timeline. C'est donc lui qui doit porter la marque du plancher 5 h,
+    /// sans quoi ce mode — le DÉFAUT de l'application — serait le seul à ne rien dire.</summary>
+    [WpfFact]
+    public void Le_plancher_5h_marque_l_anneau_du_mode_NORMAL()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetrePlancher(WindowKind.FiveHour, 0.7),
+            SevenDay = FenetreFraiche(WindowKind.SevenDay, 0.6),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm, modeEtendu: false);
+        var timeline = Assert.IsType<RingArc>(fenetre.FindName("ArcTimelineNormal"));
+
+        Assert.True(vm.IsModeNormal);
+        Assert.True(vm.FiveHour.EstPlancher);
+        Assert.Equal(2, timeline.StrokeDashArray.Count);
+    }
+
+    /// <summary>
+    /// EXA-03 — mode ÉTENDU : l'arc 5 h épais porte la marque, et l'anneau 24 h fin (R64, 4 px) ne
+    /// la porte PAS. Décision verrouillée par une assertion plutôt que par un commentaire seul : à
+    /// 4 px d'épaisseur le pointillé mesurerait 2,2 px — illisible — et répéterait une marque déjà
+    /// portée par l'arc épais situé juste en dessous.
+    /// </summary>
+    [WpfFact]
+    public void Le_plancher_5h_marque_l_anneau_du_mode_ETENDU()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetrePlancher(WindowKind.FiveHour, 0.7),
+            SevenDay = FenetreFraiche(WindowKind.SevenDay, 0.6),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm, modeEtendu: true);
+        var cinqHeures = Assert.IsType<RingArc>(fenetre.FindName("ArcCinqHeures"));
+        var vingtQuatre = Assert.IsType<RingArc>(fenetre.FindName("ArcVingtQuatreHeures"));
+
+        Assert.True(vm.IsModeEtendu);
+        Assert.Equal(2, cinqHeures.StrokeDashArray.Count);
+        Assert.Empty(vingtQuatre.StrokeDashArray);
+    }
 }
