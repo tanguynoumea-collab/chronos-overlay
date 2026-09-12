@@ -6,15 +6,20 @@ using System.Text.Json;
 namespace Chronos.Services;
 
 /// <summary>
-/// Détecte l'état des sessions Claude Code EN LISANT LEURS TRANSCRIPTS (~/.claude/projects/**/*.jsonl),
-/// ce que l'app DESKTOP écrit aussi (pas seulement le terminal). Ne dépend d'AUCUN hook → couvre l'usage
-/// bureau. Ne montre que les sessions récemment actives (fenêtre <see cref="ActiveWindow"/>).
+/// Détecte l'état des sessions Claude Code EN LISANT LEURS TRANSCRIPTS (~/.claude/projects/**/*.jsonl).
+/// Ne dépend d'AUCUN hook : c'est la source de base du widget, et elle ne parle QUE de Claude Code.
+/// Ne montre que les sessions récemment actives (fenêtre <see cref="ActiveWindow"/>).
 ///
 /// Règle d'état (dernier message significatif, sous-agents ignorés) :
 ///   • assistant AVEC un tool_use (pas encore de résultat) / dernier = user ou tool_result → Working
 ///   • assistant SANS outil en cours (réponse finie : end_turn/stop_sequence/…)               → WaitingTurn (t'attend)
-/// Limite honnête : le transcript NE contient PAS l'état « attend une permission » (WaitingAttention),
-/// non détectable côté bureau ; on n'affiche donc que Working / WaitingTurn.
+/// Limite honnête : le transcript NE contient PAS l'état « attend une permission » (WaitingAttention) ;
+/// on n'affiche donc que Working / WaitingTurn.
+///
+/// <para>SRC-03 (phase 21) — la limite de <see cref="MaxSessions"/> porte sur les sessions RETENUES, pas
+/// sur les fichiers examinés. Auparavant elle était appliquée à l'énumération, donc AVANT le filtre des
+/// sous-agents : 94 % des transcripts étant des sous-agents (mesure du 2026-09-12 : 819 sur 870), une
+/// vague d'agents parallèles consommait les douze emplacements et faisait disparaître la vraie session.</para>
 ///
 /// Lecture EFFICACE : seule la fin du fichier (~64 Ko) est lue (les transcripts font plusieurs Mo).
 /// </summary>
@@ -35,24 +40,37 @@ public sealed class TranscriptSessionSource
         var result = new List<SessionSnapshot>();
         if (!Directory.Exists(_projectsRoot)) return result;
 
-        IEnumerable<FileInfo> recent;
+        List<FileInfo> recents;
         try
         {
-            recent = new DirectoryInfo(_projectsRoot)
+            recents = new DirectoryInfo(_projectsRoot)
                 .EnumerateFiles("*.jsonl", SearchOption.AllDirectories)
+                .Where(f => !EstSousAgent(f))
                 .Where(f => now - new System.DateTimeOffset(f.LastWriteTimeUtc, System.TimeSpan.Zero) < ActiveWindow)
                 .OrderByDescending(f => f.LastWriteTimeUtc)
-                .Take(MaxSessions);
+                .ToList();   // MATÉRIALISÉ ici, dans le try : l'énumération était paresseuse, donc une erreur
+                             // d'accès disque survenait DANS le foreach, hors de ce catch, et remontait.
         }
         catch { return result; }
 
-        foreach (var fi in recent)
+        foreach (var fi in recents)
         {
             var snap = Classify(fi, now);
-            if (snap is not null) result.Add(snap);
+            if (snap is null) continue;                 // rien d'exploitable → ne consomme AUCUN emplacement
+            result.Add(snap);
+            if (result.Count >= MaxSessions) break;     // SRC-03 : la limite porte sur les sessions RETENUES
         }
         return result;
     }
+
+    // SRC-03 — reconnaît un transcript de SOUS-AGENT par son chemin, avant tout I/O de contenu.
+    // Mesuré le 2026-09-12 sur la machine cible : 819 des 870 transcripts (94 %) sont des
+    // « <uuid-de-session>/subagents/agent-*.jsonl ». Ce pré-filtre est une ÉCONOMIE, pas l'autorité :
+    // l'autorité reste le champ isSidechain lu ligne à ligne dans Classify, qui rattrape un fichier
+    // mal rangé ou un agencement de dossiers qui changerait chez Anthropic.
+    private static bool EstSousAgent(FileInfo f)
+        => string.Equals(f.Directory?.Name, "subagents", System.StringComparison.OrdinalIgnoreCase)
+           || f.Name.StartsWith("agent-", System.StringComparison.Ordinal);
 
     private static SessionSnapshot? Classify(FileInfo fi, System.DateTimeOffset now)
     {
