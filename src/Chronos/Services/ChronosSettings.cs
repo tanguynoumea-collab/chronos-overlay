@@ -64,6 +64,15 @@ public sealed record ChronosSettings
     /// false → comportement v1.1 strict, AUCUN accès au token (le portillon gated court-circuite).</summary>
     public bool OAuthUsageEnabled { get; init; } = true;
 
+    /// <summary>HDR-06 — sonde d'en-têtes de rate-limit activée. Défaut TRUE, par cohérence avec
+    /// <see cref="OAuthUsageEnabled"/> (« vrais chiffres dès l'installation ») et parce que le coût annoncé
+    /// est de l'ordre du centime par mois. CHAMP DISTINCT d'OAuthUsageEnabled à dessein : ce dernier garde
+    /// le jeton de l'app bureau et son profil de coût est NUL, alors que la sonde consomme une vraie
+    /// micro-requête sur le compte. Les mélanger empêcherait l'utilisateur de couper la seule source qui
+    /// dépense. Champ absent d'un ancien settings.json -> défaut true (System.Text.Json ignore les membres
+    /// non mappés, précédent DEL-06).</summary>
+    public bool SondeEnTetesActivee { get; init; } = true;
+
     /// <summary>Commande statusLine préexistante de l'utilisateur, mémorisée lors de l'installation du
     /// pont Chronos pour le chaînage non destructif et la restauration à la désinstallation. null = aucune.</summary>
     public string? InnerStatusLineCommand { get; init; }
