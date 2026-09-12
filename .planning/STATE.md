@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-09-12T03:53:57.301Z"
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-09-12T04:13:42.926Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 19
+  completed_plans: 20
   percent: 83
 ---
 
@@ -28,8 +28,8 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 19 (Nouvelle doctrine du composite) — EXECUTING
-Plan: 2 of 5
-Status: Executing Phase 19 (plan 19-01 livre)
+Plan: 3 of 5
+Status: Ready to execute
 Last activity: 2026-09-12
 
 Progress: [████████░░] 83% (5/6 phases ; 19/23 plans)
@@ -143,6 +143,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 18 P05 | 24min | 2 tasks | 5 files |
 | Phase 18 P06 | 18min | 3 tasks | 6 files |
 | Phase 19 P01 | 24min | 3 tasks | 10 files |
+| Phase 19 P02 | 15min | 3 tasks | 8 files |
 
 ### Decisions
 
@@ -256,6 +257,12 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 19]: [19-01] Le memoiseur n'invente JAMAIS un journal vide : une panne des la premiere lecture laisse l'exception remonter. Un journal vide se lirait « aucune activite » — une AFFIRMATION, pas une absence de reponse. La conversion en branche indisponible appartient a l'appelant (19-03).
 - [Phase 19]: [19-01] SourceActiviteMemoisee livree PROUVEE (6 tests) mais NON cablee : l'enregistrement DI est le plan 19-03, en un seul commit avec son consommateur (precedent 17-03, « un service que le host ne demarre jamais ne fait rien »).
 - [Phase 19]: [19-01] EXA-02 et EXA-05 laisses Pending : ce plan livre les FAITS (horodatage par fenetre, UnExactADejaEteObtenu) et non la doctrine qui les applique. Aucun appelant ne consulte encore le bit ; aucune limite d'age ne rejette encore rien. Coches par 19-03 et 19-04.
+- [Phase 19]: [19-02] SourceReliability.Estimated REAFFECTE au plancher DEL-04 plutot qu'augmente d'un membre : un nouveau membre aurait traverse silencieusement WindowGaugeViewModel.cs:69/84 (IsEstimated=false, HasTokens=false) et fait afficher le plancher COMME UN EXACT. La 4e distinction passe par un champ nullable Provenance, additif : zero des 32 sites new WindowState retouche, required reste a 2.
+- [Phase 19]: [19-02] La limite d'age est un LAISSEZ-PASSER, pas un couperet : DEL-03 RE-HABILITE au-dela. Un releve de 3 h sans reponse assistant depuis est EXACT — c'est une deduction (utilization est fonction de la consommation), pas une indulgence. Le plafond absolu n'est pas la limite d'age mais Covers(T), l'horizon de 8 jours deja dans le code : c'est par la que meurt le 10 % de deux mois.
+- [Phase 19]: [19-02] DEL-04 n'a pas de reponse numerique honnete et n'en a pas besoin : Utilization reste RIGOUREUSEMENT inchangee, seule sa NATURE change (« au moins X »), incertitude UNILATERALE, tokens bruts en accompagnement non convertis. Mesure a l'appui : 643 649 933 tokens sur 5 h contre l'ancien plafond de 230 000 000 = 280 %.
+- [Phase 19]: [19-02] 0L et null ne disent pas la meme chose : branche 2 rend TokensDepuisReleve == 0 (MESURE a zero), branche 1 rend null (NON MESURE). Les confondre ferait d'une absence de mesure une affirmation.
+- [Phase 19]: [19-02] Falsifiabilite JOUEE et non affirmee : 4 mutations reelles de DoctrineFraicheur (branche 1 supprimee -> 5 echecs ; HasActivity inverse -> 2 ; Covers neutralise -> 1 ; Utilization conservee a la demotion -> 3) plus la mutation EXA-04 (echec nommant DoctrineFraicheur.cs:85), toutes revoquees, git diff vide.
+- [Phase 19]: [19-02] EXA-02/EXA-04/DEL-03/DEL-04 laisses Pending : la doctrine existe, pure et prouvee, mais AUCUN appelant ne l'invoque a ce commit. Le cablage est 19-03. CompositeUsageProvider n'a recu aucune injection — modification strictement documentaire (ctor et champs intacts, new UsageSnapshot conserve).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -311,7 +318,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T03:53:57.296Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-09-12T04:13:42.920Z
+Stopped at: Completed 19-02-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18
