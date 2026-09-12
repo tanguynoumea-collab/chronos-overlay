@@ -94,6 +94,19 @@ public sealed class DiagnosticService
     public async Task<string> BuildReportAsync(CancellationToken ct = default)
     {
         var s = _settings.Load();
+
+        // ORDRE CRITIQUE — interroger la chaîne AVANT de rendre la moindre section.
+        // C'est cet appel qui déclenche la première sonde et peuple l'état serveur. Le laisser à sa
+        // place naturelle, dans la section « Ce qui est affiché maintenant », faisait décrire au rapport
+        // un état antérieur à sa propre exécution : la section « sonde » annonçait « pas encore sondé »
+        // et « aucun en-tête reconnu » trois lignes au-dessus des chiffres que cette même sonde venait
+        // de fournir (constaté en production le 2026-09-12). L'ordre des SECTIONS ne change pas ; seul
+        // l'instant de l'appel change.
+        UsageSnapshot? affiche = null;
+        string? echecLecture = null;
+        try { affiche = await _composite.GetAsync(ct); }
+        catch (Exception ex) { echecLecture = ex.Message; }
+
         var sb = new StringBuilder();
         sb.AppendLine("=== Chronos — Diagnostic ===");
         sb.AppendLine("Date : " + _clock.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
@@ -363,13 +376,15 @@ public sealed class DiagnosticService
 
         // 4) Résultat effectivement affiché (via le composite réel)
         sb.AppendLine("[Ce qui est affiché maintenant]");
-        try
+        // Consomme le snapshot obtenu EN TÊTE de la méthode — ne relance pas la chaîne, sans quoi la
+        // sonde serait comptée deux fois et le rapport coûterait deux micro-requêtes au lieu d'une.
+        if (affiche is { } snap)
         {
-            var snap = await _composite.GetAsync(ct);
             sb.AppendLine("  5 h   : " + Describe(snap.FiveHour));
             sb.AppendLine("  Hebdo : " + Describe(snap.SevenDay));
         }
-        catch (Exception ex) { sb.AppendLine("  (échec de lecture : " + ex.Message + ")"); }
+        else
+            sb.AppendLine("  (échec de lecture : " + echecLecture + ")");
         sb.AppendLine();
 
         // 4b) Widget de sessions Claude Code (hooks + fichiers d'état)

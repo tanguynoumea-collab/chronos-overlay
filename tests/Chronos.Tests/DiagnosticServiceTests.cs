@@ -330,4 +330,77 @@ public class DiagnosticServiceTests
         Assert.Contains("borne inférieure (activité depuis)", report);
         Assert.DoesNotContain("~", LigneCinqHeures(report));
     }
+
+    /// <summary>Canal latéral dont l'issue ne devient connue QUE lorsque la chaîne a été interrogée —
+    /// exactement le comportement de la vraie sonde, qui ne part qu'au premier <c>GetAsync</c>.</summary>
+    private sealed class EtatServeurQuiSAllumeALaSonde : IEtatServeur
+    {
+        public bool ASonde { get; set; }
+        public EtatDepassement? Depassement => null;
+        public ResultatSonde DernierResultat => ASonde ? ResultatSonde.SuccesEnTetesLus : ResultatSonde.JamaisSondee;
+        public IReadOnlyList<string> NomsEnTetesRecus => ASonde
+            ? new[] { "anthropic-ratelimit-unified-5h-utilization" }
+            : System.Array.Empty<string>();
+        public event System.EventHandler<EtatDepassement?>? DepassementChange { add { } remove { } }
+    }
+
+    /// <summary>Provider qui ALLUME le canal latéral au moment où on l'interroge.</summary>
+    private sealed class ProviderQuiDeclencheLaSonde : IUsageProvider
+    {
+        private readonly UsageSnapshot _snap;
+        private readonly EtatServeurQuiSAllumeALaSonde _etat;
+        public ProviderQuiDeclencheLaSonde(UsageSnapshot snap, EtatServeurQuiSAllumeALaSonde etat)
+            => (_snap, _etat) = (snap, etat);
+        public Task<UsageSnapshot> GetAsync(System.Threading.CancellationToken ct = default)
+        {
+            _etat.ASonde = true;                 // la sonde part ICI, comme en production
+            return Task.FromResult(_snap);
+        }
+    }
+
+    /// <summary>
+    /// Le rapport ne doit PAS décrire un état antérieur à sa propre exécution.
+    ///
+    /// Défaut constaté en production le 2026-09-12 : la section « sonde » annonçait « pas encore sondé »
+    /// et « aucun en-tête reconnu » alors que la section « Ce qui est affiché maintenant », trois lignes
+    /// plus bas dans le MÊME rapport, montrait des chiffres exacts dont la source était cette sonde. La
+    /// cause était l'ordre : la chaîne n'était interrogée qu'au moment de rendre la dernière section.
+    ///
+    /// FALSIFIABILITÉ : remettre l'appel <c>await _composite.GetAsync(ct)</c> dans la section
+    /// « Ce qui est affiché maintenant » fait retomber ce test — la sonde ne serait allumée qu'APRÈS le
+    /// rendu de la section qui la décrit.
+    /// </summary>
+    [Fact]
+    public async Task Le_rapport_interroge_la_chaine_AVANT_de_decrire_la_sonde()
+    {
+        var paths = TempPaths();
+        var now = DateTimeOffset.UtcNow;
+        var etat = new EtatServeurQuiSAllumeALaSonde();
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+                Utilization = 0.21, Source = SourceUsage.SondeEnTetes,
+                CapturedAt = now, Provenance = ProvenanceReleve.Frais,
+            },
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths),
+                                         new ProviderQuiDeclencheLaSonde(snap, etat),
+                                         new FakeClock(now), etatServeur: etat,
+                                         machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        // La section « sonde » rend l'état d'APRÈS l'interrogation de la chaîne…
+        Assert.Contains("Dernière sonde : 200 — en-têtes lus", report);
+        Assert.Contains("anthropic-ratelimit-unified-5h-utilization", report);
+        // …et ne peut donc plus se contredire elle-même.
+        Assert.DoesNotContain("pas encore sondé", report);
+        Assert.DoesNotContain("En-têtes « unified » reconnus : AUCUN", report);
+        // Le chiffre affiché vient bien de cette sonde : les deux sections racontent la même histoire.
+        Assert.Contains("source : sonde d'en-têtes de rate-limit", LigneCinqHeures(report));
+    }
 }
