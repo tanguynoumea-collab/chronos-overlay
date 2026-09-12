@@ -29,6 +29,15 @@ public class AffichageSessionsTests
     public void L_anciennete_se_dit_au_grain_du_widget(int secondes, string attendu)
         => Assert.Equal(attendu, AffichageSessions.Age(TimeSpan.FromSeconds(secondes)));
 
+    /// <summary>FUS-02 — un écart d'âge n'est pas une ancienneté, et le zéro (égalité d'âge) doit se voir.</summary>
+    [Theory]
+    [InlineData(0, "0 s")]
+    [InlineData(45, "45 s")]
+    [InlineData(420, "7 min")]
+    [InlineData(25200, "7 h")]
+    public void L_ecart_d_age_se_dit_en_distance_pas_en_instant(int secondes, string attendu)
+        => Assert.Equal(attendu, AffichageSessions.Ecart(TimeSpan.FromSeconds(secondes)));
+
     [Fact]
     public void L_ordre_place_l_attention_d_abord_puis_le_plus_recent()
     {

@@ -52,4 +52,15 @@ public static class AffichageSessions
         if (d < System.TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
         return $"il y a {(int)d.TotalHours} h";
     }
+
+    /// <summary>Un ÉCART d'âge entre deux signaux, et non une ancienneté. « il y a 7 h » situe un instant,
+    /// « 7 h » mesure une distance : confondre les deux rendrait un désaccord illisible, alors que c'est
+    /// précisément l'écart qui dit à l'utilisateur qu'une de ses sources est FIGÉE. Zéro se dit « 0 s » et
+    /// non « à l'instant » — c'est le cas d'égalité d'âge, il doit se voir.</summary>
+    public static string Ecart(System.TimeSpan d)
+    {
+        if (d < System.TimeSpan.FromSeconds(60)) return $"{(int)d.TotalSeconds} s";
+        if (d < System.TimeSpan.FromHours(1)) return $"{(int)d.TotalMinutes} min";
+        return $"{(int)d.TotalHours} h";
+    }
 }
