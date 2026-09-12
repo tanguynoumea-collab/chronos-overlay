@@ -186,4 +186,103 @@ public class SessionStylesBindingTests
 
         Assert.Equal(8, stylesCouverts.Count);   // la matrice n'a pas été traversée à vide
     }
+
+    /// <summary>
+    /// TRT-03, versant ORDRE et TEXTE — la lacune que la vérification de la phase 26 a MESURÉE
+    /// (avertissement n° 1) : le geste définitif déplacé en tête du menu et les deux libellés statiques
+    /// réduits à « Archiver » / « Marquer traitée » laissaient la suite entièrement verte, parce que les
+    /// deux gardes existantes ne font que COMPTER — nombre de <c>MenuItem</c>, nombre de séparateurs,
+    /// nombre d'occurrences de chaque commande. Un compte est indifférent à l'ordre et au texte.
+    ///
+    /// <para>Ce que ce cas exige, sur les HUIT gabarits : le geste RÉVERSIBLE unitaire et le geste de
+    /// masse AVANT le séparateur, le geste DÉFINITIF strictement APRÈS lui, et chacun des trois libellés
+    /// annonçant si la session revient — « revient si elle me redemande », « ne revient jamais », et
+    /// « reviennent » pour le libellé calculé par le ViewModel. Le verrou établi dans ce projet
+    /// (<c>LoginClaudeCommand</c> bascule, et un clic effacerait le coffre de jetons) s'applique mot pour
+    /// mot : une entrée destructive mise en tête d'un menu se clique par réflexe.</para>
+    ///
+    /// <para>Aucun menu n'est ouvert et aucune fenêtre n'est affichée. Un <c>ContextMenu</c> est la VALEUR
+    /// d'une propriété, peuplée par le BAML. Son <c>DataContext</c> est lui-même bindé sur
+    /// <c>PlacementTarget.DataContext</c>, qui reste NUL tant que le menu n'a pas été ouvert : on vérifie
+    /// d'abord que ce binding est bien là, puis on pose la ligne à la main — exactement ce que
+    /// l'ouverture ferait — pour que les libellés et les commandes s'évaluent réellement.</para>
+    /// </summary>
+    [WpfFact]
+    public void Dans_les_huit_menus_le_reversible_precede_le_destructif_et_les_libelles_le_disent()
+    {
+        var styles = Enum.GetValues<SessionStyle>();
+        Assert.Equal(8, styles.Length);
+
+        var stylesCouverts = new HashSet<SessionStyle>();
+        var menusInspectes = 0;
+
+        foreach (var style in styles)
+        {
+            var vm = Vm();
+            vm.Style = style;
+            vm.SetTheme(ThemeCatalog.Default);
+            var (_, racine) = Monter(vm, ThemeCatalog.Default);
+
+            var ligne = vm.Items[0];
+            var menus = MenusContextuels(racine).ToList();
+            Assert.True(menus.Count >= 1, $"aucun menu contextuel pour le style {style}");
+
+            foreach (var menu in menus)
+            {
+                var liaison = System.Windows.Data.BindingOperations.GetBinding(menu, FrameworkElement.DataContextProperty);
+                Assert.True(liaison is not null,
+                    $"style {style} : le menu n'est plus rattaché à sa ligne — sans DataContext bindé, "
+                    + "les trois entrées se lieraient à autre chose que la session cliquée");
+                Assert.Equal("PlacementTarget.DataContext", liaison!.Path.Path);
+
+                // Ce que l'ouverture ferait, sans ouvrir : le menu n'est jamais affiché.
+                menu.DataContext = ligne;
+                menu.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+                var entrees = menu.Items.Cast<object>().ToList();
+
+                var iSeparateur = entrees.FindIndex(o => o is Separator);
+                var iTraitee = entrees.FindIndex(o => o is MenuItem m && ReferenceEquals(m.Command, ligne.MarquerTraiteeCommand));
+                var iToutTraiter = entrees.FindIndex(o => o is MenuItem m && ReferenceEquals(m.Command, ligne.MarquerToutTraiteCommand));
+                var iArchiver = entrees.FindIndex(o => o is MenuItem m && ReferenceEquals(m.Command, ligne.ArchiveCommand));
+
+                Assert.True(iSeparateur >= 0, $"style {style} : plus de séparateur dans le menu");
+                Assert.True(iTraitee >= 0, $"style {style} : le geste réversible unitaire n'est plus lié");
+                Assert.True(iToutTraiter >= 0, $"style {style} : le geste de masse n'est plus lié");
+                Assert.True(iArchiver >= 0, $"style {style} : le geste définitif n'est plus lié");
+
+                // L'ORDRE : les deux gestes qui se reprennent en tête, le geste sans retour en queue,
+                // derrière le trait qui les sépare.
+                Assert.True(iTraitee < iSeparateur,
+                    $"style {style} : « Marquer traitée » (index {iTraitee}) doit précéder le séparateur "
+                    + $"(index {iSeparateur})");
+                Assert.True(iToutTraiter < iSeparateur,
+                    $"style {style} : le geste de masse (index {iToutTraiter}) doit précéder le séparateur "
+                    + $"(index {iSeparateur})");
+                Assert.True(iSeparateur < iArchiver,
+                    $"style {style} : le séparateur (index {iSeparateur}) doit précéder « Archiver "
+                    + $"définitivement » (index {iArchiver}) — un geste DÉFINITIF ne se met pas en tête de menu");
+
+                // LE TEXTE : chacun dit si la session revient. Lu sur le Header réellement rendu.
+                var texteTraitee = Assert.IsType<string>(((MenuItem)entrees[iTraitee]).Header);
+                var texteToutTraiter = Assert.IsType<string>(((MenuItem)entrees[iToutTraiter]).Header);
+                var texteArchiver = Assert.IsType<string>(((MenuItem)entrees[iArchiver]).Header);
+
+                Assert.Contains("revient si elle me redemande", texteTraitee, StringComparison.Ordinal);
+                Assert.DoesNotContain("ne revient jamais", texteTraitee, StringComparison.Ordinal);
+
+                Assert.Contains("reviennent", texteToutTraiter, StringComparison.Ordinal);
+
+                Assert.Contains("ne revient jamais", texteArchiver, StringComparison.Ordinal);
+                Assert.DoesNotContain("revient si elle me redemande", texteArchiver, StringComparison.Ordinal);
+
+                menusInspectes++;
+            }
+
+            stylesCouverts.Add(style);
+        }
+
+        Assert.Equal(8, stylesCouverts.Count);            // les huit gabarits, pas un de moins
+        Assert.True(menusInspectes >= 8, $"seulement {menusInspectes} menus inspectés");
+    }
 }
