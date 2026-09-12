@@ -546,6 +546,22 @@ public sealed class DiagnosticService
                                 + $" ({AffichageSessions.Age(_clock.UtcNow - m.Session.UpdatedAt)}) — masquée par {LibelleMotif(m.Motif)}");
                 if (lecture.Masquees.Count == 0)
                     sb.AppendLine("    (aucune — aucun filtre n'écarte de session en ce moment)");
+
+                // FUS-02 — un DÉSACCORD n'est pas un écartement de session : celle-ci est AFFICHÉE, juste
+                // au-dessus. Ce qui a été écarté, c'est l'un de ses SIGNAUX. Les ranger avec le vocabulaire
+                // de masquage rouvrirait la confusion « absente » / « écartée par tel filtre » que la
+                // phase 22 a fermée, et noierait le seul cas qui compte ici : une SOURCE FIGÉE.
+                // Cas fondateur, mesuré le 2026-09-12 : un fichier de hook immobile depuis 7 h annonçait
+                // « à toi » pendant qu'un transcript de 10 s prouvait le contraire. Le hook gagnait, et rien
+                // ne le disait. Depuis la phase 24 il perd — mais sans cette ligne, l'utilisateur n'aurait
+                // toujours aucun moyen d'apprendre que sa source est morte.
+                sb.AppendLine($"  Désaccords entre sources : {lecture.Desaccords.Count}");
+                foreach (var d in lecture.Desaccords)
+                    sb.AppendLine($"    · {Court(d.SessionId)} — retenu {LibelleSourceSession(d.SourceRetenue)}"
+                                + $" « {AffichageSessions.Etat(d.EtatRetenu)} » ; écarté {LibelleSourceSession(d.SourceEcartee)}"
+                                + $" « {AffichageSessions.Etat(d.EtatEcarte)} », plus ancien de {AffichageSessions.Ecart(d.EcartAge)}");
+                if (lecture.Desaccords.Count == 0)
+                    sb.AppendLine("    (aucun — aucune source n'en contredit une autre en ce moment)");
             }
             catch (Exception ex) { sb.AppendLine("  (lecture du moniteur impossible : " + ex.GetType().Name + ")"); }
         }
@@ -583,6 +599,21 @@ public sealed class DiagnosticService
         MotifMasquage.Archivee => "archived.json (archivage — geste explicite de l'utilisateur)",
         MotifMasquage.Traitee  => "treated.json (hystérésis « traité » — posée automatiquement)",
         _                      => "un filtre non nommé",
+    };
+
+    // La source NOMMÉE AVEC SON DOSSIER, exactement comme un filtre est nommé avec son fichier : « hook »
+    // n'apprend rien, « fichier de hook (%APPDATA%\Chronos\sessions) » dit où aller regarder quand une
+    // source se fige. C'est toute la différence entre constater un désaccord et pouvoir le diagnostiquer seul.
+    //
+    // Le suffixe « Session » n'est pas décoratif : Chronos.Text.LibelleSource nomme déjà, pour tout le
+    // projet, la source d'un RELEVÉ D'USAGE (voir Describe plus bas). Ce sont deux notions étrangères —
+    // qui alimente un quota, contre qui dépose un signal de session — et les confondre sous un même nom
+    // masquerait le type partagé dans cette classe.
+    private static string LibelleSourceSession(SourceSession s) => s switch
+    {
+        SourceSession.Hook       => @"fichier de hook (%APPDATA%\Chronos\sessions)",
+        SourceSession.Transcript => "transcript (~/.claude/projects)",
+        _                        => "une source non nommée",
     };
 
     // Huit premiers caractères de l'identifiant : assez pour retrouver le fichier d'état correspondant dans
