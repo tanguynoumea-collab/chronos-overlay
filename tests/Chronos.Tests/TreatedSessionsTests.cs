@@ -200,4 +200,176 @@ public class TreatedSessionsTests
 
         Assert.Contains(monitor.Read(now), s => s.SessionId == "s");
     }
+
+    // --- TRT-01 / TRT-02 : ce que « traité » doit vouloir dire ---
+
+    /// <summary>
+    /// TRT-01 — une bascule de source n'est PAS une transition. Le fichier de hook se tait, le transcript
+    /// reprend la main : personne n'a répondu, une source s'est simplement relayée. Conclure ici, c'est
+    /// affirmer un geste de l'utilisateur qui n'a jamais eu lieu.
+    /// </summary>
+    [Fact]
+    public void Une_bascule_de_source_ne_marque_rien()
+    {
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
+        var tracker = new SessionTreatmentTracker(store);
+        var t0 = T;
+        var t1 = t0.AddSeconds(5);
+
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingAttention, t0, SourceSession.Hook) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.Working, t1, SourceSession.Transcript) }, t1);
+
+        Assert.Empty(store.Load());
+    }
+
+    /// <summary>
+    /// TRT-01 — une attente DÉDUITE est une attente. La phase 25 l'a livrée, le bandeau la compte et le
+    /// cadran la colore ; le détecteur doit donc lui ouvrir un épisode, sans quoi la réponse qui la suit
+    /// ne serait jamais reconnue.
+    /// </summary>
+    [Fact]
+    public void Une_attente_deduite_ouvre_un_episode()
+    {
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
+        var tracker = new SessionTreatmentTracker(store);
+        var t0 = T;
+        var t1 = t0.AddSeconds(5);
+
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingDeduced, t0) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.Working, t1) }, t1);
+
+        Assert.True(store.Load().ContainsKey("s"));
+    }
+
+    /// <summary>
+    /// TRT-01 — l'autre face de la même règle, et le trou ouvert par la phase 25 : une attente OBSERVÉE
+    /// dont la source se tait devient une attente DÉDUITE. Si le détecteur y voit une non-attente, il
+    /// marque traitée une session qui attend toujours — c'est le masquage de six heures, par la porte
+    /// d'à côté.
+    /// </summary>
+    [Fact]
+    public void Une_attente_qui_devient_deduite_n_est_pas_traitee()
+    {
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
+        var tracker = new SessionTreatmentTracker(store);
+        var t0 = T;
+        var t1 = t0.AddSeconds(5);
+
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingTurn, t0) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingDeduced, t1) }, t1);
+
+        Assert.Empty(store.Load());
+    }
+
+    /// <summary>
+    /// TRT-01 — un état INCONNU n'affirme rien. Le lire comme une réponse, c'est conclure d'une absence de
+    /// lecture. Sonde S2 du 2026-09-12 : un seul cycle de ce genre suffisait à masquer une session.
+    /// </summary>
+    [Fact]
+    public void Un_etat_inconnu_n_affirme_pas_qu_on_a_repondu()
+    {
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
+        var tracker = new SessionTreatmentTracker(store);
+        var t0 = T;
+        var t1 = t0.AddSeconds(5);
+
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingTurn, t0) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.Unknown, t1) }, t1);
+
+        Assert.Empty(store.Load());
+    }
+
+    /// <summary>
+    /// TRT-02 — les DEUX temps, dans un seul test, parce que la persistance sans la réversibilité serait
+    /// un masquage de plus. Un tracker NEUF, c'est un redémarrage de l'overlay : s'il redate l'épisode à
+    /// « maintenant », NET-03 purge le magasin qu'il vient de lire et toutes les traitées ressortent.
+    /// Mais si l'épisode se figeait à jamais, une session ne pourrait plus jamais revenir me demander
+    /// quelque chose.
+    /// </summary>
+    [Fact]
+    public void Le_traite_survit_au_redemarrage_mais_pas_a_une_nouvelle_demande()
+    {
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
+        store.Set("s", T.AddHours(-2).ToUnixTimeMilliseconds());
+
+        var tracker = new SessionTreatmentTracker(store);   // NEUF = l'overlay vient de redémarrer
+
+        // 1er temps — la session attend TOUJOURS, et son signal est ANTÉRIEUR au traitement mémorisé :
+        // rien de neuf n'a été demandé, l'entrée reste.
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingAttention, T.AddHours(-5)) }, T);
+        Assert.True(store.Load().ContainsKey("s"));
+
+        // 2e temps — la même session réaffirme son attente avec un signal PLUS RÉCENT que le traitement :
+        // elle me redemande quelque chose, elle revient.
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingAttention, T.AddHours(-1)) }, T);
+        Assert.False(store.Load().ContainsKey("s"));
+    }
+
+    /// <summary>
+    /// NON-RÉGRESSION de NET-03, VERTE avant comme après le correctif : la réversibilité ne doit pas être
+    /// sacrifiée à la persistance. Un épisode d'attente réellement plus récent que le traitement mémorisé
+    /// purge l'entrée, même après un redémarrage.
+    /// </summary>
+    [Fact]
+    public void Un_episode_reellement_plus_recent_purge_toujours()
+    {
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
+        store.Set("s", T.AddHours(-2).ToUnixTimeMilliseconds());
+
+        var tracker = new SessionTreatmentTracker(store);   // NEUF
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingAttention, T.AddHours(-1)) }, T);
+
+        Assert.False(store.Load().ContainsKey("s"));
+    }
+
+    /// <summary>
+    /// CRITÈRE 2 DU ROADMAP — non-régression sur une panne RÉELLEMENT SURVENUE chez l'utilisateur, avec
+    /// ses chiffres. Relevé du 2026-09-12 : e465420e (PROJET ADVANCED SHEET) était vivante et en attente
+    /// de permission ; le widget l'a cachée six heures.
+    ///
+    /// La chaîne mesurée, rejouée ici à l'identique :
+    ///   • le fichier de hook porte updated_at = 1789181509266 (« une permission est demandée ») ;
+    ///   • l'overlay redémarre 478 minutes plus tard — un tracker NEUF ouvre donc un épisode d'attente ;
+    ///     c'est l'instant 1789210240523 relevé dans treated.json, à 69 s du seuil de huit heures ;
+    ///   • deux minutes après, le fichier de hook franchit DropAfter et cesse d'être lu, tandis que le
+    ///     transcript (Working) reprend la main. Le détecteur voit « attente → travail » et conclut.
+    ///
+    /// Ce n'est pas une réponse de l'utilisateur : c'est une source qui se tait pendant qu'une autre parle.
+    /// </summary>
+    [Fact]
+    public void Le_scenario_mesure_des_478_minutes_laisse_la_session_visible()
+    {
+        const string Id = "e465420e-83e0-428f-97f1-f0174c0848fc";
+        var tHook = DateTimeOffset.FromUnixTimeMilliseconds(1789181509266);   // updated_at du fichier de hook
+        var tEpisode = DateTimeOffset.FromUnixTimeMilliseconds(1789210240523); // treatedWaitingTs relevé
+
+        // Garde anti-dérive : si ces deux constantes cessent d'encadrer le seuil de huit heures, le test
+        // ne rejoue plus le scénario mesuré et il faut le dire, pas l'ajuster.
+        Assert.Equal(478, (int)(tEpisode - tHook).TotalMinutes);
+
+        var dossier = TempDir();
+        File.WriteAllText(Path.Combine(dossier, Id + ".json"),
+            $$"""{"session_id":"{{Id}}","project":"PROJET ADVANCED SHEET","activity":"WaitingAttention","reason":"permission_prompt","updated_at":{{tHook.ToUnixTimeMilliseconds()}}}""");
+
+        var transcripts = new MutableSource();                 // muette : la session est bloquée, elle n'écrit rien
+        var horloge = new FakeClock(tEpisode);
+        var store = new TreatedStore(TempFile(), horloge);
+        var monitor = new SessionMonitor(dossier, transcripts, new ArchiveStore(TempFile()),
+                                         store, new SessionTreatmentTracker(store));
+
+        // Cycle 1 — redémarrage : le fichier de hook a 478 min (< 8 h), il est lu et il gagne seul.
+        Assert.Contains(monitor.Read(tEpisode), s => s.SessionId == Id);
+
+        // Cycle 2 — trois minutes plus tard : le fichier de hook a franchi les huit heures et n'est plus
+        // lu ; le transcript, lui, vient d'écrire. LA BASCULE DE SOURCE.
+        var apres = tEpisode.AddMinutes(3);
+        horloge.UtcNow = apres;
+        transcripts.Snaps = new List<SessionSnapshot> { new(Id, "PROJET ADVANCED SHEET", SessionActivity.Working, null, apres) };
+
+        var lecture = monitor.Inspecter(apres);
+
+        Assert.Contains(lecture.Visibles, s => s.SessionId == Id);
+        Assert.DoesNotContain(lecture.Masquees, m => m.Session.SessionId == Id && m.Motif == MotifMasquage.Traitee);
+        Assert.False(store.Load().ContainsKey(Id), "expirer n'est pas répondre : rien ne doit être marqué traité");
+    }
 }
