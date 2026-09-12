@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-09-12T04:38:06.539Z"
+stopped_at: Completed 19-04-PLAN.md
+last_updated: "2026-09-12T05:01:46.688Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 21
-  percent: 83
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -28,11 +28,11 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 19 (Nouvelle doctrine du composite) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-12
 
-Progress: [████████░░] 83% (5/6 phases ; 19/23 plans)
+Progress: [██████████] 96% (4/6 phases closes ; 22/23 plans)
 
 **Ordre d'exécution :** 15 (indépendante) → 16 (fondations : persistance + delta + démolition des plafonds)
 → 17 (jeton vivant) → 18 (source en-têtes) → 19 (doctrine du composite, exige 16 et 18) → 20 (rendu visible).
@@ -43,7 +43,7 @@ Progress: [████████░░] 83% (5/6 phases ; 19/23 plans)
 | 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Complete (4/4) |
 | 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
 | 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Complete (6/6) |
-| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | In Progress (1/5) |
+| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | In Progress (4/5) |
 | 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Not started |
 
 ## Performance Metrics
@@ -145,6 +145,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 19 P01 | 24min | 3 tasks | 10 files |
 | Phase 19 P02 | 15min | 3 tasks | 8 files |
 | Phase 19 P03 | 38 min | 3 tasks | 6 files |
+| Phase 19 P04 | 19min | 2 tasks | 7 files |
 
 ### Decisions
 
@@ -267,6 +268,13 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 19]: La doctrine de fraicheur est branchee en TETE de chaine (LastExactUsageProvider), pas dans Best() — Seule cette couche detient simultanement horloge, magasin et source d activite, et elle est au-dessus de tout composite : elle statue UNE fois sur le snapshot final au lieu de statuer a chacun des trois niveaux imbriques. CompositeUsageProvider reste intouche, ses 14 tests verts.
 - [Phase 19]: La passe de transcripts est PARESSEUSE et memoisee : zero lecture en regime nominal, une seule pour deux fenetres degradees — Mesure reelle du 2026-09-12 : une passe coute 2,7 a 3,2 s et lit 536 Mo. Au tick de 60 s, une lecture inconditionnelle serait une E/S permanente. Trois tests gardent la propriete, deux mutations en prouvent la falsifiabilite.
 - [Phase 19]: La garde de WeeklyRecalibration porte desormais sur le RESET SEUL, plus sur la fiabilite — Un resets_at connu est un FAIT. La garde precedente (exacte ET datee) aurait fait tomber les fenetres hebdo passees en plancher dans le chemin de synthese, remplacant le reset reel du serveur par une supposition « ancre + n semaines ».
+- [Phase 19]: [19-04] « >= » et non « ~ » : l'incertitude d'un plancher est UNILATERALE. Un tilde dirait « autour de 80 » et autoriserait la lecture « peut-etre 75 » — or on SAIT qu'on est a 80 au minimum, c'est la borne SUPERIEURE qui est inconnue. Consequence imposee au dessin de la phase 20 : PAS d'arc de delta, PAS de barre d'erreur, il n'existe aucune borne superieure a representer.
+- [Phase 19]: [19-04] Le prefixe derive de la PROVENANCE et non de la fiabilite : un exact encore valide (DEL-03) est un chiffre juste et ne porte aucune marque. Decider par SourceReliability aurait sali precisement le cas que 19-02 a passe sa demonstration a rehabiliter.
+- [Phase 19]: [19-04] Surcharge ADDITIVE de PercentFormatter (bool pour la galerie d'apercu, ProvenanceReleve? pour la production) : aucune ambiguite de resolution car bool n'accepte pas null. 3 sites d'appel, ZERO retouche, et les 4 assertions litterales du tilde restent intactes.
+- [Phase 19]: [19-04] MajPastilles, point de recomposition UNIQUE des trois pastilles : les deux entrees arrivent par deux canaux (snapshot, evenement d'auth) et a deux instants. Sans ce point, un changement d'etat d'auth posterieur au dernier snapshot laisserait l'invitation perimee. Mutation jouee : retrait de l'exclusivite -> 2 echecs.
+- [Phase 19]: [19-04] L'invitation s'efface devant la pastille de deconnexion : les deux portent le MEME geste (ReconnecterCommand), les afficher ensemble sur 170 px serait une redondance et non une information ; la deconnexion est le diagnostic le plus precis des deux.
+- [Phase 19]: [19-04] « == false » et non « != true » : null = non evalue (magasin en panne, ou UsageSnapshot.Empty). Une absence de reponse ne produit jamais une affirmation — c'est ce qui garde les 4 tests de pastille de la phase 17 verts sans retouche.
+- [Phase 19]: [19-04] TokensText/HasTokens et DataUnavailable sont calcules mais bindes NULLE PART (zero occurrence dans les XAML) : la matiere brute de DEL-04 est correcte, testee et invisible. Dette leguee a la phase 20, qui doit trancher explicitement plutot que d'en heriter en silence.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -303,7 +311,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- Prochaine action v1.5 : `/gsd:plan-phase 18` (source exacte par en-têtes de rate-limit).
+- Prochaine action v1.5 : plan **19-05** (confirmation finale de la phase 19), puis `/gsd:plan-phase 20`.
 - **À faire par l'utilisateur, hors GSD** : les deux vérifications manuelles de la phase 17, listées sous
   « À VÉRIFIER PAR L'UTILISATEUR » dans `17-05-SUMMARY.md` — (1) lisibilité de la pastille de
   déconnexion dans les 3 thèmes × 5 styles × 2 modes, (2) parcours de reconnexion en un clic de bout en
@@ -322,7 +330,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T04:37:55.135Z
-Stopped at: Completed 19-03-PLAN.md
+Last session: 2026-09-12T05:01:30.172Z
+Stopped at: Completed 19-04-PLAN.md
 Resume file: None
-Next: /gsd:plan-phase 18
+Next: /gsd:execute-phase 19 (plan 19-05, confirmation finale de la phase)

@@ -36,9 +36,9 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
   fin du « 10 % vieux de deux mois marqué `Exact` ».
 - [ ] **EXA-03**: Le cadran **distingue visuellement** trois états : chiffre exact frais, chiffre exact daté,
   état indisponible. `IsStale` (aujourd'hui calculé mais bindé nulle part) devient un signal réel à l'écran.
-- [ ] **EXA-04**: Aucune **utilization absolue dérivée d'un comptage de tokens** n'est plus jamais affichée,
+- [x] **EXA-04**: Aucune **utilization absolue dérivée d'un comptage de tokens** n'est plus jamais affichée,
   quelle que soit la situation.
-- [ ] **EXA-05**: Si **aucun chiffre exact n'a jamais été obtenu**, l'overlay affiche « indisponible » et invite
+- [x] **EXA-05**: Si **aucun chiffre exact n'a jamais été obtenu**, l'overlay affiche « indisponible » et invite
   à se connecter — jamais un pourcentage.
 - [ ] **EXA-06**: Le **diagnostic** indique quelle source alimente réellement l'affichage, et depuis quand.
 
@@ -116,8 +116,8 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | EXA-01 | Phase 16 | Complete |
 | EXA-02 | Phase 19 | Complete |
 | EXA-03 | Phase 20 | Pending |
-| EXA-04 | Phase 19 | Pending |
-| EXA-05 | Phase 19 | Pending |
+| EXA-04 | Phase 19 | Complete |
+| EXA-05 | Phase 19 | Complete |
 | EXA-06 | Phase 20 | Pending |
 | DEL-01 | Phase 16 | Complete |
 | DEL-02 | Phase 16 | Complete |

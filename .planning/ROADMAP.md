@@ -223,7 +223,7 @@ Plans:
 - [x] 19-03-PLAN.md — La doctrine branchée en tête de chaîne : lecture paresseuse et mémoïsée des
       transcripts, 4 sites de construction adaptés dans la même tâche, correctif d'une ligne de
       WeeklyRecalibration
-- [ ] 19-04-PLAN.md — L'honnêteté visible : « ≥ N % » plutôt que « ~N % », matière brute rattachée au bon
+- [x] 19-04-PLAN.md — L'honnêteté visible : « ≥ N % » plutôt que « ~N % », matière brute rattachée au bon
       champ, et l'invitation à se connecter d'EXA-05 (moitié visible incluse)
 - [ ] 19-05-PLAN.md — Porte de phase : preuves automatisées rassemblées, carte de validation remplie, et
       vérification humaine de la bascule « 10 % » vers « indisponible + invitation » sur la machine réelle
@@ -262,7 +262,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
-| 19. Nouvelle doctrine du composite | 3/5 | In Progress|  |
+| 19. Nouvelle doctrine du composite | 4/5 | In Progress|  |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 
 ### Couverture des exigences
