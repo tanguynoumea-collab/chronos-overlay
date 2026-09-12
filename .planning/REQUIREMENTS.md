@@ -64,7 +64,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
   expiration de source, jamais d'une bascule transcript ↔ hook.
 - [x] **TRT-02**: Le « traité » **survit à un redémarrage** de l'overlay : une session traitée ne ressort pas
   toute seule.
-- [ ] **TRT-03**: L'utilisateur dispose d'un **geste explicite** pour marquer une session traitée — le focus
+- [x] **TRT-03**: L'utilisateur dispose d'un **geste explicite** pour marquer une session traitée — le focus
   de fenêtre ne peut pas le fournir pour une session de terminal.
 - [x] **TRT-04**: L'archivage respecte un **contrat unique** : permanent OU temporaire, pas les deux. Le clic
   droit « Archiver » est aujourd'hui annoncé permanent mais expire au bout de 6 h.
@@ -114,7 +114,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | FUS-02 | Phase 24 | Complete |
 | TRT-01 | Phase 26 | Complete |
 | TRT-02 | Phase 26 | Complete |
-| TRT-03 | Phase 26 | Pending |
+| TRT-03 | Phase 26 | Complete |
 | TRT-04 | Phase 26 | Complete |
 | CYC-01 | Phase 23 | Complete |
 | CYC-02 | Phase 23 | Complete |

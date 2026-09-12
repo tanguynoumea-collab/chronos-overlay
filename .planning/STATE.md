@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
 status: executing
-stopped_at: Completed 26-02-PLAN.md
-last_updated: "2026-09-12T22:40:22.934Z"
+stopped_at: Complete 26-03-PLAN.md
+last_updated: "2026-09-12T22:55:31.125Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
   percent: 84
 ---
 
@@ -28,7 +28,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 26 (« Traité » veut enfin dire quelque chose) — EXECUTING
-Plan: 3 of 4 (vague 1 livrée : 26-01)
+Plan: 4 of 4 (vague 1 livrée : 26-01)
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -187,6 +187,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 25 P04 | ~45 min | 2 tasks | 3 files |
 | Phase 26 P01 | 35min | 3 tasks | 7 files |
 | Phase 26 P02 | ~10 min | 2 tasks | 4 files |
+| Phase 26 P03 | ~11 min | 3 tasks | 11 files |
 
 ### Decisions
 
@@ -441,6 +442,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 26]: 26-01 (TRT-01) : NET-01 exige desormais TROIS conditions - la MEME source aux deux cycles, une attente au precedent, un travail OBSERVE au courant. Une bascule de source ne conclut plus rien, et Unknown n'affirme plus qu'on a repondu.
 - [Phase 26]: 26-01 (TRT-02) : l'episode d'attente est date par l'instant que le SIGNAL porte, borne par l'instant courant - jamais par l'horloge du guetteur. C'est ce qui le fait survivre a un redemarrage sans purger le magasin qu'il vient de lire.
 - [Phase 26]: TRT-04 (code) : ArchiveStore perd toute duree de vie — ce qui est archive ne revient jamais ; horloge injectee, PurgerPrefixe intact a l'octet pres
+- [Phase 26]: 26-03 : le geste explicite n'ecrit que dans le magasin REVERSIBLE (TreatedStore), jamais dans ArchiveStore - un geste ordinaire ne peut pas devenir destructif
+- [Phase 26]: 26-03 : le libelle du geste de masse vient du ViewModel (ToutTraiterLibelle), jamais du XAML - en dur dans le gabarit, il ne pourrait plus porter le nombre de sessions
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -529,7 +532,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T22:40:17.839Z
-Stopped at: Completed 26-02-PLAN.md
+Last session: 2026-09-12T22:55:31.119Z
+Stopped at: Complete 26-03-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
