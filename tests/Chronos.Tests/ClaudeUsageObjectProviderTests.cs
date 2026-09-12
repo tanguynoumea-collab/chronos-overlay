@@ -110,4 +110,39 @@ public class ClaudeUsageObjectProviderTests
         Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
         Assert.Null(snap.SourceCapturedAt);
     }
+
+    // --- EXA-02 : l'age d'un releve est celui du FICHIER, jamais celui de la lecture ---
+
+    /// <summary>
+    /// EXA-02 — LE test qui interdit la resurrection du bug des « 10 % ». La fixture reproduit la forme
+    /// du fichier REEL de cette machine (10 %, ecrit le 2026-07-10) ; on le lit deux mois plus tard.
+    /// Si quelqu'un horodate la LECTURE, la seconde assertion tombe.
+    /// </summary>
+    [Fact]
+    public async Task Un_usage_json_vieux_de_deux_mois_porte_l_age_du_FICHIER_et_non_celui_de_la_lecture()
+    {
+        var ecritLe = new DateTimeOffset(2026, 7, 10, 8, 55, 0, TimeSpan.Zero);
+        var luLe    = new DateTimeOffset(2026, 9, 12, 12, 0, 0, TimeSpan.Zero);
+
+        var snap = await ProviderFor(TestDataPath("usage-ancien.json"), new FakeClock(luLe)).GetAsync();
+
+        Assert.Equal(ecritLe, snap.FiveHour.CapturedAt);
+        Assert.NotEqual(luLe, snap.FiveHour.CapturedAt);
+        Assert.Equal(ecritLe, snap.SourceCapturedAt);   // coherence des deux niveaux
+    }
+
+    /// <summary>
+    /// EXA-02, l'autre moitie : sans cle capturedAt, l'age est INCONNU — et inconnu ne vaut JAMAIS
+    /// « zero seconde ». null est ici la reponse honnete ; la doctrine en tirera « incertifiable ».
+    /// </summary>
+    [Fact]
+    public async Task Un_usage_json_sans_capturedAt_laisse_l_age_INCONNU()
+    {
+        var luLe = new DateTimeOffset(2026, 9, 12, 12, 0, 0, TimeSpan.Zero);
+
+        var snap = await ProviderFor(TestDataPath("usage-partial.json"), new FakeClock(luLe)).GetAsync();
+
+        Assert.Null(snap.FiveHour.CapturedAt);
+        Assert.Null(snap.SevenDay.CapturedAt);
+    }
 }
