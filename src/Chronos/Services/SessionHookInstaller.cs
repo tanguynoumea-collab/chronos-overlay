@@ -42,6 +42,33 @@ namespace Chronos.Services;
 /// </param>
 public sealed record EvenementCable(string Evenement, string? Matcher, string Role, int Timeout = 10);
 
+/// <summary>
+/// Pourquoi une entrée du câblage n'a PAS été écrite dans settings.json. Ces trois motifs sont les trois
+/// refus d'écriture de <see cref="SessionHookInstaller.ApplyHooks(JsonObject, string, bool)"/> : chacun
+/// laisse la configuration de l'utilisateur exactement dans l'état où il l'a trouvée.
+/// </summary>
+public enum MotifRefusEcritureHook
+{
+    /// <summary>Nom absent de <see cref="CatalogueEvenementsHooks"/> : le hook serait MORT et MUET, le
+    /// sort d'un nom inconnu n'étant pas documenté par le contrat externe.</summary>
+    NomHorsCatalogue,
+
+    /// <summary>L'événement n'accepte pas de <c>matcher</c> : celui-ci serait silencieusement ignoré et le
+    /// groupe installé ne ferait pas ce qu'il annonce.</summary>
+    MatcherNonSupporte,
+
+    /// <summary>La clé EXISTE DÉJÀ et ne porte pas un tableau : valeur d'un autre outil mal formée, ou
+    /// format que nous ne connaissons pas encore. L'écraser détruirait ce que nous ne savons pas lire.</summary>
+    ValeurNonTableau,
+}
+
+/// <summary>
+/// Une entrée du câblage dont l'écriture a été REFUSÉE, et sa cause. Elle remonte à l'appelant pour la
+/// même raison que <c>null</c> remonte « NE RIEN ÉCRIRE » depuis les cœurs purs de ce fichier : on ne
+/// renonce jamais à écrire dans la configuration de l'utilisateur sans pouvoir dire pourquoi.
+/// </summary>
+public sealed record RefusEcritureHook(string Evenement, MotifRefusEcritureHook Motif);
+
 public sealed class SessionHookInstaller
 {
     /// <summary>
@@ -153,8 +180,9 @@ public sealed class SessionHookInstaller
     /// <paramref name="wanted"/> == false ⇒ ZÉRO groupe Chronos (désinstallation / purge).
     /// Les groupes non-Chronos ne sont jamais touchés : leur ordre, leur « matcher », leur « timeout »
     /// et leurs champs inconnus sont préservés (mutation en place, aucun reparentage de JsonNode).
+    /// <para>Rend la liste — vide dans le cas nominal — des entrées dont l'écriture a été REFUSÉE.</para>
     /// </summary>
-    public static void ApplyHooks(JsonObject root, string exePath, bool wanted)
+    public static IReadOnlyList<RefusEcritureHook> ApplyHooks(JsonObject root, string exePath, bool wanted)
         => ApplyHooks(root, exePath, wanted, Cablage);
 
     /// <summary>
@@ -163,23 +191,38 @@ public sealed class SessionHookInstaller
     ///
     /// <para><b>La purge est LARGE, l'installation reste CIBLÉE.</b> Jusqu'ici seuls les événements
     /// câblés étaient parcourus : un groupe Chronos posé sur un événement qu'on cesse de câbler aurait
-    /// survécu pour toujours, invisible. On balaie donc TOUTES les clés de <c>hooks</c>. Deux prudences
-    /// envers les autres outils : une clé dont la valeur n'est PAS un tableau est ignorée sans être
-    /// écrite, et une clé dont le tableau était DÉJÀ vide à l'entrée n'est jamais retirée — seules les
-    /// clés dont on a effectivement retiré un groupe à nous peuvent disparaître.</para>
+    /// survécu pour toujours, invisible. On balaie donc TOUTES les clés de <c>hooks</c>. Une clé dont le
+    /// tableau était DÉJÀ vide à l'entrée n'est jamais retirée — seules les clés dont on a effectivement
+    /// retiré un groupe à nous peuvent disparaître.</para>
+    ///
+    /// <para><b>Une clé dont la valeur n'est PAS un tableau est laissée INTACTE — des DEUX côtés.</b>
+    /// Cette prudence ne valait d'abord que pour la purge : à l'installation, l'une des huit clés câblées
+    /// portant autre chose qu'un tableau (fichier tiers mal formé, ou format que nous ne connaissons pas
+    /// encore) était ÉCRASÉE par un tableau neuf — sur le seul chemin qui écrit dans la configuration
+    /// VIVANTE de l'utilisateur. Elle vaut désormais partout : Chronos n'ajoute pas son groupe sous une
+    /// telle clé et ne la réécrit pas. Nous ne savons pas ce que cette valeur signifie, donc nous ne
+    /// pouvons pas la remplacer sans détruire. Le prix est connu et assumé : l'événement concerné n'est
+    /// pas suivi tant que l'utilisateur n'a pas réparé sa clé — et le refus est RENDU, pas tu.</para>
     ///
     /// <para><b>La validation précède toute mutation.</b> Un nom absent de
     /// <see cref="CatalogueEvenementsHooks"/> produirait un hook MORT et MUET (le sort d'un nom inconnu
     /// n'est pas documenté). Un matcher posé sur un événement qui n'en accepte pas est silencieusement
-    /// ignoré : le groupe ne ferait alors pas ce qu'il annonce. Dans les deux cas, on n'écrit RIEN pour
+    /// ignoré : le groupe ne ferait alors pas ce qu'il annonce. Dans tous ces cas, on n'écrit RIEN pour
     /// cette entrée — une configuration morte ne s'installe pas.</para>
+    ///
+    /// <para><b>Aucun de ces refus n'est silencieux.</b> Les trois motifs de
+    /// <see cref="MotifRefusEcritureHook"/> remontent à l'appelant dans la valeur de retour, comme
+    /// <c>null</c> lui remonte « NE RIEN ÉCRIRE » depuis <see cref="TransformForInstall"/>. Une liste
+    /// vide est donc la seule façon de dire « les huit entrées ont été posées ».</para>
     /// </summary>
-    public static void ApplyHooks(JsonObject root, string exePath, bool wanted,
-                                  IReadOnlyList<EvenementCable> cablage)
+    public static IReadOnlyList<RefusEcritureHook> ApplyHooks(JsonObject root, string exePath, bool wanted,
+                                                             IReadOnlyList<EvenementCable> cablage)
     {
+        var refus = new List<RefusEcritureHook>();
+
         if (root["hooks"] is not JsonObject hooks)
         {
-            if (!wanted) return;                 // rien à purger, et on n'installe pas une clé « hooks » vide
+            if (!wanted) return refus;           // rien à purger, et on n'installe pas une clé « hooks » vide
             hooks = new JsonObject();
             root["hooks"] = hooks;
         }
@@ -204,13 +247,30 @@ public sealed class SessionHookInstaller
         if (wanted)
             foreach (var c in cablage)
             {
-                if (!CatalogueEvenementsHooks.EstConnu(c.Evenement)) continue;
-                if (c.Matcher is not null && !CatalogueEvenementsHooks.AccepteUnMatcher(c.Evenement)) continue;
+                if (!CatalogueEvenementsHooks.EstConnu(c.Evenement))
+                {
+                    refus.Add(new RefusEcritureHook(c.Evenement, MotifRefusEcritureHook.NomHorsCatalogue));
+                    continue;
+                }
+
+                if (c.Matcher is not null && !CatalogueEvenementsHooks.AccepteUnMatcher(c.Evenement))
+                {
+                    refus.Add(new RefusEcritureHook(c.Evenement, MotifRefusEcritureHook.MatcherNonSupporte));
+                    continue;
+                }
+
+                // La clé EXISTE et ne porte pas un tableau : intouchée, exactement comme à la purge.
+                // Y écrire un tableau neuf effacerait une valeur d'un autre outil, ou d'un format futur.
+                if (hooks.TryGetPropertyValue(c.Evenement, out var existante) && existante is not JsonArray)
+                {
+                    refus.Add(new RefusEcritureHook(c.Evenement, MotifRefusEcritureHook.ValeurNonTableau));
+                    continue;
+                }
 
                 if (hooks[c.Evenement] is not JsonArray arr)
                 {
                     arr = new JsonArray();
-                    hooks[c.Evenement] = arr;    // réassigner la MÊME instance ne lève pas
+                    hooks[c.Evenement] = arr;    // la clé était ABSENTE : on la crée, on n'écrase rien
                 }
 
                 var groupe = new JsonObject();
@@ -229,11 +289,15 @@ public sealed class SessionHookInstaller
             if (hooks[cle] is JsonArray vide && vide.Count == 0) hooks.Remove(cle);
 
         if (hooks.Count == 0) root.Remove("hooks");
+
+        return refus;
     }
 
     /// <summary>
     /// Pose les hooks du <see cref="Cablage"/> pour CET exe. Renvoie <c>null</c> — « NE RIEN ÉCRIRE » —
     /// si le JSON fourni est inexploitable.
+    /// <para>Ce cœur-ci ne rend que le TEXTE à écrire : les refus d'entrée par entrée s'obtiennent en
+    /// appelant <see cref="ApplyHooks(JsonObject, string, bool)"/> directement.</para>
     /// </summary>
     public static string? TransformForInstall(string? settingsJson, string exePath)
     {

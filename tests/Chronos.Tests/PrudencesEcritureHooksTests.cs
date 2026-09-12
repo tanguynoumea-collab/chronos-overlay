@@ -144,6 +144,51 @@ public class PrudencesEcritureHooksTests
         Assert.False(hooks.ContainsKey("Notification"));   // celle-là, c'est NOUS qui l'avons vidée
     }
 
+    // ==================== Un refus d'écriture DIT sa cause ====================
+
+    /// <summary>
+    /// Un refus muet et une écriture réussie se ressemblent trop : l'un comme l'autre ne lèvent rien.
+    /// Les trois motifs remontent donc à l'appelant, exactement comme <c>null</c> lui remonte
+    /// « NE RIEN ÉCRIRE ». Le câblage est INJECTÉ : prouver le refus d'un nom hors catalogue n'exige
+    /// pas d'écrire un nom douteux dans le câblage réel.
+    /// </summary>
+    [Fact]
+    public void Chaque_refus_d_ecriture_DIT_sa_cause_au_lieu_de_se_taire()
+    {
+        var racine = (JsonNode.Parse(FixtureMalFormee) as JsonObject)!;
+
+        var refus = SessionHookInstaller.ApplyHooks(racine, Exe, wanted: true, new[]
+        {
+            new EvenementCable("Stop",         null,     "valeur non-tableau : la clé de la fixture"),
+            new EvenementCable("Notifcation",  null,     "faute de frappe : hors catalogue"),
+            new EvenementCable("TaskCreated",  "Write",  "événement du catalogue qui n'accepte pas de matcher"),
+            new EvenementCable("SessionStart", null,     "la seule entrée que rien n'empêche d'écrire"),
+        });
+
+        Assert.Equal(
+            new[]
+            {
+                new RefusEcritureHook("Stop",        MotifRefusEcritureHook.ValeurNonTableau),
+                new RefusEcritureHook("Notifcation", MotifRefusEcritureHook.NomHorsCatalogue),
+                new RefusEcritureHook("TaskCreated", MotifRefusEcritureHook.MatcherNonSupporte),
+            },
+            refus);
+
+        // Une seule entrée était écrivable, et c'est bien elle qui a été posée.
+        Assert.Equal(1, CompteHooksChronos(ClaudeSettingsJson.Serialize(racine)));
+        Assert.Single((Hooks(ClaudeSettingsJson.Serialize(racine))["SessionStart"] as JsonArray)!);
+    }
+
+    /// <summary>Le cas NOMINAL ne refuse rien : sans ce contraste, une liste toujours pleine passerait
+    /// pour une liste de refus légitimes.</summary>
+    [Fact]
+    public void Un_settings_sain_ne_produit_aucun_refus()
+    {
+        var racine = new JsonObject();
+        Assert.Empty(SessionHookInstaller.ApplyHooks(racine, Exe, wanted: true));
+        Assert.Equal(SessionHookInstaller.Events.Length, CompteHooksChronos(ClaudeSettingsJson.Serialize(racine)));
+    }
+
     // ==================== Le même refus, sur un aller-retour RÉEL sur disque ====================
 
     /// <summary>

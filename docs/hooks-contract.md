@@ -63,6 +63,27 @@ invisible. Ses groupes sont repérés par **marqueur d'argument `--hook` ET nom 
 **jamais par la clé** : les groupes d'autres outils qui partagent `PreToolUse` / `PostToolUse` ne sont ni
 touchés, ni comptés comme nôtres, et un test le prouve sur la configuration réelle.
 
+**Ce que Chronos REFUSE d'écrire, et pourquoi il le dit.** Trois situations lui font sauter une entrée
+sans rien modifier — validées **avant** toute mutation de la clé :
+
+| Refus | Situation | Pourquoi |
+|---|---|---|
+| `NomHorsCatalogue` | le nom d'événement est absent de la liste blanche des 33 noms | le sort d'un nom inconnu n'est pas documenté (§5.3) : le hook serait **mort et muet** |
+| `MatcherNonSupporte` | un `matcher` est posé sur un événement qui n'en accepte pas (§7) | il serait silencieusement ignoré : le groupe ne ferait pas ce qu'il annonce |
+| `ValeurNonTableau` | la clé **existe déjà** et ne porte pas un tableau JSON | nous ne savons pas lire cette valeur, donc nous ne pouvons pas la remplacer sans détruire |
+
+Le troisième vaut **à l'installation comme à la purge** — ce n'était **pas** le cas jusqu'à la
+réserve R1 : l'installation écrasait alors par un tableau neuf l'une des huit clés câblées qui aurait
+porté autre chose (fichier tiers mal formé, ou format que nous ne connaissons pas encore), sur le seul
+chemin qui écrit dans la configuration **vivante** de l'utilisateur. Conséquence assumée du refus :
+l'événement concerné **n'est pas suivi** tant que l'utilisateur n'a pas réparé sa clé. Et ce refus
+**n'est pas silencieux** : `ApplyHooks` rend la liste des entrées refusées avec leur motif, une liste
+vide étant la seule façon de dire « les huit entrées ont été posées ».
+
+**Une clé dont le tableau était DÉJÀ vide à l'entrée n'est jamais retirée.** Seules les clés dont Chronos
+a effectivement retiré un groupe à lui peuvent disparaître à la purge — un tableau vide que nous n'avons
+pas vidé n'est pas à nous.
+
 ---
 
 ## 2. Les champs lus sur `stdin`, et leur degré de confiance
