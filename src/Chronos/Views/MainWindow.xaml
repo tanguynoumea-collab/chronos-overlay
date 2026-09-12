@@ -192,72 +192,107 @@
                  ToolTip="Cliquer : basculer pourcentage / temps avant reset"
                  MouseLeftButtonDown="CentreHit_MouseLeftButtonDown"/>
 
-        <!-- ============ PASTILLES D'AUTHENTIFICATION (TOK-02 / TOK-03) ============
+        <!-- ============ RANGÉE DE PASTILLES (TOK-02 / TOK-03 / EXA-05 / EXA-03) ============
              DERNIERS enfants du Grid racine => au-dessus de TOUS les styles de cadran : uniques pour
              les 5 styles (Anneaux/Braises/Fusible/Marée/Volets) et les 2 modes, sans duplication, et
              sans toucher aux UserControl de Views/Cadrans (la galerie de cadrans reste intacte).
-             Géométrie : l'anneau le plus externe culmine vers (136,136) dans la boîte 170x170 ; une
-             pastille de 14 px ancrée bas-droite occupe ≈ (150..164) — franchement à l'écart.
+             C'est la SEULE couche style-agnostique du projet, et la seule en {DynamicResource} : les
+             quatre UserControl de Views/Cadrans codent leurs couleurs en dur.
+
+             RANGÉE et non superposition, et c'est la réparation d'un DÉFAUT, pas un embellissement :
+             « hors ligne » et « invitation » peuvent légitimement être allumées ENSEMBLE (hors ligne
+             éteint la pastille de déconnexion, ce qui libère l'invitation), et deux marges
+             conventionnelles ne garantissaient rien — mesuré : la pastille grise de 10 px était
+             ENTIÈREMENT contenue dans le bouton de 14 px. Dans une rangée, deux pastilles ne peuvent
+             plus se recouvrir parce qu'elles ne peuvent plus occuper la même case.
+
+             MESURE, et c'est une BORNE DURE : 4 pastilles de 14 px au plus, 4 px d'écart, 6 px de
+             marge => le bord gauche de la rangée tombe à x = 96, soit 72,8 px du centre (85,85). Le
+             seuil des anneaux est 71,5 px (TickRing Radius=68 + TickLength=7). QUATRE tiennent ;
+             CINQ seraient la limite — ne pas en ajouter une sans remesurer.
+
+             ORDRE, de gauche à droite : âge, hors ligne, invitation, déconnexion — les INFORMATIVES
+             d'abord, les ACTIONNABLES au plus près du coin, là où le pouce va les chercher.
              Le coin BAS-droite plutôt que haut-droite : l'overlay s'ancre le plus souvent en haut à
              droite de l'écran, le bas-droite est donc le moins susceptible d'être mordu par un bord. -->
+        <StackPanel x:Name="RangeePastilles" Orientation="Horizontal"
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6">
 
-        <!-- DÉCONNECTÉ : ACTIONNABLE. Button (pas Ellipse nue) car ButtonBase marque
-             MouseLeftButtonDown comme Handled => aucun DragMove parasite (le handler de fenêtre
-             bloquerait jusqu'au relâchement au lieu de lancer le login).
-             Background non-null => hit-testable sur fenêtre AllowsTransparency (Transparent suffit
-             en WPF ; seul {x:Null} ne l'est pas — CentreHit le prouve en production).
-             Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE et
-             supprimerait le coffre puisque IsLoggedIn ne teste que l'existence du fichier. -->
-        <Button x:Name="PastilleDeconnexion"
-                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
-                Cursor="Hand" Focusable="False"
-                ToolTip="Connexion à Claude perdue — cliquer pour se reconnecter"
-                Command="{Binding ReconnecterCommand}"
-                Visibility="{Binding AfficherPastilleDeconnexion, Converter={StaticResource BoolToVis}}">
-            <Button.Template>
-                <ControlTemplate TargetType="Button">
-                    <Grid Background="Transparent">
-                        <Ellipse Fill="{DynamicResource Alerte}"/>
-                    </Grid>
-                </ControlTemplate>
-            </Button.Template>
-        </Button>
+            <!-- M-ÂGE (EXA-03) : au moins une des deux fenêtres porte un chiffre DATÉ.
+                 INFORMATIVE et INERTE — aucune Command : ne jamais crier « répare-moi » pour un fait
+                 qui n'appelle aucun geste (même règle que la pastille « hors ligne »). Une Ellipse n'a
+                 aucune propriété de commande : le TYPE est le verrou, pas une convention.
+                 ADDITIVE et non soustractive : elle s'ajoute À CÔTÉ du chiffre, elle ne lui retire ni
+                 luminance ni netteté — un relevé encore valide est un chiffre PROUVÉ juste par la
+                 doctrine, le voiler serait une régression d'honnêteté.
+                 ANNEAU CREUX et non disque plein : la forme la distingue au premier coup d'œil des
+                 pastilles pleines voisines, et un cadran vide dit « du temps a passé » sans un mot.
+                 Fill="Transparent" (et NON {x:Null}) : hit-testable sur une fenêtre AllowsTransparency,
+                 donc son infobulle s'ouvre — c'est elle qui porte EXA-06 jusqu'au cadran. -->
+            <Ellipse x:Name="PastilleReleveDate" Width="12" Height="12"
+                     VerticalAlignment="Center" Margin="0,0,4,0" Fill="Transparent"
+                     Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="2"
+                     ToolTip="{Binding InfobulleReleve}"
+                     Visibility="{Binding AfficherReleveDate, Converter={StaticResource BoolToVis}}"/>
 
-        <!-- HORS LIGNE : INFORMATIF, gris, NON actionnable. Ne crie jamais « reconnecte-toi » à
-             quelqu'un dont le wifi est coupé : il relancerait un login, échouerait, et perdrait
-             confiance dans le signal. TexteSecondaire est déjà le token des mentions annexes
-             (estimée, épuisé, indisponible, périmée) — aucun nouveau token nécessaire. -->
-        <Ellipse x:Name="PastilleHorsLigne"
-                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
-                 Width="10" Height="10" Fill="{DynamicResource TexteSecondaire}"
-                 ToolTip="Hors ligne — chiffres non rafraîchis"
-                 Visibility="{Binding AfficherPastilleHorsLigne, Converter={StaticResource BoolToVis}}"/>
+            <!-- HORS LIGNE : INFORMATIF, gris, NON actionnable. Ne crie jamais « reconnecte-toi » à
+                 quelqu'un dont le wifi est coupé : il relancerait un login, échouerait, et perdrait
+                 confiance dans le signal. TexteSecondaire est déjà le token des mentions annexes
+                 (estimée, épuisé, indisponible, périmée) — aucun nouveau token nécessaire. -->
+            <Ellipse x:Name="PastilleHorsLigne" Width="10" Height="10"
+                     VerticalAlignment="Center" Margin="0,0,4,0"
+                     Fill="{DynamicResource TexteSecondaire}"
+                     ToolTip="Hors ligne — chiffres non rafraîchis"
+                     Visibility="{Binding AfficherPastilleHorsLigne, Converter={StaticResource BoolToVis}}"/>
 
-        <!-- EXA-05 : JAMAIS CONNECTÉ / JAMAIS RIEN OBTENU. ACTIONNABLE, même famille que la pastille
-             de déconnexion (Button pour que MouseLeftButtonDown soit Handled, donc aucun DragMove
-             parasite ; Background non-null pour rester hit-testable sur une fenêtre AllowsTransparency
-             — Transparent suffit en WPF, seul {x:Null} ne l'est pas).
-             Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE sur
-             IsLoggedIn == _store.Exists : un clic supprimerait le coffre de jetons.
-             Mutuellement exclusive de PastilleDeconnexion, garanti côté ViewModel (MajPastilles) :
-             les deux portent le même geste, les afficher ensemble serait une redondance.
-             Son apparence définitive (tokens de design, cohabitation des trois pastilles dans les deux
-             modes et les trois thèmes) est la phase 20 ; ici on livre le SIGNAL, pas sa forme finale. -->
-        <Button x:Name="PastilleInvitationConnexion"
-                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
-                Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
-                Cursor="Hand" Focusable="False"
-                ToolTip="Aucun chiffre d'usage n'a jamais été obtenu — cliquer pour se connecter à Claude"
-                Command="{Binding ReconnecterCommand}"
-                Visibility="{Binding AfficherInvitationConnexion, Converter={StaticResource BoolToVis}}">
-            <Button.Template>
-                <ControlTemplate TargetType="Button">
-                    <Grid Background="Transparent">
-                        <Ellipse Fill="{DynamicResource TexteSecondaire}"/>
-                    </Grid>
-                </ControlTemplate>
-            </Button.Template>
-        </Button>
+            <!-- EXA-05 : JAMAIS CONNECTÉ / JAMAIS RIEN OBTENU. ACTIONNABLE, même famille que la pastille
+                 de déconnexion (Button pour que MouseLeftButtonDown soit Handled, donc aucun DragMove
+                 parasite ; Background non-null pour rester hit-testable sur une fenêtre AllowsTransparency
+                 — Transparent suffit en WPF, seul {x:Null} ne l'est pas).
+                 Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE sur
+                 IsLoggedIn == _store.Exists : un clic supprimerait le coffre de jetons.
+                 Mutuellement exclusive de PastilleDeconnexion, garanti côté ViewModel (MajPastilles) :
+                 les deux portent le même geste, les afficher ensemble serait une redondance. Elle peut
+                 en revanche coexister avec « hors ligne » — d'où la rangée. -->
+            <Button x:Name="PastilleInvitationConnexion"
+                    VerticalAlignment="Center" Margin="0,0,4,0"
+                    Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
+                    Cursor="Hand" Focusable="False"
+                    ToolTip="Aucun chiffre d'usage n'a jamais été obtenu — cliquer pour se connecter à Claude"
+                    Command="{Binding ReconnecterCommand}"
+                    Visibility="{Binding AfficherInvitationConnexion, Converter={StaticResource BoolToVis}}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Ellipse Fill="{DynamicResource TexteSecondaire}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <!-- DÉCONNECTÉ : ACTIONNABLE. Button (pas Ellipse nue) car ButtonBase marque
+                 MouseLeftButtonDown comme Handled => aucun DragMove parasite (le handler de fenêtre
+                 bloquerait jusqu'au relâchement au lieu de lancer le login).
+                 Background non-null => hit-testable sur fenêtre AllowsTransparency (Transparent suffit
+                 en WPF ; seul {x:Null} ne l'est pas — CentreHit le prouve en production).
+                 Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE et
+                 supprimerait le coffre puisque IsLoggedIn ne teste que l'existence du fichier.
+                 DERNIÈRE de la rangée, donc sans écart à droite : la plus urgente au plus près du coin. -->
+            <Button x:Name="PastilleDeconnexion"
+                    VerticalAlignment="Center"
+                    Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
+                    Cursor="Hand" Focusable="False"
+                    ToolTip="Connexion à Claude perdue — cliquer pour se reconnecter"
+                    Command="{Binding ReconnecterCommand}"
+                    Visibility="{Binding AfficherPastilleDeconnexion, Converter={StaticResource BoolToVis}}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Ellipse Fill="{DynamicResource Alerte}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </StackPanel>
     </Grid>
 </Window>
