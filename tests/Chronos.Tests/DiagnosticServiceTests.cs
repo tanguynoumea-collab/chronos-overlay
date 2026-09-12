@@ -484,4 +484,137 @@ public class DiagnosticServiceTests
         Assert.Contains("aucun dépassement rapporté", ligne);
         Assert.DoesNotContain("politique", ligne);
     }
+
+    // --- Phase 22 (OBS-01/OBS-02) : le rapport décrit LE moniteur du widget, et nomme ce qui est masqué ---
+    //
+    // SÉCURITÉ, commune à ces tests : FakeClaudeTokenReader à Token = null (la sonde réseau est gardée par
+    // `if (token is not null)`, aucune requête ne part), FakeInventaireMachine (aucun balayage de coffre),
+    // et TOUS les chemins de moniteur/magasins sont sous %TEMP%. Aucun n'écrit dans %APPDATA%\Chronos.
+
+    private static readonly DateTimeOffset T22 = new(2026, 9, 12, 13, 28, 0, TimeSpan.Zero);
+
+    // TreatedStore purge ses entrées au-delà d'un TTL de 6 h mesuré sur l'HORLOGE RÉELLE (aucune horloge
+    // injectable). Écrire l'instant FIGÉ T22 rendrait ces tests verts le jour de leur écriture puis rouges
+    // six heures plus tard, sans qu'aucun code de production n'ait bougé — le genre de garde qu'on apprend
+    // à ignorer. Ce qui est écrit dans le magasin porte donc l'heure du système ; T22 reste l'instant des
+    // snapshots, où l'arithmétique du relevé réel doit rester littérale. La valeur écrite n'est jamais
+    // assertée : le filtre ne regarde que la présence de la clé.
+    private static long EcritMaintenant22() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    private sealed class SourceFixe22 : ISessionSource
+    {
+        private readonly IReadOnlyList<SessionSnapshot> _snaps;
+        public SourceFixe22(params SessionSnapshot[] snaps) => _snaps = snaps;
+        public IReadOnlyList<SessionSnapshot> Read(DateTimeOffset now) => _snaps;
+    }
+
+    private static string TempDir22()
+    {
+        var d = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "chronos-diag22-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(d);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), d);
+        return d;
+    }
+
+    private static string TempFichier22() => System.IO.Path.Combine(TempDir22(), "magasin.json");
+
+    private static async Task<string> Rapport(SessionMonitor? moniteur)
+    {
+        var paths = TempPaths();
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                         new FakeClock(T22), machine: new FakeInventaireMachine(),
+                                         moniteurSessions: moniteur);
+        return await diag.BuildReportAsync();
+    }
+
+    /// <summary>Doctrine du milestone appliquée au rapport lui-même : sans moniteur, on ne raconte pas une
+    /// lecture. L'ancien code fabriquait ici un moniteur nu et présentait sa sortie comme « ce que le widget
+    /// affiche » — un mensonge poli, et probablement la raison pour laquelle le défaut n'a jamais été élucidé.</summary>
+    [Fact]
+    public async Task Sans_moniteur_le_rapport_dit_qu_il_n_a_rien_observe()
+    {
+        var report = await Rapport(null);
+
+        Assert.Contains("MONITEUR NON INJECTÉ", report);
+        Assert.DoesNotContain("Sessions AFFICHÉES par le widget", report);
+    }
+
+    [Fact]
+    public async Task Le_rapport_decrit_les_sessions_du_moniteur_qu_on_lui_donne()
+    {
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot("s-att-0001", "overlay", SessionActivity.WaitingAttention,
+                                                 "permission_prompt", T22.AddMinutes(-5))),
+            new ArchiveStore(TempFichier22()));
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Sessions AFFICHÉES par le widget : 1", report);
+        Assert.Contains("overlay — à toi (il y a 5 min)", report);   // libellés IDENTIQUES à ceux du widget
+    }
+
+    /// <summary>Critère n°2 de la phase — ce qui est masqué est dit, ET on dit par quoi. Reconstitution du
+    /// relevé du 2026-09-12T13:28Z : e465420e (PROJET ADVANCED SHEET), session VIVANTE en attente de
+    /// permission, que treated.json cachait pour 6 h. Le widget ne la montrait nulle part ; le rapport non
+    /// plus. Une seule ligne doit désormais suffire à la retrouver.</summary>
+    [Fact]
+    public async Task Le_cas_e465420e_se_lit_en_une_ligne_du_rapport()
+    {
+        const string Id = "e465420e-83e0-428f-97f1-f0174c0848fc";
+        var treated = new TreatedStore(TempFichier22());
+        treated.Set(Id, EcritMaintenant22());
+
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot(Id, "PROJET ADVANCED SHEET",
+                                                 SessionActivity.WaitingAttention, "permission_prompt",
+                                                 T22.AddMinutes(-10))),
+            new ArchiveStore(TempFichier22()), treated);
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Sessions AFFICHÉES par le widget : 0", report);
+        var ligne = report.Split('\n').Single(l => l.Contains("e465420e"));
+        Assert.Contains("PROJET ADVANCED SHEET", ligne);
+        Assert.Contains("à toi", ligne);
+        Assert.Contains("masquée par treated.json", ligne);
+    }
+
+    [Fact]
+    public async Task Une_session_archivee_est_annoncee_masquee_par_le_magasin_d_archives()
+    {
+        var archive = new ArchiveStore(TempFichier22());
+        archive.Add("arch-0001-xxxx");
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot("arch-0001-xxxx", "vieux-projet", SessionActivity.WaitingTurn,
+                                                 null, T22)),
+            archive);
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Sessions MASQUÉES par un filtre : 1", report);
+        Assert.Contains("masquée par archived.json", report);
+    }
+
+    /// <summary>OBS-02 — la troncature à huit disparaît : comparer ligne à ligne un rapport tronqué avec un
+    /// écran complet reconstruirait l'écart que cette phase ferme. Neuf sessions, neuf lignes, attente en tête.</summary>
+    [Fact]
+    public async Task Le_rapport_ne_tronque_plus_la_liste_des_sessions_affichees()
+    {
+        var snaps = Enumerable.Range(0, 9)
+            .Select(i => new SessionSnapshot($"sess-{i:D4}-xx", $"projet-{i}",
+                        i == 8 ? SessionActivity.WaitingAttention : SessionActivity.Working,
+                        null, T22.AddMinutes(-i)))
+            .ToArray();
+
+        var report = await Rapport(new SessionMonitor(TempDir22(), new SourceFixe22(snaps),
+                                                      new ArchiveStore(TempFichier22())));
+
+        Assert.Contains("Sessions AFFICHÉES par le widget : 9", report);
+        for (var i = 0; i < 9; i++) Assert.Contains($"projet-{i}", report);
+
+        var lignes = report.Split('\n').Where(l => l.Contains("projet-")).ToList();
+        Assert.Equal(9, lignes.Count);
+        Assert.Contains("projet-8", lignes[0]);   // l'attente passe devant, comme dans le widget
+    }
 }

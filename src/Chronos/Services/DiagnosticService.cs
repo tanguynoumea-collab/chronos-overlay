@@ -29,6 +29,7 @@ public sealed class DiagnosticService
     private readonly IAuthStatus? _authStatus;
     private readonly IEtatServeur? _etatServeur;
     private readonly IInventaireMachine _machine;
+    private readonly SessionMonitor? _moniteurSessions;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
@@ -42,10 +43,25 @@ public sealed class DiagnosticService
     /// compilent sans retouche. Le repli <c>?? new InventaireMachine()</c> laisse la PRODUCTION
     /// strictement inchangée — aucune inscription DI, aucune mémoïsation. Précédents : authStatus
     /// (phase 17), etatServeur (phase 18).</param>
+    /// <param name="moniteurSessions">OBS-01 — LE moniteur du widget, partagé par le conteneur DI, jamais
+    /// un second exemplaire. Le rapport décrivait jusqu'ici un moniteur fabriqué ici même, donc nu : sans le
+    /// magasin d'archives de l'application, sans le filtre « traité », sans le détecteur d'hystérésis. Il
+    /// décrivait un jumeau imaginaire — et c'est très probablement ce qui a rendu le défaut du widget
+    /// inélucidable, l'utilisateur lisant dans le RAPPORT des sessions que le widget ne montrait pas.
+    ///
+    /// <para>Le partage d'instance n'est pas un détail d'implémentation : il est la raison pour laquelle le
+    /// rapport suivra chaque changement futur du câblage du widget sans qu'une ligne de ce fichier ne
+    /// change. Une copie du comportement du widget rouvrirait l'écart le lendemain.</para>
+    ///
+    /// <para>AUCUN REPLI, contrairement à <paramref name="machine"/> : nul n'est absent, le rapport dit
+    /// qu'il n'a rien observé. Fabriquer un moniteur de secours ici, c'est exactement le défaut corrigé.
+    /// OPTIONNEL et en DERNIÈRE position à dessein : les 11 sites de construction préexistants compilent
+    /// sans retouche. Précédents : authStatus (17), etatServeur (18), machine (20).</para></param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
-                             IInventaireMachine? machine = null)
+                             IInventaireMachine? machine = null,
+                             SessionMonitor? moniteurSessions = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -55,6 +71,7 @@ public sealed class DiagnosticService
         _authStatus = authStatus;
         _etatServeur = etatServeur;
         _machine = machine ?? new InventaireMachine();
+        _moniteurSessions = moniteurSessions;   // pas de repli : voir le XML-doc ci-dessus
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
