@@ -62,7 +62,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 - [x] **HDR-01**: Chronos obtient l'usage exact via les en-têtes `anthropic-ratelimit-unified-*` d'une
   **requête jetable** (`POST /v1/messages`, `max_tokens:1`, modèle le moins cher).
-- [ ] **HDR-02**: Les en-têtes sont exploités **même quand la réponse est un 429** — précisément l'instant où
+- [x] **HDR-02**: Les en-têtes sont exploités **même quand la réponse est un 429** — précisément l'instant où
   l'overlay sert le plus.
 - [x] **HDR-03**: Le **statut serveur** (`allowed` / `allowed_warning` / `rejected`) est remonté au cadran, au lieu
   d'être déduit d'un pourcentage.
@@ -126,7 +126,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | DEL-05 | Phase 16 | Complete |
 | DEL-06 | Phase 16 | Complete |
 | HDR-01 | Phase 18 | Complete |
-| HDR-02 | Phase 18 | Pending |
+| HDR-02 | Phase 18 | Complete |
 | HDR-03 | Phase 18 | Complete |
 | HDR-04 | Phase 18 | Complete |
 | HDR-05 | Phase 18 | Complete |

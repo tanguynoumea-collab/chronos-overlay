@@ -185,7 +185,7 @@ déconnexion, elle retombe dans la panne silencieuse qu'on éradique).
 - [x] 18-02-PLAN.md — Vocabulaire ouvert du statut serveur (`NonReconnu`) + dépassement, 2 champs sur `WindowState`, canal latéral `IEtatServeur`, faux de transport porteur d'en-têtes sur 429 et 8 jeux de référence (HDR-03, HDR-04) (vague 1)
 - [x] 18-03-PLAN.md — La sonde `RateLimitHeaderUsageProvider` : en-têtes lus AVANT l'aiguillage par code, frein 300 s, interrupteur `SondeEnTetesActivee` (HDR-01, HDR-02, HDR-06) (vague 2)
 - [x] 18-04-PLAN.md — Statut serveur par fenêtre (3 noms candidats) et dépassement par les deux canaux, sans `elif` (HDR-03, HDR-04) (vague 3)
-- [ ] 18-05-PLAN.md — Câblage DI : la sonde en PRIMAIRE d'un nouveau composite externe, garde de position par le comportement, diagnostic qui nomme l'issue et les NOMS d'en-têtes (HDR-01, HDR-02, HDR-06) (vague 4)
+- [x] 18-05-PLAN.md — Câblage DI : la sonde en PRIMAIRE d'un nouveau composite externe, garde de position par le comportement, diagnostic qui nomme l'issue et les NOMS d'en-têtes (HDR-01, HDR-02, HDR-06) (vague 4)
 - [ ] 18-06-PLAN.md — Réglages : interrupteur + coût annoncé (≈ 288 micro-requêtes/jour), état serveur visible, et checkpoint humain du 429 RÉEL (HDR-03, HDR-04, HDR-06) (vague 5, checkpoint humain)
 
 ### Phase 19 : Nouvelle doctrine du composite
@@ -246,7 +246,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
-| 18. Source exacte par en-têtes de rate-limit | 4/6 | In Progress|  |
+| 18. Source exacte par en-têtes de rate-limit | 5/6 | In Progress|  |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 
