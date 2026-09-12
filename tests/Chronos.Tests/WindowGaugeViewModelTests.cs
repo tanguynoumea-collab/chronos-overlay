@@ -69,6 +69,54 @@ public class WindowGaugeViewModelTests
         Assert.Equal("100 %", PercentFormatter.Format(1.0, false));
     }
 
+    // --- DEL-04 : le plancher se marque « ≥ », l'exact ne porte AUCUNE marque ---
+
+    /// <summary>DEL-04 — le plancher porte « ≥ » : incertitude UNILATÉRALE, borne supérieure inconnue.
+    /// Un « ~ » dirait « autour de 80 » et autoriserait la lecture « peut-être 75 » : faux, on SAIT
+    /// qu'on est à 80 au minimum. Les trois autres provenances (frais, encore valide, non statuée)
+    /// rendent un chiffre nu — la marque distingue le plancher, elle ne salit pas l'exact.</summary>
+    [Fact]
+    public void UtilizationText_plancher_prefixe_superieur_ou_egal()
+    {
+        Assert.Equal("≥ 80 %", PercentFormatter.Format(0.80, ProvenanceReleve.PlancherAvecActivite));
+        Assert.Equal("80 %",   PercentFormatter.Format(0.80, ProvenanceReleve.Frais));
+        Assert.Equal("80 %",   PercentFormatter.Format(0.80, ProvenanceReleve.EncoreValide));
+        Assert.Equal("80 %",   PercentFormatter.Format(0.80, (ProvenanceReleve?)null));
+        Assert.Equal("",       PercentFormatter.Format(null, ProvenanceReleve.PlancherAvecActivite));
+    }
+
+    /// <summary>DEL-04, bout en bout du sous-VM : c'est la PROVENANCE qui décide du préfixe, et non la
+    /// fiabilité. Un plancher (Estimated + PlancherAvecActivite) s'annonce « ≥ 42 % » ; un exact encore
+    /// valide (DEL-03) reste « 42 % » — c'est un chiffre juste, il n'a rien à porter.</summary>
+    [Fact]
+    public void Apply_derive_le_prefixe_de_la_provenance_et_non_de_la_fiabilite()
+    {
+        var plancher = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        plancher.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Estimated,
+            Utilization = 0.42,
+            Provenance = ProvenanceReleve.PlancherAvecActivite,
+        });
+
+        Assert.Equal("≥ 42 %", plancher.UtilizationText);
+        Assert.True(plancher.IsEstimated);
+        Assert.True(plancher.HasUtilizationText);
+
+        var exact = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        exact.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.42,
+            Provenance = ProvenanceReleve.EncoreValide,
+        });
+
+        Assert.Equal("42 %", exact.UtilizationText);
+        Assert.False(exact.IsEstimated);
+    }
+
     // --- VIS-01 : FractionElapsed = clamp(1 − FractionRemaining) recalculée à chaque Interpolate ---
 
     [Fact]

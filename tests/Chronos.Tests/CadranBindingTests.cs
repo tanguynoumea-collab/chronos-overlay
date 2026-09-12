@@ -95,34 +95,47 @@ public class CadranBindingTests
         Assert.NotNull(fenetre.FindName("ArcHebdo") as RingArc);
     }
 
+    /// <summary>
+    /// Honnêteté INDÉPENDANTE par fenêtre. RÉÉCRIT en phase 19 : la marque du chiffre non exact n'est
+    /// plus le tilde « ~ » (incertitude SYMÉTRIQUE, « autour de 90 ») mais « ≥ » (incertitude
+    /// UNILATÉRALE, « 90 au minimum, borne supérieure inconnue »), et elle est décidée par la
+    /// PROVENANCE et non par la fiabilité. Le test n'est pas supprimé : il continue de prouver que les
+    /// deux fenêtres portent des marques indépendantes.
+    /// </summary>
     [WpfFact]
-    public void Etat_fiabilite_mixte_le_tilde_du_pourcentage_est_par_fenetre()
+    public void Etat_fiabilite_mixte_la_marque_du_pourcentage_est_par_fenetre()
     {
         var snap = new UsageSnapshot
         {
-            FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.4, ResetsAt = Now + TimeSpan.FromHours(2) },
-            SevenDay = new WindowState { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated, Utilization = 0.9, ResetsAt = Now + TimeSpan.FromDays(3) },
+            FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.4, ResetsAt = Now + TimeSpan.FromHours(2), Provenance = ProvenanceReleve.Frais },
+            SevenDay = new WindowState { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated, Utilization = 0.9, ResetsAt = Now + TimeSpan.FromDays(3), Provenance = ProvenanceReleve.PlancherAvecActivite },
             SourceCapturedAt = Now,
         };
 
         var fenetre = BuildWindow(snap, out var vm);
 
-        // Honnêteté INDÉPENDANTE par fenêtre, désormais portée par le « ~ » du pourcentage central :
-        // 5 h exacte → « 40 % » SANS tilde ; hebdo estimée → « ~90 % » AVEC tilde.
+        // 5 h exacte et fraîche → « 40 % », aucune marque ; hebdo plancher → « ≥ 90 % ».
         Assert.False(vm.FiveHour.IsEstimated);
         Assert.True(vm.SevenDay.IsEstimated);
-        Assert.DoesNotContain("~", vm.FiveHour.UtilizationText);
-        Assert.Contains("40", vm.FiveHour.UtilizationText);
-        Assert.StartsWith("~", vm.SevenDay.UtilizationText);
+        Assert.Equal("40 %", vm.FiveHour.UtilizationText);
+        Assert.DoesNotContain("~", vm.SevenDay.UtilizationText);   // jamais une incertitude symétrique
+        Assert.StartsWith("≥", vm.SevenDay.UtilizationText);
         Assert.Contains("90", vm.SevenDay.UtilizationText);
         Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc);
     }
 
-    // NET-02 : tokens estimés surfacés en texte secondaire discret, dérivés dans WindowGaugeViewModel.Apply.
-    // Ces [Fact] testent directement le sous-VM (pas de STA requis : pur, aucun WPF).
+    // NET-02 + DEL-04 : la matière première brute surfacée en texte secondaire discret, dérivée dans
+    // WindowGaugeViewModel.Apply. Ces [Fact] testent directement le sous-VM (pas de STA requis : pur).
+    //
+    // CHANGEMENT DE CHAMP (phase 19) : les trois tests ci-dessous pilotaient « EstimatedTokens », qui
+    // portait la somme de l'estimation ABSOLUE (tokens / plafond) supprimée en phase 16 — champ mort en
+    // production depuis. Le chiffre de DEL-04 est « TokensDepuisReleve » : les tokens observés DEPUIS le
+    // relevé exact, matière d'une borne inférieure et non d'un pourcentage. Les trois tests sont
+    // RÉÉCRITS et non supprimés : ils restent la preuve que la matière brute n'est surfacée ni sur un
+    // exact, ni à zéro token.
 
     [Fact]
-    public void Estimated_avec_tokens_expose_HasTokens_et_TokensText_abrege()
+    public void Plancher_avec_tokens_depuis_releve_expose_HasTokens_et_TokensText_abrege()
     {
         var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
 
@@ -130,7 +143,8 @@ public class CadranBindingTests
         {
             Kind = WindowKind.FiveHour,
             Reliability = SourceReliability.Estimated,
-            EstimatedTokens = 62_484_658,
+            Provenance = ProvenanceReleve.PlancherAvecActivite,
+            TokensDepuisReleve = 62_484_658,
         });
 
         Assert.True(vm.HasTokens);
@@ -138,7 +152,7 @@ public class CadranBindingTests
     }
 
     [Fact]
-    public void Exact_sans_tokens_n_affiche_aucun_texte_de_tokens()
+    public void Exact_sans_tokens_depuis_releve_n_affiche_aucun_texte_de_tokens()
     {
         var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
 
@@ -146,8 +160,9 @@ public class CadranBindingTests
         {
             Kind = WindowKind.FiveHour,
             Reliability = SourceReliability.Exact,
+            Provenance = ProvenanceReleve.Frais,
             Utilization = 0.3,
-            EstimatedTokens = null, // honnêteté : jamais de tokens affichés en source Exact
+            TokensDepuisReleve = null, // honnêteté : un exact n'a aucune matière brute à exhiber
         });
 
         Assert.False(vm.HasTokens);
@@ -155,7 +170,7 @@ public class CadranBindingTests
     }
 
     [Fact]
-    public void Estimated_avec_zero_token_ne_surface_rien()
+    public void Plancher_avec_zero_token_depuis_releve_ne_surface_rien()
     {
         var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
 
@@ -163,7 +178,27 @@ public class CadranBindingTests
         {
             Kind = WindowKind.FiveHour,
             Reliability = SourceReliability.Estimated,
-            EstimatedTokens = 0,
+            Provenance = ProvenanceReleve.PlancherAvecActivite,
+            TokensDepuisReleve = 0, // 0 = MESURÉ à zéro (≠ null, non mesuré) : rien à afficher non plus
+        });
+
+        Assert.False(vm.HasTokens);
+        Assert.Equal("", vm.TokensText);
+    }
+
+    /// <summary>DEL-04 — garde de non-retour : l'ancien champ <c>EstimatedTokens</c>, mort en production
+    /// depuis la phase 16, ne doit PLUS rien surfacer au cadran. S'il était encore lu, ce test
+    /// exposerait « ≈ 99 M tokens » sous un chiffre qui n'en a pas la sémantique.</summary>
+    [Fact]
+    public void EstimatedTokens_seul_ne_surface_PLUS_rien_au_cadran()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Estimated,
+            EstimatedTokens = 99_000_000, // champ LEGACY : plus aucune lecture côté présentation
         });
 
         Assert.False(vm.HasTokens);
