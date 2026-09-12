@@ -40,7 +40,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
   quelle que soit la situation.
 - [x] **EXA-05**: Si **aucun chiffre exact n'a jamais été obtenu**, l'overlay affiche « indisponible » et invite
   à se connecter — jamais un pourcentage.
-- [ ] **EXA-06**: Le **diagnostic** indique quelle source alimente réellement l'affichage, et depuis quand.
+- [x] **EXA-06**: Le **diagnostic** indique quelle source alimente réellement l'affichage, et depuis quand.
 
 ### Correction par delta (DEL)
 
@@ -118,7 +118,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | EXA-03 | Phase 20 | Complete |
 | EXA-04 | Phase 19 | Complete |
 | EXA-05 | Phase 19 | Complete |
-| EXA-06 | Phase 20 | Pending |
+| EXA-06 | Phase 20 | Complete |
 | DEL-01 | Phase 16 | Complete |
 | DEL-02 | Phase 16 | Complete |
 | DEL-03 | Phase 19 | Complete |
