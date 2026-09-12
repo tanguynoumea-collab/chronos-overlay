@@ -46,6 +46,30 @@ public class LastExactStoreTests : IDisposable
     private static UsageSnapshot Snap(WindowState five, WindowState seven)
         => new() { FiveHour = five, SevenDay = seven };
 
+    // --- 0. EXA-06 : le magasin NOMME ce qu'il reconstruit ---
+
+    /// <summary>
+    /// EXA-06 — une fenêtre relue du disque se réclame du MAGASIN, et non du producteur qui avait
+    /// fourni le chiffre le jour de sa capture. Le magasin ne persiste pas ce nom (son <c>Entry</c> ne
+    /// porte que utilization / resets_at / captured_at) : prétendre le contraire au rechargement
+    /// reviendrait à affirmer qu'une source répond alors qu'elle est peut-être tombée depuis des heures.
+    ///
+    /// C'est ce nom que la doctrine fait ensuite hériter à un plancher par « candidat with » — d'où le
+    /// libellé « dernier exact persisté » que l'utilisateur lira dans le diagnostic.
+    /// </summary>
+    [Fact]
+    public void La_fenetre_reconstruite_se_reclame_du_MAGASIN_et_non_du_producteur_d_origine()
+    {
+        new LastExactStore(_fichier).Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now.AddMinutes(-5)),
+            Exact(WindowKind.SevenDay, 0.63, Now.AddDays(4), Now.AddMinutes(-5))));
+
+        var relu = new LastExactStore(_fichier).Load(Now);
+
+        Assert.Equal(SourceUsage.MagasinDernierExact, relu!.FiveHour!.Source);
+        Assert.Equal(SourceUsage.MagasinDernierExact, relu.SevenDay!.Source);
+    }
+
     // --- 1. Round-trip : le chiffre survit à la recréation de l'objet magasin ---
 
     [Fact]

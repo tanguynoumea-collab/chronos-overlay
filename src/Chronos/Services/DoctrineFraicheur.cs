@@ -128,5 +128,9 @@ public static class DoctrineFraicheur
             EstimatedTokens = null,
             TokensDepuisReleve = null,
             Provenance = null,
+            // EXA-06, cohérence avec la provenance ci-dessus : une fenêtre dont on efface le chiffre
+            // n'est alimentée par personne. Lui laisser le nom du producteur du chiffre effacé ferait
+            // dire au diagnostic « alimenté par X » sous un cadran qui n'affiche rien.
+            Source = null,
         };
 }

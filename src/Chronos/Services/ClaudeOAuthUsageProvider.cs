@@ -144,6 +144,9 @@ public sealed class ClaudeOAuthUsageProvider : IUsageProvider
             Reliability = SourceReliability.Exact,
             CapturedAt = capturedAt,
             FractionTimeRemaining = WindowState.FractionRemaining(reset, _clock.UtcNow, len),
+            // EXA-06 — le nom du producteur voyage PAR RÉFÉRENCE à travers Best() : posé ici, il arrive
+            // intact au ViewModel même à travers les trois composites imbriqués.
+            Source = SourceUsage.EndpointOAuthClaude,
         };
     }
 }

@@ -35,6 +35,17 @@ public sealed record WindowState
     /// composites imbriqués, là où un champ de snapshot serait détruit par la recomposition.</summary>
     public ProvenanceReleve? Provenance { get; init; }
 
+    /// <summary>Phase 20 (EXA-06) — QUI a produit ce chiffre. Porté par WindowState et NON par
+    /// UsageSnapshot, pour la raison mécanique déjà établie deux fois (StatutServeur, Provenance) :
+    /// Best() rend l'INSTANCE gagnante PAR RÉFÉRENCE, donc ce champ traverse gratuitement les trois
+    /// composites imbriqués, là où un champ de snapshot serait détruit par le « new » de la
+    /// recomposition. La garde Toute_propriete_de_UsageSnapshot_… ne surveille que UsageSnapshot :
+    /// elle n'est pas concernée.
+    ///
+    /// null = non renseigné. L'enum n'a délibérément aucun membre fourre-tout : une absence ne doit
+    /// jamais produire d'affirmation.</summary>
+    public SourceUsage? Source { get; init; }
+
     /// <summary>Phase 19 (DEL-04) — tokens de réponses assistant observés depuis CapturedAt. BORNE
     /// INFÉRIEURE et matière première BRUTE, jamais exprimée en points de pourcentage (EXA-04) : les
     /// limites Anthropic pondèrent par modèle, et les transcripts ignorent l'app de bureau et Cowork,

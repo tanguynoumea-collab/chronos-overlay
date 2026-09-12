@@ -138,6 +138,105 @@ public class GardesDoctrineTests
         Assert.Equal(0.11, snap.SevenDay.Utilization);
     }
 
+    // ==================== EXA-06 (phase 20) : le NOM de la source ====================
+
+    /// <summary>
+    /// PREUVE PAR RÉFÉRENCE, jumelle de <see cref="Le_repli_le_plus_interne_est_bien_celui_a_anciennete_non_bornee"/>.
+    ///
+    /// Le nom de la source est posé sur <c>WindowState</c> et NON sur <c>UsageSnapshot</c>, parce que
+    /// <c>Best()</c> rend l'INSTANCE gagnante par référence alors que la recomposition du snapshot se
+    /// fait par « new » — un champ de snapshot serait détruit à chaque passage. La chaîne réelle compte
+    /// TROIS composites imbriqués : ce test monte la même profondeur, fait gagner la source la plus
+    /// interne (les deux au-dessus sont indisponibles), et exige que son nom arrive intact.
+    ///
+    /// Ce test TOMBE si quelqu'un déplace ce champ vers <c>UsageSnapshot</c>, ou si <c>Best()</c> se met
+    /// un jour à recomposer une fenêtre par « new » au lieu de rendre l'instance.
+    /// </summary>
+    [Fact]
+    public async Task La_source_survit_aux_TROIS_composites_imbriques()
+    {
+        var externe = new FakeUsageProvider { Next = SnapMuet() };
+        var median = new FakeUsageProvider { Next = SnapMuet() };
+        var interne = new FakeUsageProvider { Next = Snap(0.33, SourceUsage.PontStatusLine) };
+
+        var chaine = new CompositeUsageProvider(
+            externe,
+            new CompositeUsageProvider(median, interne));
+
+        var snap = await chaine.GetAsync();
+
+        Assert.Equal(SourceUsage.PontStatusLine, snap.FiveHour.Source);
+        Assert.Equal(SourceUsage.PontStatusLine, snap.SevenDay.Source);
+        Assert.Equal(0.33, snap.FiveHour.Utilization);   // c'est bien la fenêtre interne qui a gagné
+    }
+
+    /// <summary>
+    /// EXA-06 — une fenêtre que la doctrine déclare indisponible ne nomme AUCUN producteur.
+    ///
+    /// Les deux assertions vont ENSEMBLE, et c'est le point du test : c'est la cohérence de la source et
+    /// de la provenance qu'on garde. Effacer le chiffre tout en conservant « alimenté par la sonde
+    /// d'en-têtes » ferait dire au diagnostic qu'une source fonctionne sous un cadran qui n'affiche
+    /// rien — exactement la panne silencieuse que ce milestone traque.
+    ///
+    /// Le cas monté est celui de la première moitié d'EXA-02 : un relevé marqué exact dont personne ne
+    /// sait QUAND il a été pris est incertifiable, donc démonté.
+    /// </summary>
+    [Fact]
+    public void Une_fenetre_indisponible_ne_nomme_AUCUNE_source()
+    {
+        var vivante = new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.42,
+            Source = SourceUsage.SondeEnTetes,
+            CapturedAt = null,                  // incertifiable : ni âge mesurable, ni question posable
+        };
+
+        var w = DoctrineFraicheur.Statuer(vivante, memorisee: null, journal: null,
+                                          new DateTimeOffset(2026, 9, 12, 12, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(SourceReliability.Unavailable, w.Reliability);
+        Assert.Null(w.Source);
+        Assert.Null(w.Provenance);
+    }
+
+    /// <summary>
+    /// EXA-06 × DEL-04 — un PLANCHER conserve le nom de la source qui a produit le relevé mémorisé.
+    ///
+    /// L'héritage est obtenu gratuitement par le « candidat with { … } » de <c>Qualifier</c> : aucune
+    /// ligne n'a été ajoutée pour cela, et c'est ce test qui le prouve plutôt que de le supposer. La
+    /// distinction est celle des deux axes : la SOURCE reste le magasin (c'est lui qui a fourni le
+    /// chiffre), l'ÉTAT devient « borne inférieure » (de l'activité est survenue depuis). Les fusionner
+    /// ferait perdre l'un des deux.
+    /// </summary>
+    [Fact]
+    public void Un_plancher_conserve_la_source_du_releve_memorise()
+    {
+        var now = new DateTimeOffset(2026, 9, 12, 12, 0, 0, TimeSpan.Zero);
+
+        var memorisee = new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.42,
+            ResetsAt = now.AddHours(3),
+            CapturedAt = now.AddHours(-3),          // hors limite d'âge
+            Source = SourceUsage.MagasinDernierExact,
+        };
+
+        var journal = new TranscriptActivityLog(now, now - TimeSpan.FromDays(8),
+                                                new[] { (now.AddHours(-1), 9_000L) });
+
+        var w = DoctrineFraicheur.Statuer(WindowState.Unavailable(WindowKind.FiveHour), memorisee,
+                                          journal, now);
+
+        Assert.Equal(SourceReliability.Estimated, w.Reliability);
+        Assert.Equal(ProvenanceReleve.PlancherAvecActivite, w.Provenance);
+        Assert.Equal(SourceUsage.MagasinDernierExact, w.Source);   // la source, elle, n'a pas changé
+        Assert.Equal(0.42, w.Utilization);                          // et le chiffre n'est pas gonflé
+    }
+
     private static UsageSnapshot Snap(double util) => new()
     {
         FiveHour = new WindowState
@@ -152,6 +251,32 @@ public class GardesDoctrineTests
             Reliability = SourceReliability.Exact,
             Utilization = util,
         },
+    };
+
+    /// <summary>Variante nommant sa source — EXA-06.</summary>
+    private static UsageSnapshot Snap(double util, SourceUsage source) => new()
+    {
+        FiveHour = new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = util,
+            Source = source,
+        },
+        SevenDay = new WindowState
+        {
+            Kind = WindowKind.SevenDay,
+            Reliability = SourceReliability.Exact,
+            Utilization = util,
+            Source = source,
+        },
+    };
+
+    /// <summary>Snapshot dont les deux fenêtres sont indisponibles : un maillon de chaîne en panne.</summary>
+    private static UsageSnapshot SnapMuet() => new()
+    {
+        FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+        SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
     };
 
     /// <summary>Chemin des sources tel qu'injecté par MSBuild (jamais deviné depuis la sortie de build).</summary>

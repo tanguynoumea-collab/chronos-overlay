@@ -432,6 +432,11 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
             FractionTimeRemaining = WindowState.FractionRemaining(reset, now, longueurFenetre),
             StatutServeur = statut,       // HDR-03 — voyage par référence à travers Best()
             Depassement = depassement,    // HDR-04 — canal n° 1 ; le canal latéral est le n° 2
+            // EXA-06 — même mécanique que les deux champs ci-dessus : posé sur la fenêtre, ce nom
+            // traverse PAR RÉFÉRENCE les trois composites imbriqués. Délibérément ABSENT de la forme
+            // « dépassement seul » quelques lignes plus haut : une fenêtre indisponible n'est
+            // alimentée par personne et ne doit donc nommer personne.
+            Source = SourceUsage.SondeEnTetes,
         };
     }
 

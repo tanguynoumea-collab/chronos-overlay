@@ -945,6 +945,49 @@ public class RateLimitHeaderUsageProviderTests
         Assert.Equal(ResultatSonde.SuccesEnTetesLus, sonde.DernierResultat);
     }
 
+    // ==================== EXA-06 (phase 20) : la sonde NOMME ce qu'elle produit ====================
+
+    /// <summary>
+    /// EXA-06 — les deux fenêtres produites par la sonde se réclament de la sonde. Sans ce nom, le
+    /// diagnostic ne peut pas constater seul qu'une source est tombée : il verrait « un chiffre exact »
+    /// sans savoir lequel des cinq producteurs l'a fourni, donc sans savoir lequel s'est tu.
+    /// </summary>
+    [Fact]
+    public async Task Les_fenetres_produites_par_la_sonde_la_NOMMENT_comme_source()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Nominal);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(SourceUsage.SondeEnTetes, snap.FiveHour.Source);
+        Assert.Equal(SourceUsage.SondeEnTetes, snap.SevenDay.Source);
+    }
+
+    /// <summary>
+    /// EXA-06 — la forme « dépassement seul » ne nomme AUCUNE source, et c'est délibéré : ses deux
+    /// fenêtres sont indisponibles. Elles TRANSPORTENT un fait de compte (le test ci-dessus le prouve)
+    /// mais ne sont alimentées par personne. Poser la sonde comme source ici ferait afficher au
+    /// diagnostic « alimenté par la sonde d'en-têtes » sous un cadran vide — une panne rendue muette.
+    ///
+    /// C'est la seule des six constructions de <c>WindowState</c> de la production à ne porter aucune
+    /// source, et ce test est ce qui l'empêche d'en gagner une par mégarde.
+    /// </summary>
+    [Fact]
+    public async Task La_forme_depassement_seul_ne_nomme_AUCUNE_source()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.OK, EnTetesDeReference.DepassementSeul);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+        Assert.Null(snap.FiveHour.Source);
+        Assert.Null(snap.SevenDay.Source);
+        Assert.NotNull(snap.FiveHour.Depassement);   // indisponible, mais toujours véhicule du fait de compte
+    }
+
     /// <summary>LES DEUX FAMILLES SONT LUES ENSEMBLE, sans branche exclusive. Le code d'origine les traite en
     /// branches alternatives liées au type de compte : c'est un choix d'AFFICHAGE de sa part, pas une
     /// contrainte de protocole. Rien n'interdit à un serveur de rapporter les deux, et les jeter serait une

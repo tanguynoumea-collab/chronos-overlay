@@ -170,6 +170,9 @@ public sealed class LastExactStore
             CapturedAt = e.CapturedAt,
             FractionTimeRemaining = WindowState.FractionRemaining(resets, now, longueur),
             Reliability = SourceReliability.Exact,   // dérivé : seul de l'exact est écrit ici
+            // EXA-06 — le nom du producteur voyage PAR RÉFÉRENCE à travers Best(), et la doctrine le
+            // fait ensuite hériter par « candidat with » : un plancher reste donc attribué au magasin.
+            Source = SourceUsage.MagasinDernierExact,
         };
     }
 
