@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: executing
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-09-12T15:02:50.506Z"
+status: verifying
+stopped_at: Completed 21-04-PLAN.md
+last_updated: "2026-09-12T15:15:54.364Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 17
 ---
 
 # Project State
@@ -22,21 +22,21 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** Phase 21 — Perimetre - le widget ne parle que de Claude Code
+**Current focus:** Phase 21 close (SRC-01/02/03) — prochaine : Phase 22, OBS (l'instrument de mesure)
 
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: 21 (Perimetre - le widget ne parle que de Claude Code) — EXECUTING
+Phase: 21 (Perimetre - le widget ne parle que de Claude Code) — COMPLETE, en attente de verification
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 17%  (1 phase sur 6 — phase 21 close, 4 plans sur 4)
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 0
+- Total plans completed (v1.6): 4
 
 ## Milestone v1.5 (clos)
 
@@ -165,6 +165,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 21 P01 | 14min | 2 tasks | 3 files |
 | Phase 21 P02 | 12min | 2 tasks | 11 files |
 | Phase 21 P03 | 8min | 3 tasks | 18 files |
+| Phase 21 P04 | 9min | 3 tasks | 5 files |
 
 ### Decisions
 
@@ -376,6 +377,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 21]: NET-02 documente par une epitaphe (raison mecanique de sa mort) plutot que supprime en silence
 - [Phase 21]: Le montage BAML d'une fenetre jamais affichee se fait sur sa GRILLE RACINE (DataContext pose dessus + purge du Dispatcher), jamais sur la fenetre : sinon DesiredSize rend 0x0 et aucun binding ne s'evalue.
 - [Phase 21]: Une garde de non-retour se prouve par MUTATION avant d'etre committee : 3 mutations injectees puis revoquees (type Uia*, binding KindLabel, separateur orphelin).
+- [Phase 21]: [21-04] Ecarter a la lecture n'est PAS retirer : ArchiveStore.Load() ecartait deja les deux fantomes desktop:foreground:* par TTL, s'en contenter aurait laisse le contournement MANUEL de l'utilisateur grave dans ses donnees. PurgerPrefixe retire DU FICHIER ; l'agent n'a pas touche au vrai archived.json (84 o, inchange) — c'est le code livre qui le purge au prochain lancement.
+- [Phase 21]: [21-04] Purger un prefixe et expirer une entree sont deux gestes DISTINCTS : PurgerPrefixe n'applique AUCUN filtre de TTL, et un test verrouille qu'une entree de 7 h non prefixee SURVIT a la purge (Load continue de ne pas la rendre). Les confondre ferait disparaitre, a l'occasion d'un nettoyage, des archives que l'utilisateur n'a jamais demande de retirer. Le TTL de 6 h reste : c'est TRT-04, phase 26.
+- [Phase 21]: [21-04] Le nombre rendu est une OBSERVATION et non une intention (return ecrit ? retirees : 0) : une ecriture en echec rend 0, parce que rien n'a ete retire. Et rien a retirer => le fichier n'est PAS reecrit, date de derniere ecriture comprise.
+- [Phase 21]: [21-04] Porte de phase franchie : 719/719 en DEUX executions consecutives, 5 gardes nommees vertes, recul 752 -> 719 reconcilie a l'unite apres CHAQUE tache. Precision mesuree : le bilan compte des CAS (49) et non des methodes (41) — DesktopUiaSessionSourceTests portait 28 methodes pour 36 cas (3 [Theory], 11 [InlineData]).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -412,7 +417,15 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- **Prochaine action v1.6 : `/gsd:plan-phase 21`** (Périmètre — retrait de la source app-bureau).
+- **Prochaine action v1.6 : `/gsd:plan-phase 22`** (OBS — l'instrument de mesure : le diagnostic partage
+  l'instance du moniteur du widget au lieu d'en reconstruire un nu).
+- ~~Prochaine action v1.6 : `/gsd:plan-phase 21`~~ (fait, phase 21 close : SRC-01, SRC-02, SRC-03).
+- **A faire par l'utilisateur, hors GSD — NOUVEAU (phase 21)** : au prochain lancement VOLONTAIRE de
+  l'overlay, constater que `%APPDATA%\Chronos\archived.json` passe de **84 octets** a `{}` (2 octets).
+  C'est la preuve in vivo de SRC-02, non substituable. Plus deux points visuels (galerie `--sessions` :
+  8 styles x 9 themes, style Pastilles sans separateur orphelin ; et apres quelques heures d'usage, plus
+  aucune ligne prefixee `desktop:`). Protocole complet sous « A VERIFIER PAR L'UTILISATEUR » dans
+  `21-04-SUMMARY.md` et `21-VALIDATION.md`. Ne bloque pas la phase 22.
 - ~~Prochaine action v1.5 : `/gsd:plan-phase 20`~~ (fait, milestone v1.5 clos).
 - **A faire par l'utilisateur, hors GSD — NOUVEAU** : constater la bascule « 10 % » -> « indisponible +
   invitation » en lancant la version du DEPOT. Protocole complet sous « A VERIFIER PAR L'UTILISATEUR »
@@ -454,7 +467,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T15:02:50.501Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-09-12T15:15:45.609Z
+Stopped at: Completed 21-04-PLAN.md
 Resume file: None
-Next: /gsd:plan-phase 21 — Périmètre : retrait de la source app-bureau (SRC-01, SRC-02, SRC-03)
+Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)

@@ -81,7 +81,7 @@ sur les **8 styles de session** (galerie `--sessions`) et les **9 thèmes**.
 - Phases entières (21→26) : travail de milestone planifié — continue après la Phase 20 (v1.5)
 - Phases décimales (21.1, 21.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 21 : Périmètre — le widget ne parle que de Claude Code** - La source app-bureau par UI Automation disparaît avec ses entrées fantômes, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents
+- [x] **Phase 21 : Périmètre — le widget ne parle que de Claude Code** - La source app-bureau par UI Automation disparaît avec ses entrées fantômes, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents (completed 2026-09-12)
 - [ ] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes
 - [ ] **Phase 23 : Un magasin qui ne croît plus et n'oublie plus** - Les états expirés et les `.tmp` orphelins sont balayés, et une écriture de hook ne peut plus être perdue en silence
 - [ ] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables
@@ -123,7 +123,7 @@ Plans:
 - [x] 21-01-PLAN.md — SRC-03 : la limite de douze porte sur les sessions retenues, plus sur les fichiers examinés
 - [x] 21-02-PLAN.md — SRC-01 (1/2) : débrancher — moniteur, détecteur, DI et diagnostic quittent la source app-bureau
 - [x] 21-03-PLAN.md — SRC-01 (2/2) : supprimer — 10 fichiers, la typologie bureau, le libellé de type, deux gardes de non-retour
-- [ ] 21-04-PLAN.md — SRC-02 : les fantômes archivés retirés du fichier, et le bilan nominatif du recul de couverture
+- [x] 21-04-PLAN.md — SRC-02 : les fantômes archivés retirés du fichier, et le bilan nominatif du recul de couverture
 **UI hint**: yes
 
 ### Phase 22 : Un instrument de mesure qui ne ment plus
@@ -254,7 +254,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 21. Périmètre — le widget ne parle que de Claude Code | 3/4 | In Progress|  |
+| 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
 | 22. Un instrument de mesure qui ne ment plus | 0/? | Not started | - |
 | 23. Un magasin qui ne croît plus et n'oublie plus | 0/? | Not started | - |
 | 24. L'arbitrage par fraîcheur | 0/? | Not started | - |
