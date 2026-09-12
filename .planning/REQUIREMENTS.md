@@ -78,7 +78,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 ### Observabilité (OBS)
 
-- [ ] **OBS-01**: Le diagnostic dit **exactement** ce que le widget affiche — même moniteur, mêmes filtres.
+- [x] **OBS-01**: Le diagnostic dit **exactement** ce que le widget affiche — même moniteur, mêmes filtres.
   Il construit aujourd'hui son propre moniteur nu, ce qui a très probablement empêché d'élucider le problème.
 - [ ] **OBS-02**: Le diagnostic liste les sessions **pertinentes**, et non les 8 premières par ordre
   alphabétique (toutes vieilles de plusieurs semaines).
@@ -118,7 +118,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | TRT-04 | Phase 26 | Pending |
 | CYC-01 | Phase 23 | Pending |
 | CYC-02 | Phase 23 | Pending |
-| OBS-01 | Phase 22 | Pending |
+| OBS-01 | Phase 22 | Complete |
 | OBS-02 | Phase 22 | Pending |
 
 **Couverture :** 18 / 18 requirements mappés — aucun orphelin, aucun doublon.
