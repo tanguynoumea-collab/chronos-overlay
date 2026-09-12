@@ -70,7 +70,7 @@ et la garde de composition `CompositionRootTests`.
 - [x] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
  (completed 2026-09-11)
 - [x] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement (completed 2026-09-12)
-- [ ] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens
+- [x] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens (completed 2026-09-12)
 - [ ] **Phase 20 : Honnêteté visible — cadran & diagnostic** - Le cadran distingue à l'œil chiffre frais / chiffre daté / indisponible, et le diagnostic nomme la source réellement affichée et son âge
 
 ### Phase Details
@@ -225,7 +225,7 @@ Plans:
       WeeklyRecalibration
 - [x] 19-04-PLAN.md — L'honnêteté visible : « ≥ N % » plutôt que « ~N % », matière brute rattachée au bon
       champ, et l'invitation à se connecter d'EXA-05 (moitié visible incluse)
-- [ ] 19-05-PLAN.md — Porte de phase : preuves automatisées rassemblées, carte de validation remplie, et
+- [x] 19-05-PLAN.md — Porte de phase : preuves automatisées rassemblées, carte de validation remplie, et
       vérification humaine de la bascule « 10 % » vers « indisponible + invitation » sur la machine réelle
 
 ### Phase 20 : Honnêteté visible — cadran & diagnostic
@@ -262,7 +262,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
-| 19. Nouvelle doctrine du composite | 4/5 | In Progress|  |
+| 19. Nouvelle doctrine du composite | 5/5 | Complete   | 2026-09-12 |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 
 ### Couverture des exigences

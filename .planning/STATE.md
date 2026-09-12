@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: executing
-stopped_at: Completed 19-04-PLAN.md
-last_updated: "2026-09-12T05:01:46.688Z"
+status: verifying
+stopped_at: Completed 19-05-PLAN.md (phase 19 close, constat humain delegue)
+last_updated: "2026-09-12T05:15:56.241Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 23
-  completed_plans: 22
-  percent: 96
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-09-09)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
 deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 19 — Nouvelle doctrine du composite
+**Current focus:** Phase 20 — Honnêteté visible (cadran & diagnostic). Phase 19 close.
 
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 19 (Nouvelle doctrine du composite) — EXECUTING
+Phase: 19 (Nouvelle doctrine du composite) — COMPLETE (5/5)
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [██████████] 96% (4/6 phases closes ; 22/23 plans)
+Progress: [██████████] 100% (5/6 phases closes ; 23/23 plans planifies)
 
 **Ordre d'exécution :** 15 (indépendante) → 16 (fondations : persistance + delta + démolition des plafonds)
 → 17 (jeton vivant) → 18 (source en-têtes) → 19 (doctrine du composite, exige 16 et 18) → 20 (rendu visible).
@@ -43,7 +43,7 @@ Progress: [██████████] 96% (4/6 phases closes ; 22/23 plans)
 | 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Complete (4/4) |
 | 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
 | 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Complete (6/6) |
-| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | In Progress (4/5) |
+| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Complete (5/5) — porte verte, constat humain delegue |
 | 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Not started |
 
 ## Performance Metrics
@@ -146,6 +146,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 19 P02 | 15min | 3 tasks | 8 files |
 | Phase 19 P03 | 38 min | 3 tasks | 6 files |
 | Phase 19 P04 | 19min | 2 tasks | 7 files |
+| Phase 19 P05 | 16min | 2 tasks | 2 files |
 
 ### Decisions
 
@@ -275,6 +276,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 19]: [19-04] L'invitation s'efface devant la pastille de deconnexion : les deux portent le MEME geste (ReconnecterCommand), les afficher ensemble sur 170 px serait une redondance et non une information ; la deconnexion est le diagnostic le plus precis des deux.
 - [Phase 19]: [19-04] « == false » et non « != true » : null = non evalue (magasin en panne, ou UsageSnapshot.Empty). Une absence de reponse ne produit jamais une affirmation — c'est ce qui garde les 4 tests de pastille de la phase 17 verts sans retouche.
 - [Phase 19]: [19-04] TokensText/HasTokens et DataUnavailable sont calcules mais bindes NULLE PART (zero occurrence dans les XAML) : la matiere brute de DEL-04 est correcte, testee et invisible. Dette leguee a la phase 20, qui doit trancher explicitement plutot que d'en heriter en silence.
+- [Phase 19]: [19-05] Porte de phase franchie sur preuves : 699/699 en DEUX executions consecutives (les [WpfFact] de la phase justifient la double passe, precedent BAML 16-03), 5 gardes permanentes vertes, comptage reconcilie a l'unite (652+12+16+8+11=699), zero test supprime, zero test ignore.
+- [Phase 19]: [19-05] Le constat humain de la bascule est SUBSTITUE et non simule : lancer l'overlay declencherait la purge des 25 groupes de hooks de ~/.claude/settings.json (phase 15, App.OnStartup) hors supervision. La ligne 19-05 T2 de la carte porte un statut DISTINCT, jamais un vert usurpe.
+- [Phase 19]: [19-05] DEL-04 : la moitie invisible est DITE plutot que masquee. Le « + delta estime » de la lettre a ete amende pour cause (280 % mesure), et la matiere brute de substitution (TokensText/HasTokens) est calculee, testee et bindee NULLE PART — 0 occurrence dans les XAML. Dette n.1 de la phase 20.
+- [Phase 19]: [19-05] EXA-06 n'est couverte qu'a moitie et c'est verifie : ProvenanceReleve ne compte que 3 membres, tous des ETATS ; le NOM de la source alimentant l'affichage n'est porte par aucun champ. Il faut un champ de plus en phase 20.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -311,7 +316,12 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- Prochaine action v1.5 : plan **19-05** (confirmation finale de la phase 19), puis `/gsd:plan-phase 20`.
+- Prochaine action v1.5 : `/gsd:plan-phase 20` (derniere phase du milestone).
+- **A faire par l'utilisateur, hors GSD — NOUVEAU** : constater la bascule « 10 % » -> « indisponible +
+  invitation » en lancant la version du DEPOT. Protocole complet sous « A VERIFIER PAR L'UTILISATEUR »
+  dans `19-05-SUMMARY.md`. **Attention** : lancer l'overlay purge les 25 groupes de hooks de
+  `~/.claude/settings.json` (reconciliation de la phase 15) — c'est voulu, mais a faire en connaissance
+  de cause. Ne bloque pas la phase 20.
 - **À faire par l'utilisateur, hors GSD** : les deux vérifications manuelles de la phase 17, listées sous
   « À VÉRIFIER PAR L'UTILISATEUR » dans `17-05-SUMMARY.md` — (1) lisibilité de la pastille de
   déconnexion dans les 3 thèmes × 5 styles × 2 modes, (2) parcours de reconnexion en un clic de bout en
@@ -330,7 +340,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T05:01:30.172Z
-Stopped at: Completed 19-04-PLAN.md
+Last session: 2026-09-12T05:15:56.235Z
+Stopped at: Completed 19-05-PLAN.md (phase 19 close, constat humain delegue)
 Resume file: None
-Next: /gsd:execute-phase 19 (plan 19-05, confirmation finale de la phase)
+Next: /gsd:plan-phase 20 (Honnetete visible — cadran & diagnostic, EXA-03 + EXA-06)
