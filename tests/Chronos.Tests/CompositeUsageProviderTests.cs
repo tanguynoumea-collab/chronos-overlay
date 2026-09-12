@@ -8,6 +8,12 @@ namespace Chronos.Tests;
 /// Prouve DAT-06 : le composite selectionne la MEILLEURE source PAR FENETRE
 /// (Exact prioritaire, sinon Estimated, sinon Unavailable). Deux fakes IUsageProvider renvoient
 /// des snapshots fabriques. Tests PURS -> [Fact] classiques.
+///
+/// <para><b>Note phase 19.</b> Ces tests decrivent un composite qui IGNORE DELIBEREMENT l'age : la
+/// doctrine de fraicheur (DoctrineFraicheur) vit au-dessus, dans LastExactUsageProvider, seule couche a
+/// tenir l'horloge, le magasin et le journal d'activite. Rien n'est a corriger ici. Les six tests de
+/// caracterisation de la phase 18 gardent tout leur sens : ils prouvent que le statut serveur et le
+/// depassement traversent la chaine PAR REFERENCE, donc que HDR-03/HDR-04 sont vivants.</para>
 /// </summary>
 public class CompositeUsageProviderTests
 {
