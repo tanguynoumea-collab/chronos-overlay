@@ -44,7 +44,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
   lieu du proxy `Notification`.
 - [x] **EVT-02**: `Notification` cesse d'être traité comme un **état**. C'est une alerte d'absence : au mieux
   un indice, jamais une vérité sur ce que fait la session.
-- [ ] **EVT-03**: Des **battements de cœur** rafraîchissent « réfléchit » : l'état est **observé** tant que le
+- [x] **EVT-03**: Des **battements de cœur** rafraîchissent « réfléchit » : l'état est **observé** tant que le
   travail continue, et cesse de dépendre d'un seuil d'expiration deviné.
 - [ ] **EVT-04**: Une **interruption utilisateur** (Échap — aucun `Stop` n'est émis) ne laisse plus la session
   dans un état faux ni invisible.
@@ -107,7 +107,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | SRC-03 | Phase 21 | Complete |
 | EVT-01 | Phase 25 | Complete |
 | EVT-02 | Phase 25 | Complete |
-| EVT-03 | Phase 25 | Pending |
+| EVT-03 | Phase 25 | Complete |
 | EVT-04 | Phase 25 | Pending |
 | EVT-05 | Phase 25 | Pending |
 | FUS-01 | Phase 24 | Complete |

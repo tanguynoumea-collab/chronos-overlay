@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: "25-01 livré et auto-vérifié — prochaine étape : 25-02 (EVT-03, battements de cœur)"
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-09-12T19:53:25.362Z"
+status: "25-02 livré et auto-vérifié — prochaine étape : 25-03 (EVT-04, interruption déduite)"
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-09-12T20:15:58.319Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 14
+  percent: 87
 ---
 
 # Project State
@@ -28,11 +28,11 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 25 (Le contrat d'événements refondé) — EXECUTING
-Plan: 1 of 4 (vague 1/4 livrée)
-Status: 25-01 livré et auto-vérifié — prochaine étape : 25-02 (EVT-03, battements de cœur)
+Plan: 3 of 4 (vagues 1 et 2 livrées)
+Status: 25-02 livré et auto-vérifié — prochaine étape : 25-03 (EVT-04, interruption déduite)
 Last activity: 2026-09-12
 
-Progress: [████████░░] 80%  (4 phases sur 6 — phases 21 à 24 closes ; 12 plans sur 15 livrés)
+Progress: [█████████░] 87%  (4 phases sur 6 — phases 21 à 24 closes ; 14 plans sur 15 livrés)
 
 **SHA d'entrée de phase 25 : `ce40e99cffe605e2baa93511e2555884aa6acdb8`** — les plans 25-02 à 25-04 en ont
 besoin tel quel pour leurs critères `git diff --stat <SHA>..HEAD` (un `git diff --stat` nu est muet après
@@ -40,9 +40,9 @@ commit).
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 12
-- Suite de tests : **817 verts / 0 échec** en ~5 s (baseline d'entrée de phase 25 : 788 ; +7 en 25-01 T1,
-  +8 en T2, +14 en T3 ; attendu indicatif 816, écart de +1 justifié dans 25-01-SUMMARY.md)
+- Total plans completed (v1.6): 14
+- Suite de tests : **837 verts / 0 échec** en ~4 s (baseline d'entrée de phase 25 : 788 ; 817 après 25-01 ;
+  +9 en 25-02 T1, +7 en T2, +4 en T3 ; attendu indicatif 833, écart de +4 justifié dans 25-02-SUMMARY.md)
 
 ## Milestone v1.5 (clos)
 
@@ -180,6 +180,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 24 P01 | 41min | 3 tasks | 7 files |
 | Phase 24 P02 | 10min | 2 tasks | 6 files |
 | Phase 25 P01 | 50 min | 3 tasks | 6 files |
+| Phase 25 P02 | 55 min | 3 tasks | 8 files |
 
 ### Decisions
 
@@ -419,6 +420,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 25]: permission_prompt est absent du matcher de Notification ET veto au routage : PermissionRequest, l'evenement dedie, en a seul la charge — deux chemins pour un meme fait rendraient la source illisible.
 - [Phase 25]: Le veto de notification ne produit jamais d'etat, il n'en retire que : un type absent ou futur laisse l'attente intacte, donc un changement du nom de champ ne peut ni fabriquer ni perdre un etat en silence.
 - [Phase 25]: SessionHookInstaller.Events est conserve mais DERIVE de Cablage : une seule liste a tenir, jamais deux a garder d'accord.
+- [Phase 25]: 25-02 (f) : reprise BORNEE sur IOException retenue (issue i) ; FileShare.ReadWrite ecarte — deux ecrivains entrelaces produiraient un fragment la ou il y avait un etat
+- [Phase 25]: 25-02 : la reprise UNIQUE recommandee mesuree insuffisante (288 -> 209 puis 180 refus sur 400), remplacee par une reprise bornee avec cession de la main (0/400)
+- [Phase 25]: 25-02 : timeout de 3 s pour les deux battements, 10 s pour les six autres entrees — PreToolUse est BLOQUANT
+- [Phase 25]: 25-02 : veto sous-agent place APRES la garde session_id et AVANT le court-circuit SessionEnd ; deux exceptions seulement (PermissionRequest, Notification)
+- [Phase 25]: 25-02 : StaleWorking renomme SilenceDesBattements — la VALEUR (20 min) ne bouge pas, seul son SENS change
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -507,7 +513,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T19:52:46.165Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-09-12T20:15:58.313Z
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
