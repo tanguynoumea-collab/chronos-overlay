@@ -96,6 +96,19 @@ public partial class App : Application
         }
         catch { }
 
+        // SRC-02 — les identifiants synthétiques de l'ancienne source app-bureau (préfixe « desktop: »)
+        // sont retirés DU FICHIER archived.json, pas seulement ignorés à la lecture. Mesuré le 2026-09-12 :
+        // archived.json ne contenait QUE deux de ces entrées, datées de juillet. Elles prouvent que
+        // l'utilisateur avait dû les archiver À LA MAIN — leur horodatage était rafraîchi à chaque poll,
+        // donc elles ne vieillissaient jamais et ne pouvaient jamais expirer. Les laisser dans le fichier,
+        // c'est laisser son contournement gravé dans ses données.
+        //
+        // Même régime que la réconciliation ci-dessus : mode OVERLAY uniquement (les modes --hook et
+        // --statusline sortent bien plus haut, l. 20 et 30), best-effort et silencieux — ne peut pas
+        // empêcher le démarrage. Idempotent : une fois le fichier propre, l'appel suivant ne réécrit rien.
+        try { _host.Services.GetRequiredService<ArchiveStore>().PurgerPrefixe("desktop:"); }
+        catch { }
+
         // Première exécution : proposer d'activer la SOURCE EXACTE (pont statusLine Claude Code).
         // Une seule fois (StatusLinePromptDismissed), non bloquant pour le rendu de l'overlay.
         _host.Services.GetRequiredService<IStatusLineSetup>().OfferOnFirstRun();

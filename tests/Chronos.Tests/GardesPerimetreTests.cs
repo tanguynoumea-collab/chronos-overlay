@@ -73,6 +73,26 @@ public class GardesPerimetreTests
         Assert.DoesNotContain("KindLabel", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE CÂBLAGE (SRC-02). <c>PurgerPrefixe</c> peut être parfaitement testée et n'être jamais
+    /// appelée : le défaut ne se verrait alors que chez l'utilisateur, sur ses propres données, et
+    /// silencieusement. Le démarrage en mode overlay doit invoquer la purge du préfixe de l'ancienne
+    /// source app-bureau. Contrôle de SOURCE : <c>OnStartup</c> monte un host WPF complet, il n'est pas
+    /// instanciable sous test sans lancer l'application — ce que la phase interdit.
+    /// </summary>
+    [Fact]
+    public void Le_demarrage_purge_les_identifiants_fantomes_du_magasin_d_archives()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Une garde qui lirait un fichier vide serait muette.
+        Assert.Contains("OnStartup", texte, StringComparison.Ordinal);
+        Assert.Contains("PurgerPrefixe(\"desktop:\")", texte, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()
