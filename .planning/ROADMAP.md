@@ -210,6 +210,12 @@ subir en silence.
   4. **La précision ne bat pas la fraîcheur** : un signal plus ancien mais plus « spécifique » (un
      `permission_prompt`, par exemple) n'écrase jamais un signal plus récent, et le cas d'égalité d'âge est
      tranché par une règle explicite et testée, pas par le hasard d'un parcours.
+**Plans**: 2 plans, 2 vagues strictement sérielles (24-02 affiche les désaccords que 24-01 fait produire :
+il lui faut le 4e champ de `LectureSessions`. Les fichiers des deux plans sont par ailleurs disjoints.)
+
+Plans:
+- [ ] 24-01-PLAN.md — FUS-01 : l'arbitrage se fait sur la fraîcheur, l'égalité d'âge a une règle nommée, et l'ordre d'insertion ne revient pas
+- [ ] 24-02-PLAN.md — FUS-02 : le diagnostic nomme la source retenue, la source écartée et l'écart d'âge
 
 ### Phase 25 : Le contrat d'événements refondé
 **Goal**: Les états du widget viennent d'événements qui veulent **vraiment** dire ce qu'on leur fait dire :
