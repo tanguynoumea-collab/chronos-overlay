@@ -75,7 +75,11 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>EXA-05 — aucun chiffre exact n'a JAMAIS été obtenu ET rien n'est disponible : l'overlay
     /// invite à se connecter plutôt que d'afficher un pourcentage. ACTIONNABLE (ReconnecterCommand).
     /// Distinct de la pastille de déconnexion : celle-ci dit « on a perdu la connexion », celle-là dit
-    /// « on n'a jamais rien eu » — deux diagnostics différents pour un même geste de réparation.</summary>
+    /// « on n'a jamais rien eu » — deux diagnostics différents pour un même geste de réparation.
+    ///
+    /// <see cref="AfficherInvitationConnexion"/> n'est JAMAIS posée directement : elle est recomposée
+    /// avec les deux autres pastilles par <see cref="MajPastilles"/>, seul point qui voit
+    /// simultanément les deux entrées brutes.</summary>
     [ObservableProperty] private bool _afficherInvitationConnexion;
 
     /// <summary>HDR-06 — interrupteur de la sonde d'en-têtes. DISTINCT d'<see cref="IsOAuthUsageEnabled"/> :
@@ -302,13 +306,33 @@ public sealed partial class MainViewModel : ObservableObject
     // service NEUTRE émet sur un thread du pool, l'abonné marshalle lui-même.
     private void SurDepassementChange(object? s, EtatDepassement? d) => _ui.Post(MajTexteEtatSonde);
 
-    /// <summary>Thread UI uniquement. NonConnecte n'allume RIEN en phase 17 : l'invite « jamais
-    /// connecté » est EXA-05 (phase 19) ; l'allumer ici créerait un badge permanent pour un
-    /// utilisateur qui a délibérément choisi de ne pas se connecter.</summary>
+    // Entrées BRUTES des pastilles, mémorisées parce qu'elles arrivent par deux canaux distincts et à
+    // des instants distincts (un snapshot ; un événement d'authentification). Sans ce point de
+    // recomposition unique, un changement d'état d'authentification survenant APRÈS le dernier snapshot
+    // laisserait l'invitation périmée — et réciproquement.
+    private EtatAuthentification _etatAuth = EtatAuthentification.Connecte;
+    private bool _jamaisDExactEtRienAAfficher;
+
+    /// <summary>Thread UI uniquement. Recompose les TROIS pastilles à partir des entrées brutes.
+    /// L'invitation s'efface devant la pastille de déconnexion : les deux portent le MÊME geste
+    /// (ReconnecterCommand), les afficher ensemble sur un cadran de 170 px serait une redondance, pas
+    /// une information — et la déconnexion est le diagnostic le plus précis des deux.</summary>
+    private void MajPastilles()
+    {
+        AfficherPastilleDeconnexion = _etatAuth == EtatAuthentification.Deconnecte;
+        AfficherPastilleHorsLigne   = _etatAuth == EtatAuthentification.HorsLigne;
+        AfficherInvitationConnexion = _jamaisDExactEtRienAAfficher && !AfficherPastilleDeconnexion;
+    }
+
+    /// <summary>Thread UI uniquement. NonConnecte n'allume RIEN par lui-même, phase 19 comprise : c'est
+    /// le BIT DU MAGASIN (« un exact a-t-il déjà été obtenu ») et non l'état d'authentification qui
+    /// décide de l'invitation EXA-05. Un utilisateur peut être parfaitement connecté et n'avoir jamais
+    /// obtenu le moindre chiffre (sonde coupée, endpoint muet) ; l'allumer ici créerait à l'inverse un
+    /// badge permanent pour qui a délibérément choisi de ne pas se connecter.</summary>
     internal void AppliquerEtatAuth(EtatAuthentification e)
     {
-        AfficherPastilleDeconnexion = e == EtatAuthentification.Deconnecte;
-        AfficherPastilleHorsLigne   = e == EtatAuthentification.HorsLigne;
+        _etatAuth = e;
+        MajPastilles();
     }
 
     /// <summary>Applique un snapshot (thread UI) : recalibre le repli hebdo, pousse chaque fenêtre, l'état global, puis rend.</summary>
@@ -325,6 +349,14 @@ public sealed partial class MainViewModel : ObservableObject
         CapturedAt = snap.SourceCapturedAt;
         DataUnavailable = snap.FiveHour.Reliability == SourceReliability.Unavailable
                        && snap.SevenDay.Reliability == SourceReliability.Unavailable;
+
+        // EXA-05 : jamais un pourcentage quand aucun exact n'a JAMAIS été obtenu — on invite à se
+        // connecter. « == false » et NON « != true » : null signifie « non évalué » (magasin en panne,
+        // ou snapshot né hors de la couche de doctrine, dont UsageSnapshot.Empty), et une absence de
+        // réponse ne doit jamais produire une affirmation.
+        _jamaisDExactEtRienAAfficher = snap.UnExactADejaEteObtenu == false && DataUnavailable;
+        MajPastilles();
+
         MajTexteEtatSonde();        // HDR-03 : le statut déclaré suit les fenêtres, tick par tick
         Interpolate(_clock.UtcNow); // premier rendu immédiat (pas d'overlay vide entre deux ticks)
     }

@@ -174,5 +174,31 @@
                  Width="10" Height="10" Fill="{DynamicResource TexteSecondaire}"
                  ToolTip="Hors ligne — chiffres non rafraîchis"
                  Visibility="{Binding AfficherPastilleHorsLigne, Converter={StaticResource BoolToVis}}"/>
+
+        <!-- EXA-05 : JAMAIS CONNECTÉ / JAMAIS RIEN OBTENU. ACTIONNABLE, même famille que la pastille
+             de déconnexion (Button pour que MouseLeftButtonDown soit Handled, donc aucun DragMove
+             parasite ; Background non-null pour rester hit-testable sur une fenêtre AllowsTransparency
+             — Transparent suffit en WPF, seul {x:Null} ne l'est pas).
+             Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE sur
+             IsLoggedIn == _store.Exists : un clic supprimerait le coffre de jetons.
+             Mutuellement exclusive de PastilleDeconnexion, garanti côté ViewModel (MajPastilles) :
+             les deux portent le même geste, les afficher ensemble serait une redondance.
+             Son apparence définitive (tokens de design, cohabitation des trois pastilles dans les deux
+             modes et les trois thèmes) est la phase 20 ; ici on livre le SIGNAL, pas sa forme finale. -->
+        <Button x:Name="PastilleInvitationConnexion"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
+                Cursor="Hand" Focusable="False"
+                ToolTip="Aucun chiffre d'usage n'a jamais été obtenu — cliquer pour se connecter à Claude"
+                Command="{Binding ReconnecterCommand}"
+                Visibility="{Binding AfficherInvitationConnexion, Converter={StaticResource BoolToVis}}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Grid Background="Transparent">
+                        <Ellipse Fill="{DynamicResource TexteSecondaire}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
     </Grid>
 </Window>
