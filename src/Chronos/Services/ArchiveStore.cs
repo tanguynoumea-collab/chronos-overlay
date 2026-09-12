@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -70,4 +70,9 @@ public sealed class ArchiveStore
         }
         catch { }
     }
+
+    // SRC-02 (phase 21) — SQUELETTE de l'étape ROUGE. Le contrat est posé pour que le projet de tests
+    // compile (précédent 18-01 : une étape rouge doit être COMPORTEMENTALE, pas une erreur de compilation
+    // qui rendrait « dotnet test » non invocable). L'implémentation arrive à l'étape VERTE.
+    public int PurgerPrefixe(string prefixe) => throw new System.NotImplementedException();
 }
