@@ -194,6 +194,22 @@ public class ArbitrageSessionsTests
             $"ecart d'age negatif sur {d.SessionId} : {d.EcartAge}"));
     }
 
+    /// <summary>
+    /// TRT-01 — le détecteur de traitement a besoin de savoir QUI a parlé : sans la source, « attente
+    /// puis travail » ne distingue pas une réponse de l'utilisateur d'un relais entre deux sources. Les
+    /// vainqueurs sont donc la MÊME séquence que les retenus, index pour index, chaque élément portant
+    /// en plus sa source. Cette garde empêche les deux séquences de dériver l'une de l'autre.
+    /// </summary>
+    [Fact]
+    public void Les_vainqueurs_sont_les_retenus_avec_leur_source()
+    {
+        var r = ArbitrageSessions.Trancher(Corpus());
+
+        // Comparer deux listes VIDES serait muet : on exige d'abord qu'il y ait quelque chose à comparer.
+        Assert.NotEmpty(r.Vainqueurs);
+        Assert.Equal(r.Retenus, r.Vainqueurs.Select(v => v.Session));
+    }
+
     [Fact]
     public void L_entree_vide_rend_deux_listes_vides()
     {

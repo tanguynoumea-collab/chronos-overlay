@@ -35,10 +35,17 @@ public sealed record DesaccordSources(
     SourceSession SourceEcartee, SessionActivity EtatEcarte,
     System.TimeSpan EcartAge);
 
-/// <summary>Ce que l'arbitrage retient, et ce qu'il a écarté en le DISANT.</summary>
+/// <summary>Ce que l'arbitrage retient, et ce qu'il a écarté en le DISANT.
+/// <para><see cref="Vainqueurs"/> est la MÊME séquence que <see cref="Retenus"/>, index pour index,
+/// chaque élément portant en plus la source qui a gagné. Les deux ne sont pas redondants : les filtres
+/// du moniteur ne consomment que des instantanés, tandis que le détecteur de traitement a besoin de
+/// savoir QUI a parlé — sans cela il lit « la session est passée d'attente à travail » là où deux
+/// sources se sont relayées. Un test tient l'égalité des deux séquences, pour qu'aucune dérive ne
+/// puisse s'installer entre elles.</para></summary>
 public sealed record ResultatArbitrage(
     IReadOnlyList<SessionSnapshot> Retenus,
-    IReadOnlyList<DesaccordSources> Desaccords);
+    IReadOnlyList<DesaccordSources> Desaccords,
+    IReadOnlyList<SignalSession> Vainqueurs);
 
 /// <summary>
 /// FUS-01 — quand deux sources parlent de la même session, c'est la plus RÉCENTE qui gagne.
@@ -73,6 +80,7 @@ public static class ArbitrageSessions
     {
         var retenus = new List<SessionSnapshot>();
         var desaccords = new List<DesaccordSources>();
+        var vainqueurs = new List<SignalSession>();
 
         // Le regroupement ET la sortie sont ordonnés par identifiant : la SÉQUENCE rendue est elle aussi
         // indépendante de l'ordre d'entrée, sinon « le résultat ne dépend plus de l'ordre » ne vaudrait
@@ -83,6 +91,7 @@ public static class ArbitrageSessions
             var classes = groupe.OrderBy(s => s, Comparateur).ToList();
             var vainqueur = classes[0];
             retenus.Add(vainqueur.Session);
+            vainqueurs.Add(vainqueur);
 
             foreach (var ecarte in classes.Skip(1))
             {
@@ -97,7 +106,7 @@ public static class ArbitrageSessions
             }
         }
 
-        return new ResultatArbitrage(retenus, desaccords);
+        return new ResultatArbitrage(retenus, desaccords, vainqueurs);
     }
 
     private static readonly IComparer<SignalSession> Comparateur =

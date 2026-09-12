@@ -8,34 +8,56 @@ namespace Chronos.Tests;
 /// Prouve le cœur de l'auto-disparition par hystérésis (phase 14, réduite en phase 21) : le magasin
 /// RÉVERSIBLE <see cref="TreatedStore"/>, le détecteur STATEFUL <see cref="SessionTreatmentTracker"/>
 /// (NET-01 répondu, NET-03 réapparition/purge), l'archivage PERMANENT (NET-04) et le branchement dans
-/// <see cref="SessionMonitor"/>. Tout se teste avec des séquences de snapshots synthétiques et une horloge
-/// injectée — aucune fenêtre réelle. NET-02 (acquittement par focus) a disparu avec la source app-bureau :
-/// la branche n'atteignait structurellement jamais une session Claude Code.
+/// <see cref="SessionMonitor"/>. Tout se teste avec des séquences de signaux synthétiques et une horloge
+/// INJECTÉE — aucune fenêtre réelle, et aucun instant emprunté à la machine. NET-02 (acquittement par
+/// focus) a disparu avec la source app-bureau : la branche n'atteignait structurellement jamais une
+/// session Claude Code.
 /// </summary>
 public class TreatedSessionsTests
 {
+    /// <summary>L'instant de référence. Fixe : ce fichier ne demande jamais l'heure à personne — un
+    /// filtre de durée adossé à l'heure de la machine est vert à l'écriture et rouge quelques heures
+    /// plus tard sans qu'une ligne de code ait bougé (trois plans de la phase 22).</summary>
+    private static readonly DateTimeOffset T = new(2026, 9, 12, 12, 0, 0, TimeSpan.Zero);
+
     private static string TempFile() => Path.Combine(Path.GetTempPath(), "chronos-treated-" + Guid.NewGuid().ToString("N") + ".json");
     private static SessionSnapshot Cli(string id, SessionActivity a, DateTimeOffset t) => new(id, "Proj", a, null, t);
 
-    // --- TreatedStore : round-trip + réversibilité + TTL ---
+    // Un SIGNAL dit QUI a parlé. Tous les cas du détecteur ci-dessous gardent une source UNIQUE d'un cycle
+    // à l'autre, sauf ceux qui testent nommément la bascule de source.
+    private static SignalSession Sig(string id, SessionActivity a, DateTimeOffset t,
+                                     SourceSession src = SourceSession.Hook)
+        => new(src, new SessionSnapshot(id, "Proj", a, null, t));
+
+    // --- TreatedStore : round-trip + réversibilité + rétention de fichier ---
 
     [Fact]
     public void TreatedStore_set_load_remove_et_purge_TTL()
     {
-        var store = new TreatedStore(TempFile());
+        // L'horloge du magasin est INJECTÉE : aucune de ces assertions ne dépend de l'heure de la journée.
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
 
-        // treatedWaitingTs = horodatage d'un épisode d'attente RÉCENT (sinon la purge TTL le rejette aussitôt).
-        var recent = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        // treatedWaitingTs = horodatage d'un épisode d'attente, ici contemporain de l'horloge injectée.
+        var recent = T.ToUnixTimeMilliseconds();
         store.Set("a", recent);
         Assert.True(store.Load().TryGetValue("a", out var ts) && ts == recent);
 
         store.Remove("a");
         Assert.False(store.Load().ContainsKey("a"));
 
-        // Entrée vieille de > 6 h → jamais rendue par Load() (purge TTL).
-        var old = DateTimeOffset.UtcNow.AddHours(-7).ToUnixTimeMilliseconds();
+        // La borne est une RÉTENTION DE FICHIER, pas un délai d'affichage : au-delà, l'entrée n'est plus
+        // rendue — la session n'est de toute façon plus lue par le moniteur depuis longtemps.
+        var old = T.AddDays(-2).ToUnixTimeMilliseconds();
         store.Set("vieux", old);
         Assert.False(store.Load().ContainsKey("vieux"));
+
+        // ET L'INVERSE, qui accuse l'ancienne borne de six heures : une session qui attend depuis SEPT
+        // heures est encore pleinement affichée (le moniteur la lit jusqu'à huit heures). Sous l'ancienne
+        // durée de vie, l'entrée disparaissait en silence et « marquer traitée » devenait un no-op — sur
+        // le cas même dont ce milestone est parti.
+        var septHeures = T.AddHours(-7).ToUnixTimeMilliseconds();
+        store.Set("sept-heures", septHeures);
+        Assert.True(store.Load().TryGetValue("sept-heures", out var ts7) && ts7 == septHeures);
     }
 
     // --- SessionTreatmentTracker ---
@@ -43,28 +65,28 @@ public class TreatedSessionsTests
     [Fact]
     public void NET01_repondu_marque_traitee()
     {
-        var store = new TreatedStore(TempFile());
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
-        var t0 = DateTimeOffset.UtcNow;
+        var t0 = T;
 
-        tracker.Observe(new[] { Cli("s", SessionActivity.WaitingTurn, t0) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingTurn, t0) }, t0);
         Assert.Empty(store.Load()); // en attente → rien encore
 
         var t1 = t0.AddSeconds(5);
-        tracker.Observe(new[] { Cli("s", SessionActivity.Working, t1) }, t1);
+        tracker.Observe(new[] { Sig("s", SessionActivity.Working, t1) }, t1);
         Assert.True(store.Load().ContainsKey("s")); // attente → Working = répondu = traité
     }
 
     [Fact]
     public void NET01_disparition_seule_ne_traite_pas()
     {
-        var store = new TreatedStore(TempFile());
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
-        var t0 = DateTimeOffset.UtcNow;
+        var t0 = T;
 
-        tracker.Observe(new[] { Cli("s", SessionActivity.WaitingTurn, t0) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingTurn, t0) }, t0);
         var t1 = t0.AddSeconds(5);
-        tracker.Observe(System.Array.Empty<SessionSnapshot>(), t1); // disparue
+        tracker.Observe(System.Array.Empty<SignalSession>(), t1); // disparue
 
         Assert.Empty(store.Load()); // la disparition n'est pas un « répondu »
     }
@@ -72,19 +94,19 @@ public class TreatedSessionsTests
     [Fact]
     public void NET03_reapparition_purge_l_entree()
     {
-        var store = new TreatedStore(TempFile());
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
-        var t0 = DateTimeOffset.UtcNow;
+        var t0 = T;
         var t1 = t0.AddSeconds(5);
 
         // NET-01 : la session est traitée (store contient "s").
-        tracker.Observe(new[] { Cli("s", SessionActivity.WaitingTurn, t0) }, t0);
-        tracker.Observe(new[] { Cli("s", SessionActivity.Working, t1) }, t1);
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingTurn, t0) }, t0);
+        tracker.Observe(new[] { Sig("s", SessionActivity.Working, t1) }, t1);
         Assert.True(store.Load().ContainsKey("s"));
 
         // Nouvel épisode d'attente PLUS RÉCENT → purge (réapparition).
         var t2 = t1.AddSeconds(5);
-        tracker.Observe(new[] { Cli("s", SessionActivity.WaitingTurn, t2) }, t2);
+        tracker.Observe(new[] { Sig("s", SessionActivity.WaitingTurn, t2) }, t2);
         Assert.False(store.Load().ContainsKey("s"));
     }
 
@@ -109,11 +131,11 @@ public class TreatedSessionsTests
     [Fact]
     public void NET01_le_monitor_masque_apres_reponse()
     {
-        var store = new TreatedStore(TempFile());
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
         var source = new MutableSource();
         var monitor = BuildMonitor(source, store, tracker);
-        var t0 = DateTimeOffset.UtcNow;
+        var t0 = T;
 
         source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.WaitingTurn, t0) };
         Assert.Contains(monitor.Read(t0), s => s.SessionId == "s"); // en attente → visible
@@ -126,11 +148,11 @@ public class TreatedSessionsTests
     [Fact]
     public void NET03_le_monitor_la_reaffiche_sur_nouvel_episode()
     {
-        var store = new TreatedStore(TempFile());
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
         var source = new MutableSource();
         var monitor = BuildMonitor(source, store, tracker);
-        var t0 = DateTimeOffset.UtcNow;
+        var t0 = T;
         var t1 = t0.AddSeconds(5);
 
         // Attente puis répondu → masquée.
@@ -149,12 +171,12 @@ public class TreatedSessionsTests
     [Fact]
     public void NET04_archivee_reste_masquee_meme_en_attente()
     {
-        var store = new TreatedStore(TempFile());
+        var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
         var source = new MutableSource();
         var archive = new ArchiveStore(TempFile());
         var monitor = BuildMonitor(source, store, tracker, archive);
-        var t0 = DateTimeOffset.UtcNow;
+        var t0 = T;
 
         // Archivée = permanent (NET-04), contraste direct avec traité (réversible NET-03).
         archive.Add("s");
@@ -172,7 +194,7 @@ public class TreatedSessionsTests
     {
         // SessionMonitor construit SANS les paramètres d'hystérésis → aucune exception, la session en
         // attente reste visible (hystérésis désactivée = null).
-        var now = DateTimeOffset.UtcNow;
+        var now = T;
         var source = new MutableSource { Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.WaitingTurn, now) } };
         var monitor = new SessionMonitor(TempDir(), source, new ArchiveStore(TempFile()));
 

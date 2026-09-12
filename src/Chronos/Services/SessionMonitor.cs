@@ -116,7 +116,7 @@ public sealed class SessionMonitor
         //      TreatedStore (ajout NET-01, purge NET-03). Best-effort : ne casse JAMAIS le pipeline. Sa
         //      logique n'est pas touchée ici ; il observe simplement, désormais, un état arbitré.
         var raw = arbitrage.Retenus;
-        try { _tracker?.Observe(raw, now); } catch { }
+        try { _tracker?.Observe(arbitrage.Vainqueurs, now); } catch { }
 
         // 3) Filtres : archivées (permanent, NET-04) PUIS traitées (réversible). Le détecteur possède l'ajout ET
         //    la purge des entrées treated ; ici on MASQUE simplement toute session encore présente dans le magasin.

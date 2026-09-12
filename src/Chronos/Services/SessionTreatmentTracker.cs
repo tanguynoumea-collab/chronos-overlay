@@ -42,13 +42,14 @@ public sealed class SessionTreatmentTracker
     /// Observe un cycle de snapshots bruts fusionnés + horloge, et met à jour <see cref="TreatedStore"/>
     /// (ajout NET-01, purge NET-03).
     /// </summary>
-    public void Observe(IReadOnlyList<SessionSnapshot> raw, System.DateTimeOffset now)
+    public void Observe(IReadOnlyList<SignalSession> vainqueurs, System.DateTimeOffset now)
     {
         var nowMs = now.ToUnixTimeMilliseconds();
         var treated = _store.Load(); // une seule lecture par cycle (sert au test de réapparition NET-03)
 
-        foreach (var s in raw)
+        foreach (var v in vainqueurs)
         {
+            var s = v.Session;
             var id = s.SessionId;
             var isWaiting = IsWaiting(s.Activity);
             var wasWaiting = _lastActivity.TryGetValue(id, out var prev) && IsWaiting(prev);

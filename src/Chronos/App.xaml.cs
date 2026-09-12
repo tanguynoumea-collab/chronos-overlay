@@ -248,7 +248,7 @@ public partial class App : Application
         // Hystérésis (phase 14, réduite en phase 21) : magasin RÉVERSIBLE des sessions traitées + détecteur
         // STATEFUL. Déclarés AVANT le SessionMonitor qui les consomme. L'acquittement par focus est tombé
         // avec la source app-bureau : il exigeait une origine qu'aucune session Claude Code ne porte (SRC-01).
-        services.AddSingleton(_ => new TreatedStore());
+        services.AddSingleton(sp => new TreatedStore(null, sp.GetRequiredService<IClock>()));
         services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
 
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
