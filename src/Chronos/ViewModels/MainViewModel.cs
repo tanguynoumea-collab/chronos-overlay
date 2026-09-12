@@ -32,6 +32,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IOAuthLogin _oauthLogin;
     private readonly ISessionsController _sessions;
     private readonly IAuthStatus _authStatus;
+    private readonly IEtatServeur? _etatServeur;
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
     private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
@@ -70,6 +71,18 @@ public sealed partial class MainViewModel : ObservableObject
     // Deux booléens plutôt qu'un enum bindé : cohérent avec IsStyleArcs / IsModeNormal, zéro converter.
     [ObservableProperty] private bool _afficherPastilleDeconnexion;
     [ObservableProperty] private bool _afficherPastilleHorsLigne;
+
+    /// <summary>HDR-06 — interrupteur de la sonde d'en-têtes. DISTINCT d'<see cref="IsOAuthUsageEnabled"/> :
+    /// la sonde consomme une vraie micro-requête sur le compte, l'autre non. Les mélanger priverait
+    /// l'utilisateur du seul interrupteur qui gouverne une dépense.</summary>
+    [ObservableProperty] private bool _isSondeEnTetesActivee;
+
+    /// <summary>HDR-03 / HDR-04 — ce que le SERVEUR a déclaré (statut par fenêtre, dépassement de compte),
+    /// en une ligne pour les réglages. VIDE quand rien n'est rapporté : jamais « autorisé » par défaut.</summary>
+    [ObservableProperty] private string _texteEtatSonde = "";
+
+    /// <summary>Pilote la visibilité de la ligne ci-dessus (motif HasTokens / HasUtilizationText).</summary>
+    [ObservableProperty] private bool _afficherEtatSonde;
 
     // État reflété dans l'item « Sessions Claude Code » : le widget de sessions est-il activé ?
     [ObservableProperty] private bool _isSessionsWidgetEnabled;
@@ -186,12 +199,19 @@ public sealed partial class MainViewModel : ObservableObject
         _sessions.SetTheme(choice.Theme);   // le widget de sessions (l'autre overlay) suit le même thème
     }
 
+    /// <summary>
+    /// <paramref name="etatServeur"/> est OPTIONNEL et en DERNIÈRE position, et ce n'est pas un détail de
+    /// style : les sites de construction préexistants (2 en tests, la production passant par la DI)
+    /// compilent sans une retouche. Même protocole d'extension qu'au plan 17-05 pour <c>IAuthStatus</c>,
+    /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
+    /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
         IRecalibrationPrompt prompt, SettingsService settings,
         DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
-        ISessionsController sessions, IAuthStatus authStatus)
+        ISessionsController sessions, IAuthStatus authStatus,
+        IEtatServeur? etatServeur = null)
     {
         _ui = ui;
         _clock = clock;
@@ -210,6 +230,7 @@ public sealed partial class MainViewModel : ObservableObject
         IsBackground = _settings.Background;
         IsAutostart = _autostart.IsEnabled();
         IsOAuthUsageEnabled = _settings.OAuthUsageEnabled;
+        IsSondeEnTetesActivee = _settings.SondeEnTetesActivee;   // HDR-06 — miroir de l'état RÉEL, comme ci-dessus
         IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
         IsSessionsWidgetEnabled = _sessions.IsEnabled;
@@ -251,6 +272,17 @@ public sealed partial class MainViewModel : ObservableObject
         _authStatus = authStatus;
         authStatus.EtatChange += SurEtatAuthChange;
         AppliquerEtatAuth(authStatus.Etat);   // état initial, sans attendre la première transition
+
+        // HDR-03 / HDR-04 : canal LATÉRAL de la sonde. Optionnel — absent, l'état serveur reste muet.
+        // MajTexteEtatSonde() est appelé DÈS ICI, sans attendre une transition : même raison qu'au plan
+        // 17-05 pour la pastille d'authentification — sur cette machine rien ne transitera avant
+        // longtemps, et un état appliqué seulement sur transition resterait vide indéfiniment.
+        _etatServeur = etatServeur;
+        if (_etatServeur is not null)
+        {
+            _etatServeur.DepassementChange += SurDepassementChange;
+            MajTexteEtatSonde();
+        }
     }
 
     // FRONTIÈRE DE THREAD — franchie UNE seule fois (RAF-04). Aucune mutation d'ObservableProperty hors d'ici.
@@ -258,6 +290,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     // FRONTIÈRE DE THREAD — franchie UNE seule fois (RAF-04), comme OnSnapshotChanged.
     private void SurEtatAuthChange(object? s, EtatAuthentification e) => _ui.Post(() => AppliquerEtatAuth(e));
+
+    // TROISIÈME et dernière frontière de thread du ViewModel (RAF-04). Le plan 17-05 annonçait la
+    // deuxième comme « dernière » : cet ajout l'amende, en conservant le motif à l'identique — un
+    // service NEUTRE émet sur un thread du pool, l'abonné marshalle lui-même.
+    private void SurDepassementChange(object? s, EtatDepassement? d) => _ui.Post(MajTexteEtatSonde);
 
     /// <summary>Thread UI uniquement. NonConnecte n'allume RIEN en phase 17 : l'invite « jamais
     /// connecté » est EXA-05 (phase 19) ; l'allumer ici créerait un badge permanent pour un
@@ -282,7 +319,35 @@ public sealed partial class MainViewModel : ObservableObject
         CapturedAt = snap.SourceCapturedAt;
         DataUnavailable = snap.FiveHour.Reliability == SourceReliability.Unavailable
                        && snap.SevenDay.Reliability == SourceReliability.Unavailable;
+        MajTexteEtatSonde();        // HDR-03 : le statut déclaré suit les fenêtres, tick par tick
         Interpolate(_clock.UtcNow); // premier rendu immédiat (pas d'overlay vide entre deux ticks)
+    }
+
+    /// <summary>
+    /// HDR-03 / HDR-04 — thread UI uniquement. Assemble ce que le SERVEUR a déclaré : le statut de
+    /// chaque fenêtre, puis le dépassement du compte.
+    ///
+    /// Le vocabulaire n'est PAS remappé ici : on relit les textes déjà calculés par les deux jauges.
+    /// Un second mapping de statut divergerait du premier le jour où le vocabulaire du serveur bougera.
+    ///
+    /// Rien de rapporté → chaîne VIDE et ligne masquée. Jamais « autorisé » par défaut : l'absence
+    /// d'information n'est pas une bonne nouvelle, et la présenter comme telle serait exactement la
+    /// panne silencieuse que ce milestone éradique.
+    /// </summary>
+    private void MajTexteEtatSonde()
+    {
+        var morceaux = new List<string>();
+
+        if (FiveHour.HasStatutServeur) morceaux.Add("5 h : " + FiveHour.TexteStatutServeur);
+        if (SevenDay.HasStatutServeur) morceaux.Add("hebdo : " + SevenDay.TexteStatutServeur);
+
+        // Le dépassement arrive par le canal LATÉRAL : il décrit le COMPTE, donc il survit à un Best()
+        // qui aurait écarté la fenêtre porteuse. Pourcentage via le point unique de conversion (HDR-05).
+        if (_etatServeur?.Depassement is { Utilization: not null } d)
+            morceaux.Add("dépassement " + UsageNormalization.PourcentagePourAffichage(d.Utilization));
+
+        TexteEtatSonde = string.Join(" · ", morceaux);
+        AfficherEtatSonde = TexteEtatSonde.Length > 0;
     }
 
     /// <summary>PUR, aucun I/O (RAF-03) — appelé chaque seconde par le DispatcherTimer (StartClock).</summary>
@@ -379,6 +444,22 @@ public sealed partial class MainViewModel : ObservableObject
             CadranMode = IsModeEtendu ? CadranDisplayMode.Etendu : CadranDisplayMode.Normal
         };
         _settingsService.Save(_settings);
+    }
+
+    /// <summary>HDR-06 — coupe ou rallume la sonde d'en-têtes. Persiste avec une relecture disque FRAÎCHE
+    /// avant Save (GAP-1 : ne pas écraser un réglage écrit ailleurs), puis redéclenche l'orchestrateur pour
+    /// que l'effet soit immédiat — le provider relit son interrupteur à chaque GetAsync.
+    ///
+    /// Réglage DISTINCT d'OAuthUsageEnabled : couper l'un ne coupe pas l'autre, parce que leurs profils de
+    /// coût sont OPPOSÉS — la sonde dépense une micro-requête par passage, l'endpoint OAuth ne dépense rien.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleSondeEnTetes()
+    {
+        IsSondeEnTetesActivee = !IsSondeEnTetesActivee;
+        _settings = _settingsService.Load() with { SondeEnTetesActivee = IsSondeEnTetesActivee };
+        _settingsService.Save(_settings);
+        _orchestrator.RequestRefresh();   // application immédiate (la sonde relit son flag à chaque GetAsync)
     }
 
     /// <summary>Se connecter à Claude (login OAuth intégré = source exacte universelle) ou se déconnecter.

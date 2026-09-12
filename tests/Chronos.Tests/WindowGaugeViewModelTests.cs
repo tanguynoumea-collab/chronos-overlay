@@ -165,4 +165,93 @@ public class WindowGaugeViewModelTests
         Assert.Equal("", vm.UtilizationText);
         Assert.False(vm.HasUtilizationText);
     }
+
+    // --- HDR-03 : le statut DÉCLARÉ par le serveur, exposé en texte FR + drapeau de visibilité ---
+    // Posé et testé ici pour que la phase 20 (EXA-03) n'ait plus qu'à binder. AUCUNE géométrie n'en
+    // dépend aujourd'hui : FractionRemaining / FractionElapsed / Utilization restent intacts.
+
+    [Fact]
+    public void Statut_serveur_rejete_est_rendu_en_FR_et_visible()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 1.0,
+            StatutServeur = StatutServeur.Rejete,
+        });
+
+        Assert.Equal("REJETÉ", vm.TexteStatutServeur);
+        Assert.True(vm.HasStatutServeur);
+    }
+
+    [Fact]
+    public void Statut_serveur_autorise_et_avertissement_ont_DEUX_libelles_distincts()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+            StatutServeur = StatutServeur.Autorise,
+        });
+        Assert.Equal("AUTORISÉ", vm.TexteStatutServeur);
+
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+            StatutServeur = StatutServeur.AutoriseAvertissement,
+        });
+        Assert.Equal("AUTORISÉ (avertissement)", vm.TexteStatutServeur);
+    }
+
+    [Fact]
+    public void Statut_NON_RECONNU_le_dit_plutot_que_de_le_ranger_dans_autorise()
+    {
+        // La famille d'en-têtes « unified » n'est documentée nulle part : une valeur inédite est une
+        // INFORMATION (le vocabulaire du serveur a bougé), pas une absence, et encore moins un « oui ».
+        var vm = new WindowGaugeViewModel(TimeSpan.FromDays(7));
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.SevenDay, Reliability = SourceReliability.Exact,
+            StatutServeur = StatutServeur.NonReconnu,
+        });
+
+        Assert.Equal("statut non reconnu", vm.TexteStatutServeur);
+        Assert.True(vm.HasStatutServeur);
+    }
+
+    [Fact]
+    public void Statut_ABSENT_rend_le_VIDE_et_JAMAIS_autorise()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.4,
+            StatutServeur = null,
+        });
+
+        Assert.Equal("", vm.TexteStatutServeur);
+        Assert.False(vm.HasStatutServeur);
+    }
+
+    [Fact]
+    public void Fenetre_indisponible_ne_porte_AUCUN_statut_serveur()
+    {
+        // Un statut décrit une fenêtre : sans chiffre, il n'a rien à décrire. Et une fenêtre rebouchée
+        // depuis le disque (LastExactStore) n'en porte jamais — le statut est volatil, jamais persisté.
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+            StatutServeur = StatutServeur.Rejete,
+        });
+        Assert.True(vm.HasStatutServeur);
+
+        vm.Apply(WindowState.Unavailable(WindowKind.FiveHour));
+
+        Assert.Equal("", vm.TexteStatutServeur);
+        Assert.False(vm.HasStatutServeur);   // le statut précédent ne SURVIT pas à une fenêtre muette
+    }
 }

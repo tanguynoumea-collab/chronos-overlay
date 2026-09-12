@@ -62,7 +62,7 @@ public class MainViewModelTests
         FakeWindowController controller, FakeAutostartService autostart,
         FakeRecalibrationPrompt prompt, SettingsService settings,
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
-        RefreshOrchestrator? orchestrator = null)
+        RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
@@ -70,9 +70,11 @@ public class MainViewModelTests
         // demandé » serait invérifiable depuis l'extérieur du VM.
         var orch = orchestrator ?? new RefreshOrchestrator(provider, TempPaths(), options);
         var diag = new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock);
+        // etatServeur passe par le helper et NON par un nouveau site de construction : le 13e paramètre
+        // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
             new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
-            auth ?? new FakeAuthStatus());
+            auth ?? new FakeAuthStatus(), etatServeur);
     }
 
     private static MainViewModel NewVmFull(
@@ -622,5 +624,201 @@ public class MainViewModelTests
         Assert.Equal(0, login.LogoutCount);   // jamais de déconnexion, même sur échec
         Assert.Equal(0, auth.ReinitCount);    // l'autorité reste verrouillée sur « Deconnecte »
         Assert.True(vm.AfficherPastilleDeconnexion);   // la panne reste visible
+    }
+
+    // --- HDR-03/HDR-04/HDR-06 : interrupteur de la sonde et état déclaré par le serveur ---
+    // La sonde est la SEULE source qui dépense du quota pour en mesurer : son interrupteur doit exister,
+    // être DISTINCT de celui de l'endpoint OAuth (profil de coût opposé), et ce que le serveur DÉCLARE
+    // doit être montré tel quel — jamais complété par une bonne nouvelle inventée.
+
+    /// <summary>Monte un VM avec un canal d'état serveur (et éventuellement un SettingsService
+    /// pré-ensemencé). Aucun accès au vrai %APPDATA% : les réglages vivent sous Path.GetTempPath().</summary>
+    private static MainViewModel VmSonde(FakeUiDispatcher ui, FakeEtatServeur? etat = null,
+                                         SettingsService? settings = null,
+                                         RefreshOrchestrator? orchestrator = null,
+                                         FakeUsageProvider? provider = null)
+        => Build(ui, new FakeClock(Now), provider ?? new FakeUsageProvider(), new FakeWindowController(),
+                 new FakeAutostartService(), new FakeRecalibrationPrompt(),
+                 settings ?? new SettingsService(TempPaths()),
+                 orchestrator: orchestrator, etatServeur: etat);
+
+    [Fact]
+    public void L_interrupteur_de_sonde_reflete_l_etat_REEL_persiste()
+    {
+        // Défaut du champ : true (chiffres exacts dès l'installation). Un settings.json sans le champ
+        // doit donc allumer l'interrupteur, et un settings.json qui le porte à false doit l'éteindre :
+        // l'interrupteur est un MIROIR, jamais une valeur d'affichage indépendante de l'état réel.
+        var vmDefaut = VmSonde(new FakeUiDispatcher { OnUiThread = true });
+        Assert.True(vmDefaut.IsSondeEnTetesActivee);
+
+        var settings = new SettingsService(TempPaths());
+        settings.Save(settings.Load() with { SondeEnTetesActivee = false });
+        var vmCoupee = VmSonde(new FakeUiDispatcher { OnUiThread = true }, settings: settings);
+        Assert.False(vmCoupee.IsSondeEnTetesActivee);
+    }
+
+    [Fact]
+    public void ToggleSondeEnTetes_bascule_persiste_et_n_ecrase_AUCUN_autre_reglage()
+    {
+        var settings = new SettingsService(TempPaths());
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, settings: settings);
+        Assert.True(vm.IsSondeEnTetesActivee);
+
+        // GAP-1 : un autre writer (sélecteur de thème, OverlayController…) écrit sur disque APRÈS la
+        // construction du VM. Sauvegarder la copie du constructeur effacerait son travail.
+        settings.Save(settings.Load() with { ThemeKey = "aurore" });
+
+        vm.ToggleSondeEnTetesCommand.Execute(null);
+
+        var apres = settings.Load();
+        Assert.False(vm.IsSondeEnTetesActivee);
+        Assert.False(apres.SondeEnTetesActivee);      // bascule bien persistée…
+        Assert.Equal("aurore", apres.ThemeKey);       // …sans écraser le réglage écrit entre-temps
+
+        vm.ToggleSondeEnTetesCommand.Execute(null);
+        Assert.True(vm.IsSondeEnTetesActivee);
+        Assert.True(settings.Load().SondeEnTetesActivee);
+    }
+
+    [Fact]
+    public void Les_DEUX_interrupteurs_sont_INDEPENDANTS_sur_disque()
+    {
+        // C'est LE test qui documente pourquoi ce sont deux champs et non un seul : leurs profils de coût
+        // sont opposés. OAuthUsageEnabled garde le jeton de l'app bureau et ne dépense RIEN ; la sonde
+        // dépense une vraie micro-requête par passage. Les fusionner priverait l'utilisateur du seul
+        // interrupteur qui gouverne une dépense — ou lui ferait perdre ses chiffres exacts pour l'éteindre.
+        var settings = new SettingsService(TempPaths());
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, settings: settings);
+
+        vm.ToggleSondeEnTetesCommand.Execute(null);
+        Assert.False(settings.Load().SondeEnTetesActivee);
+        Assert.True(settings.Load().OAuthUsageEnabled);      // l'autre source n'a PAS été coupée
+        Assert.True(vm.IsOAuthUsageEnabled);
+
+        vm.ToggleOAuthUsageCommand.Execute(null);
+        Assert.False(settings.Load().OAuthUsageEnabled);
+        Assert.False(settings.Load().SondeEnTetesActivee);   // …et réciproquement, aucun effet croisé
+    }
+
+    [Fact]
+    public async Task ToggleSondeEnTetes_demande_un_rafraichissement_IMMEDIAT()
+    {
+        // Sans RequestRefresh, couper ou rallumer la sonde n'aurait d'effet qu'au prochain tick — ou, pire,
+        // l'utilisateur qui vient de couper une dépense verrait une requête partir encore après son clic.
+        var provider = new FakeUsageProvider();
+        var orch = new RefreshOrchestrator(provider, TempPaths(),
+                                           new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, orchestrator: orch, provider: provider);
+        try
+        {
+            await orch.StartAsync(CancellationToken.None);
+            Assert.True(await WaitUntilAsync(() => provider.GetCount >= 1, 2000), "charge initiale");
+            var avant = provider.GetCount;
+
+            vm.ToggleSondeEnTetesCommand.Execute(null);
+
+            Assert.True(await WaitUntilAsync(() => provider.GetCount > avant, 2000),
+                        "la bascule doit prendre effet sans attendre le tick périodique");
+        }
+        finally { await orch.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public void Le_statut_DECLARE_par_le_serveur_est_rendu_pour_les_DEUX_fenetres()
+    {
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true });
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.91,
+                ResetsAt = Now + TimeSpan.FromHours(1), StatutServeur = StatutServeur.AutoriseAvertissement,
+            },
+            SevenDay = new WindowState
+            {
+                Kind = WindowKind.SevenDay, Reliability = SourceReliability.Exact, Utilization = 0.3,
+                ResetsAt = Now + TimeSpan.FromDays(3), StatutServeur = StatutServeur.Autorise,
+            },
+            SourceCapturedAt = Now,
+        });
+
+        Assert.True(vm.AfficherEtatSonde);
+        Assert.Contains("5 h : AUTORISÉ (avertissement)", vm.TexteEtatSonde);
+        Assert.Contains("hebdo : AUTORISÉ", vm.TexteEtatSonde);
+    }
+
+    [Fact]
+    public void Aucun_statut_rapporte_n_affiche_RIEN_et_JAMAIS_autorise()
+    {
+        // Le cœur de l'honnêteté de HDR-03 : l'en-tête absent signifie que le serveur n'a rien dit.
+        // Afficher « AUTORISÉ » par défaut serait rassurer à tort — pire que se taire.
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, new FakeEtatServeur());
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = Readable(WindowKind.FiveHour, Now),    // aucun StatutServeur
+            SevenDay = Readable(WindowKind.SevenDay, Now),
+            SourceCapturedAt = Now,
+        });
+
+        Assert.False(vm.AfficherEtatSonde);
+        Assert.Equal("", vm.TexteEtatSonde);
+        Assert.DoesNotContain("AUTORIS", vm.TexteEtatSonde);
+    }
+
+    [Fact]
+    public void Le_depassement_est_rendu_en_POURCENTAGE_par_le_canal_lateral()
+    {
+        var etat = new FakeEtatServeur
+        {
+            Depassement = new EtatDepassement { Utilization = 0.34, Statut = StatutServeur.Rejete },
+        };
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, etat);
+
+        Assert.True(vm.AfficherEtatSonde);
+        Assert.Contains("dépassement 34 %", vm.TexteEtatSonde);
+    }
+
+    [Fact]
+    public void L_etat_serveur_initial_est_applique_DES_le_ctor()
+    {
+        // Même raison qu'au plan 17-05 pour la pastille : sur cette machine rien ne transitera avant
+        // longtemps (jeton expiré). Un état appliqué seulement sur transition resterait vide pour de bon.
+        var etat = new FakeEtatServeur { Depassement = new EtatDepassement { Utilization = 0.12 } };
+
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, etat);
+
+        Assert.True(vm.AfficherEtatSonde);
+        Assert.Contains("12 %", vm.TexteEtatSonde);
+    }
+
+    [Fact]
+    public void Le_depassement_franchit_la_frontiere_de_thread_UNE_fois()
+    {
+        // TROISIÈME frontière de thread du VM (le plan 17-05 annonçait la deuxième comme « dernière » :
+        // cet ajout l'amende). Le service émet sur un thread du pool, l'abonné marshalle lui-même.
+        var ui = new FakeUiDispatcher { OnUiThread = false };
+        var etat = new FakeEtatServeur();
+        var vm = VmSonde(ui, etat);
+        var avant = ui.PostCount;
+        Assert.False(vm.AfficherEtatSonde);
+
+        etat.Declencher(new EtatDepassement { Utilization = 0.5 });
+
+        Assert.Equal(avant + 1, ui.PostCount);   // RAF-04 : un Post par événement, pas deux
+        Assert.True(vm.AfficherEtatSonde);
+        Assert.Contains("dépassement 50 %", vm.TexteEtatSonde);
+    }
+
+    [Fact]
+    public void Le_VM_se_construit_SANS_canal_d_etat_serveur_et_reste_muet()
+    {
+        // Le 13e paramètre est optionnel : les sites de construction préexistants compilent sans retouche,
+        // et l'absence de canal ne fabrique aucun état serveur.
+        var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, etat: null);
+
+        Assert.False(vm.AfficherEtatSonde);
+        Assert.Equal("", vm.TexteEtatSonde);
     }
 }
