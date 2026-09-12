@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
 status: executing
-stopped_at: "Complete 21-01-PLAN.md (SRC-03 : limite sur les sessions retenues)"
-last_updated: "2026-09-12T14:36:43.963Z"
+stopped_at: Completed 21-02-PLAN.md
+last_updated: "2026-09-12T14:50:16.518Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 21 (Perimetre - le widget ne parle que de Claude Code) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -163,6 +163,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 20 P04 | 18min | 3 tasks | 2 files |
 | Phase 20 P05 | 14min | 3 tasks | 5 files |
 | Phase 21 P01 | 14min | 2 tasks | 3 files |
+| Phase 21 P02 | 12min | 2 tasks | 11 files |
 
 ### Decisions
 
@@ -369,6 +370,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 21]: [21-01] Le catch de Read ne protegeait rien : l'enumeration LINQ etait paresseuse, donc l'erreur disque survenait dans le foreach, HORS du try. ToList() a l'interieur du try. Non couvert par un test — injecter une panne d'enumeration exigerait une abstraction de systeme de fichiers absente du depot.
 - [Phase 21]: [21-01] ISessionSource porte par TranscriptSessionSource en vague 1, avant toute demolition : aucun corps de methode touche (la signature de Read satisfaisait deja le contrat), et le plan 21-02 peut faire prendre a SessionMonitor sa source de base PAR LE CONTRAT sans commit non compilable.
 - [Phase 21]: [21-01] L'invariant de securite 'oauth.dat mtime 1783863147' du 21-VALIDATION.md est FAUX (mesure : 1789211525 ; 1783867137 est celui d'archived.json — transposition). L'overlay en cours fait tourner le refresh token toutes les 60 s : un mtime fige ne peut pas etre un invariant. Invariant de remplacement pour le plan 21-04 : 518 OCTETS.
+- [Phase 21]: MutableSource survit en passant du 4e au 2e argument de SessionMonitor : le contrat ISessionSource porte par TranscriptSessionSource evite la reecriture des tests d'hysteresis
+- [Phase 21]: Le champ _machine de DiagnosticService reste : CoffresOAuth vaut 94 % du cout du rapport et sa couture sous test est la raison d'etre de IInventaireMachine
+- [Phase 21]: NET-02 documente par une epitaphe (raison mecanique de sa mort) plutot que supprime en silence
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -447,7 +451,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T14:36:30.867Z
-Stopped at: Complete 21-01-PLAN.md (SRC-03 : limite sur les sessions retenues)
+Last session: 2026-09-12T14:50:10.243Z
+Stopped at: Completed 21-02-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 21 — Périmètre : retrait de la source app-bureau (SRC-01, SRC-02, SRC-03)
