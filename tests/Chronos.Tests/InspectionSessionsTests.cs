@@ -291,6 +291,90 @@ public class InspectionSessionsTests
         Assert.Empty(lecture.Desaccords);
     }
 
+    // --- EVT-03 : le seuil de vingt minutes change de SENS, jamais de valeur ---
+    //
+    // Avant cette phase, il devinait combien de temps un travail PEUT durer — une devinette, et elle
+    // éteignait « en cours » toute seule au bout de vingt minutes. Depuis les battements de cœur, une
+    // session qui travaille est RÉAFFIRMÉE à chaque appel d'outil : le même délai mesure désormais le
+    // SILENCE des battements. Sa valeur ne bouge pas, et ce n'est pas un oubli — entre le signal d'entrée
+    // et le signal de sortie d'un outil long, il ne se passe rien, donc le seuil doit rester large.
+
+    /// <summary>Le moniteur SEUL face aux fichiers d'état : aucune autre source ne vient arbitrer, donc
+    /// ce qui est annoncé vient du seuil de silence et de lui seul.</summary>
+    private static LectureSessions LireSansTranscript(string hookDir)
+        => new SessionMonitor(hookDir, new SourceFixe(), new ArchiveStore(TempFichier())).Inspecter(Maintenant);
+
+    /// <summary>Un ordre de hook produit par le cœur RÉEL, daté d'un instant figé.</summary>
+    private static SessionHookResult Ordre(string evenement, DateTimeOffset instant)
+        => SessionHookProcessor.Process(evenement,
+               "{\"session_id\":\"" + Mesuree + "\",\"cwd\":\"C:/dev/MonProjet\"}",
+               instant.ToUnixTimeMilliseconds());
+
+    /// <summary>
+    /// LE critère n°2 du ROADMAP — « réfléchit » ne s'éteint plus tout seul —, prouvé par le PIPELINE
+    /// RÉEL : le cœur du hook traduit, l'écriture directe applique au disque, le moniteur relit.
+    ///
+    /// <para>Le premier signal est un TÉMOIN, et il est indispensable : sans lui, on ne saurait pas si
+    /// « en cours » vient du battement ou d'une indulgence du seuil. Seul, un démarrage de session
+    /// vieux de deux heures et dix minutes ne dit plus rien.</para>
+    /// </summary>
+    [Fact]
+    public void Un_battement_frais_maintient_en_cours_bien_au_dela_d_une_heure()
+    {
+        var dir = TempDir();
+
+        // TÉMOIN : la session a démarré il y a plus de deux heures, et ce signal-là s'est tu depuis.
+        Assert.True(EcritureEtatSession.Appliquer(dir, Ordre("SessionStart", Maintenant.AddHours(-2).AddMinutes(-10))).Reussi);
+        Assert.Equal(SessionActivity.Unknown, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+
+        // Un battement d'il y a UNE MINUTE réaffirme l'activité — et il écrase le signal de démarrage.
+        Assert.True(EcritureEtatSession.Appliquer(dir, Ordre("PostToolUse", Maintenant.AddMinutes(-1))).Reussi);
+
+        var visible = Assert.Single(LireSansTranscript(dir).Visibles);
+        Assert.Equal(SessionActivity.Working, visible.Activity);
+        Assert.Equal("PostToolUse", visible.Reason);   // le motif NOMME le battement qui l'a réaffirmée
+    }
+
+    /// <summary>
+    /// Ce que le seuil mesure désormais : un SILENCE, plus une durée de travail supposée. Passé ce délai
+    /// sans le moindre battement, on ne sait tout simplement plus — et on le dit.
+    /// </summary>
+    [Fact]
+    public void Vingt_et_une_minutes_de_SILENCE_ne_se_disent_plus_en_cours()
+    {
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-21));
+
+        Assert.Equal(SessionActivity.Unknown, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+    }
+
+    /// <summary>
+    /// LA FRONTIÈRE, et elle porte tout le sens de cette tâche : la VALEUR du seuil n'a pas bougé, c'est
+    /// son sens qui change. Une garde qui ne tiendrait que le côté « périmé » resterait verte si le délai
+    /// tombait à une minute — donc elle ne garderait rien.
+    /// </summary>
+    [Fact]
+    public void Dix_neuf_minutes_de_silence_laissent_encore_l_etat_en_cours()
+    {
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-19));
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+    }
+
+    /// <summary>
+    /// NON-RÉGRESSION EXPLICITE : le seuil de silence ne concerne que le TRAVAIL. Une attente ne bouge
+    /// pas tant que je n'ai pas agi — c'est justement ça, le signal.
+    /// </summary>
+    [Fact]
+    public void Le_seuil_de_silence_ne_touche_pas_aux_attentes_qui_persistent()
+    {
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.WaitingAttention, Maintenant.AddHours(-2));
+
+        Assert.Equal(SessionActivity.WaitingAttention, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+    }
+
     // --- FUS-01, versant « ordre » : le critère n°2 au niveau du MONITEUR ---
 
     /// <summary>Corpus IMPOSÉ : deux sessions EX AEQUO sur (urgence, horodatage). Un corpus aux couples

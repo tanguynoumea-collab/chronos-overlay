@@ -8,9 +8,8 @@ namespace Chronos.Services;
 /// Lit les fichiers d'état de session (%APPDATA%\Chronos\sessions\*.json) écrits par les hooks
 /// (<see cref="SessionHookProcessor"/>) et en produit des <see cref="SessionSnapshot"/>, en appliquant
 /// une politique d'HONNÊTETÉ sur la fraîcheur :
-///   • Working dont le signal date de plus de <see cref="StaleWorking"/> → <see cref="SessionActivity.Unknown"/>
-///     (on ne prétend pas « en travail » si on a perdu le fil ; mais un vrai long travail reste plausible
-///     un moment — d'où un seuil large).
+///   • Working dont le dernier BATTEMENT date de plus de <see cref="SilenceDesBattements"/> →
+///     <see cref="SessionActivity.Unknown"/> : on ne prétend pas « en travail » quand plus rien n'arrive.
 ///   • Les états d'attente PERSISTENT (le fichier ne bouge pas TANT QU'on n'a pas agi — c'est justement
 ///     le signal). Ils ne deviennent « périmés » qu'au-delà de <see cref="DropAfter"/> (session morte,
 ///     SessionEnd manqué) → ignorés.
@@ -18,7 +17,13 @@ namespace Chronos.Services;
 /// </summary>
 public sealed class SessionMonitor
 {
-    private static readonly System.TimeSpan StaleWorking = System.TimeSpan.FromMinutes(20);
+    /// <summary>Depuis EVT-03, ce seuil ne devine plus combien de temps un travail peut durer : il mesure
+    /// le SILENCE. Une session qui travaille est réaffirmée à chaque appel d'outil ; passé ce délai sans
+    /// le moindre battement, on ne sait tout simplement plus — et on le dit. Sa valeur n'a pas bougé, et
+    /// ce n'est pas un oubli : entre le signal d'entrée et le signal de sortie d'un outil long, il ne se
+    /// passe rien, donc le seuil doit rester large. La contrepartie — la latence avant que le silence se
+    /// voie — est écrite dans le contrat des hooks (EVT-05), pas tue.</summary>
+    private static readonly System.TimeSpan SilenceDesBattements = System.TimeSpan.FromMinutes(20);
     private static readonly System.TimeSpan DropAfter = System.TimeSpan.FromHours(8);
 
     private readonly string _dir;
@@ -158,8 +163,9 @@ public sealed class SessionMonitor
             var age = now - updatedAt;
             if (age > DropAfter) { perimee = true; return null; } // session morte (SessionEnd manqué) → on ne l'affiche plus
 
-            // Working périmé → Unknown (on ne ment pas sur un fil perdu). Les attentes persistent telles quelles.
-            if (activity == SessionActivity.Working && age > StaleWorking)
+            // SILENCE des battements → Unknown (on ne ment pas sur un fil perdu). Les attentes persistent
+            // telles quelles : le silence ne concerne que le travail.
+            if (activity == SessionActivity.Working && age > SilenceDesBattements)
                 activity = SessionActivity.Unknown;
 
             return new SessionSnapshot(sid, project, activity, reason, updatedAt);
