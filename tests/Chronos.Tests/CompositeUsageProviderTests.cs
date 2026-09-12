@@ -190,4 +190,149 @@ public class CompositeUsageProviderTests
         Assert.Same(jsonl.FiveHour, snap.FiveHour);       // repli ultime : JSONL estimé
         Assert.Same(jsonl.SevenDay, snap.SevenDay);
     }
+    // --- HDR-03/HDR-04 : ce que WindowState emporte à travers Best() (phase 18) ---
+    //
+    // Ces tests prouvent une propriété du code EXISTANT, jamais une fonctionnalité neuve :
+    // CompositeUsageProvider.GetAsync reconstruit le snapshot par « new UsageSnapshot { … } » et non par
+    // « with », mais Best() rend l'INSTANCE gagnante de WindowState. Un champ posé sur WindowState voyage
+    // donc gratuitement, là où un champ posé sur UsageSnapshot serait silencieusement détruit. C'est
+    // toute la justification de la conception de la phase 18 — et CompositeUsageProvider.cs reste
+    // interdit d'édition jusqu'à la phase 19.
+
+    private static WindowState WinStatut(WindowKind k, SourceReliability r,
+                                        StatutServeur? statut = null, EtatDepassement? dep = null)
+        => new() { Kind = k, Reliability = r, StatutServeur = statut, Depassement = dep };
+
+    [Fact]
+    public async Task Le_statut_serveur_voyage_avec_la_fenetre_gagnante()
+    {
+        var pFive = WinStatut(WindowKind.FiveHour, SourceReliability.Exact, StatutServeur.AutoriseAvertissement);
+        var pSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Exact);
+        var fFive = WinStatut(WindowKind.FiveHour, SourceReliability.Exact);   // même fiabilité : le primaire prime
+        var fSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Exact);
+
+        var composite = new CompositeUsageProvider(
+            new FakeProvider(Snap(pFive, pSeven)),
+            new FakeProvider(Snap(fFive, fSeven)));
+
+        var snap = await composite.GetAsync();
+
+        Assert.Same(pFive, snap.FiveHour);   // transmission PAR RÉFÉRENCE : la raison pour laquelle le champ survit
+        Assert.Equal(StatutServeur.AutoriseAvertissement, snap.FiveHour.StatutServeur);
+    }
+
+    [Fact]
+    public async Task Le_statut_de_la_fenetre_ecartee_ne_contamine_pas_la_gagnante()
+    {
+        // Le primaire a un statut mais rien d'exploitable : sa fenêtre est écartée, son statut avec elle.
+        // Aucune fusion, aucune récupération partielle — Best() choisit une INSTANCE, pas des champs.
+        var pFive = WinStatut(WindowKind.FiveHour, SourceReliability.Unavailable, StatutServeur.Rejete);
+        var pSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Unavailable, StatutServeur.Rejete);
+        var fFive = WinStatut(WindowKind.FiveHour, SourceReliability.Exact);
+        var fSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Exact);
+
+        var composite = new CompositeUsageProvider(
+            new FakeProvider(Snap(pFive, pSeven)),
+            new FakeProvider(Snap(fFive, fSeven)));
+
+        var snap = await composite.GetAsync();
+
+        Assert.Same(fFive, snap.FiveHour);
+        Assert.Null(snap.FiveHour.StatutServeur);
+    }
+
+    [Fact]
+    public async Task Le_statut_du_repli_remonte_quand_le_repli_gagne()
+    {
+        var pFive = WinStatut(WindowKind.FiveHour, SourceReliability.Unavailable);
+        var pSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Unavailable);
+        var fFive = WinStatut(WindowKind.FiveHour, SourceReliability.Exact, StatutServeur.Rejete);
+        var fSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Exact, StatutServeur.Rejete);
+
+        var composite = new CompositeUsageProvider(
+            new FakeProvider(Snap(pFive, pSeven)),
+            new FakeProvider(Snap(fFive, fSeven)));
+
+        var snap = await composite.GetAsync();
+
+        Assert.Same(fFive, snap.FiveHour);
+        Assert.Equal(StatutServeur.Rejete, snap.FiveHour.StatutServeur);
+        Assert.Equal(StatutServeur.Rejete, snap.SevenDay.StatutServeur);
+    }
+
+    [Fact]
+    public async Task Le_depassement_voyage_avec_la_fenetre_gagnante()
+    {
+        var dep = new EtatDepassement { Utilization = 0.34, Statut = StatutServeur.AutoriseAvertissement };
+
+        var pFive = WinStatut(WindowKind.FiveHour, SourceReliability.Exact, dep: dep);
+        var pSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Exact);
+        var fFive = WinStatut(WindowKind.FiveHour, SourceReliability.Estimated);
+        var fSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Estimated);
+
+        var composite = new CompositeUsageProvider(
+            new FakeProvider(Snap(pFive, pSeven)),
+            new FakeProvider(Snap(fFive, fSeven)));
+
+        var snap = await composite.GetAsync();
+
+        Assert.Same(dep, snap.FiveHour.Depassement);
+        Assert.Equal(0.34, snap.FiveHour.Depassement!.Utilization);
+    }
+
+    [Fact]
+    public async Task Le_depassement_de_la_fenetre_ecartee_est_JETE_par_le_composite()
+    {
+        // C'est CE cas qui justifie IEtatServeur : le dépassement porté par la fenêtre perdante est jeté par
+        // Best(). Le canal latéral est le seul moyen de le faire survivre sans toucher CompositeUsageProvider.cs.
+        //
+        // Le scénario n'est pas théorique : c'est la forme « dépassement SEUL » (autre type de compte), où la
+        // sonde rend deux fenêtres légitimement Unavailable porteuses du seul fait qu'elle connaisse. Dès
+        // qu'une AUTRE source rend un Exact, les deux instances de la sonde sont écartées — et l'information
+        // de dépassement disparaît sans bruit.
+        var dep = new EtatDepassement { Utilization = 0.34 };
+
+        var sonde = Snap(WinStatut(WindowKind.FiveHour, SourceReliability.Unavailable, dep: dep),
+                         WinStatut(WindowKind.SevenDay, SourceReliability.Unavailable, dep: dep));
+        var autre = Snap(WinStatut(WindowKind.FiveHour, SourceReliability.Exact),
+                         WinStatut(WindowKind.SevenDay, SourceReliability.Exact));
+
+        var composite = new CompositeUsageProvider(new FakeProvider(sonde), new FakeProvider(autre));
+
+        var snap = await composite.GetAsync();
+
+        Assert.Null(snap.FiveHour.Depassement);
+        Assert.Null(snap.SevenDay.Depassement);
+    }
+
+    [Fact]
+    public async Task Le_statut_traverse_DEUX_composites_imbriques()
+    {
+        // La chaîne réelle après le plan 18-05 : sonde au-dessus de (OAuth au-dessus de JSONL).
+        // Le statut doit traverser les deux niveaux sans perte — sinon il n'arriverait jamais à l'UI.
+        var sondeFive = WinStatut(WindowKind.FiveHour, SourceReliability.Exact, StatutServeur.Rejete);
+        var sondeSeven = WinStatut(WindowKind.SevenDay, SourceReliability.Unavailable, StatutServeur.Rejete);
+        var sonde = Snap(sondeFive, sondeSeven);
+
+        var interneHaut = Snap(WinStatut(WindowKind.FiveHour, SourceReliability.Estimated),
+                               WinStatut(WindowKind.SevenDay, SourceReliability.Exact,
+                                         StatutServeur.AutoriseAvertissement));
+        var interneBas = Snap(WinStatut(WindowKind.FiveHour, SourceReliability.Estimated),
+                              WinStatut(WindowKind.SevenDay, SourceReliability.Estimated));
+
+        var chaine = new CompositeUsageProvider(
+            new FakeProvider(sonde),
+            new CompositeUsageProvider(new FakeProvider(interneHaut), new FakeProvider(interneBas)));
+
+        var snap = await chaine.GetAsync();
+
+        // 5 h : la sonde est Exact, elle prime — son statut arrive intact au sommet.
+        Assert.Same(sondeFive, snap.FiveHour);
+        Assert.Equal(StatutServeur.Rejete, snap.FiveHour.StatutServeur);
+
+        // 7 j : la sonde est indisponible, le composite INTERNE gagne — et le statut qu'il porte remonte
+        // lui aussi les deux niveaux.
+        Assert.Same(interneHaut.SevenDay, snap.SevenDay);
+        Assert.Equal(StatutServeur.AutoriseAvertissement, snap.SevenDay.StatutServeur);
+    }
 }
