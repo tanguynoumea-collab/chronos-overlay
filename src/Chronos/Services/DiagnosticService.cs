@@ -159,11 +159,17 @@ public sealed class DiagnosticService
             // HDR-04 — canal LATÉRAL : ce dépassement survit même quand Best() a écarté la fenêtre qui le
             // portait. Pourcentage par le point unique de normalisation (garde NormalisationUniqueTests).
             var dep = _etatServeur?.Depassement;
+            // TROIS cas, et non deux. Un statut SEUL n'est pas un dépassement : c'est la POLITIQUE du
+            // compte à son sujet. Les confondre produisait « Dépassement :  · serveur : REJETÉ » sur un
+            // compte à 23 % dont les deux fenêtres disaient « autorisé » — séparateur orphelin ET
+            // contresens alarmant (constaté en production le 2026-09-12).
             sb.AppendLine("  Dépassement : " + (dep is null || !dep.EstRenseigne
                 ? "aucun dépassement rapporté"
-                : UsageNormalization.PourcentagePourAffichage(dep.Utilization)
-                  + (dep.ResetsAt is { } dr ? " (reset le " + dr.ToLocalTime().ToString("yyyy-MM-dd HH:mm") + ")" : "")
-                  + " · serveur : " + LibelleStatutServeur(dep.Statut)));
+                : !dep.EstEnCours
+                    ? "aucun dépassement en cours · politique du compte : " + LibellePolitiqueDepassement(dep.Statut)
+                    : UsageNormalization.PourcentagePourAffichage(dep.Utilization)
+                      + (dep.ResetsAt is { } dr ? " (reset le " + dr.ToLocalTime().ToString("yyyy-MM-dd HH:mm") + ")" : "")
+                      + " · serveur : " + LibelleStatutServeur(dep.Statut)));
         }
         sb.AppendLine();
 
@@ -532,6 +538,19 @@ public sealed class DiagnosticService
         StatutServeur.Rejete                => "REJETÉ",
         StatutServeur.NonReconnu            => "statut non reconnu (valeur inconnue, non interprétée)",
         _                                   => "non rapporté",
+    };
+
+    // MÊME enum, contexte OPPOSÉ. Sur une fenêtre, le statut dit ce que le serveur fait de tes requêtes
+    // (« REJETÉ » = tu es bloqué). Sur le dépassement SANS quantité, il dit ce que le compte autorise
+    // (« rejected » = le dépassement n'est pas permis ici) — une politique, pas un refus. Réutiliser le
+    // libellé de la fenêtre affichait « REJETÉ » à un utilisateur à 23 % d'usage que rien ne bloquait.
+    private static string LibellePolitiqueDepassement(StatutServeur? s) => s switch
+    {
+        StatutServeur.Autorise              => "dépassement autorisé",
+        StatutServeur.AutoriseAvertissement => "dépassement autorisé (avertissement)",
+        StatutServeur.Rejete                => "dépassement non autorisé sur ce compte",
+        StatutServeur.NonReconnu            => "politique non reconnue (valeur inconnue, non interprétée)",
+        _                                   => "non rapportée",
     };
 
     // La recherche des coffres OAuth vit désormais dans InventaireMachine (phase 20, vague 0) : elle a

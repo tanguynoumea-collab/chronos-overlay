@@ -28,4 +28,21 @@ public sealed record EtatDepassement
     /// <summary>Vrai dès qu'UNE information a été rapportée. Sert à ne pas publier, ni afficher, un
     /// dépassement entièrement vide — qui ne dirait rien tout en ayant l'air d'un fait.</summary>
     public bool EstRenseigne => Utilization is not null || ResetsAt is not null || Statut is not null;
+
+    /// <summary>
+    /// Vrai seulement si un dépassement est RÉELLEMENT EN COURS — c'est-à-dire s'il porte une quantité
+    /// ou un instant de reset. Un <see cref="Statut"/> seul ne dit PAS qu'il y a dépassement : il déclare
+    /// la POLITIQUE du compte à son sujet.
+    ///
+    /// Constaté en production le 2026-09-12 sur un compte Max x20 à 23 % d'usage : le serveur envoie
+    /// <c>anthropic-ratelimit-unified-overage-status</c> SANS aucune utilisation ni reset, et les deux
+    /// fenêtres disent par ailleurs « autorisé ». Le lire comme un dépassement rapporté faisait afficher
+    /// « serveur : REJETÉ » — un contresens alarmant : le serveur ne refusait rien, il déclarait que le
+    /// dépassement n'est pas autorisé sur ce compte.
+    ///
+    /// <see cref="EstRenseigne"/> reste le garde-fou de publication (« le serveur a dit quelque chose »),
+    /// celui-ci est le garde-fou d'AFFICHAGE (« il se passe quelque chose »). Les deux sont nécessaires et
+    /// ne se confondent pas.
+    /// </summary>
+    public bool EstEnCours => Utilization is not null || ResetsAt is not null;
 }

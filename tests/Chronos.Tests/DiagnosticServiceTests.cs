@@ -403,4 +403,85 @@ public class DiagnosticServiceTests
         // Le chiffre affiché vient bien de cette sonde : les deux sections racontent la même histoire.
         Assert.Contains("source : sonde d'en-têtes de rate-limit", LigneCinqHeures(report));
     }
+
+    /// <summary>Canal latéral portant un dépassement arbitraire, pour éprouver les trois cas d'affichage.</summary>
+    private sealed class EtatServeurFige : IEtatServeur
+    {
+        public EtatDepassement? Depassement { get; init; }
+        public ResultatSonde DernierResultat => ResultatSonde.SuccesEnTetesLus;
+        public IReadOnlyList<string> NomsEnTetesRecus => new[] { "anthropic-ratelimit-unified-5h-utilization" };
+        public event System.EventHandler<EtatDepassement?>? DepassementChange { add { } remove { } }
+    }
+
+    private static async Task<string> RapportAvecDepassement(EtatDepassement? dep)
+    {
+        var paths = TempPaths();
+        var now = DateTimeOffset.UtcNow;
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+                Utilization = 0.23, Source = SourceUsage.SondeEnTetes,
+                CapturedAt = now, Provenance = ProvenanceReleve.Frais,
+            },
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        };
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(snap),
+                                         new FakeClock(now),
+                                         etatServeur: new EtatServeurFige { Depassement = dep },
+                                         machine: new FakeInventaireMachine());
+        return await diag.BuildReportAsync();
+    }
+
+    private static string LigneDepassement(string report)
+        => report.Split('\n').Single(l => l.TrimStart().StartsWith("Dépassement :"));
+
+    /// <summary>
+    /// Un STATUT SEUL déclare la politique du compte, PAS un dépassement en cours.
+    ///
+    /// Défaut constaté en production le 2026-09-12 sur un compte Max x20 à 23 % d'usage : le serveur
+    /// envoie <c>anthropic-ratelimit-unified-overage-status</c> sans aucune quantité ni reset, et le
+    /// rapport affichait « Dépassement :  · serveur : REJETÉ » — un séparateur orphelin ET un contresens
+    /// alarmant, alors que les deux fenêtres disaient « autorisé » et que rien ne bloquait l'utilisateur.
+    ///
+    /// FALSIFIABILITÉ : rebrancher la branche sur <c>EstRenseigne</c> seul fait retomber ce test.
+    /// </summary>
+    [Fact]
+    public async Task Un_statut_de_depassement_SEUL_est_une_politique_et_non_une_alerte()
+    {
+        var report = await RapportAvecDepassement(new EtatDepassement { Statut = StatutServeur.Rejete });
+        var ligne = LigneDepassement(report);
+
+        Assert.Contains("aucun dépassement en cours", ligne);
+        Assert.Contains("politique du compte : dépassement non autorisé sur ce compte", ligne);
+        Assert.DoesNotContain("REJETÉ", ligne);          // le mot alarmant a disparu…
+        Assert.DoesNotContain(" ·  ", ligne);            // …et le séparateur n'est plus orphelin
+    }
+
+    /// <summary>Un dépassement RÉEL (avec quantité) reste décrit comme avant — la correction ne l'efface pas.</summary>
+    [Fact]
+    public async Task Un_depassement_REEL_reste_decrit_avec_sa_quantite_et_son_statut()
+    {
+        var report = await RapportAvecDepassement(new EtatDepassement
+        {
+            Utilization = 0.34, Statut = StatutServeur.AutoriseAvertissement,
+        });
+        var ligne = LigneDepassement(report);
+
+        Assert.Contains("34 %", ligne);
+        Assert.Contains("serveur : AUTORISÉ (avertissement)", ligne);
+        Assert.DoesNotContain("aucun dépassement", ligne);
+    }
+
+    /// <summary>Aucune information rapportée : le rapport le dit, et n'invente aucune politique.</summary>
+    [Fact]
+    public async Task Aucun_depassement_rapporte_ne_fabrique_aucune_politique()
+    {
+        var ligne = LigneDepassement(await RapportAvecDepassement(null));
+
+        Assert.Contains("aucun dépassement rapporté", ligne);
+        Assert.DoesNotContain("politique", ligne);
+    }
 }

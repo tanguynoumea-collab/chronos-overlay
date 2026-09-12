@@ -68,3 +68,65 @@ révocation par `git checkout` emporte tout correctif non committé) :
 
 L'overlay **n'a pas été relancé** : une instance v3.0 tourne et l'utilisateur est en train de s'en servir.
 Le correctif ne sera visible dans son diagnostic qu'après republication et redémarrage.
+
+---
+
+## Suite — un second défaut, révélé par le premier correctif (2026-09-12)
+
+Une fois l'ordre corrigé, le diagnostic a enfin montré ce que la sonde reçoit réellement. Et il affichait :
+
+```
+Dépassement :  · serveur : REJETÉ
+```
+
+Sur un compte **Max x20 à 23 % d'usage**, dont les deux fenêtres disaient par ailleurs « AUTORISÉ ».
+
+### Cause
+
+Le serveur envoie `anthropic-ratelimit-unified-overage-status` **sans aucune utilisation ni reset**.
+`EtatDepassement.EstRenseigne` étant vrai dès qu'UN champ est posé — statut compris — la branche
+d'affichage traitait cette politique comme un dépassement rapporté, et réutilisait le libellé de statut
+de FENÊTRE. Or le même enum a deux sens opposés selon le contexte :
+
+- sur une fenêtre, `rejected` = **« tu es bloqué »** ;
+- sur le dépassement sans quantité, `rejected` = **« le dépassement n'est pas autorisé sur ce compte »** —
+  une politique, pas un refus.
+
+Double défaut : un séparateur orphelin (cosmétique) et un contresens alarmant (grave — le rapport
+inquiétait sans raison).
+
+### Correction
+
+- `EtatDepassement.EstEnCours` — nouveau garde-fou d'**affichage** (« il se passe quelque chose »), exigeant
+  une quantité ou un reset. `EstRenseigne` reste le garde-fou de **publication** (« le serveur a dit quelque
+  chose »). Les deux sont nécessaires et ne se confondent pas.
+- La ligne « Dépassement » a désormais **trois** cas : rien rapporté / politique déclarée sans dépassement en
+  cours / dépassement réel avec sa quantité.
+- `LibellePolitiqueDepassement` — libellés propres au contexte « politique », distincts de ceux du statut de
+  fenêtre.
+
+**Périmètre volontairement minimal** : `MainViewModel` (l. 412) et `Describe` (l. 605) gardaient **déjà** sur
+`Utilization: not null`. L'overlay n'a jamais affiché ce contresens — seul le diagnostic. Un seul point de
+rendu corrigé, aucun changement de comportement ailleurs.
+
+### Ce que les données réelles ont confirmé
+
+Les **8** noms d'en-têtes de la famille `unified` sont ceux que la sonde postulait — production confirmée,
+rien à ajouter aux constantes :
+
+```
+-5h-utilization  -5h-reset  -5h-status
+-7d-utilization  -7d-reset  -7d-status
+-overage-status  -representative-claim
+```
+
+À noter : `-overage-status` porte bien le segment `overage`, ce qui **contredit** la correction que la
+recherche de la phase 18 avait apportée (elle annonçait `anthropic-ratelimit-unified-status` sans segment).
+Le code lisait les deux en repli — il a eu raison de ne pas trancher.
+
+### Résultat
+
+- **752 / 752 tests, 0 échec** (749 + 3 : politique seule, dépassement réel, rien rapporté).
+- 3 fichiers : `EtatDepassement.cs`, `DiagnosticService.cs`, `DiagnosticServiceTests.cs`.
+- Version portée à **3.0.1**, publiée, et le repointage automatique des hooks re-testé en direct
+  (5 hooks → `Chronos-v3.0.1.exe`, 3 hooks GSD préservés, 2ᵉ sauvegarde horodatée).
