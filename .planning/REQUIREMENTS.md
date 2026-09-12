@@ -55,7 +55,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 - [x] **FUS-01**: Un signal ne peut en écraser un autre que s'il est **plus récent**. Jamais par ordre
   d'insertion dans un dictionnaire.
-- [ ] **FUS-02**: Les **désaccords** entre sources sont traçables dans le diagnostic — aujourd'hui ils sont
+- [x] **FUS-02**: Les **désaccords** entre sources sont traçables dans le diagnostic — aujourd'hui ils sont
   silencieux.
 
 ### « Traité » (TRT)
@@ -111,7 +111,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | EVT-04 | Phase 25 | Pending |
 | EVT-05 | Phase 25 | Pending |
 | FUS-01 | Phase 24 | Complete |
-| FUS-02 | Phase 24 | Pending |
+| FUS-02 | Phase 24 | Complete |
 | TRT-01 | Phase 26 | Pending |
 | TRT-02 | Phase 26 | Pending |
 | TRT-03 | Phase 26 | Pending |
