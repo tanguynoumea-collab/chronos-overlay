@@ -214,7 +214,7 @@ rigoureusement valide → dernier exact + delta borné avec sa marge → indispo
 **Plans**: 5 plans (5 vagues, séquentielles : chaque plan consomme ce que le précédent livre)
 
 Plans:
-- [ ] 19-01-PLAN.md — CapturedAt par fenêtre dans les 3 providers exacts qui l'omettent (le piège : l'âge
+- [x] 19-01-PLAN.md — CapturedAt par fenêtre dans les 3 providers exacts qui l'omettent (le piège : l'âge
       du FICHIER, jamais celui de la lecture), magasin qui refuse l'incertifiable et sait dire « jamais
       rien vu », mémoïseur d'activité, faux manquant, inventaire réel des impacts
 - [ ] 19-02-PLAN.md — Le modèle à quatre états sans casser un seul site de construction, la doctrine PURE
@@ -262,7 +262,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
-| 19. Nouvelle doctrine du composite | 0/5 | Planned | - |
+| 19. Nouvelle doctrine du composite | 1/5 | In Progress|  |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 
 ### Couverture des exigences

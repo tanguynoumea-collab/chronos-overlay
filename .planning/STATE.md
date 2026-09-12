@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
-status: verifying
-stopped_at: Completed 18-06-PLAN.md
-last_updated: "2026-09-12T02:29:58.870Z"
+status: executing
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-09-12T03:53:57.301Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 18
-  completed_plans: 18
-  percent: 0
+  completed_phases: 5
+  total_plans: 23
+  completed_plans: 19
+  percent: 83
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-09-09)
 
 **Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
 deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 18 — Source exacte par en-tetes de rate-limit
+**Current focus:** Phase 19 — Nouvelle doctrine du composite
 
 ## Current Position
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 18 (Source exacte par en-tetes de rate-limit) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 19 (Nouvelle doctrine du composite) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 19 (plan 19-01 livre)
 Last activity: 2026-09-12
 
-Progress: [░░░░░░░░░░] 0% (0/6 phases)
+Progress: [████████░░] 83% (5/6 phases ; 19/23 plans)
 
 **Ordre d'exécution :** 15 (indépendante) → 16 (fondations : persistance + delta + démolition des plafonds)
 → 17 (jeton vivant) → 18 (source en-têtes) → 19 (doctrine du composite, exige 16 et 18) → 20 (rendu visible).
@@ -42,8 +42,8 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases)
 | 15 | Idempotence des intégrations | PUR-01..03 | Complete (3/3) |
 | 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Complete (4/4) |
 | 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
-| 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | In Progress (5/6) |
-| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Not started |
+| 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Complete (6/6) |
+| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | In Progress (1/5) |
 | 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Not started |
 
 ## Performance Metrics
@@ -142,6 +142,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 18 P04 | 22min | 2 tasks | 2 files |
 | Phase 18 P05 | 24min | 2 tasks | 5 files |
 | Phase 18 P06 | 18min | 3 tasks | 6 files |
+| Phase 19 P01 | 24min | 3 tasks | 10 files |
 
 ### Decisions
 
@@ -249,6 +250,12 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 18]: HDR-02 reste « implémenté et testé sur faux transport, NON prouvé en production » : qu'un 429 RÉEL d'Anthropic porte la famille d'en-têtes unified exige un jeton valide et un compte saturé — le point de vérification humaine du plan 18-06 est consigné, non simulé.
 - [Phase 18]: L'interrupteur de la sonde est un réglage DISTINCT de la source OAuth, et un test le documente : leurs profils de coût sont opposés (une micro-requête par passage contre rien), donc les fusionner priverait l'utilisateur du seul interrupteur qui gouverne une dépense.
 - [Phase 18]: Le ViewModel franchit TROIS frontières de thread et non deux : la formule « seconde et dernière » du plan 17-05 est explicitement amendée plutôt que laissée en contradiction dans l'historique.
+- [Phase 19]: [19-01] INVENTAIRE REEL MESURE : ZERO test casse par l'ajout de CapturedAt (652 -> 664, +12 nouveaux uniquement). Aucun des ~120 tests des quatre providers ne comparait un WindowState entier ; ils assertent champ par champ. La crainte du plan etait une hypothese, 2 min 10 de mesure l'ont revoquee.
+- [Phase 19]: [19-01] L'horodatage appartient a la SOURCE, pas au lecteur : meme parametre pour les trois providers mais PAS la meme valeur — now pour les deux OAuth (la lecture EST la capture), capturedAt du FICHIER pour usage.json. Un fichier ecrit il y a deux mois porte deux mois d'age, verrouille par fixture.
+- [Phase 19]: [19-01] Le commentaire qui decrit un piege ne REPRODUIT jamais l'expression fautive : sans quoi le critere de non-retour par grep serait mort-ne, et une garde qui ne peut pas echouer ne garde rien (precedent 18-01).
+- [Phase 19]: [19-01] Le memoiseur n'invente JAMAIS un journal vide : une panne des la premiere lecture laisse l'exception remonter. Un journal vide se lirait « aucune activite » — une AFFIRMATION, pas une absence de reponse. La conversion en branche indisponible appartient a l'appelant (19-03).
+- [Phase 19]: [19-01] SourceActiviteMemoisee livree PROUVEE (6 tests) mais NON cablee : l'enregistrement DI est le plan 19-03, en un seul commit avec son consommateur (precedent 17-03, « un service que le host ne demarre jamais ne fait rien »).
+- [Phase 19]: [19-01] EXA-02 et EXA-05 laisses Pending : ce plan livre les FAITS (horodatage par fenetre, UnExactADejaEteObtenu) et non la doctrine qui les applique. Aucun appelant ne consulte encore le bit ; aucune limite d'age ne rejette encore rien. Coches par 19-03 et 19-04.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -304,7 +311,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T02:29:50.635Z
-Stopped at: Completed 18-06-PLAN.md
+Last session: 2026-09-12T03:53:57.296Z
+Stopped at: Completed 19-01-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18
