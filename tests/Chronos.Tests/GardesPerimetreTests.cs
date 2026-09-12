@@ -148,6 +148,31 @@ public class GardesPerimetreTests
                         StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE CÂBLAGE (CYC-02, phase 23). <c>EcritureEtatSession</c> peut être parfaitement testée et
+    /// n'être jamais appelée : le hook continuerait alors de déplacer un fichier temporaire par-dessus la
+    /// cible, de perdre une écriture sur deux sous lecteur concurrent, et de le taire. Contrôle de SOURCE :
+    /// <c>OnStartup</c> monte un host WPF, il n'est pas instanciable sous test.
+    /// </summary>
+    [Fact]
+    public void Le_mode_hook_ecrit_par_le_service_teste_et_signale_son_echec()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Une garde qui lirait un fichier vide serait muette.
+        Assert.Contains("RunSessionHook", texte, StringComparison.Ordinal);
+
+        Assert.Contains("EcritureEtatSession.Appliquer(", texte, StringComparison.Ordinal);
+        Assert.Contains("OpenStandardError", texte, StringComparison.Ordinal);
+
+        // Le défaut mesuré : un fichier temporaire déplacé par-dessus la cible, et un échec avalé.
+        Assert.DoesNotContain("System.IO.File.Move", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain(".tmp-", texte, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()

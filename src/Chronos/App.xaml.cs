@@ -29,8 +29,7 @@ public partial class App : Application
         int hookIdx = System.Array.FindIndex(e.Args, a => string.Equals(a, "--hook", StringComparison.OrdinalIgnoreCase));
         if (hookIdx >= 0)
         {
-            RunSessionHook(hookIdx + 1 < e.Args.Length ? e.Args[hookIdx + 1] : null);
-            Environment.Exit(0);
+            Environment.Exit(RunSessionHook(hookIdx + 1 < e.Args.Length ? e.Args[hookIdx + 1] : null));
             return;
         }
 
@@ -117,9 +116,17 @@ public partial class App : Application
         _host.Services.GetRequiredService<ISessionsController>().ShowIfEnabled();
     }
 
-    // Exécuté en mode --hook : lit le JSON stdin de Claude Code, écrit/supprime le fichier d'état de la
-    // session dans %APPDATA%\Chronos\sessions\<id>.json. Neutre, ne lève jamais (ne doit pas casser le hook).
-    private static void RunSessionHook(string? eventName)
+    // Exécuté en mode --hook : lit le JSON stdin de Claude Code et applique l'ordre au fichier d'état de la
+    // session dans %APPDATA%\Chronos\sessions\<id>.json. Rend le CODE DE SORTIE du processus.
+    //
+    // CYC-02 — deux changements de fond par rapport à la version d'origine.
+    // (a) L'écriture est sortie d'ici : elle vit dans Services/EcritureEtatSession, donc elle est testable.
+    //     Ce fichier-ci ne l'est pas — il monte WPF — et c'est exactement pourquoi le défaut y a survécu.
+    // (b) L'échec n'est plus avalé. Contrat des hooks Claude Code : 0 = succès, 2 = erreur BLOQUANTE
+    //     (stderr renvoyé à Claude, action bloquée), tout autre code = erreur NON bloquante (stderr montré
+    //     à l'utilisateur, la session continue). On sort donc 1, JAMAIS 2 : un hook ne doit pas casser la
+    //     session Claude Code, mais il n'a aucune raison de mentir sur ce qu'il n'a pas pu faire.
+    private static int RunSessionHook(string? eventName)
     {
         try
         {
@@ -129,25 +136,37 @@ public partial class App : Application
                 input = sr.ReadToEnd();
 
             var res = SessionHookProcessor.Process(eventName, input, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-            if (res.Ignore || string.IsNullOrEmpty(res.SessionId)) return;
 
-            var dir = System.IO.Path.Combine(
+            var dossier = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
-            System.IO.Directory.CreateDirectory(dir);
-            var file = System.IO.Path.Combine(dir, res.SessionId + ".json");
 
-            if (res.Delete)
-            {
-                try { if (System.IO.File.Exists(file)) System.IO.File.Delete(file); } catch { }
-            }
-            else if (res.StateJson is not null)
-            {
-                var tmp = file + ".tmp-" + Environment.ProcessId;
-                System.IO.File.WriteAllText(tmp, res.StateJson);
-                System.IO.File.Move(tmp, file, overwrite: true);
-            }
+            var ecriture = EcritureEtatSession.Appliquer(dossier, res);
+            if (ecriture.Reussi) return 0;
+
+            SignalerSurErreurStandard($"Chronos --hook {eventName} : état de session non écrit — {ecriture.Cause}");
+            return 1;
         }
-        catch { /* un hook ne doit jamais casser la session Claude Code */ }
+        catch (Exception ex)
+        {
+            SignalerSurErreurStandard($"Chronos --hook {eventName} : {ex.GetType().Name} — {ex.Message}");
+            return 1;
+        }
+    }
+
+    // Écrit une ligne sur le flux d'erreur du processus en UTF-8 STRICT. Pas via Console.Error : son
+    // encodage OEM par défaut mutilerait les accents, exactement la leçon déjà tirée pour la barre de
+    // statut (RunStatusLineBridge). Ne lève jamais : signaler un échec ne doit pas en produire un second.
+    private static void SignalerSurErreurStandard(string message)
+    {
+        try
+        {
+            var utf8 = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+            var octets = utf8.GetBytes(message + Environment.NewLine);
+            using var flux = Console.OpenStandardError();
+            flux.Write(octets, 0, octets.Length);
+            flux.Flush();
+        }
+        catch { }
     }
 
     // Exécuté en mode --statusline : neutre, sans WPF ni DI. Ne lève jamais (ne doit pas casser la barre).
