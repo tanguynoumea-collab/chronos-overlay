@@ -28,12 +28,17 @@ public sealed class LastExactUsageProvider : IUsageProvider
     private readonly IUsageProvider _inner;
     private readonly LastExactStore _store;
     private readonly IClock _clock;
+#pragma warning disable CS0414   // ETAPE RED : le champ est cable, la doctrine qui le lira arrive au GREEN.
+    private readonly ITranscriptActivitySource _activite;
+#pragma warning restore CS0414
 
-    public LastExactUsageProvider(IUsageProvider inner, LastExactStore store, IClock clock)
+    public LastExactUsageProvider(IUsageProvider inner, LastExactStore store, IClock clock,
+                                  ITranscriptActivitySource activite)
     {
         _inner = inner;
         _store = store;
         _clock = clock;
+        _activite = activite;
     }
 
     public async Task<UsageSnapshot> GetAsync(CancellationToken ct = default)

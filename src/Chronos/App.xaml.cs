@@ -256,8 +256,14 @@ public partial class App : Application
         // DEL-01/DEL-02 : les transcripts ne repondent plus qu'a deux questions bornees (activite
         // depuis T ? tokens depuis T ?) — ils ne sont PLUS un IUsageProvider et sont donc HORS de la
         // chaine composite. Plus aucune dependance a SettingsService : ni plafond, ni ancre hebdo.
-        services.AddSingleton<ITranscriptActivitySource>(sp => new TranscriptActivityProvider(
-            sp.GetRequiredService<ChronosPaths>(),
+        // Phase 19 — MEMOISATION : une passe reelle coute 2,7 a 3,2 s et lit 536 Mo sur cette machine.
+        // Le journal rendu est PUR et interrogeable N fois, donc le reutiliser pendant sa duree de
+        // validite est gratuit et sans perte. Le decorateur est ENREGISTRE ici et pas seulement ecrit :
+        // un decorateur que le graphe n'instancie jamais ne memoise rien (precedent 17-03).
+        services.AddSingleton<ITranscriptActivitySource>(sp => new SourceActiviteMemoisee(
+            new TranscriptActivityProvider(
+                sp.GetRequiredService<ChronosPaths>(),
+                sp.GetRequiredService<IClock>()),
             sp.GetRequiredService<IClock>()));
 
         // EXA-01 : magasin persistant du dernier releve exact (%APPDATA%\Chronos\last-exact.json).
@@ -334,8 +340,10 @@ public partial class App : Application
         // ne gagnerait JAMAIS tant que /api/oauth/usage répond — or son snapshot est le SEUL porteur du statut
         // serveur et du dépassement : HDR-03/HDR-04 seraient morts-nés à chaque tick nominal.
         // CompositeUsageProvider.cs n'est PAS modifié (c'est la phase 19) : on l'INSTANCIE, c'est tout.
-        // Le décorateur EXA-01 reste en TÊTE : la sonde hérite gratuitement de la persistance du dernier
-        // relevé exact et du rebouchage des fenêtres Unavailable au redémarrage.
+        // Le decorateur EXA-01 reste en TETE, et il est desormais LA COUCHE DE DOCTRINE de la chaine
+        // (phase 19) : la sonde herite gratuitement de la persistance du dernier releve exact, et c'est
+        // cette couche — seule a detenir horloge, magasin ET source d'activite — qui statue sur l'age de
+        // chaque fenetre, la re-habilite sans activite (DEL-03) ou la degrade en plancher marque (DEL-04).
         services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
             inner: new CompositeUsageProvider(
                 primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
@@ -345,7 +353,8 @@ public partial class App : Application
                         primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
                         fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>()))),
             store: sp.GetRequiredService<LastExactStore>(),
-            clock: sp.GetRequiredService<IClock>()));
+            clock: sp.GetRequiredService<IClock>(),
+            activite: sp.GetRequiredService<ITranscriptActivitySource>()));
 
         // Horloge DONNÉES Phase 4 : l'orchestrateur est enregistré UNE fois (Singleton, pour l'abonnement
         // du VM) et réexposé comme IHostedService via la MÊME instance (cycle de vie Start/Stop du host).

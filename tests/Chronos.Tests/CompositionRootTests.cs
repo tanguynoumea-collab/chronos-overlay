@@ -46,8 +46,12 @@ public class CompositionRootTests
         // Source de delta (DEL-01/DEL-02) : enregistree HORS de la chaine composite — elle n'est
         // plus un IUsageProvider. Une DI oubliant cet enregistrement compilerait et ne planterait
         // qu'au demarrage de l'app.
-        services.AddSingleton<ITranscriptActivitySource>(sp => new TranscriptActivityProvider(
-            sp.GetRequiredService<ChronosPaths>(),
+        // Phase 19 : le conteneur miroir doit refleter le graphe REEL — la source d'activite est
+        // MEMOISEE en production. Un miroir non memoise ne garderait pas ce que la production fait.
+        services.AddSingleton<ITranscriptActivitySource>(sp => new SourceActiviteMemoisee(
+            new TranscriptActivityProvider(
+                sp.GetRequiredService<ChronosPaths>(),
+                sp.GetRequiredService<IClock>()),
             sp.GetRequiredService<IClock>()));
 
         // EXA-01 : le decorateur de persistance coiffe la chaine exacte (ici reduite au pont
@@ -57,7 +61,8 @@ public class CompositionRootTests
         services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
             inner: sp.GetRequiredService<ClaudeUsageObjectProvider>(),
             store: sp.GetRequiredService<LastExactStore>(),
-            clock: sp.GetRequiredService<IClock>()));
+            clock: sp.GetRequiredService<IClock>(),
+            activite: sp.GetRequiredService<ITranscriptActivitySource>()));
         services.AddSingleton(RefreshOptions.Default);
         services.AddSingleton<RefreshOrchestrator>();
 
@@ -330,7 +335,11 @@ public class CompositionRootTests
                     primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
                     fallback: new FakeUsageProvider())),
             store: sp.GetRequiredService<LastExactStore>(),
-            clock: sp.GetRequiredService<IClock>()));
+            clock: sp.GetRequiredService<IClock>(),
+            // La sonde pose CapturedAt = now et FakeClock est figee : l'age vaut zero, donc la doctrine
+            // reste en branche 1 (laissez-passer) et ne consulte JAMAIS cette source. Elle est presente
+            // parce que le 4e argument est obligatoire, pas parce que ce test en depend.
+            activite: new FakeTranscriptActivitySource()));
 
         using var provider = services.BuildServiceProvider();
 
