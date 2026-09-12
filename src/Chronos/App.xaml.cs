@@ -304,23 +304,46 @@ public partial class App : Application
             new HttpClient(),
             sp.GetRequiredService<IClock>()));
 
+        // HDR-01/HDR-02 — SONDE D'EN-TÊTES : source exacte qui répond MÊME en 429, et seule source du statut
+        // serveur et du dépassement. Simple CONSOMMATEUR de l'autorité de jeton, jamais un troisième
+        // rafraîchisseur : ce serait la course de rotation du refresh token, donc une FAUSSE déconnexion sur
+        // un compte sain (anthropics/claude-code#25609).
+        // HDR-06 — la cadence est bornée par le provider lui-même (300 s), pas par sa position dans la chaîne :
+        // le composite appelle les deux GetAsync sans court-circuit. L'interrupteur SondeEnTetesActivee est
+        // relu FRAIS à chaque appel via SettingsService (motif GatedOAuthUsageProvider).
+        services.AddSingleton(sp => new RateLimitHeaderUsageProvider(
+            sp.GetRequiredService<ChronosTokenAuthority>(),
+            new HttpClient(),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<SettingsService>()));
+
+        // HDR-04 — canal LATÉRAL du dépassement : la MÊME instance réexposée, jamais une seconde
+        // (motif exact de ChronosTokenAuthority/IAuthStatus, ci-dessus). Une seconde sonde doublerait la
+        // dépense de quota sans que rien ne le signale.
+        services.AddSingleton<IEtatServeur>(sp => sp.GetRequiredService<RateLimitHeaderUsageProvider>());
+
         // Le login reste l'écrivain du PREMIER jeton : il parle au coffre et au client directement.
         services.AddSingleton<IOAuthLogin>(sp => new Views.OAuthLogin(
             sp.GetRequiredService<ChronosOAuthClient>(),
             sp.GetRequiredService<ChronosOAuthStore>()));
 
         // Chaîne exacte par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
-        //   login OAuth Chronos (exact) → OAuth coffre app (exact, gated) → pont statusLine (exact).
-        // Le maillon JSONL a disparu (EXA-04) : le composite se termine sur le pont statusLine.
-        // Le décorateur EXA-01 coiffe le tout : écrivain UNIQUE du dernier relevé exact, et rebouchage
-        // des fenêtres Unavailable depuis le magasin. La règle Best() de CompositeUsageProvider n'est
-        // PAS modifiée (c'est la phase 19).
+        //   sonde d'en-têtes → login OAuth Chronos → OAuth coffre app (gated) → pont statusLine.
+        // LA SONDE EST EN PRIMAIRE, et c'est une contrainte mécanique, pas un goût : Best() ne retient le
+        // fallback que s'il est STRICTEMENT plus fiable, et les deux produisent Exact. En fallback, la sonde
+        // ne gagnerait JAMAIS tant que /api/oauth/usage répond — or son snapshot est le SEUL porteur du statut
+        // serveur et du dépassement : HDR-03/HDR-04 seraient morts-nés à chaque tick nominal.
+        // CompositeUsageProvider.cs n'est PAS modifié (c'est la phase 19) : on l'INSTANCIE, c'est tout.
+        // Le décorateur EXA-01 reste en TÊTE : la sonde hérite gratuitement de la persistance du dernier
+        // relevé exact et du rebouchage des fenêtres Unavailable au redémarrage.
         services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
             inner: new CompositeUsageProvider(
-                primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
+                primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
                 fallback: new CompositeUsageProvider(
-                    primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
-                    fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>())),
+                    primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
+                    fallback: new CompositeUsageProvider(
+                        primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
+                        fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>()))),
             store: sp.GetRequiredService<LastExactStore>(),
             clock: sp.GetRequiredService<IClock>()));
 

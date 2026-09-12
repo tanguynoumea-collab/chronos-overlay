@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using Chronos.Models;
 using Chronos.Services;
 using Chronos.ViewModels;
 using Chronos.Views;
@@ -206,6 +207,12 @@ public class CompositionRootTests
     /// SÉCURITÉ : le coffre pointe dans <c>Path.GetTempPath()</c> et ce test n'appelle JAMAIS
     /// <c>GetAccessTokenAsync</c> — aucune requête ne part, le refresh token réel de l'utilisateur
     /// n'est ni lu, ni déchiffré, ni présenté au serveur (la rotation le tuerait définitivement).
+    ///
+    /// <para>Phase 18 (HDR-01/HDR-04) : la garde attrape EN PLUS une seconde instance de sonde. Un
+    /// <c>AddSingleton&lt;IEtatServeur&gt;(_ =&gt; new RateLimitHeaderUsageProvider(...))</c> compilerait,
+    /// résoudrait, et dépenserait silencieusement DEUX fois le quota de l'utilisateur — 576 requêtes par
+    /// jour au lieu de 288 — tout en publiant un dépassement sur une instance que plus personne n'écoute.
+    /// Seul <c>Assert.Same</c> le voit.</para>
     /// </summary>
     [Fact]
     public void Le_graphe_DI_resout_l_autorite_de_jeton_et_son_service_de_fond()
@@ -229,15 +236,125 @@ public class CompositionRootTests
             new System.Net.Http.HttpClient(),
             sp.GetRequiredService<IClock>()));
 
+        // Phase 18 — la sonde d'en-têtes et son canal latéral, EXACTEMENT comme dans App.xaml.cs.
+        // SettingsService sur chemin TEMPORAIRE (ChronosPaths.SettingsFile est colocalisé avec UsageFile) :
+        // la sonde relit son interrupteur à chaque appel, donc elle connaît le service de réglages.
+        services.AddSingleton(_ => new ChronosPaths(
+            System.IO.Path.Combine(dir, "usage.json"), System.IO.Path.Combine(dir, "projects")));
+        services.AddSingleton<SettingsService>();
+        services.AddSingleton(sp => new RateLimitHeaderUsageProvider(
+            sp.GetRequiredService<ChronosTokenAuthority>(),
+            new System.Net.Http.HttpClient(),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton<IEtatServeur>(sp => sp.GetRequiredService<RateLimitHeaderUsageProvider>());
+
         using var provider = services.BuildServiceProvider();
 
         // Garde anti-accident : aucun test n'écrit dans le vrai %APPDATA%\Chronos.
         Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<ChronosOAuthStore>().Path);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<ChronosPaths>().SettingsFile);
 
         var autorite = provider.GetRequiredService<ChronosTokenAuthority>();
         Assert.NotNull(autorite);
         Assert.Same(autorite, provider.GetRequiredService<IAuthStatus>());   // UNE seule autorité
         Assert.NotNull(provider.GetRequiredService<ChronosOAuthUsageProvider>());
         Assert.Contains(provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>(), s => s is TokenRefreshService);
+
+        var sonde = provider.GetRequiredService<RateLimitHeaderUsageProvider>();
+        Assert.NotNull(sonde);
+        Assert.Same(sonde, provider.GetRequiredService<IEtatServeur>());   // UNE seule sonde, jamais deux
+    }
+
+    /// <summary>
+    /// GARDE DE POSITION (HDR-01/HDR-02/HDR-03/HDR-04). Un `dotnet build` ne voit pas si la sonde est en
+    /// primaire ou en fallback, et les champs du composite sont privés : la réflexion ne peut rien prouver.
+    /// Ce test le prouve par le RÉSULTAT — deux sources produisent des chiffres DIFFÉRENTS et l'on vérifie
+    /// que ce sont ceux de la SONDE qui sortent. Si quelqu'un inversait primary/fallback, Best() (qui ne
+    /// retient le fallback que s'il est STRICTEMENT plus fiable, et les deux sont Exact) rendrait les
+    /// chiffres de /api/oauth/usage et ce test tomberait — avec lui, le statut serveur et le dépassement.
+    ///
+    /// Portée ASSUMÉE : ce test prouve la POSITION, pas la résolution du graphe complet (déjà couverte par
+    /// Host_resout_et_dispose_les_singletons). L'innermost fallback est donc un FakeUsageProvider.
+    ///
+    /// SÉCURITÉ : coffre et magasin sous Path.GetTempPath(), tout le trafic par FakeHttpMessageHandler.
+    /// Aucune requête réelle, le refresh token de l'utilisateur n'est ni lu, ni déchiffré, ni envoyé.
+    /// </summary>
+    [Fact]
+    public async Task La_sonde_d_en_tetes_est_le_PRIMAIRE_de_la_chaine_exacte()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosDiPos_" + System.Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        var horloge = new FakeClock(new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero));
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IClock>(_ => horloge);
+        services.AddSingleton(_ => new ChronosPaths(
+            System.IO.Path.Combine(dir, "usage.json"), System.IO.Path.Combine(dir, "projects")));
+        services.AddSingleton<SettingsService>();
+
+        // Jeton VALIDE et NON EXPIRÉ : aucun rafraîchissement n'est tenté, donc le point de terminaison
+        // de jeton n'est jamais sollicité (son transport reste un faux, par sécurité redondante).
+        services.AddSingleton(_ => new ChronosOAuthStore(System.IO.Path.Combine(dir, "oauth.dat")));
+        services.AddSingleton(sp => new ChronosOAuthClient(
+            new System.Net.Http.HttpClient(FakeHttpMessageHandler.Json(
+                System.Net.HttpStatusCode.OK, """{"access_token":"NEUF","refresh_token":"NEUF","expires_in":3600}""")),
+            sp.GetRequiredService<IClock>()));
+        services.AddSingleton(sp => new ChronosTokenAuthority(
+            sp.GetRequiredService<ChronosOAuthStore>(),
+            sp.GetRequiredService<ChronosOAuthClient>(),
+            sp.GetRequiredService<IClock>()));
+
+        // LA SONDE : jeu nominal → 5 h = 0,01 et statut serveur « allowed ».
+        services.AddSingleton(sp => new RateLimitHeaderUsageProvider(
+            sp.GetRequiredService<ChronosTokenAuthority>(),
+            new System.Net.Http.HttpClient(FakeHttpMessageHandler.AvecEnTetes(
+                System.Net.HttpStatusCode.OK, EnTetesDeReference.Nominal)),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton<IEtatServeur>(sp => sp.GetRequiredService<RateLimitHeaderUsageProvider>());
+
+        // /api/oauth/usage : même fiabilité (Exact), chiffres DIFFÉRENTS → 5 h = 0,42.
+        services.AddSingleton(sp => new ChronosOAuthUsageProvider(
+            sp.GetRequiredService<ChronosTokenAuthority>(),
+            new System.Net.Http.HttpClient(FakeHttpMessageHandler.Json(
+                System.Net.HttpStatusCode.OK,
+                """{"five_hour":{"utilization":42,"resets_at":"2026-09-09T18:30:00+00:00"},"seven_day":{"utilization":63,"resets_at":"2026-09-14T09:00:00+00:00"}}""")),
+            sp.GetRequiredService<IClock>()));
+
+        services.AddSingleton(sp => new LastExactStore(sp.GetRequiredService<ChronosPaths>().LastExactFile));
+        services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
+            inner: new CompositeUsageProvider(
+                primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
+                fallback: new CompositeUsageProvider(
+                    primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
+                    fallback: new FakeUsageProvider())),
+            store: sp.GetRequiredService<LastExactStore>(),
+            clock: sp.GetRequiredService<IClock>()));
+
+        using var provider = services.BuildServiceProvider();
+
+        // Gardes anti-accident : ni le coffre ni le magasin ne touchent le vrai %APPDATA%\Chronos.
+        Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<ChronosOAuthStore>().Path);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<LastExactStore>().Path);
+
+        // Le coffre reçoit un jeton vivant AVANT toute résolution de la chaîne.
+        provider.GetRequiredService<ChronosOAuthStore>()
+            .Save(new OAuthTokens("ACC-VALIDE", "REF-VALIDE", horloge.UtcNow.AddHours(2)));
+        provider.GetRequiredService<SettingsService>().Save(new ChronosSettings { SondeEnTetesActivee = true });
+
+        // Le décorateur de persistance reste en TÊTE (même exigence qu'à la ligne 108).
+        Assert.IsType<LastExactUsageProvider>(provider.GetRequiredService<IUsageProvider>());
+
+        var snap = await provider.GetRequiredService<IUsageProvider>().GetAsync();
+
+        // LA PREUVE : 0,01 vient de la sonde, 0,42 viendrait de /api/oauth/usage. Les deux sont Exact,
+        // donc seule la POSITION décide — inverser primary/fallback ferait sortir 0,42 ici.
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(0.01, snap.FiveHour.Utilization!.Value, 9);
+
+        // Et le statut serveur traverse réellement les deux composites imbriqués ET le décorateur :
+        // c'est ce voyage par référence qui rend HDR-03/HDR-04 vivants en production.
+        Assert.Equal(StatutServeur.Autorise, snap.FiveHour.StatutServeur);
     }
 }
