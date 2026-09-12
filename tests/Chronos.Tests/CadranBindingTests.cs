@@ -18,28 +18,59 @@ namespace Chronos.Tests;
 ///
 /// [WpfFact] (thread STA) : la construction de MainWindow + les SolidColorBrush exigent STA.
 /// L'orchestrateur n'est PAS démarré (aucun I/O) ; le VM reçoit le snapshot via ApplySnapshot.
+///
+/// ISOLATION DES CHEMINS (phase 20, vague 0) : cette classe est antérieure à la convention
+/// <c>TempPaths()</c> et montait son VM sur les chemins RÉELS du profil utilisateur. Or
+/// <c>MainViewModel</c> appelle <c>settings.Load()</c> dans son constructeur : le style de cadran, le
+/// mode et le thème venaient donc de la machine de celui qui lançait les tests (état constaté :
+/// Arcs / Normal / ardoise). Tout test de style y aurait été vert PAR ACCIDENT et rouge chez le
+/// voisin. Désormais tout passe par <see cref="TempPaths"/> : aucun test n'écrit ni ne lit dans le
+/// vrai <c>%APPDATA%\Chronos</c>.
 /// </summary>
 [Collection("XAML WPF")]   // charge du BAML : serialise avec les autres classes XAML (voir XamlWpfCollection)
 public class CadranBindingTests
 {
     private static readonly DateTimeOffset Now = new(2026, 7, 8, 12, 0, 0, TimeSpan.Zero);
 
+    /// <summary>Chemins de test sous <c>Path.GetTempPath()</c> : AUCUN test n'écrit dans le vrai
+    /// <c>%APPDATA%\Chronos</c>, ni n'y lit ses réglages. L'assertion fait partie du motif : elle
+    /// interdit qu'une régression future repointe le profil utilisateur réel.</summary>
+    private static ChronosPaths TempPaths()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosCadranTest_" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), dir);
+        return new ChronosPaths(System.IO.Path.Combine(dir, "usage.json"), System.IO.Path.Combine(dir, "projects"));
+    }
+
     // Construit un MainViewModel déterministe (orchestrateur non démarré, aucun I/O) et lui applique
     // le snapshot voulu, puis construit + met en page la fenêtre (Measure/Arrange déclenche les bindings).
     private static MainWindow BuildWindow(UsageSnapshot snap, out MainViewModel vm)
     {
+        // UN SEUL répertoire temporaire pour les quatre consommateurs : SettingsFile et LastExactFile
+        // sont calculés depuis UsageFile, et les DEUX SettingsService ci-dessous doivent pointer le
+        // même endroit — sinon le contrôleur d'overlay relirait les réglages du profil réel.
+        var paths = TempPaths();
         var prov = new FakeUsageProvider();
-        var orch = new RefreshOrchestrator(prov, ChronosPaths.Default(), RefreshOptions.Default);
-        var settings = new SettingsService(ChronosPaths.Default());
+        var orch = new RefreshOrchestrator(prov, paths, RefreshOptions.Default);
+        var settings = new SettingsService(paths);
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), ChronosPaths.Default(), settings, prov, new FakeClock(Now)),
+            new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, prov, new FakeClock(Now),
+                                  machine: new FakeInventaireMachine()),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
+
+        // Neutralisation EXPLICITE des deux réglages qui pilotent le rendu : aucun test de cette phase
+        // ne doit dépendre d'un réglage persisté, fût-il dans un répertoire temporaire préexistant.
+        // Les tests qui veulent un autre style ou le mode Étendu le posent eux-mêmes après l'appel.
+        vm.CadranStyle  = CadranStyle.Arcs;   // style par défaut, posé sans ambiguïté
+        vm.IsModeEtendu = false;              // mode Normal (2 anneaux)
+
         vm.ApplySnapshot(snap);
 
         var guard = new TopmostGuard();
-        var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
+        var controller = new OverlayController(guard, new SettingsService(paths));
         var fenetre = new MainWindow(vm, guard, controller);
         fenetre.Measure(new Size(220, 220));
         fenetre.Arrange(new Rect(0, 0, 220, 220));
