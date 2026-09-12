@@ -19,8 +19,60 @@ public class AffichageSessionsTests
     [InlineData(SessionActivity.WaitingTurn, "tour fini")]
     [InlineData(SessionActivity.Working, "en cours")]
     [InlineData(SessionActivity.Unknown, "inconnu")]
+    [InlineData(SessionActivity.WaitingDeduced, "à toi ? déduit")]
     public void Chaque_etat_a_son_libelle(SessionActivity a, string attendu)
         => Assert.Equal(attendu, AffichageSessions.Etat(a));
+
+    /// <summary>EVT-04 — sans ce parcours, un futur état pourrait naître MUET : le `_` du switch de libellés
+    /// l'absorberait en silence, et le widget afficherait « inconnu » pour quelque chose qui ne l'est pas.
+    /// C'est exactement ce qui serait arrivé à l'attente déduite si personne ne lui avait écrit de mot.</summary>
+    [Fact]
+    public void Chaque_valeur_de_l_enumeration_a_un_libelle_non_vide()
+    {
+        var valeurs = Enum.GetValues<SessionActivity>();
+        Assert.Equal(5, valeurs.Length);   // garde anti-muette : un parcours vide ne prouverait rien
+
+        foreach (var a in valeurs)
+            Assert.False(string.IsNullOrWhiteSpace(AffichageSessions.Etat(a)), $"libellé vide pour {a}");
+    }
+
+    /// <summary>Garde de COMPACITÉ du widget, mécanique et falsifiable : huit gabarits affichent ce libellé
+    /// sur une seule ligne, et « à toi ? déduit » est le plus long des cinq (quatorze caractères).</summary>
+    [Fact]
+    public void Aucun_libelle_d_etat_ne_depasse_seize_caracteres()
+    {
+        foreach (var a in Enum.GetValues<SessionActivity>())
+        {
+            var libelle = AffichageSessions.Etat(a);
+            Assert.True(libelle.Length <= 16, $"libellé trop long pour {a} : « {libelle} » ({libelle.Length} car.)");
+        }
+    }
+
+    /// <summary>Les cinq rangs, FIGÉS. Une déduction partage le dernier rang avec l'inconnu ; les quatre
+    /// rangs hérités ne bougent pas d'un cran.</summary>
+    [Theory]
+    [InlineData(SessionActivity.WaitingAttention, 0)]
+    [InlineData(SessionActivity.WaitingTurn, 1)]
+    [InlineData(SessionActivity.Working, 2)]
+    [InlineData(SessionActivity.Unknown, 3)]
+    [InlineData(SessionActivity.WaitingDeduced, 3)]
+    public void Chaque_etat_a_son_rang_d_urgence(SessionActivity a, int attendu)
+        => Assert.Equal(attendu, AffichageSessions.Urgence(a));
+
+    /// <summary>EVT-04, la contrainte de conception : une DÉDUCTION ne devance jamais une OBSERVATION.
+    /// Le même instant pour les trois, pour que seul le rang d'urgence puisse trancher.</summary>
+    [Fact]
+    public void Une_deduction_ne_passe_jamais_devant_une_observation()
+    {
+        var ordre = AffichageSessions.Ordonner(new[]
+        {
+            new SessionSnapshot("deduit",    "p", SessionActivity.WaitingDeduced, null, Maintenant),
+            new SessionSnapshot("travail",   "p", SessionActivity.Working, null, Maintenant),
+            new SessionSnapshot("attention", "p", SessionActivity.WaitingAttention, null, Maintenant),
+        }).Select(s => s.SessionId).ToArray();
+
+        Assert.Equal(new[] { "attention", "travail", "deduit" }, ordre);
+    }
 
     [Theory]
     [InlineData(30, "à l'instant")]

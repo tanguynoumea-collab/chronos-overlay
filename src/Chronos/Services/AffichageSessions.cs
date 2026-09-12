@@ -32,16 +32,26 @@ public static class AffichageSessions
         SessionActivity.WaitingAttention => 0,
         SessionActivity.WaitingTurn => 1,
         SessionActivity.Working => 2,
+        // Une déduction ne passe jamais devant une observation. Elle partage le dernier rang avec
+        // l'inconnu, et Ordonner les départage ensuite par fraîcheur. Ce cas est volontairement
+        // REDONDANT avec le défaut : il est là pour ÉCRIRE l'intention, pas pour changer un résultat.
+        SessionActivity.WaitingDeduced => 3,
         _ => 3,
     };
 
-    /// <summary>Libellé d'état, tel qu'affiché par le widget. « à toi » et « tour fini » sont les DEUX
-    /// attentes, distinguées par les mots et non par deux oranges.</summary>
+    /// <summary>Libellé d'état, tel qu'affiché par le widget. « à toi » et « tour fini » sont les deux
+    /// attentes OBSERVÉES, distinguées par les mots et non par deux oranges ; « à toi ? déduit » est la
+    /// troisième, et elle n'a été observée par personne — le mot et l'interrogation sont là pour ça.
+    /// <para>Aucun de ces libellés ne dépasse seize caractères : huit gabarits les affichent sur une
+    /// ligne, et la garde est tenue par un test, pas par cette phrase.</para></summary>
     public static string Etat(SessionActivity a) => a switch
     {
         SessionActivity.WaitingAttention => "à toi",
         SessionActivity.WaitingTurn => "tour fini",
         SessionActivity.Working => "en cours",
+        // L'interrogation et le mot ne sont pas décoratifs : ils sont ce qui distingue une déduction d'une
+        // observation. « tour fini » et « à toi » restent réservés à ce qui a été réellement observé.
+        SessionActivity.WaitingDeduced => "à toi ? déduit",
         _ => "inconnu",
     };
 
