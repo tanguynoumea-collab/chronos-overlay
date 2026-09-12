@@ -9,7 +9,10 @@ namespace Chronos.Services;
 /// (<see cref="SessionHookProcessor"/>) et en produit des <see cref="SessionSnapshot"/>, en appliquant
 /// une politique d'HONNÊTETÉ sur la fraîcheur :
 ///   • Working dont le dernier BATTEMENT date de plus de <see cref="SilenceDesBattements"/> →
-///     <see cref="SessionActivity.Unknown"/> : on ne prétend pas « en travail » quand plus rien n'arrive.
+///     <see cref="SessionActivity.WaitingDeduced"/> : on ne prétend pas « en travail » quand plus rien
+///     n'arrive, et on ne prétend pas davantage que le tour s'est terminé — personne ne l'a vu. C'est ICI,
+///     et nulle part ailleurs, que l'attente déduite est produite : elle est dérivée à la LECTURE, jamais
+///     écrite dans un fichier d'état (EVT-04).
 ///   • Les états d'attente PERSISTENT (le fichier ne bouge pas TANT QU'on n'a pas agi — c'est justement
 ///     le signal). Ils ne deviennent « périmés » qu'au-delà de <see cref="DropAfter"/> (session morte,
 ///     SessionEnd manqué) → ignorés.
@@ -163,10 +166,17 @@ public sealed class SessionMonitor
             var age = now - updatedAt;
             if (age > DropAfter) { perimee = true; return null; } // session morte (SessionEnd manqué) → on ne l'affiche plus
 
-            // SILENCE des battements → Unknown (on ne ment pas sur un fil perdu). Les attentes persistent
-            // telles quelles : le silence ne concerne que le travail.
+            // Travail sans battement depuis SilenceDesBattements : on ne sait plus. La déduction que
+            // l'inférence AUTORISE est « quelque chose m'attend » — l'interruption au clavier est le cas le
+            // plus fréquent, et aucun événement du catalogue ne l'émet. Mais un terminal tué et une mise en
+            // veille produisent exactement le même silence : on ne nomme donc pas la cause, on annonce une
+            // attente DÉDUITE, et le libellé le dit. Ce qui est interdit ici, c'est WaitingTurn — « le tour
+            // s'est terminé » est une observation, et personne ne l'a faite.
+            //
+            // Les attentes OBSERVÉES persistent telles quelles, et un état illisible reste inconnu : le
+            // silence ne concerne que le travail, et une déduction se tire d'un fait, pas d'une absence.
             if (activity == SessionActivity.Working && age > SilenceDesBattements)
-                activity = SessionActivity.Unknown;
+                activity = SessionActivity.WaitingDeduced;
 
             return new SessionSnapshot(sid, project, activity, reason, updatedAt);
         }

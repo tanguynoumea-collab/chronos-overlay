@@ -193,10 +193,14 @@ public class InspectionSessionsTests
     }
 
     [Fact]
-    public void Un_hook_Working_de_25_min_ne_rend_plus_un_transcript_frais_inconnu()
+    public void Un_hook_Working_de_25_min_ne_rend_plus_un_transcript_frais_deduit()
     {
-        // ROUGE AVANT LE CORRECTIF. Le hook, périmé au-delà du seuil de 20 min, était ramené à « inconnu »
-        // — et c'est cet « inconnu » qui écrasait un « en cours » frais ET correct.
+        // ROUGE AVANT LE CORRECTIF DE LA PHASE 24. Le hook, silencieux au-delà du seuil de 20 min, était
+        // ramené à « inconnu » — et c'est cet « inconnu » qui écrasait un « en cours » frais ET correct.
+        //
+        // EVT-04 change ce que devient le hook silencieux — « à toi ? déduit » au lieu d'« inconnu » — et
+        // RIEN D'AUTRE : le verdict retenu (Working, transcript de 10 s) et la source écartée sont
+        // inchangés. C'est la preuve que l'arbitrage par fraîcheur n'a pas bougé d'un cran.
         var dir = TempDir();
         EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-25));
 
@@ -204,7 +208,7 @@ public class InspectionSessionsTests
 
         Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
         var desaccord = Assert.Single(lecture.Desaccords);
-        Assert.Equal(SessionActivity.Unknown, desaccord.EtatEcarte);
+        Assert.Equal(SessionActivity.WaitingDeduced, desaccord.EtatEcarte);
         Assert.Equal(SourceSession.Hook, desaccord.SourceEcartee);
     }
 
@@ -323,9 +327,12 @@ public class InspectionSessionsTests
     {
         var dir = TempDir();
 
-        // TÉMOIN : la session a démarré il y a plus de deux heures, et ce signal-là s'est tu depuis.
+        // TÉMOIN : la session a démarré il y a plus de deux heures, et ce signal-là s'est tu depuis. Ce que
+        // le témoin doit prouver, c'est que « en cours » NE TIENT PAS tout seul — depuis EVT-04, ce silence
+        // se dit « à toi ? déduit » et non plus « inconnu ». Ce qui compte ici est inchangé : ce n'est PAS
+        // Working, donc le « en cours » de la ligne suivante ne peut venir que du battement.
         Assert.True(EcritureEtatSession.Appliquer(dir, Ordre("SessionStart", Maintenant.AddHours(-2).AddMinutes(-10))).Reussi);
-        Assert.Equal(SessionActivity.Unknown, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+        Assert.Equal(SessionActivity.WaitingDeduced, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
 
         // Un battement d'il y a UNE MINUTE réaffirme l'activité — et il écrase le signal de démarrage.
         Assert.True(EcritureEtatSession.Appliquer(dir, Ordre("PostToolUse", Maintenant.AddMinutes(-1))).Reussi);
@@ -337,7 +344,9 @@ public class InspectionSessionsTests
 
     /// <summary>
     /// Ce que le seuil mesure désormais : un SILENCE, plus une durée de travail supposée. Passé ce délai
-    /// sans le moindre battement, on ne sait tout simplement plus — et on le dit.
+    /// sans le moindre battement, on ne prétend plus « en cours ».
+    /// <para>EVT-04 : depuis ce plan, ce silence ne rend plus un « inconnu » muet mais l'attente que
+    /// l'inférence AUTORISE — et le libellé porte l'interrogation.</para>
     /// </summary>
     [Fact]
     public void Vingt_et_une_minutes_de_SILENCE_ne_se_disent_plus_en_cours()
@@ -345,7 +354,7 @@ public class InspectionSessionsTests
         var dir = TempDir();
         EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-21));
 
-        Assert.Equal(SessionActivity.Unknown, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+        Assert.Equal(SessionActivity.WaitingDeduced, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
     }
 
     /// <summary>
@@ -373,6 +382,212 @@ public class InspectionSessionsTests
         EcritEtat(dir, Mesuree, SessionActivity.WaitingAttention, Maintenant.AddHours(-2));
 
         Assert.Equal(SessionActivity.WaitingAttention, Assert.Single(LireSansTranscript(dir).Visibles).Activity);
+    }
+
+    // --- EVT-04 : l'interruption au clavier, qu'AUCUNE source ne sait observer ---
+    //
+    // Le relevé du 2026-09-12 est formel : aucun des trente-trois événements du catalogue ne couvre
+    // l'interruption utilisateur. StopFailure ne concerne que les erreurs d'API. Ce qui est OBSERVABLE,
+    // c'est qu'une session travaillait et que plus aucun battement n'arrive — et la même signature vaut
+    // pour un terminal tué ou une mise en veille. On ne nomme donc jamais la cause : on annonce une
+    // attente DÉDUITE, et le libellé le dit.
+
+    /// <summary>
+    /// L'INTERDIT ABSOLU du milestone, tenu par une assertion explicite : « tour fini » est une
+    /// OBSERVATION (le hook Stop l'a vue), et personne ne l'a faite ici. Le silence ne peut pas
+    /// l'emprunter.
+    /// </summary>
+    [Fact]
+    public void Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini()
+    {
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-21));
+
+        var visible = Assert.Single(LireSansTranscript(dir).Visibles);
+
+        Assert.Equal(SessionActivity.WaitingDeduced, visible.Activity);
+        Assert.NotEqual(SessionActivity.WaitingTurn, visible.Activity);   // l'interdit, écrit
+        Assert.Equal("à toi ? déduit", AffichageSessions.Etat(visible.Activity));
+    }
+
+    /// <summary>
+    /// Le silence des battements ne concerne que le TRAVAIL. Une attente a été OBSERVÉE — une permission
+    /// demandée, un tour terminé — et elle ne bouge pas tant que je n'ai pas agi : la convertir en
+    /// déduction dégraderait un fait en supposition, exactement à l'envers de ce que la phase construit.
+    /// </summary>
+    [Fact]
+    public void Une_attente_observee_ne_se_convertit_jamais_en_deduction()
+    {
+        var dir = TempDir();
+        EcritEtat(dir, "tour-observe",     SessionActivity.WaitingTurn,      Maintenant.AddHours(-2));
+        EcritEtat(dir, "demande-observee", SessionActivity.WaitingAttention, Maintenant.AddHours(-2), "permission_prompt");
+
+        var parId = LireSansTranscript(dir).Visibles.ToDictionary(s => s.SessionId, s => s.Activity);
+
+        Assert.Equal(2, parId.Count);   // garde anti-muette : deux fichiers écrits, deux sessions lues
+        Assert.Equal(SessionActivity.WaitingTurn, parId["tour-observe"]);
+        Assert.Equal(SessionActivity.WaitingAttention, parId["demande-observee"]);
+    }
+
+    /// <summary>
+    /// Ce qu'on n'a pas pu LIRE n'est pas une déduction, c'est une ABSENCE. L'état porté par ce fichier est
+    /// illisible ET silencieux depuis vingt-cinq minutes : les deux conditions du piège sont réunies, et
+    /// il reste « inconnu ». Une déduction se tire d'un fait observé (la session travaillait) ; ici il n'y
+    /// en a aucun.
+    /// </summary>
+    [Fact]
+    public void Une_activite_illisible_reste_inconnue_et_non_deduite()
+    {
+        var dir = TempDir();
+        File.WriteAllText(Path.Combine(dir, Mesuree + ".json"),
+            "{\"session_id\":\"" + Mesuree + "\",\"project\":\"P\",\"activity\":\"NawakQuiNExistePas\","
+            + "\"updated_at\":" + Maintenant.AddMinutes(-25).ToUnixTimeMilliseconds() + "}");
+
+        var visible = Assert.Single(LireSansTranscript(dir).Visibles);
+
+        Assert.Equal(SessionActivity.Unknown, visible.Activity);
+        Assert.NotEqual(SessionActivity.WaitingDeduced, visible.Activity);
+    }
+
+    /// <summary>
+    /// NON-RÉGRESSION de l'arbitrage par fraîcheur (phase 24) : une déduction n'écrase jamais un signal
+    /// plus récent. Le hook s'est tu depuis vingt-cinq minutes, le transcript parle depuis dix secondes —
+    /// c'est le transcript qui a le dernier mot, et la déduction devient le désaccord écarté.
+    /// </summary>
+    [Fact]
+    public void Une_deduction_ne_bat_pas_un_transcript_plus_recent()
+    {
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.Working, Maintenant.AddMinutes(-25));
+
+        var lecture = Lire(dir);   // transcript Working de 10 s
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(lecture.Visibles).Activity);
+        var desaccord = Assert.Single(lecture.Desaccords);
+        Assert.Equal(SessionActivity.WaitingDeduced, desaccord.EtatEcarte);
+        Assert.Equal(SourceSession.Transcript, desaccord.SourceRetenue);
+    }
+
+    /// <summary>
+    /// LE CAS D'ÉGALITÉ À LA MILLISECONDE, figé tel qu'il est — pas corrigé.
+    ///
+    /// <para>Dans <c>ArbitrageSessions.Departager</c>, le rang <b>source</b> (2) précède le rang
+    /// <b>urgence</b> (3). À horodatage rigoureusement identique, un hook l'emporte donc sur un transcript
+    /// AVANT que le rang d'urgence n'ait la parole — et une DÉDUCTION issue du hook bat une OBSERVATION
+    /// issue du transcript. C'est une conséquence héritée de la phase 24, pas un défaut ouvert par
+    /// celle-ci.</para>
+    ///
+    /// <para>Ce test ÉCRIT le comportement pour que la prochaine personne le trouve écrit, et il ne le
+    /// modifie pas : le <c>25-CONTEXT.md</c> exige qu'aucune retouche de l'arbitrage ne se fasse sans
+    /// qu'un test la motive. Le motiver est le travail d'une autre phase ; le constater est celui-ci.</para>
+    /// </summary>
+    [Fact]
+    public void Un_hook_deduit_et_un_transcript_travaillant_du_MEME_instant_sont_departages_par_la_source()
+    {
+        var instant = Maintenant.AddMinutes(-25);   // au-delà du silence des battements : le hook sera déduit
+        var dir = TempDir();
+        EcritEtat(dir, Mesuree, SessionActivity.Working, instant);
+
+        var lecture = new SessionMonitor(dir,
+                new SourceFixe(Snap(Mesuree, SessionActivity.Working, instant)),   // EXACTEMENT le même instant
+                new ArchiveStore(TempFichier()))
+            .Inspecter(Maintenant);
+
+        var visible = Assert.Single(lecture.Visibles);
+        Assert.Equal(SessionActivity.WaitingDeduced, visible.Activity);   // le HOOK gagne, par son rang de source
+
+        var desaccord = Assert.Single(lecture.Desaccords);
+        Assert.Equal(SourceSession.Hook, desaccord.SourceRetenue);
+        Assert.Equal(SourceSession.Transcript, desaccord.SourceEcartee);
+        Assert.Equal(TimeSpan.Zero, desaccord.EcartAge);                  // zéro : c'est bien l'égalité stricte
+    }
+
+    /// <summary>
+    /// LA PROMESSE, TENUE PAR UNE GARDE et non plus par une XML-doc. <c>WaitingDeduced</c> est DÉRIVÉ à la
+    /// lecture, par le moniteur, et nulle part ailleurs : aucun des événements câblés ne doit pouvoir
+    /// l'inscrire dans un fichier d'état. Si un jour quelqu'un routait un événement vers cette valeur, une
+    /// déduction deviendrait persistante — et indiscernable d'une observation pour toute source qui relit
+    /// le magasin.
+    /// </summary>
+    [Fact]
+    public void WaitingDeduced_n_est_jamais_ecrit_dans_un_fichier_d_etat()
+    {
+        var parcourus = 0;
+        var avecEtat = 0;
+
+        foreach (var cable in SessionHookInstaller.Cablage)
+        {
+            parcourus++;
+            var resultat = SessionHookProcessor.Process(cable.Evenement,
+                "{\"session_id\":\"" + Mesuree + "\",\"cwd\":\"C:/dev/MonProjet\"}",
+                Maintenant.ToUnixTimeMilliseconds());
+
+            if (resultat.StateJson is null) continue;
+            avecEtat++;
+            Assert.DoesNotContain("WaitingDeduced", resultat.StateJson, StringComparison.Ordinal);
+        }
+
+        // Gardes anti-muettes : un câblage vide, ou qui n'écrirait plus aucun état, passerait sans rien dire.
+        Assert.Equal(8, parcourus);
+        Assert.Equal(7, avecEtat);   // les huit câblés moins SessionEnd, qui SUPPRIME au lieu d'écrire
+    }
+
+    /// <summary>
+    /// L'EFFET DE MASSE, CHIFFRÉ — contrepartie obligatoire de la décision de l'utilisateur du 2026-09-12
+    /// (point A11 de <c>25-VALIDATION.md</c>). Une déduction affichée partout serait visible mais
+    /// assourdissante : ce qui départage « honnête mais inutile » de « utile mais bruyant », c'est un
+    /// NOMBRE, et il doit être connu AVANT la republication, pas découvert après.
+    ///
+    /// <para>Corpus DÉTERMINISTE de soixante-six états, dans la FORME du magasin réel relevée le
+    /// 2026-09-12 (66 entrées, dont 32 <c>Working</c>, 20 <c>WaitingTurn</c>, 2 <c>WaitingAttention</c> et
+    /// 12 reliquats que le moniteur ne retient plus). Les âges, eux, ne sont PAS copiés du magasin réel :
+    /// ses 54 états y sont tous au-delà du seuil de huit heures — c'est un cimetière, il ne mesurerait
+    /// rien. Le corpus place donc les <c>Working</c> DE PART ET D'AUTRE du seuil de silence, et les y place
+    /// serrés : si le seuil bougeait d'une minute dans un sens ou dans l'autre, le nombre changerait.</para>
+    /// </summary>
+    [Fact]
+    public void Combien_de_sessions_d_un_corpus_realiste_basculent_ensemble_en_deduction()
+    {
+        var dir = TempDir();
+        var ecrits = 0;
+
+        // 12 Working FRAIS : de 1 à 12 minutes de silence, tous EN DEÇÀ du seuil de vingt minutes.
+        for (var i = 1; i <= 12; i++)
+        { EcritEtat(dir, $"frais-{i:00}", SessionActivity.Working, Maintenant.AddMinutes(-i)); ecrits++; }
+
+        // 20 Working SILENCIEUX : de 21 à 40 minutes, tous AU-DELÀ du seuil et bien en deçà des huit heures.
+        for (var i = 21; i <= 40; i++)
+        { EcritEtat(dir, $"silence-{i:00}", SessionActivity.Working, Maintenant.AddMinutes(-i)); ecrits++; }
+
+        // 20 attentes OBSERVÉES (tour fini), étalées de 20 min à 6 h 40 : elles persistent quel que soit
+        // leur âge tant qu'il reste sous les huit heures — c'est justement ça, le signal.
+        for (var i = 1; i <= 20; i++)
+        { EcritEtat(dir, $"tour-{i:00}", SessionActivity.WaitingTurn, Maintenant.AddMinutes(-20 * i)); ecrits++; }
+
+        // 2 demandes OBSERVÉES.
+        for (var i = 1; i <= 2; i++)
+        { EcritEtat(dir, $"demande-{i:00}", SessionActivity.WaitingAttention, Maintenant.AddHours(-2), "permission_prompt"); ecrits++; }
+
+        // 12 états TROP VIEUX : au-delà de huit heures, le moniteur ne les lit plus du tout (phase 23).
+        for (var i = 1; i <= 12; i++)
+        { EcritEtat(dir, $"mort-{i:00}", SessionActivity.Working, Maintenant.AddHours(-9).AddMinutes(-i)); ecrits++; }
+
+        Assert.Equal(66, ecrits);   // garde anti-muette : le corpus est bien celui qu'on annonce
+
+        var lecture = LireSansTranscript(dir);
+        var deduites = lecture.Visibles.Count(s => s.Activity == SessionActivity.WaitingDeduced);
+
+        // LE NOMBRE. Vingt sessions basculent ENSEMBLE en « à toi ? déduit » — sur cinquante-quatre lignes
+        // visibles, soit un peu plus d'une sur trois. Reporté au SUMMARY et au point A11 de 25-VALIDATION.
+        Assert.Equal(20, deduites);
+
+        // Le reste du corpus, pour que le nombre ci-dessus ne puisse pas être juste par accident.
+        Assert.Equal(54, lecture.Visibles.Count);
+        Assert.Equal(12, lecture.FichiersEcartesParAnciennete);
+        Assert.Equal(12, lecture.Visibles.Count(s => s.Activity == SessionActivity.Working));
+        Assert.Equal(20, lecture.Visibles.Count(s => s.Activity == SessionActivity.WaitingTurn));
+        Assert.Equal(2,  lecture.Visibles.Count(s => s.Activity == SessionActivity.WaitingAttention));
+        Assert.Equal(0,  lecture.Visibles.Count(s => s.Activity == SessionActivity.Unknown));
     }
 
     // --- FUS-01, versant « ordre » : le critère n°2 au niveau du MONITEUR ---

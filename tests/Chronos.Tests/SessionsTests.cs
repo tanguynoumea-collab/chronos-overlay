@@ -632,7 +632,7 @@ public class SessionsTests
         {
             WriteState(dir, "fresh", SessionActivity.Working, now.ToUnixTimeMilliseconds());
             WriteState(dir, "waiting", SessionActivity.WaitingAttention, now.AddHours(-2).ToUnixTimeMilliseconds()); // attente ancienne mais valide
-            WriteState(dir, "staleWork", SessionActivity.Working, now.AddMinutes(-30).ToUnixTimeMilliseconds());     // working périmé
+            WriteState(dir, "staleWork", SessionActivity.Working, now.AddMinutes(-30).ToUnixTimeMilliseconds());     // working silencieux
             WriteState(dir, "dead", SessionActivity.WaitingTurn, now.AddHours(-9).ToUnixTimeMilliseconds());          // > drop
 
             var snaps = new SessionMonitor(dir, new TranscriptSessionSource(TempDir()), new ArchiveStore(Path.Combine(TempDir(), "a.json")))
@@ -640,7 +640,7 @@ public class SessionsTests
 
             Assert.Equal(SessionActivity.Working, snaps["fresh"].Activity);
             Assert.Equal(SessionActivity.WaitingAttention, snaps["waiting"].Activity);   // l'attente PERSISTE
-            Assert.Equal(SessionActivity.Unknown, snaps["staleWork"].Activity);          // working périmé → Unknown
+            Assert.Equal(SessionActivity.WaitingDeduced, snaps["staleWork"].Activity);   // silence des battements → attente DÉDUITE (EVT-04)
             Assert.False(snaps.ContainsKey("dead"));                                      // > 8 h → ignoré
         }
         finally { Directory.Delete(dir, true); }
