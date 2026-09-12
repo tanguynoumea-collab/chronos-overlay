@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 
 namespace Chronos.Services;
@@ -66,17 +65,22 @@ public sealed class SessionMonitor
     /// FUSIONNE deux sources par session_id :
     ///   • transcripts (~/.claude/projects) — la base, universelle ;
     ///   • fichiers d'état des HOOKS (%APPDATA%\Chronos\sessions) — plus précis (permission),
-    ///     PRIORITAIRES quand présents.
+    ///     mais JAMAIS prioritaires du seul fait d'être des hooks : c'est le signal le plus RÉCENT
+    ///     qui gagne (FUS-01).
     /// Puis applique les filtres, EN RENDANT COMPTE de chacun au lieu de jeter en silence.
     /// </summary>
     public LectureSessions Inspecter(System.DateTimeOffset now)
     {
-        var byId = new Dictionary<string, SessionSnapshot>();
+        // 1 & 2) COLLECTE. Les deux sources déposent leurs signaux dans une même liste, et l'ordre de cette
+        //        collecte n'a plus AUCUNE conséquence (FUS-01) : c'est ArbitrageSessions qui tranche, sur la
+        //        FRAÎCHEUR. Avant ce plan, chaque source réécrivait une entrée indexée par identifiant — le
+        //        dernier passage gagnait, donc l'ordre du code faisait loi, et un signal de 7 heures battait
+        //        un signal de 10 secondes.
+        var signaux = new List<SignalSession>();
 
-        // 1) Base : transcripts (~/.claude/projects).
-        foreach (var t in _transcripts.Read(now)) byId[t.SessionId] = t;
+        foreach (var t in _transcripts.Read(now))
+            signaux.Add(new SignalSession(SourceSession.Transcript, t));
 
-        // 2) Surcharge : fichiers d'état des hooks (plus précis) quand ils existent.
         string[] files;
         try { files = System.IO.Directory.Exists(_dir) ? System.IO.Directory.GetFiles(_dir, "*.json") : System.Array.Empty<string>(); }
         catch { files = System.Array.Empty<string>(); }
@@ -89,12 +93,21 @@ public sealed class SessionMonitor
         {
             var snap = TryRead(f, now, out var perimee);
             if (perimee) { ecartesParAnciennete++; continue; }
-            if (snap is not null) byId[snap.SessionId] = snap;
+
+            // Un FRAGMENT — la contrepartie assumée de l'écriture directe de la phase 23, qui tronque la
+            // cible avant de la réécrire — rend null SANS être périmé. C'est une ABSENCE de signal, et elle
+            // se traite comme telle : le fragment n'est pas déposé. Le compter comme un signal sans date en
+            // ferait un « très vieux signal » perdant contre n'importe quoi — une fausse déposition, là où
+            // il n'y a rien à déposer.
+            if (snap is not null) signaux.Add(new SignalSession(SourceSession.Hook, snap));
         }
 
-        // 2.b) Le détecteur de traitement observe les snapshots BRUTS fusionnés (+ horloge) et met à jour
-        //      TreatedStore (ajout NET-01, purge NET-03). Best-effort : ne casse JAMAIS le pipeline.
-        var raw = byId.Values.ToList();
+        var arbitrage = ArbitrageSessions.Trancher(signaux);
+
+        // 2.b) Le détecteur de traitement observe les snapshots RETENUS (+ horloge) et met à jour
+        //      TreatedStore (ajout NET-01, purge NET-03). Best-effort : ne casse JAMAIS le pipeline. Sa
+        //      logique n'est pas touchée ici ; il observe simplement, désormais, un état arbitré.
+        var raw = arbitrage.Retenus;
         try { _tracker?.Observe(raw, now); } catch { }
 
         // 3) Filtres : archivées (permanent, NET-04) PUIS traitées (réversible). Le détecteur possède l'ajout ET
@@ -105,16 +118,15 @@ public sealed class SessionMonitor
         //    archivée, parce que c'est le geste de l'utilisateur qui prime sur une hystérésis automatique.
         var archived = _archive.Load();
         var treatedMap = _treated?.Load();
-        var visibles = new List<SessionSnapshot>(byId.Count);
+        var visibles = new List<SessionSnapshot>(raw.Count);
         var masquees = new List<SessionMasquee>();
-        foreach (var s in byId.Values)
+        foreach (var s in raw)
         {
             if (archived.Contains(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Archivee)); continue; }
             if (treatedMap is not null && treatedMap.ContainsKey(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Traitee)); continue; }
             visibles.Add(s);
         }
-        return new LectureSessions(visibles, masquees, ecartesParAnciennete,
-            System.Array.Empty<DesaccordSources>());
+        return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords);
     }
 
     // <paramref name="perimee"/> distingue « lu, mais trop vieux pour valoir quelque chose » de

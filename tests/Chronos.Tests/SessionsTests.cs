@@ -283,20 +283,21 @@ public class SessionsTests
     }
 
     [Fact]
-    public void Monitor_fusionne_transcripts_et_hooks_hook_prioritaire()
+    public void Monitor_fusionne_transcripts_et_hooks_le_plus_recent_gagne()
     {
         var hookDir = TempDir();
         var projRoot = TempDir();
         var now = DateTimeOffset.UtcNow;
         try
         {
-            // Même session_id des deux côtés : le hook (WaitingAttention) doit primer sur le transcript (Working).
+            // Même session_id des deux côtés : le hook est plus RÉCENT d'une minute, c'est à ce titre — et à ce
+            // titre seul — qu'il l'emporte.
             WriteTranscript(projRoot, "dup", new[] { CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
             WriteState(hookDir, "dup", SessionActivity.WaitingAttention, now.ToUnixTimeMilliseconds());
 
             var snaps = new SessionMonitor(hookDir, new TranscriptSessionSource(projRoot)).Read(now);
             Assert.Single(snaps);
-            Assert.Equal(SessionActivity.WaitingAttention, snaps[0].Activity); // hook prioritaire
+            Assert.Equal(SessionActivity.WaitingAttention, snaps[0].Activity); // le plus RÉCENT gagne — ici c'est le hook
         }
         finally { Directory.Delete(hookDir, true); Directory.Delete(projRoot, true); }
     }
