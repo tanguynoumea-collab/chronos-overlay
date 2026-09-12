@@ -310,8 +310,14 @@ public class CadranBindingTests
         Assert.NotSame(vm.LoginClaudeCommand, pastille.Command);
         Assert.NotNull(pastille.Background);                  // hit-testable (Transparent suffit)
         Assert.Equal(Visibility.Visible, pastille.Visibility);
-        Assert.Equal(HorizontalAlignment.Right, pastille.HorizontalAlignment);
-        Assert.Equal(VerticalAlignment.Bottom, pastille.VerticalAlignment);
+
+        // L'ALIGNEMENT a changé de porteur, et lui SEUL : dans une rangée, c'est le panneau qui est
+        // ancré bas-droite ; la pastille n'y garde qu'un alignement vertical. Toutes les autres
+        // assertions de ce test sont intactes, et SURTOUT l'identité de commande PAR INSTANCE
+        // ci-dessus : c'est le piège de sécurité de la phase 17, il ne s'affaiblit pas en passant.
+        var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
+        Assert.Equal(HorizontalAlignment.Right, rangee.HorizontalAlignment);
+        Assert.Equal(VerticalAlignment.Bottom, rangee.VerticalAlignment);
     }
 
     /// <summary>TOK-02 : « hors ligne » n'allume PAS la pastille actionnable. Vérifié sur les
@@ -375,8 +381,11 @@ public class CadranBindingTests
         Assert.NotSame(vm.LoginClaudeCommand, invitation.Command);
         Assert.NotNull(invitation.Background);                 // hit-testable (Transparent suffit)
         Assert.Equal(Visibility.Visible, invitation.Visibility);
-        Assert.Equal(HorizontalAlignment.Right, invitation.HorizontalAlignment);
-        Assert.Equal(VerticalAlignment.Bottom, invitation.VerticalAlignment);
+
+        // Idem : l'alignement appartient à la rangée, tout le reste de ce test est inchangé.
+        var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
+        Assert.Equal(HorizontalAlignment.Right, rangee.HorizontalAlignment);
+        Assert.Equal(VerticalAlignment.Bottom, rangee.VerticalAlignment);
 
         // Exclusivité vérifiée sur les Visibility RÉSOLUES, pas seulement sur les booléens du VM.
         var deconnexion = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
@@ -567,5 +576,120 @@ public class CadranBindingTests
         Assert.True(vm.IsModeEtendu);
         Assert.Equal(2, cinqHeures.StrokeDashArray.Count);
         Assert.Empty(vingtQuatre.StrokeDashArray);
+    }
+
+    // ============ EXA-03 / M-ÂGE + la RANGÉE : le non-recouvrement devient STRUCTUREL ============
+    //
+    // DÉFAUT RÉPARÉ ICI, pas embelli : PastilleHorsLigne et PastilleInvitationConnexion pouvaient être
+    // allumées ENSEMBLE (HorsLigne ⇒ Deconnexion=false ⇒ l'invitation peut valoir true) et occupaient
+    // le même coin, à 2 px près. La phase 20 y ajoute une QUATRIÈME pastille. La correction n'est donc
+    // pas une convention entre marges — c'est une RANGÉE : deux pastilles ne peuvent plus se recouvrir
+    // parce qu'elles ne peuvent plus occuper la même case.
+
+    /// <summary>Rectangle réellement MIS EN PAGE d'un élément, exprimé dans la boîte du cadran.
+    /// Mesuré après Arrange : c'est la seule géométrie qui prouve quelque chose.</summary>
+    private static Rect RectangleMisEnPage(FrameworkElement e, FrameworkElement racine)
+    {
+        var coin = e.TransformToAncestor(racine).Transform(new Point(0, 0));
+        return new Rect(coin, new Size(e.ActualWidth, e.ActualHeight));
+    }
+
+    /// <summary>
+    /// LA REPRODUCTION DU BUG, puis sa preuve de correction. Le cas est RÉELLEMENT atteignable :
+    /// « hors ligne » éteint la pastille de déconnexion, ce qui laisse l'invitation libre de s'allumer.
+    /// Les deux disent des choses différentes (« le wifi est coupé » / « on n'a jamais rien obtenu ») et
+    /// peuvent légitimement coexister — c'est leur RECOUVREMENT qui était le défaut, pas leur
+    /// simultanéité. La preuve porte sur les rectangles mis en page, jamais sur les marges déclarées.
+    /// </summary>
+    [WpfFact]
+    public void Hors_ligne_et_invitation_allumees_ensemble_ne_se_RECOUVRENT_pas()
+    {
+        var (fenetre, racine) = MonterPastille(EtatAuthentification.HorsLigne, JamaisDExact(), out var vm);
+
+        var horsLigne  = Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleHorsLigne"));
+        var invitation = Assert.IsType<Button>(fenetre.FindName("PastilleInvitationConnexion"));
+
+        Assert.True(vm.AfficherPastilleHorsLigne);
+        Assert.True(vm.AfficherInvitationConnexion);
+        Assert.Equal(Visibility.Visible, horsLigne.Visibility);
+        Assert.Equal(Visibility.Visible, invitation.Visibility);
+
+        var r1 = RectangleMisEnPage(horsLigne, racine);
+        var r2 = RectangleMisEnPage(invitation, racine);
+        Assert.False(r1.IsEmpty);   // deux rectangles réels, sinon l'intersection serait vide pour rien
+        Assert.False(r2.IsEmpty);
+        Assert.True(Rect.Intersect(r1, r2).IsEmpty,
+            $"les deux pastilles se recouvrent : {r1} ∩ {r2} = {Rect.Intersect(r1, r2)}");
+    }
+
+    /// <summary>
+    /// GÉOMÉTRIE et non sémantique : les quatre booléens sont forcés DIRECTEMENT sur le ViewModel. La
+    /// recomposition garantit ce qui s'allume ensemble AUJOURD'HUI ; la rangée, elle, doit garantir que
+    /// la géométrie tient même si cette recomposition change demain. Borne dure mesurée : quatre
+    /// pastilles tiennent (coin gauche à 72,8 px du centre au pire, seuil 71,5) ; CINQ seraient la
+    /// limite et ne doivent pas être ajoutées sans remesurer.
+    /// </summary>
+    [WpfFact]
+    public void Les_QUATRE_pastilles_allumees_tiennent_hors_de_toute_geometrie_d_anneau()
+    {
+        var (fenetre, racine) = MonterPastille(EtatAuthentification.Connecte, JamaisDExact(), out var vm);
+
+        vm.AfficherPastilleDeconnexion = true;
+        vm.AfficherPastilleHorsLigne   = true;
+        vm.AfficherInvitationConnexion = true;
+        vm.AfficherReleveDate          = true;
+
+        // Les quatre affectations sont postérieures au montage : sans purge, les Visibility resteraient
+        // à leur valeur précédente et le test mesurerait une rangée à moitié vide.
+        racine.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        racine.Measure(new Size(170, 170));
+        racine.Arrange(new Rect(0, 0, 170, 170));
+
+        foreach (var nom in new[] { "PastilleReleveDate", "PastilleHorsLigne",
+                                    "PastilleInvitationConnexion", "PastilleDeconnexion" })
+        {
+            var pastille = Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName(nom));
+            Assert.Equal(Visibility.Visible, pastille.Visibility);
+
+            var r = RectangleMisEnPage(pastille, racine);
+            var centre = new Point(r.X + r.Width / 2, r.Y + r.Height / 2);
+            var distanceAuCentre = (centre - new Point(85, 85)).Length;
+            Assert.True(distanceAuCentre > 71.5,
+                $"{nom} empiète sur la géométrie des anneaux (distance {distanceAuCentre:F1} px)");
+        }
+
+        // Empreinte intacte : la rangée n'est pas de la géométrie de cadran, elle ne déplace rien.
+        Assert.Equal(170d, fenetre.Width);
+        Assert.Equal(170d, fenetre.Height);
+    }
+
+    /// <summary>
+    /// M-ÂGE — INFORMATIVE et INERTE. Le type est le verrou : une <c>Ellipse</c> n'a AUCUNE propriété
+    /// <c>Command</c>, donc cette marque ne peut pas devenir cliquable par accident. Ne jamais crier
+    /// « répare-moi » pour un fait qui n'appelle aucun geste — même règle que la pastille « hors ligne ».
+    /// Le <c>Fill</c> non-null la garde hit-testable sur une fenêtre <c>AllowsTransparency</c> : c'est
+    /// ce qui permet à son infobulle de s'ouvrir, et c'est elle qui porte EXA-06 au cadran.
+    /// </summary>
+    [WpfFact]
+    public void La_pastille_d_age_est_inerte_et_porte_l_infobulle_de_source()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = FenetreEncoreValide(WindowKind.FiveHour, 0.3),
+            SevenDay = FenetreFraiche(WindowKind.SevenDay, 0.6),
+            SourceCapturedAt = Now,
+        };
+
+        var (fenetre, _) = MonterCadran(snap, out var vm);
+        var pastille = Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleReleveDate"));
+
+        Assert.True(vm.AfficherReleveDate);
+        Assert.Equal(Visibility.Visible, pastille.Visibility);
+        Assert.False(string.IsNullOrWhiteSpace(vm.InfobulleReleve));
+        Assert.Equal(vm.InfobulleReleve, pastille.ToolTip);
+
+        Assert.Null(typeof(System.Windows.Shapes.Ellipse).GetProperty("Command"));
+        Assert.NotNull(pastille.Fill);            // hit-testable (Transparent suffit, {x:Null} non)
+        Assert.True(pastille.IsHitTestVisible);
     }
 }
