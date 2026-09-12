@@ -24,18 +24,32 @@ public static class AffichageSessions
 {
     /// <summary>Ordre du widget : ce qui réclame une intervention d'abord, puis le plus récent.</summary>
     public static IReadOnlyList<SessionSnapshot> Ordonner(IEnumerable<SessionSnapshot> sessions)
-        => throw new System.NotImplementedException();
+        => sessions.OrderBy(s => Urgence(s.Activity)).ThenByDescending(s => s.UpdatedAt).ToList();
 
     /// <summary>Rang de tri d'un état : 0 = réclame une intervention maintenant.</summary>
-    public static int Urgence(SessionActivity a)
-        => throw new System.NotImplementedException();
+    public static int Urgence(SessionActivity a) => a switch
+    {
+        SessionActivity.WaitingAttention => 0,
+        SessionActivity.WaitingTurn => 1,
+        SessionActivity.Working => 2,
+        _ => 3,
+    };
 
     /// <summary>Libellé d'état, tel qu'affiché par le widget. « à toi » et « tour fini » sont les DEUX
     /// attentes, distinguées par les mots et non par deux oranges.</summary>
-    public static string Etat(SessionActivity a)
-        => throw new System.NotImplementedException();
+    public static string Etat(SessionActivity a) => a switch
+    {
+        SessionActivity.WaitingAttention => "à toi",
+        SessionActivity.WaitingTurn => "tour fini",
+        SessionActivity.Working => "en cours",
+        _ => "inconnu",
+    };
 
     /// <summary>Ancienneté d'une session, telle qu'affichée par le widget.</summary>
     public static string Age(System.TimeSpan d)
-        => throw new System.NotImplementedException();
+    {
+        if (d < System.TimeSpan.FromSeconds(60)) return "à l'instant";
+        if (d < System.TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
+        return $"il y a {(int)d.TotalHours} h";
+    }
 }

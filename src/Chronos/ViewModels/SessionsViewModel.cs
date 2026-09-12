@@ -131,10 +131,8 @@ public sealed partial class SessionsViewModel : ObservableObject
     /// <summary>Relit le monitor et met à jour la liste (PUR hors I/O du monitor) — testable directement.</summary>
     public void Refresh(System.DateTimeOffset now)
     {
-        var snaps = _monitor.Read(now)
-            .OrderBy(s => Rank(s.Activity))
-            .ThenByDescending(s => s.UpdatedAt)
-            .ToList();
+        // L'ordre vient de la couche neutre : le rapport de diagnostic lit le même (OBS-01).
+        var snaps = AffichageSessions.Ordonner(_monitor.Read(now));
 
         // Réconciliation simple (liste courte) : on aligne Items sur snaps par SessionId.
         Items.Clear();
@@ -146,7 +144,7 @@ public sealed partial class SessionsViewModel : ObservableObject
             it.IsTurn = s.Activity == SessionActivity.WaitingTurn;
             it.IsWorking = s.Activity == SessionActivity.Working;
             it.IsGhost = s.Activity == SessionActivity.Unknown;
-            it.Detail = Age(now - s.UpdatedAt);
+            it.Detail = AffichageSessions.Age(now - s.UpdatedAt);
             Items.Add(it);
         }
 
@@ -157,28 +155,17 @@ public sealed partial class SessionsViewModel : ObservableObject
             : (WaitingCount > 0 ? $"{WaitingCount} en attente · {TotalCount} session(s)" : $"{TotalCount} session(s)");
     }
 
-    private static int Rank(SessionActivity a) => a switch
-    {
-        SessionActivity.WaitingAttention => 0,
-        SessionActivity.WaitingTurn => 1,
-        SessionActivity.Working => 2,
-        _ => 3,
-    };
-
-    private (string, Brush, bool) Describe(SessionActivity a) => a switch
-    {
-        SessionActivity.WaitingAttention => ("à toi", _amber, true),        // attend une intervention → rampe ambre
-        SessionActivity.WaitingTurn => ("tour fini", _amber, true),         // réflexion finie non consultée → rampe ambre
-        SessionActivity.Working => ("en cours", _green, false),
-        _ => ("inconnu", _gray, false),
-    };
-
-    private static string Age(System.TimeSpan d)
-    {
-        if (d < System.TimeSpan.FromSeconds(60)) return "à l'instant";
-        if (d < System.TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
-        return $"il y a {(int)d.TotalHours} h";
-    }
+    // Le LIBELLÉ vient de la couche neutre (partagé avec le rapport) ; seules la couleur et le drapeau
+    // d'attente restent ici — ce sont des types WPF, ils ne peuvent pas en descendre.
+    private (string, Brush, bool) Describe(SessionActivity a)
+        => (AffichageSessions.Etat(a),
+            a switch
+            {
+                SessionActivity.WaitingAttention or SessionActivity.WaitingTurn => _amber,  // les deux attentes → rampe ambre
+                SessionActivity.Working => _green,
+                _ => _gray,
+            },
+            a is SessionActivity.WaitingAttention or SessionActivity.WaitingTurn);
 
     private static Brush FrozenC(Color c)
     {
