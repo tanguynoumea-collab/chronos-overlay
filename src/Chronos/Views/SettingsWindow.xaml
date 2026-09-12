@@ -324,14 +324,36 @@
 
             <!-- Réglages avancés -->
             <TextBlock Text="RÉGLAGES" Style="{StaticResource Section}"/>
-            <UniformGrid Columns="2">
-                <Button Content="Recalibrer hebdo…" Style="{StaticResource Flat}" Margin="0,0,4,6" FontSize="12"
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <!-- Grid explicite, et surtout PAS le panneau à cellules uniformes qui occupait cette
+                     place : celui-ci ignore SILENCIEUSEMENT Grid.ColumnSpan (il remplit ses cellules
+                     dans l'ordre de déclaration), et depuis le retrait du bouton « Plafonds… »
+                     (phase 16) il laissait une cellule VIDE en bas à droite. Passer à 3 colonnes est
+                     exclu PAR LA MESURE : largeur utile 296 px ⇒ cellule de 98,7 px, soit 74,7 px pour
+                     un libellé de ≈ 107 px à FontSize=12 — troncature garantie.
+                     Les marges sont corrigées au passage : elles décrivaient des positions fausses
+                     (« Source terminal » est en colonne DROITE, « Diagnostic… » sur la ligne du bas).
+                     Le fait que ColumnSpan soit réellement honoré est prouvé par une mise en page
+                     MESURÉE dans ReglagesBindingTests — aucun dotnet build n'attrape cette classe
+                     d'erreur. -->
+                <Button x:Name="BoutonRecalibrerHebdo" Grid.Row="0" Grid.Column="0"
+                        Content="Recalibrer hebdo…" Style="{StaticResource Flat}" Margin="0,0,4,6" FontSize="12"
                         Command="{Binding RecalibrateCommand}"/>
-                <Button Content="Source terminal" Style="{StaticResource Flat}" Margin="0,0,4,0" FontSize="12"
+                <Button x:Name="BoutonSourceTerminal" Grid.Row="0" Grid.Column="1"
+                        Content="Source terminal" Style="{StaticResource Flat}" Margin="4,0,0,6" FontSize="12"
                         Command="{Binding ToggleStatusLineSourceCommand}"/>
-                <Button Content="Diagnostic…" Style="{StaticResource Flat}" Margin="4,0,0,0" FontSize="12"
+                <Button x:Name="BoutonDiagnostic" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                        Content="Diagnostic…" Style="{StaticResource Flat}" Margin="0,0,0,0" FontSize="12"
                         Click="Diagnostic_Click"/>
-            </UniformGrid>
+            </Grid>
 
             <!-- Pied -->
             <Button Content="Quitter Chronos" Style="{StaticResource Flat}" Margin="0,10,0,0" FontSize="12"

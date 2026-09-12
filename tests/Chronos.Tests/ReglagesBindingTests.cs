@@ -177,4 +177,40 @@ public class ReglagesBindingTests
         Assert.Equal(Visibility.Visible, ligneParlante.Visibility);
         Assert.Contains("AUTORISÉ (avertissement)", ligneParlante.Text);
     }
+
+    /// <summary>
+    /// Le trou de la grille des réglages (phase 20). L'ancien conteneur était une <c>UniformGrid</c>
+    /// à 2 colonnes pour 3 boutons : depuis le retrait du bouton « Plafonds… » (phase 16), la cellule
+    /// bas-droite était VIDE. Le piège à connaître : <c>UniformGrid</c> ignore SILENCIEUSEMENT
+    /// <c>Grid.ColumnSpan</c> — annoter l'enfant compile, s'affiche sans erreur et ne fait RIEN. Seul
+    /// le remplacement du conteneur corrige la mise en page.
+    ///
+    /// D'où une assertion sur la LARGEUR MESURÉE et non sur la présence de l'attribut : un
+    /// <c>ColumnSpan</c> ignoré donnerait un rapport de largeurs ≈ 1, jamais &gt; 1,8. Aucun
+    /// <c>dotnet build</c> n'attrape cela.
+    /// </summary>
+    [WpfFact]
+    public void Le_bouton_Diagnostic_occupe_toute_la_largeur_et_aucun_libelle_n_est_tronque()
+    {
+        var (fenetre, _) = MonterReglages(sondeActivee: false);
+
+        var diagnostic  = Assert.IsType<Button>(fenetre.FindName("BoutonDiagnostic"));
+        var recalibrer  = Assert.IsType<Button>(fenetre.FindName("BoutonRecalibrerHebdo"));
+        var sourceTerm  = Assert.IsType<Button>(fenetre.FindName("BoutonSourceTerminal"));
+
+        Assert.Equal(Visibility.Visible, diagnostic.Visibility);
+        Assert.Equal(Visibility.Visible, recalibrer.Visibility);
+        Assert.Equal(Visibility.Visible, sourceTerm.Visibility);
+
+        // Il enjambe RÉELLEMENT les deux colonnes (ColumnSpan honoré) : plus de cellule vide.
+        Assert.True(diagnostic.ActualWidth > recalibrer.ActualWidth * 1.8,
+                    $"Diagnostic devrait enjamber les 2 colonnes : {diagnostic.ActualWidth:F1} px " +
+                    $"contre {recalibrer.ActualWidth:F1} px pour une demi-colonne");
+
+        // La cellule laisse la place aux ≈ 107 px du libellé « Recalibrer hebdo… » à FontSize=12 :
+        // c'est la mesure qui EXCLUT Columns=3 (98,7 px de cellule, 74,7 px utiles).
+        Assert.True(recalibrer.ActualWidth >= 120,
+                    $"libellé tronqué : la cellule ne fait que {recalibrer.ActualWidth:F1} px");
+        Assert.True(sourceTerm.ActualWidth > 0);
+    }
 }
