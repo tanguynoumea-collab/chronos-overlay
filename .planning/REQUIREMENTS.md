@@ -60,7 +60,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 ### Source exacte par en-têtes de rate-limit (HDR)
 
-- [ ] **HDR-01**: Chronos obtient l'usage exact via les en-têtes `anthropic-ratelimit-unified-*` d'une
+- [x] **HDR-01**: Chronos obtient l'usage exact via les en-têtes `anthropic-ratelimit-unified-*` d'une
   **requête jetable** (`POST /v1/messages`, `max_tokens:1`, modèle le moins cher).
 - [ ] **HDR-02**: Les en-têtes sont exploités **même quand la réponse est un 429** — précisément l'instant où
   l'overlay sert le plus.
@@ -70,7 +70,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 - [x] **HDR-05**: Les **unités concurrentes** sont normalisées en un point unique : `utilization` 0..1 pour les
   en-têtes, 0..100 pour `/api/oauth/usage`, `used_percentage` 0..100 pour le pont statusLine ; `resets_at` en
   epoch secondes pour les deux premiers, ISO 8601 pour le troisième.
-- [ ] **HDR-06**: La **cadence d'interrogation est bornée** et le **coût de la sonde** (une micro-requête par appel)
+- [x] **HDR-06**: La **cadence d'interrogation est bornée** et le **coût de la sonde** (une micro-requête par appel)
   est indiqué honnêtement dans les réglages.
 
 ### Cycle de vie du jeton (TOK)
@@ -125,12 +125,12 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | DEL-04 | Phase 19 | Pending |
 | DEL-05 | Phase 16 | Complete |
 | DEL-06 | Phase 16 | Complete |
-| HDR-01 | Phase 18 | Pending |
+| HDR-01 | Phase 18 | Complete |
 | HDR-02 | Phase 18 | Pending |
 | HDR-03 | Phase 18 | Pending |
 | HDR-04 | Phase 18 | Pending |
 | HDR-05 | Phase 18 | Complete |
-| HDR-06 | Phase 18 | Pending |
+| HDR-06 | Phase 18 | Complete |
 | TOK-01 | Phase 17 | Complete |
 | TOK-02 | Phase 17 | Complete |
 | TOK-03 | Phase 17 | Complete |

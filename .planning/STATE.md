@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-09-12T01:02:52.579Z"
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-09-12T01:26:43.342Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 18 (Source exacte par en-tetes de rate-limit) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -138,6 +138,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 17 P05 | 19min | 3 tasks | 9 files |
 | Phase 18 P01 | 14min | 3 tasks | 8 files |
 | Phase 18 P02 | 18min | 3 tasks | 10 files |
+| Phase 18 P03 | 18min | 3 tasks | 3 files |
 
 ### Decisions
 
@@ -233,6 +234,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 18]: 18-02 : le statut serveur et le depassement vont sur WindowState (transmis PAR REFERENCE par Best()) et non sur UsageSnapshot, que le composite reconstruit -- contrainte mecanique, pas preference
 - [Phase 18]: 18-02 : vocabulaire de statut OUVERT (NonReconnu) et null distinct de NonReconnu -- un statut inconnu n'est jamais range d'autorite dans « autorise »
 - [Phase 18]: 18-02 : HDR-03/HDR-04 restent Pending -- ce plan livre leurs contrats, c'est au plan 18-06 de les cocher quand la remontee au cadran sera livree
+- [Phase 18]: Sonde : une fenetre dont SEULE l'utilization est illisible reste Exact avec Utilization null — jeter un reset reellement obtenu serait une perte d'information
+- [Phase 18]: Un 429 PORTEUR d'en-tetes appelle SignalerSucces() : il prouve que le jeton est valide, donc la pastille ne mentira pas pendant la saturation
+- [Phase 18]: Les criteres grep du plan sont devenus un test permanent balayant le texte source de la sonde (horloge systeme, controle de succes par exception, lecture du corps, rafraichisseur)
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -288,7 +292,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T01:02:45.187Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-09-12T01:26:43.337Z
+Stopped at: Completed 18-03-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18
