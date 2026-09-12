@@ -28,7 +28,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 ### Périmètre — widget Claude Code uniquement (SRC)
 
-- [ ] **SRC-01**: Le widget ne montre QUE des sessions **Claude Code**. La source app-bureau par UI Automation
+- [x] **SRC-01**: Le widget ne montre QUE des sessions **Claude Code**. La source app-bureau par UI Automation
   est retirée (`DesktopUiaSessionSource`, `DesktopUiaPollService`, `WindowsUiaTreeProvider`,
   `IUiaTreeProvider`, `UiaLabels`, `UiaNode` — ~690 lignes — plus `WindowsForegroundWatch` / `IForegroundWatch`
   devenus morts avec l'hystérésis par focus).
@@ -102,7 +102,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| SRC-01 | Phase 21 | Pending |
+| SRC-01 | Phase 21 | Complete |
 | SRC-02 | Phase 21 | Pending |
 | SRC-03 | Phase 21 | Complete |
 | EVT-01 | Phase 25 | Pending |

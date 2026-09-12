@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
 status: executing
-stopped_at: Completed 21-02-PLAN.md
-last_updated: "2026-09-12T14:50:16.518Z"
+stopped_at: Completed 21-03-PLAN.md
+last_updated: "2026-09-12T15:02:50.506Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 21 (Perimetre - le widget ne parle que de Claude Code) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -164,6 +164,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 20 P05 | 14min | 3 tasks | 5 files |
 | Phase 21 P01 | 14min | 2 tasks | 3 files |
 | Phase 21 P02 | 12min | 2 tasks | 11 files |
+| Phase 21 P03 | 8min | 3 tasks | 18 files |
 
 ### Decisions
 
@@ -373,6 +374,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 21]: MutableSource survit en passant du 4e au 2e argument de SessionMonitor : le contrat ISessionSource porte par TranscriptSessionSource evite la reecriture des tests d'hysteresis
 - [Phase 21]: Le champ _machine de DiagnosticService reste : CoffresOAuth vaut 94 % du cout du rapport et sa couture sous test est la raison d'etre de IInventaireMachine
 - [Phase 21]: NET-02 documente par une epitaphe (raison mecanique de sa mort) plutot que supprime en silence
+- [Phase 21]: Le montage BAML d'une fenetre jamais affichee se fait sur sa GRILLE RACINE (DataContext pose dessus + purge du Dispatcher), jamais sur la fenetre : sinon DesiredSize rend 0x0 et aucun binding ne s'evalue.
+- [Phase 21]: Une garde de non-retour se prouve par MUTATION avant d'etre committee : 3 mutations injectees puis revoquees (type Uia*, binding KindLabel, separateur orphelin).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -451,7 +454,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T14:50:10.243Z
-Stopped at: Completed 21-02-PLAN.md
+Last session: 2026-09-12T15:02:50.501Z
+Stopped at: Completed 21-03-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 21 — Périmètre : retrait de la source app-bureau (SRC-01, SRC-02, SRC-03)
