@@ -27,6 +27,7 @@ public sealed class DiagnosticService
     private readonly IClock _clock;
     private readonly IAuthStatus? _authStatus;
     private readonly IEtatServeur? _etatServeur;
+    private readonly IInventaireMachine _machine;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
@@ -34,9 +35,16 @@ public sealed class DiagnosticService
     /// <param name="etatServeur">Canal latéral de la sonde d'en-têtes (HDR-03/HDR-04) et son issue.
     /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants (1 en
     /// production, 9 en tests) compilent sans retouche. Précédent : authStatus, phase 17.</param>
+    /// <param name="machine">Les deux sondages d'environnement MESURÉS chers (coffres OAuth 17 703 ms,
+    /// poll UIA 936 ms — 99,4 % du coût d'un rapport ; 7 tests payaient 2 min 8 s pour cela seul).
+    /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants
+    /// compilent sans retouche. Le repli <c>?? new InventaireMachine()</c> laisse la PRODUCTION
+    /// strictement inchangée — aucune inscription DI, aucune mémoïsation. Précédents : authStatus
+    /// (phase 17), etatServeur (phase 18).</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
-                             IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null)
+                             IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
+                             IInventaireMachine? machine = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -45,6 +53,7 @@ public sealed class DiagnosticService
         _clock = clock;
         _authStatus = authStatus;
         _etatServeur = etatServeur;
+        _machine = machine ?? new InventaireMachine();
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -215,7 +224,7 @@ public sealed class DiagnosticService
             ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
         })
         {
-            foreach (var hit in FindTokenVaults(root))
+            foreach (var hit in _machine.CoffresOAuth(root))
             {
                 sb.AppendLine("    ✓ " + hit.Replace(root, label));
                 found++;
@@ -443,10 +452,8 @@ public sealed class DiagnosticService
         // aveugle au bureau : new SessionMonitor() sans source bureau).
         try
         {
-            var desktop = new DesktopUiaSessionSource(new WindowsUiaTreeProvider());
-            desktop.Poll(_clock.UtcNow);
-            var dsk = desktop.Read(_clock.UtcNow);
-            sb.AppendLine($"  Sessions BUREAU (UIA, one-shot) : {dsk.Count}  [santé UIA : {desktop.Health}]");
+            var (dsk, sante) = _machine.SessionsBureau(_clock.UtcNow);
+            sb.AppendLine($"  Sessions BUREAU (UIA, one-shot) : {dsk.Count}  [santé UIA : {sante}]");
             foreach (var d in dsk.Take(12))
                 sb.AppendLine($"    · {d.Kind}/{d.Activity} — {d.Project}  [{d.SessionId}]");
             if (dsk.Count == 0)
@@ -511,42 +518,8 @@ public sealed class DiagnosticService
         _                                   => "non rapporté",
     };
 
-    // Cherche (profondeur bornée, dossiers volumineux ignorés) les fichiers config.json contenant
-    // « oauth:tokenCache » → révèle où l'app bureau range son coffre, quel que soit son nom/emplacement.
-    private static IEnumerable<string> FindTokenVaults(string root)
-    {
-        var results = new List<string>();
-        void Scan(string dir, int depth)
-        {
-            if (depth > 3 || results.Count >= 5) return;
-            string[] subdirs;
-            try { subdirs = Directory.GetDirectories(dir); } catch { return; }
-            try
-            {
-                foreach (var f in Directory.EnumerateFiles(dir, "config.json"))
-                {
-                    try
-                    {
-                        var fi = new FileInfo(f);
-                        if (fi.Length > 2_000_000) continue;                 // pas un config.json d'app
-                        if (File.ReadAllText(f).Contains("oauth:tokenCache")) { results.Add(f); if (results.Count >= 5) return; }
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-            foreach (var sub in subdirs)
-            {
-                var n = Path.GetFileName(sub).ToLowerInvariant();
-                if (n is "cache" or "gpucache" or "code cache" or "node_modules" or "blob_storage"
-                      or "logs" or "crashpad" or "dawncache" or "service worker") continue; // bruit volumineux
-                Scan(sub, depth + 1);
-                if (results.Count >= 5) return;
-            }
-        }
-        Scan(root, 0);
-        return results;
-    }
+    // La recherche des coffres OAuth vit désormais dans InventaireMachine (phase 20, vague 0) : elle a
+    // été DÉPLACÉE, pas dupliquée, afin d'être substituable sous test (17 703 ms mesurés par appel).
 
     // Forme d'un blob d'identifiant SANS révéler son contenu : encodage probable + clés JSON de 1er niveau.
     private static string DescribeBlobShape(byte[] blob)

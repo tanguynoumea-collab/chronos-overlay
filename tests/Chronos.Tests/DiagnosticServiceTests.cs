@@ -35,7 +35,8 @@ public class DiagnosticServiceTests
             FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Estimated, Utilization = null },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(reader, paths, settings, new StubProvider(snap), new FakeClock(DateTimeOffset.UtcNow));
+        var diag = new DiagnosticService(reader, paths, settings, new StubProvider(snap), new FakeClock(DateTimeOffset.UtcNow),
+                                         machine: new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
@@ -51,7 +52,8 @@ public class DiagnosticServiceTests
     {
         var paths = TempPaths();
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
-            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
+                                         machine: new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
@@ -72,7 +74,8 @@ public class DiagnosticServiceTests
         var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
                                          settings, new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), auth);
+                                         new FakeClock(DateTimeOffset.UtcNow), auth,
+                                         machine: new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
@@ -104,7 +107,8 @@ public class DiagnosticServiceTests
         };
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), null, etat);
+                                         new FakeClock(DateTimeOffset.UtcNow), null, etat,
+                                         new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
@@ -132,7 +136,8 @@ public class DiagnosticServiceTests
         };
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), null, etat);
+                                         new FakeClock(DateTimeOffset.UtcNow), null, etat,
+                                         new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
@@ -159,7 +164,8 @@ public class DiagnosticServiceTests
         };
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), null, etat);
+                                         new FakeClock(DateTimeOffset.UtcNow), null, etat,
+                                         new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
@@ -182,7 +188,8 @@ public class DiagnosticServiceTests
         };
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
                                          new SettingsService(paths), new StubProvider(snap),
-                                         new FakeClock(DateTimeOffset.UtcNow));
+                                         new FakeClock(DateTimeOffset.UtcNow),
+                                         machine: new FakeInventaireMachine());
 
         var report = await diag.BuildReportAsync();
 
