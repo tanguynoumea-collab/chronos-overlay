@@ -98,6 +98,12 @@ public sealed class SessionMonitor
         return result;
     }
 
+    /// <summary>
+    /// OBS-01 — la MÊME lecture que <see cref="Read"/>, doublée de ce qu'elle a écarté et pourquoi.
+    /// </summary>
+    public LectureSessions Inspecter(System.DateTimeOffset now)
+        => throw new System.NotImplementedException();
+
     private static SessionSnapshot? TryRead(string file, System.DateTimeOffset now)
     {
         try
