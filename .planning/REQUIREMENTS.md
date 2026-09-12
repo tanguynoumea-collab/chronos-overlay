@@ -1,153 +1,127 @@
-# REQUIREMENTS.md — Chronos v1.5 « Exactitude permanente »
+# REQUIREMENTS.md — Chronos v1.6 « Observer au lieu de déduire »
 
 ## Contexte
 
-Depuis le passage du forfait **Max x5 à Max x20**, Chronos affiche des pourcentages faux. Le diagnostic mené
-le 2026-09-09 sur la machine réelle montre que ce n'est pas un bug isolé mais une **panne silencieuse des trois
-sources exactes**, doublée d'une doctrine de repli défaillante :
+Le widget de sessions doit répondre à une seule question : **quelle session m'attend ?** Trois états comptent
+— « en train de réfléchir », « en attente d'une réponse », « traité ». Les trois sont mal transmis.
 
-- jeton OAuth expiré le 2026-07-12 → `GET /api/oauth/usage` renvoie **HTTP 401**, sans le moindre signal ;
-- `%APPDATA%/Chronos/usage.json` figé au 2026-07-10 (`resets_at: 9`, soit epoch 1970) mais toujours servi
-  comme `Exact`, car `ClaudeUsageObjectProvider` n'applique **aucune limite d'âge** ;
-- le cache du dernier relevé exact vit **en RAM seulement** → perdu à chaque démarrage de l'exe ;
-- `CompositeUsageProvider.Best()` classant **uniquement par fiabilité**, une donnée « exacte » de deux mois
-  bat une estimation fraîche ;
-- le repli calcule `tokens / plafond` avec des plafonds calibrés sous Max x5, dont celui des 5 h est en source
-  `Manual` — donc gelé à vie par conception de `BudgetCalibration.ApplyAuto`.
+L'investigation du 2026-09-12 (`.planning/debug/widget-sessions-statuts.md`) établit **trois causes racines
+distinctes**, prouvées contre les classes réelles et contre la documentation officielle des hooks Claude Code :
 
-**Décision de fond :** les limites Anthropic **pondèrent par modèle**, donc `tokens / plafond` restera faux même
-avec le bon plafond. On cesse de chercher à rendre l'estimation absolue juste : elle est **supprimée**. Les
-transcripts JSONL ne savent répondre qu'à deux questions bornées — *y a-t-il eu de l'activité depuis T ?* et
-*combien de tokens depuis T ?* — et ne servent donc plus qu'à **corriger un delta** par rapport à un relevé
-exact. Doctrine cible : **exact frais → dernier exact persisté (encore exact si rien ne s'est passé) → dernier
-exact + delta borné et marqué → indisponible.** Jamais de pourcentage inventé.
+1. **« Réfléchit » est déduit par expiration, jamais observé.** `Working` n'est écrit que par
+   `UserPromptSubmit` et `SessionStart` ; aucun événement ne confirme jamais que le travail continue. Et
+   `SessionMonitor.Read` arbitre par **ordre d'insertion**, pas par fraîcheur : un fichier de hook de 7 h
+   écrase un transcript de 10 secondes.
+2. **« Attend » repose sur une sémantique fausse à la source.** `Stop` **ne se déclenche pas** sur
+   interruption utilisateur — la session ne sera donc jamais annoncée en attente dans le cas où elle attend
+   le plus. `Notification` est une alerte « tu sembles absent du terminal » qui couvre permission **et**
+   inactivité **et** fin de tâche. Un événement `PermissionRequest` **dédié** existe et n'est pas utilisé.
+3. **« Traité » ne peut structurellement pas fonctionner en terminal.** Le tracker exige `Origin == Desktop`
+   et un identifiant `desktop:foreground:*` ; une session Claude Code a `Origin = Cli` et un UUID. Et la règle
+   confond « l'utilisateur a répondu » avec « ma source a expiré » : preuve arithmétique, une attente
+   enregistrée 478 min avant le seuil de 480 min a masqué une session **réellement en attente** pendant 6 h.
 
-S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/claude-session-browser`
-(`clawdmeter.py:150`) : les en-têtes `anthropic-ratelimit-unified-*` d'une requête jetable, qui répondent
-**même sur un 429** et exposent le statut serveur et le dépassement.
+**Doctrine du milestone**, héritée de v1.5 et appliquée au widget : **ne jamais présenter comme un fait ce
+qui n'a pas été observé.** Un état dont la source a expiré n'est pas « terminé » — il est **inconnu**.
 
-## v1.5 Requirements
+## v1.6 Requirements
 
-### Exactitude & doctrine d'affichage (EXA)
+### Périmètre — widget Claude Code uniquement (SRC)
 
-- [x] **EXA-01**: Le dernier relevé exact est **persisté sur disque** avec son horodatage et rechargé au
-  démarrage, pour que Chronos ne reparte jamais sans chiffre (tue la bascule au redémarrage de l'exe).
-- [x] **EXA-02**: Au-delà d'un **âge maximal**, une source exacte cesse d'être présentée comme exacte —
-  fin du « 10 % vieux de deux mois marqué `Exact` ».
-- [x] **EXA-03**: Le cadran **distingue visuellement** trois états : chiffre exact frais, chiffre exact daté,
-  état indisponible. `IsStale` (aujourd'hui calculé mais bindé nulle part) devient un signal réel à l'écran.
-- [x] **EXA-04**: Aucune **utilization absolue dérivée d'un comptage de tokens** n'est plus jamais affichée,
-  quelle que soit la situation.
-- [x] **EXA-05**: Si **aucun chiffre exact n'a jamais été obtenu**, l'overlay affiche « indisponible » et invite
-  à se connecter — jamais un pourcentage.
-- [x] **EXA-06**: Le **diagnostic** indique quelle source alimente réellement l'affichage, et depuis quand.
+- [ ] **SRC-01**: Le widget ne montre QUE des sessions **Claude Code**. La source app-bureau par UI Automation
+  est retirée (`DesktopUiaSessionSource`, `DesktopUiaPollService`, `WindowsUiaTreeProvider`,
+  `IUiaTreeProvider`, `UiaLabels`, `UiaNode` — ~690 lignes — plus `WindowsForegroundWatch` / `IForegroundWatch`
+  devenus morts avec l'hystérésis par focus).
+- [ ] **SRC-02**: Les entrées fantômes `desktop:foreground:*` disparaissent, y compris celles déjà présentes
+  dans `archived.json` — l'utilisateur avait dû les archiver à la main parce qu'elles ne vieillissaient jamais.
+- [ ] **SRC-03**: La limite de fichiers de transcripts est appliquée **après** le filtre des sous-agents, et
+  non avant : 94 % des transcripts sont des `agent-*.jsonl`, et une vague d'agents parallèles aveuglait la
+  source jusqu'à faire disparaître la vraie session.
 
-### Correction par delta (DEL)
+### Contrat d'événements (EVT)
 
-- [x] **DEL-01**: Les transcripts JSONL répondent à « y a-t-il eu une **réponse assistant depuis l'instant T** ? »
-  sans produire de pourcentage.
-- [x] **DEL-02**: Les transcripts JSONL fournissent la **somme de tokens depuis l'instant T**.
-- [x] **DEL-03**: **Sans activité** depuis le dernier relevé exact, ce relevé est présenté comme **encore exact**
-  (l'utilisation n'a pas bougé) — et non comme périmé.
-- [x] **DEL-04**: **Avec activité** depuis, l'affichage est « dernier exact **+ delta estimé** », **marqué avec sa
-  marge d'incertitude** — jamais confondu avec un relevé exact.
-- [x] **DEL-05**: Le **sous-système de plafonds disparaît** du code, des réglages et du menu (`BudgetCalibration`,
-  `BudgetAutoCalibrator`, `BudgetSource`, `BudgetDialog` + VM, `IBudgetPrompt`/`BudgetPrompt`, l'entrée
-  « Calibrer les plafonds… », les enregistrements DI et les tests associés).
-- [x] **DEL-06**: Les réglages existants contenant d'anciens plafonds sont **migrés sans casse** : les champs
-  obsolètes sont ignorés et les autres préférences (coin, écran, thème, style de cadran, widget sessions)
-  survivent intactes.
+- [ ] **EVT-01**: L'événement `PermissionRequest` alimente « en attente » — signal **exact et immédiat**, au
+  lieu du proxy `Notification`.
+- [ ] **EVT-02**: `Notification` cesse d'être traité comme un **état**. C'est une alerte d'absence : au mieux
+  un indice, jamais une vérité sur ce que fait la session.
+- [ ] **EVT-03**: Des **battements de cœur** rafraîchissent « réfléchit » : l'état est **observé** tant que le
+  travail continue, et cesse de dépendre d'un seuil d'expiration deviné.
+- [ ] **EVT-04**: Une **interruption utilisateur** (Échap — aucun `Stop` n'est émis) ne laisse plus la session
+  dans un état faux ni invisible.
+- [ ] **EVT-05**: Le contrat des hooks est **documenté** dans `docs/`, au même titre que les autres sources.
+  Son absence est ce qui a laissé la dérive du contrat externe passer inaperçue.
 
-### Source exacte par en-têtes de rate-limit (HDR)
+### Fusion des sources (FUS)
 
-- [x] **HDR-01**: Chronos obtient l'usage exact via les en-têtes `anthropic-ratelimit-unified-*` d'une
-  **requête jetable** (`POST /v1/messages`, `max_tokens:1`, modèle le moins cher).
-- [x] **HDR-02**: Les en-têtes sont exploités **même quand la réponse est un 429** — précisément l'instant où
-  l'overlay sert le plus.
-- [x] **HDR-03**: Le **statut serveur** (`allowed` / `allowed_warning` / `rejected`) est remonté au cadran, au lieu
-  d'être déduit d'un pourcentage.
-- [x] **HDR-04**: L'usage en **dépassement** (`overage`) est lu et affiché quand il est présent.
-- [x] **HDR-05**: Les **unités concurrentes** sont normalisées en un point unique : `utilization` 0..1 pour les
-  en-têtes, 0..100 pour `/api/oauth/usage`, `used_percentage` 0..100 pour le pont statusLine ; `resets_at` en
-  epoch secondes pour les deux premiers, ISO 8601 pour le troisième.
-- [x] **HDR-06**: La **cadence d'interrogation est bornée** et le **coût de la sonde** (une micro-requête par appel)
-  est indiqué honnêtement dans les réglages.
+- [ ] **FUS-01**: Un signal ne peut en écraser un autre que s'il est **plus récent**. Jamais par ordre
+  d'insertion dans un dictionnaire.
+- [ ] **FUS-02**: Les **désaccords** entre sources sont traçables dans le diagnostic — aujourd'hui ils sont
+  silencieux.
 
-### Cycle de vie du jeton (TOK)
+### « Traité » (TRT)
 
-- [x] **TOK-01**: Le jeton OAuth est **rafraîchi préventivement** avant expiration, sans attendre un échec au
-  moment du besoin.
-- [x] **TOK-02**: Un **échec d'authentification est visible** dans l'overlay — plus jamais un 401 muet pendant
-  deux mois.
-- [x] **TOK-03**: Le signal de déconnexion permet de **relancer le login en un clic**.
+- [ ] **TRT-01**: « Traité » n'est déduit que d'une **transition observée sur la même source**. Jamais d'une
+  expiration de source, jamais d'une bascule transcript ↔ hook.
+- [ ] **TRT-02**: Le « traité » **survit à un redémarrage** de l'overlay : une session traitée ne ressort pas
+  toute seule.
+- [ ] **TRT-03**: L'utilisateur dispose d'un **geste explicite** pour marquer une session traitée — le focus
+  de fenêtre ne peut pas le fournir pour une session de terminal.
+- [ ] **TRT-04**: L'archivage respecte un **contrat unique** : permanent OU temporaire, pas les deux. Le clic
+  droit « Archiver » est aujourd'hui annoncé permanent mais expire au bout de 6 h.
 
-### Idempotence des intégrations (PUR)
+### Cycle de vie du magasin (CYC)
 
-- [x] **PUR-01**: L'installation des **hooks remplace** les entrées Chronos existantes au lieu de les cumuler
-  (match sur `--hook`, pas sur le chemin d'exe).
-- [x] **PUR-02**: L'installation du **pont statusLine remplace** l'entrée Chronos existante (match sur
-  `--statusline`).
-- [x] **PUR-03**: Les **entrées fantômes** déjà présentes dans `~/.claude/settings.json` sont **purgées**
-  (constaté : 25 hooks Chronos au lieu de 5, pointant sur des exes de versions révolues).
+- [ ] **CYC-01**: Les fichiers d'état expirés et les `.tmp` orphelins sont **balayés** — `SessionEnd` ne peut
+  pas être garanti (il ne couvre ni terminal tué, ni crash, ni redémarrage machine), donc le magasin ne peut
+  aujourd'hui que croître : 54 fichiers dont 48 de plus de 7 jours, plus 12 `.tmp`.
+- [ ] **CYC-02**: L'écriture d'un état de hook ne peut plus être **perdue en silence**.
+
+### Observabilité (OBS)
+
+- [ ] **OBS-01**: Le diagnostic dit **exactement** ce que le widget affiche — même moniteur, mêmes filtres.
+  Il construit aujourd'hui son propre moniteur nu, ce qui a très probablement empêché d'élucider le problème.
+- [ ] **OBS-02**: Le diagnostic liste les sessions **pertinentes**, et non les 8 premières par ordre
+  alphabétique (toutes vieilles de plusieurs semaines).
 
 ## Future Requirements (différés)
 
-- **Préavis avant saturation** (~90 %) et **notification au reset** — repris de `claude-session-browser` ;
-  suppose d'ouvrir le canal notification, jusqu'ici hors périmètre.
-- **Ventilation par modèle** (opus / sonnet / cowork) — dépend d'une source qui la publie.
-- **Survol / tooltip**, tray, taille réglable.
+- Ventilation par modèle, survol/tooltip, tray, taille réglable.
+- Préavis avant saturation (~90 %) et notification au reset.
 
-## Out of Scope (v1.5)
+## Out of Scope (v1.6)
 
-- **Estimation absolue par tokens / plafond** — les limites Anthropic pondèrent par modèle : le calcul reste
-  faux même avec le bon plafond. Remplacée par la correction par delta.
-- **Calibration des plafonds (manuelle ou automatique)** — supprimée avec l'estimation absolue ; c'était la
-  cause racine des pourcentages faux après un changement de forfait.
-- **Détection ou saisie du forfait (Max x5 / x20)** — inutile dès lors que les chiffres viennent du serveur,
-  qui connaît déjà le forfait. Ajouter un sélecteur reviendrait à réintroduire le problème.
-- **Réanimation du pont statusLine pour l'app de bureau** — l'app de bureau ne semble pas rendre de statusLine ;
-  le pont reste supporté pour le terminal, mais il n'est plus la voie principale.
-- **Notifications Windows / toasts** — inchangé depuis v1.4, différé.
+- **Source app-bureau par UI Automation** — retirée : elle produisait des entrées qui ne vieillissaient jamais
+  et imposait une hystérésis par focus inatteignable depuis une session de terminal.
+- **Hystérésis « traité » par focus de fenêtre** — supprimée avec elle.
+- **Correction fine des écritures concurrentes** — le mécanisme est réel (`File.Move` échoue si un lecteur
+  tient le fichier, perte silencieuse) mais son poids mesuré est de ~0,7 événement perdu sur 5 000. CYC-02
+  traite le silence ; l'optimisation fine n'est pas prioritaire.
+- **Notifications Windows / toasts** — inchangé.
 
 ## Traceability
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| EXA-01 | Phase 16 | Complete |
-| EXA-02 | Phase 19 | Complete |
-| EXA-03 | Phase 20 | Complete |
-| EXA-04 | Phase 19 | Complete |
-| EXA-05 | Phase 19 | Complete |
-| EXA-06 | Phase 20 | Complete |
-| DEL-01 | Phase 16 | Complete |
-| DEL-02 | Phase 16 | Complete |
-| DEL-03 | Phase 19 | Complete |
-| DEL-04 | Phase 19 | Complete |
-| DEL-05 | Phase 16 | Complete |
-| DEL-06 | Phase 16 | Complete |
-| HDR-01 | Phase 18 | Complete |
-| HDR-02 | Phase 18 | Complete |
-| HDR-03 | Phase 18 | Complete |
-| HDR-04 | Phase 18 | Complete |
-| HDR-05 | Phase 18 | Complete |
-| HDR-06 | Phase 18 | Complete |
-| TOK-01 | Phase 17 | Complete |
-| TOK-02 | Phase 17 | Complete |
-| TOK-03 | Phase 17 | Complete |
-| PUR-01 | Phase 15 | Complete |
-| PUR-02 | Phase 15 | Complete |
-| PUR-03 | Phase 15 | Complete |
+| SRC-01 | TBD | Pending |
+| SRC-02 | TBD | Pending |
+| SRC-03 | TBD | Pending |
+| EVT-01 | TBD | Pending |
+| EVT-02 | TBD | Pending |
+| EVT-03 | TBD | Pending |
+| EVT-04 | TBD | Pending |
+| EVT-05 | TBD | Pending |
+| FUS-01 | TBD | Pending |
+| FUS-02 | TBD | Pending |
+| TRT-01 | TBD | Pending |
+| TRT-02 | TBD | Pending |
+| TRT-03 | TBD | Pending |
+| TRT-04 | TBD | Pending |
+| CYC-01 | TBD | Pending |
+| CYC-02 | TBD | Pending |
+| OBS-01 | TBD | Pending |
+| OBS-02 | TBD | Pending |
 
-**Couverture :** 24 / 24 requirements mappés — 6 phases (15 → 20), aucun orphelin, aucun doublon.
-
-| Phase | Requirements | Nombre |
-|-------|--------------|--------|
-| 15 — Idempotence des intégrations | PUR-01, PUR-02, PUR-03 | 3 |
-| 16 — Fondations du delta (persistance & démolition des plafonds) | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | 5 |
-| 17 — Jeton toujours vivant, panne toujours visible | TOK-01, TOK-02, TOK-03 | 3 |
-| 18 — Source exacte par en-têtes de rate-limit | HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06 | 6 |
-| 19 — Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | 5 |
-| 20 — Honnêteté visible (cadran & diagnostic) | EXA-03, EXA-06 | 2 |
+**Couverture :** 18 requirements à mapper (roadmap à créer).
 
 ---
-*Last updated: 2026-09-09 — roadmap v1.5 créée : 24/24 requirements mappés sur les phases 15 à 20*
+*Last updated: 2026-09-12 — exigences v1.6 définies (18 requirements ; recherche passée, investigation déjà faite)*
