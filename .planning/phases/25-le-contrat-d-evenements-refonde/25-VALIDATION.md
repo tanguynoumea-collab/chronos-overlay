@@ -1,0 +1,223 @@
+---
+phase: 25
+slug: le-contrat-d-evenements-refonde
+status: planned
+nyquist_compliant: true
+wave_0_complete: n/a
+created: 2026-09-12
+validated: null
+---
+
+# Phase 25 — Validation Strategy
+
+> Carte **posée à la planification**, à **remplir et mesurer** au fil des quatre plans, et à clore au plan
+> 25-04. Toute case encore vide à la clôture est un **défaut de la phase**, pas une approximation.
+>
+> Cette phase applique à elle-même la doctrine qu'elle installe : **ne rien écrire ici qui n'ait été
+> mesuré.** Une case remplie « d'après le plan » plutôt que d'après une exécution est exactement la faute
+> que le milestone corrige.
+
+## Test Infrastructure
+
+| Property | Value |
+|----------|-------|
+| **Framework** | xUnit (`net8.0-windows`) — `tests/Chronos.Tests` |
+| **Full suite command** | `dotnet test Chronos.sln -c Debug --nologo -v q` |
+| **Quick run (contrat d'événements)** | `… --filter "FullyQualifiedName~CatalogueEvenementsHooks\|FullyQualifiedName~BattementsCoeur\|FullyQualifiedName~Sessions\|FullyQualifiedName~Inspection\|FullyQualifiedName~ClaudeSettings\|FullyQualifiedName~Affichage\|FullyQualifiedName~ContratHooksDocumente\|FullyQualifiedName~GardesPerimetre"` |
+| **Baseline d'entrée de phase** | **788 tests / 0 échec / ~4 s** (fin de phase 24, remesurée par le vérificateur) |
+| **Cible de fin de phase** | **0 échec, aucun test supprimé**, total **> 788**. Estimation indicative : ≈ +7 (25-01 T1), ≈ +7 (25-01 T2), ≈ +14 (25-01 T3, deux `[Theory]`), ≈ +9 (25-02 T1), ≈ +4 (25-02 T2), ≈ +4 (25-02 T3), ≈ +9 (25-03 T1), ≈ +4 (25-03 T2), ≈ +2 (25-03 T3), ≈ +6 (25-04 T2) → **≈ 854**. Chiffre **INDICATIF** : le critère est « 0 échec + aucune suppression », jamais un total. |
+| **Total mesuré après 25-01** | _à mesurer_ |
+| **Total mesuré après 25-02** | _à mesurer_ |
+| **Total mesuré après 25-03** | _à mesurer_ |
+| **Total mesuré après 25-04** | _à mesurer_ |
+| **Deux exécutions consécutives** | _à mesurer_ (attendu : même total, 0 échec les deux fois) |
+| **Renommages prévus** | **5, tous annoncés** : 3 tests de comptage de hooks (25-01 T2), le champ `StaleWorking` → `SilenceDesBattements` (25-02 T3), et l'assertion de `Vingt_et_une_minutes_de_SILENCE…` qui passe d'`Unknown` à `WaitingDeduced` (25-03 T2). Tout renommage supplémentaire doit être **justifié nominativement** dans le SUMMARY concerné. |
+
+## Le critère de cette phase n'est PAS un chiffre de couverture
+
+Cette phase **n'enlève aucun code** et ne supprime aucun test. Le critère opérationnel :
+
+> **0 échec, total > 788, aucun test supprimé, et les cinq critères de succès du ROADMAP prouvés un à un.**
+
+Un total inférieur à 788 doit être expliqué **nominativement**, jamais absorbé en ajustant l'attendu.
+
+## Couverture des exigences
+
+| Exigence | Plan | Preuve nommée attendue | Mesuré |
+|---|---|---|---|
+| **EVT-01** — `PermissionRequest` alimente « en attente » | 25-01 | `SessionsTests` : routage `PermissionRequest` → `WaitingAttention` ; groupe installé dans `settings.json` | _à mesurer_ |
+| **EVT-02** — `Notification` cesse d'être traité comme un état | 25-01 | `[Theory]` de veto sur les neuf types sans état + `Le_groupe_Notification_ne_laisse_passer_que_les_trois_vraies_demandes` | _à mesurer_ |
+| **EVT-03** — battements de cœur | 25-02 | `Un_battement_frais_maintient_en_cours_bien_au_dela_d_une_heure` + le filtre sous-agent + la cadence de cinq cents écritures | _à mesurer_ |
+| **EVT-04** — l'interruption ne laisse plus la session invisible | 25-03 | `Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini` + `Une_session_deduite_est_visible_ambre_et_dit_sa_deduction` | _à mesurer_ |
+| **EVT-05** — le contrat documenté | 25-04 | `ContratHooksDocumenteTests` (6 tests) + `docs/hooks-contract.md` | _à mesurer_ |
+
+## Les cinq critères du ROADMAP, un par un
+
+| # | Critère | Preuve nommée | Résultat mesuré |
+|---|---------|---------------|-----------------|
+| 1 | **« Attend » naît d'une vraie demande** — une permission demandée bascule en « à toi » ; une alerte d'absence ne fabrique plus aucun état (EVT-01, EVT-02) | Routage `PermissionRequest`, veto `idle_prompt` / `auth_success` / `quota_auto_resume_*`, matcher installé | _à mesurer_ |
+| 2 | **« Réfléchit » ne s'éteint plus tout seul** — réaffirmé par battements, y compris au-delà d'une heure (EVT-03) | `Un_battement_frais_maintient_en_cours_bien_au_dela_d_une_heure` (pipeline complet : `Process` → `EcritureEtatSession` → `SessionMonitor.Read`) | _à mesurer_ |
+| 3 | **Échap est couvert** — état juste et visible, ni figé « en cours », ni disparu (EVT-04) | `Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini` (avec `Assert.NotEqual(WaitingTurn, …)`) + `IsGhost == false` | _à mesurer_ |
+| 4 | **Le silence se dit « inconnu »** — jamais « terminée » ni « tour fini » | `Une_activite_illisible_reste_inconnue_et_non_deduite`, `Une_attente_observee_ne_se_convertit_jamais_en_deduction`, et le libellé `"à toi ? déduit"` | _à mesurer_ |
+| 5 | **Le contrat est écrit** dans `docs/`, avec ce qui n'est PAS garanti | `docs/hooks-contract.md` §5 (les trois trous datés et sourcés) + `ContratHooksDocumenteTests` | _à mesurer_ |
+
+## Ce qui rendrait cette phase creuse
+
+Quatre livraisons qui produisent **le même écran** le jour J, et divergent la semaine suivante.
+
+| Livraison | Ce qu'on lit le jour J | Ce qui se passe ensuite |
+|---|---|---|
+| **Supprimer purement `Notification`** du câblage | plus aucune fausse attente | `agent_needs_input` et les dialogues d'élicitation — de VRAIES demandes — cessent d'être vus. On aurait troqué un faux positif contre un faux négatif. |
+| **Filtrer par `matcher` sur les trois vraies demandes** ✅ | plus aucune fausse attente | les trois demandes réelles continuent d'alerter, et les neuf autres types n'atteignent même plus Chronos |
+| **Lire un champ de stdin pour décider** quel type de notification produit un état | ça marche aujourd'hui | le nom du champ n'est pas confirmable (page tronquée) : le jour où il change, Chronos fabrique ou perd des états **en silence** |
+| **Le `matcher` décide, le champ ne fait que VETO** ✅ | identique | si le champ disparaît, on retombe sur le tri par matcher — **jamais** sur une attente fabriquée |
+
+| Livraison (EVT-04) | Ce que voit l'utilisateur | Ce que ça dit |
+|---|---|---|
+| Le silence après travail devient **`WaitingTurn`** | « tour fini » | une **observation** que personne n'a faite. C'est l'interdit absolu du milestone. |
+| Le silence reste **`Unknown`** | « inconnu », estompé à 0,22 d'opacité dans deux gabarits | honnête mais **inutile** : le critère n°3 exige un état *juste ET visible*, « elle m'attend » |
+| Une **attente DÉDUITE**, ambre, lisible, libellée « à toi ? déduit » ✅ | l'incertitude est dans le libellé, la visibilité dans la forme | exactement ce que l'inférence autorise, et rien de plus |
+
+| Livraison (EVT-03) | Ce qu'on mesure | Ce qui se passe ensuite |
+|---|---|---|
+| Battement sur **`MessageDisplay`** | le battement le plus fin | un processus Chronos par fragment de texte affiché. Un battement qui coûte plus cher que ce qu'il observe. |
+| Battement sur `PreToolUse` / `PostToolUse` **sans filtre sous-agent** | ça paraît marcher | quatre-vingt-quatorze pour cent des transcripts de cette machine sont des sous-agents, et ils portent le **même `session_id`** : une vague d'agents réaffirmerait « en cours » sur un parent qui n'y est plus, et **écraserait un « à toi » en attente** |
+| `PreToolUse` / `PostToolUse` **avec veto sous-agent** ✅ | idem | seule la session parente parle de son activité ; un sous-agent ne peut plus que réclamer une intervention |
+
+## Preuves structurelles — attendus posés à la planification
+
+```sh
+# Le contrat externe est respecté
+grep -c "PermissionRequest"        src/Chronos/Services/CatalogueEvenementsHooks.cs   # attendu : >= 1
+grep -c "CatalogueEvenementsHooks" src/Chronos/Services/SessionHookInstaller.cs       # attendu : >= 2
+grep -c "agent_id"                 src/Chronos/Services/SessionHookProcessor.cs       # attendu : >= 1
+grep -c "agent_type"               src/Chronos/Services/SessionHookProcessor.cs       # attendu : >= 1
+grep -c "NotificationsSansEtat"    src/Chronos/Services/SessionHookProcessor.cs       # attendu : >= 2
+
+# Le seuil change de sens, jamais de valeur
+grep -rn "StaleWorking"            src/                                               # attendu : 0 ligne
+grep -c  "SilenceDesBattements"    src/Chronos/Services/SessionMonitor.cs             # attendu : >= 3
+grep -c  "FromMinutes(20)"         src/Chronos/Services/SessionMonitor.cs             # attendu : >= 1
+grep -c  "FromHours(8)"            src/Chronos/Services/SessionMonitor.cs             # attendu : >= 1
+
+# La déduction existe et n'est pas confondue avec une observation
+grep -c "WaitingDeduced"           src/Chronos/Services/SessionSnapshot.cs            # attendu : >= 1
+grep -c "WaitingDeduced"           src/Chronos/Services/AffichageSessions.cs          # attendu : >= 2
+grep -c "WaitingDeduced"           src/Chronos/Services/SessionMonitor.cs             # attendu : >= 1
+
+# Le document existe et est tenu
+grep -c "EVENEMENTS-CABLES:debut"  docs/hooks-contract.md                             # attendu : 1
+grep -c "2026-09-12"               docs/hooks-contract.md                             # attendu : >= 1
+
+# Les acquis des phases 20 à 24 n'ont pas bougé
+grep -cF "byId["                       src/Chronos/Services/SessionMonitor.cs         # attendu : 0
+grep -cF "ArbitrageSessions.Trancher(" src/Chronos/Services/SessionMonitor.cs         # attendu : 1
+grep -cF "=> Inspecter(now).Visibles;" src/Chronos/Services/SessionMonitor.cs         # attendu : 1
+grep -cF "new SessionMonitor"          src/Chronos/Services/DiagnosticService.cs      # attendu : 0
+grep -cF "?? new "                     src/Chronos/Services/DiagnosticService.cs      # attendu : 2
+grep -cF "MotifMasquage"               src/Chronos/Services/DiagnosticService.cs      # attendu : 3, INCHANGÉ
+
+# La phase 26 n'est pas anticipée
+git diff --stat -- src/Chronos/Services/SessionTreatmentTracker.cs \
+                   src/Chronos/Services/TreatedStore.cs \
+                   src/Chronos/Services/ArchiveStore.cs                               # attendu : VIDE
+
+# L'arbitrage de la phase 24 n'est pas retouché
+git diff --stat -- src/Chronos/Services/ArbitrageSessions.cs \
+                   src/Chronos/Services/LectureSessions.cs                            # attendu : VIDE
+
+# Aucun XAML touché
+git diff --stat -- '*.xaml'                                                            # attendu : VIDE
+```
+
+_Résultats mesurés : à remplir, un par un, au plan 25-04._
+
+## Mutations de falsification — prévues
+
+| Mutation | Test attendu en échec | Mesuré |
+|---|---|---|
+| Retirer une ligne de la table §1 de `docs/hooks-contract.md` (worktree jetable) | `ContratHooksDocumenteTests.La_table_documentee_liste_EXACTEMENT_les_evenements_cables` | _à mesurer_ |
+| Supprimer le veto sous-agent dans `SessionHookProcessor` (worktree jetable) | les cinq cas de veto de `BattementsCoeurTests` | _à mesurer_ |
+| Rendre `WaitingTurn` au lieu de `WaitingDeduced` dans `SessionMonitor.TryRead` (worktree jetable) | `Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini` | _à mesurer_ |
+
+**Méthode obligatoire** (précédents 23-01, 23-02, 24-01) : une mutation qui **ne compile pas** fait échouer
+toute l'invocation `dotnet test` et ne dit **rien** de la garde. On la joue dans un `git worktree` jetable,
+ou par alias temporaire, et on révoque mutation et alias **ensemble**. Le dépôt principal doit rester propre
+et vérifié tel (`git status --porcelain` vide, `grep -rlF "MUTANT" --include=*.cs` → 0).
+
+## Étapes ROUGE attendues
+
+| Plan / tâche | Filtre | Échecs attendus avant correctif | Mesuré |
+|---|---|---|---|
+| 25-01 T1 | `CatalogueEvenementsHooksTests` | tous (squelette `NotImplementedException`) | _à mesurer_ |
+| 25-01 T3 | `SessionsTests` | ≥ 10 (le routage `PermissionRequest` + les neuf vetos) | _à mesurer_ |
+| 25-02 T1 | `BattementsCoeurTests` | ≥ 5 (les cas de veto sous-agent) | _à mesurer_ |
+| 25-03 T2 | `InspectionSessionsTests` | ≥ 2 | _à mesurer_ |
+| 25-04 T2 | `ContratHooksDocumenteTests` | tous tant que le document n'est pas lu | _à mesurer_ |
+
+## Acquis des phases précédentes, à revérifier
+
+| Acquis | Attendu |
+|---|---|
+| Phase 20 — `?? new ` dans `DiagnosticService.cs` | 2 |
+| Phase 21 — gardes de périmètre | `GardesPerimetreTests` : 10, 0 échec |
+| Phase 22 — `Read(now) => Inspecter(now).Visibles` unique ; 0 `new SessionMonitor` dans le diagnostic | 1 / 0 |
+| Phase 23 — écriture directe, aucun fichier temporaire déplacé dans le chemin des hooks | `File.Move` absent de `SessionHookProcessor.cs` et `EcritureEtatSession.cs` |
+| Phase 24 — `ArbitrageSessions` / `LectureSessions` / bloc « Désaccords entre sources » intacts | diff vide, `MotifMasquage` toujours à 3 occurrences |
+| Gardes — `ServicesLayerPurity` / `NormalisationUnique` / `CompositionRoot` / `GardesDoctrine` / `GardesPerimetre` | 2 / 3 / 5 / 8 / 10, 0 échec |
+| Rendu — `SessionStylesBindingTests` | 2, 0 échec (8 styles × 9 thèmes) |
+
+## Invariants de sécurité — à vérifier avant et après chaque tâche
+
+| Invariant | Attendu | Mesuré (avant → après) |
+|---|---|---|
+| `~/.claude/settings.json` | **jamais modifié à la main** — seul le code livré y écrira, au prochain lancement de l'overlay | _à mesurer_ |
+| `%APPDATA%\Chronos\sessions` | **66** entrées, INCHANGÉ | _à mesurer_ |
+| `%APPDATA%\Chronos\archived.json` | **84** octets | _à mesurer_ |
+| `%APPDATA%\Chronos\oauth.dat` (**taille seule, JAMAIS le mtime**) | **518** octets | _à mesurer_ |
+| Overlay `Chronos-v3.0.2.exe` (pid 119412) | vivant, ni lancé ni tué (`tasklist` seul) | _à mesurer_ |
+| Sonde de capture installée dans `~/.claude/` | **0** — interdit ; si le besoin devient bloquant, le consigner comme question à l'utilisateur | _à mesurer_ |
+| `git diff -- '*.csproj'` | vide, **sauf** `tests/Chronos.Tests/Chronos.Tests.csproj` au plan 25-04 (ajout de `CheminDocsChronos`) | _à mesurer_ |
+| Dépendances NuGet ajoutées | **0** | _à mesurer_ |
+| Tests écrivant hors de `Path.GetTempPath()` | **0** — garde anti-accident `Assert.StartsWith(Path.GetTempPath(), d)` | _à mesurer_ |
+| Requêtes réseau réelles depuis un test | **0** | _à mesurer_ |
+
+## À VÉRIFIER PAR L'UTILISATEUR
+
+Les tests prouvent le **mécanisme** ; ils ne prouvent pas ce que l'écran montre (leçon 21-04). La phase
+s'interdit de lancer ou de tuer l'overlay, et de toucher au `settings.json` de l'utilisateur.
+
+1. **Critère n°1, in vivo.** Une demande de permission réelle doit basculer la session en **« à toi »**
+   immédiatement. Et rester au terminal sans rien taper ne doit produire **aucun** changement d'état.
+2. **Critère n°2, in vivo.** Une session qui travaille plus d'une heure (exécution de phase, long build)
+   doit rester **« en cours »** du début à la fin, sans repasser par « inconnu » entre deux appels d'outil.
+   **Cas limite à guetter** : un outil unique de plus de vingt minutes (build très long, attente réseau) —
+   la session basculera en « à toi ? déduit » alors qu'elle travaille encore. C'est la limite ASSUMÉE des
+   battements sur appels d'outil, écrite au §5 du contrat. Si le cas se présente souvent, c'est le signal
+   qu'il faut rouvrir le choix de l'événement porteur — **pas** retoucher le seuil au passage.
+3. **Critère n°3, in vivo.** Interrompre une réponse par Échap : la session doit devenir
+   **« à toi ? déduit »** (après le délai de silence), rester **lisible** dans le widget, et ne jamais
+   afficher « tour fini ».
+4. **Critère n°4, in vivo.** Aucune session ne doit être annoncée « terminée » ni « tour fini » sans qu'un
+   tour se soit réellement terminé.
+5. **Lisibilité sur les 8 styles et les 9 thèmes.** Le libellé « à toi ? déduit » est le plus long des cinq
+   (quatorze caractères). Vérifier qu'il ne tronque ni ne décale aucun des huit gabarits, sur les neuf
+   thèmes — galerie `--sessions`.
+6. **RIEN DE TOUT CELA NE S'EXÉCUTE TANT QUE L'EXE N'EST PAS REPUBLIÉ**, et — spécifique à cette phase —
+   **tant que `settings.json` n'a pas été réconcilié au lancement de l'overlay republié**. Les trois
+   nouveaux événements (`PermissionRequest`, `PreToolUse`, `PostToolUse`) et le `matcher` de `Notification`
+   n'existent pas encore dans la configuration de l'utilisateur. Rappel : la configuration des hooks est lue
+   au DÉMARRAGE d'une session Claude Code — seules les sessions ouvertes après la réconciliation seront
+   suivies.
+7. **Question ouverte, à poser à l'utilisateur.** Les noms de champs spécifiques à un événement restent
+   non confirmables (page de référence tronquée). Les relever exigerait une **sonde de capture** posée
+   temporairement dans son `~/.claude/settings.json` — sa configuration vivante. La phase ne l'a pas fait
+   et ne le fera pas d'office. À arbitrer par lui.
+8. **Reliquats hérités**, à présenter **groupés** en fin de milestone : purge réelle d'`archived.json`
+   (phase 21), comparaison ligne à ligne widget ↔ rapport (phase 22), résorption du magasin de 66 entrées
+   (phase 23), les quatre vérifications in vivo de la phase 24.
+
+## Clôture
+
+_À remplir au plan 25-04 : totaux mesurés, cinq critères prouvés un par un, mutations jouées et révoquées,
+invariants de sécurité relevés avant/après, et cochage d'EVT-01 à EVT-05 dans `REQUIREMENTS.md`._
