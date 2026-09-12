@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -120,19 +119,19 @@ public sealed class ClaudeOAuthUsageProvider : IUsageProvider
         => _cached is not null && (now - _cachedAt) < CacheUsable ? _cached : fallback;
 
     // Lit UNE fenêtre du schéma OAuth : fenêtre absente/non-objet → Unavailable ;
-    // utilization 0..100 → /100 (Pitfall 3) ; resets_at ISO 8601 → DateTimeOffset.Parse RoundtripKind
-    // (Pitfall 2 : PAS epoch secondes). Aucune valeur inventée.
+    // utilization en 0..100 et resets_at en ISO 8601 : les DEUX conversions passent par UsageNormalization (HDR-05).
+    // (Pitfall 2 : PAS epoch secondes, contrairement au pont statusLine.) Aucune valeur inventée.
+    // HDR-05 : plus aucune conversion d'unité locale dans ce fichier.
     private WindowState Read(JsonElement root, string name, WindowKind kind, TimeSpan len)
     {
         if (!root.TryGetProperty(name, out var w) || w.ValueKind != JsonValueKind.Object)
             return WindowState.Unavailable(kind);                          // fenêtre absente → Unavailable
 
         double? util = w.TryGetProperty("utilization", out var u) && u.TryGetDouble(out var p)
-            ? p / 100.0 : null;                                            // 0..100 → 0..1
+            ? UsageNormalization.FractionDepuisPourcentage(p) : null;
         DateTimeOffset? reset = w.TryGetProperty("resets_at", out var r)
             && r.ValueKind == JsonValueKind.String
-            && DateTimeOffset.TryParse(r.GetString(), CultureInfo.InvariantCulture,
-                 DateTimeStyles.RoundtripKind, out var d) ? d : null;      // ISO 8601 (offset + microsecondes)
+            ? UsageNormalization.InstantDepuisIso(r.GetString()) : null;   // ISO 8601 (offset + microsecondes)
 
         return new WindowState
         {

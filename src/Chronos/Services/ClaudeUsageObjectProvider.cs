@@ -46,7 +46,7 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
 
             // capturedAt = epoch MILLISECONDES (ecrit par le pont via Date.now()).
             DateTimeOffset? capturedAt = root.TryGetProperty("capturedAt", out var c) && c.TryGetInt64(out var ms)
-                ? DateTimeOffset.FromUnixTimeMilliseconds(ms) : null;
+                ? UsageNormalization.InstantDepuisEpochMillisecondes(ms) : null;
 
             var five = ReadWindow(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5));
             var week = ReadWindow(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7));
@@ -66,16 +66,19 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
     }
 
     // Lit UNE fenetre de facon tolerante : fenetre absente/non-objet -> Unavailable ;
-    // used_percentage -> /100 ; resets_at epoch SECONDES -> DateTimeOffset ; champ manquant -> null.
+    // used_percentage en 0..100 et resets_at en epoch SECONDES : conversions deleguees a UsageNormalization (HDR-05) ; champ manquant -> null.
+    // HDR-05 : plus aucune conversion d'unite locale — tout passe par UsageNormalization.
+    // Effet de bord ASSUME : le plancher de sanite du point unique (2020-01-01) transforme le
+    // resets_at: 9 REEL de cette machine en inconnu, la ou il produisait une geometrie fausse.
     private WindowState ReadWindow(JsonElement root, string name, WindowKind kind, TimeSpan len)
     {
         if (!root.TryGetProperty(name, out var w) || w.ValueKind != JsonValueKind.Object)
             return WindowState.Unavailable(kind);
 
         double? util = w.TryGetProperty("used_percentage", out var up) && up.TryGetDouble(out var pct)
-            ? pct / 100.0 : null;
+            ? UsageNormalization.FractionDepuisPourcentage(pct) : null;
         DateTimeOffset? reset = w.TryGetProperty("resets_at", out var ra) && ra.TryGetInt64(out var epoch)
-            ? DateTimeOffset.FromUnixTimeSeconds(epoch) : null;
+            ? UsageNormalization.InstantDepuisEpochSecondes(epoch) : null;
 
         return new WindowState
         {

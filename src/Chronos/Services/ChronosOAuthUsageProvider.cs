@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -163,16 +162,18 @@ public sealed class ChronosOAuthUsageProvider : IUsageProvider
     private UsageSnapshot ServeCachedOr(UsageSnapshot fallback, DateTimeOffset now)
         => _cached is not null && (now - _cachedAt) < CacheUsable ? _cached : fallback;
 
-    // Schéma /api/oauth/usage : utilization 0..100, resets_at ISO 8601 (PAS epoch). Fenêtre absente → Unavailable.
+    // Schéma /api/oauth/usage : utilization en 0..100, resets_at en ISO 8601 (PAS epoch).
+    // Fenêtre absente → Unavailable.
+    // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
     private WindowState Read(JsonElement root, string name, WindowKind kind, TimeSpan len)
     {
         if (!root.TryGetProperty(name, out var w) || w.ValueKind != JsonValueKind.Object)
             return WindowState.Unavailable(kind);
 
-        double? util = w.TryGetProperty("utilization", out var u) && u.TryGetDouble(out var p) ? p / 100.0 : null;
+        double? util = w.TryGetProperty("utilization", out var u) && u.TryGetDouble(out var p)
+            ? UsageNormalization.FractionDepuisPourcentage(p) : null;
         DateTimeOffset? reset = w.TryGetProperty("resets_at", out var r) && r.ValueKind == JsonValueKind.String
-            && DateTimeOffset.TryParse(r.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var d)
-            ? d : null;
+            ? UsageNormalization.InstantDepuisIso(r.GetString()) : null;
 
         return new WindowState
         {

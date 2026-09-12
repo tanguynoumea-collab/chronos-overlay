@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -134,12 +133,14 @@ public sealed class DiagnosticService
             {
                 using var ud = JsonDocument.Parse(File.ReadAllText(_paths.UsageFile));
                 var r = ud.RootElement;
+                // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
                 string W(string w) => r.TryGetProperty(w, out var o) && o.TryGetProperty("used_percentage", out var p) && p.TryGetDouble(out var v)
-                    ? v.ToString("F0", CultureInfo.InvariantCulture) + " %" : "absent";
+                    ? UsageNormalization.PourcentagePourAffichage(UsageNormalization.FractionDepuisPourcentage(v)) : "absent";
                 string age = "inconnu";
-                if (r.TryGetProperty("capturedAt", out var ca) && ca.TryGetInt64(out var ms))
+                if (r.TryGetProperty("capturedAt", out var ca) && ca.TryGetInt64(out var ms)
+                    && UsageNormalization.InstantDepuisEpochMillisecondes(ms) is { } capture)
                 {
-                    var mins = (_clock.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(ms)).TotalMinutes;
+                    var mins = (_clock.UtcNow - capture).TotalMinutes;
                     age = mins < 1 ? "à l'instant" : $"il y a {mins:F0} min";
                 }
                 sb.AppendLine($"  usage.json : présent — 5 h {W("five_hour")}, hebdo {W("seven_day")} (maj {age})");
@@ -354,8 +355,10 @@ public sealed class DiagnosticService
                     using var d = JsonDocument.Parse(File.ReadAllText(f));
                     var r = d.RootElement;
                     string P(string k) => r.TryGetProperty(k, out var v) ? v.ToString() : "?";
+                    // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
                     var age = r.TryGetProperty("updated_at", out var ua) && ua.TryGetInt64(out var ms)
-                        ? $"{(_clock.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(ms)).TotalMinutes:F0} min" : "?";
+                        && UsageNormalization.InstantDepuisEpochMillisecondes(ms) is { } maj
+                        ? $"{(_clock.UtcNow - maj).TotalMinutes:F0} min" : "?";
                     sb.AppendLine($"    · {P("project")} — {P("activity")} (maj il y a {age})");
                 }
                 catch { }
@@ -478,16 +481,17 @@ public sealed class DiagnosticService
         return "binaire/opaque";
     }
 
+    // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
     private static string Pct(JsonElement root, string name)
         => root.TryGetProperty(name, out var w) && w.ValueKind == JsonValueKind.Object
            && w.TryGetProperty("utilization", out var u) && u.TryGetDouble(out var p)
-           ? p.ToString("F0", CultureInfo.InvariantCulture) + " %" : "absent";
+           ? UsageNormalization.PourcentagePourAffichage(UsageNormalization.FractionDepuisPourcentage(p)) : "absent";
 
     private static string Describe(WindowState w)
         => w.Reliability switch
         {
-            SourceReliability.Exact => "EXACT — " + (w.Utilization is { } u ? (u * 100).ToString("F0") + " %" : "?"),
-            SourceReliability.Estimated => "estimé — " + (w.Utilization is { } u ? "~" + (u * 100).ToString("F0") + " %" : "% inconnu"),
+            SourceReliability.Exact => "EXACT — " + (w.Utilization is { } u ? UsageNormalization.PourcentagePourAffichage(u) : "?"),
+            SourceReliability.Estimated => "estimé — " + (w.Utilization is { } u ? "~" + UsageNormalization.PourcentagePourAffichage(u) : "% inconnu"),
             _ => "indisponible",
         };
 }
