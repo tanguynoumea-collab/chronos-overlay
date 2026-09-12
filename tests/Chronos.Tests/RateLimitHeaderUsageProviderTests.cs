@@ -688,6 +688,219 @@ public class RateLimitHeaderUsageProviderTests
         finally { CultureInfo.CurrentCulture = precedente; }
     }
 
+    // --- HDR-03 : le statut déclaré par le SERVEUR, jamais déduit d'un pourcentage ---
+
+    /// <summary>Dérive un jeu de référence : retire des noms (valeur <c>null</c>), ajoute ou écrase les
+    /// autres. Les cas de REPLI et de PRÉFÉRENCE n'existent pas dans <see cref="EnTetesDeReference"/>, et
+    /// n'ont pas à y entrer : ce sont des cas de bord propres à ce plan. Le point unique reste la source des
+    /// huit formes réelles ; ces dérivés ne font que lui retirer ou lui ajouter un en-tête.</summary>
+    private static IReadOnlyDictionary<string, string> Derive(
+        IReadOnlyDictionary<string, string> baseJeu,
+        params (string Nom, string? Valeur)[] modifications)
+    {
+        var d = new Dictionary<string, string>(baseJeu);
+        foreach (var (nom, valeur) in modifications)
+        {
+            if (valeur is null) d.Remove(nom);
+            else d[nom] = valeur;
+        }
+        return d;
+    }
+
+    /// <summary>HDR-03. Le serveur AVERTIT avant de refuser, et cette nuance doit survivre jusqu'à
+    /// l'affichage au lieu d'être écrasée en « autorisé ». Le statut voyage avec la fenêtre QU'IL DÉCRIT :
+    /// le jeu d'avertissement ne porte que le statut de la 5 h, donc l'hebdo ne doit rien affirmer.</summary>
+    [Fact]
+    public async Task Le_statut_serveur_remonte_avec_la_fenetre_qu_il_decrit()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.OK, EnTetesDeReference.Avertissement);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.AutoriseAvertissement, snap.FiveHour.StatutServeur);
+        Assert.Null(snap.SevenDay.StatutServeur);              // aucun -7d-status, aucun statut global
+        Assert.Contains(EnTetesDeReference.H5hStatut, sonde.NomsEnTetesRecus);
+
+        // Jeu NOMINAL : le même canal rend « autorisé » — un fait RAPPORTÉ, pas un seuil local sur 1 %.
+        var nominal = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Nominal);
+        var (sonde2, _, _) = Sonde(Maintenant.AddHours(2), nominal, new FakeClock(Maintenant));
+
+        var snap2 = await sonde2.GetAsync();
+
+        Assert.Equal(StatutServeur.Autorise, snap2.FiveHour.StatutServeur);
+        Assert.Null(snap2.SevenDay.StatutServeur);
+    }
+
+    /// <summary>HDR-03 croisé avec HDR-02 : le statut et les chiffres arrivent ENSEMBLE, précisément pendant
+    /// la saturation. C'est l'instant où l'overlay sert le plus, et le seul où un statut de refus existe —
+    /// un provider qui contrôlerait le succès avant de lire les en-têtes perdrait les deux à la fois.</summary>
+    [Fact]
+    public async Task Un_429_livre_le_statut_de_refus_ET_les_chiffres()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.TooManyRequests, EnTetesDeReference.Refus);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.Rejete, snap.FiveHour.StatutServeur);
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(1.0, snap.FiveHour.Utilization!.Value, 9);
+        Assert.Equal(ResultatSonde.SaturationEnTetesLus, sonde.DernierResultat);
+    }
+
+    /// <summary>Un statut PRÉSENT mais hors de l'ensemble connu est nommé « non reconnu », et JAMAIS rangé
+    /// d'autorité dans « autorisé ». La valeur « active » est mentionnée par une proposition d'issue que rien
+    /// ne confirme : exactement le genre de valeur qui arrivera un jour sans préavis. Un overlay qui rassure
+    /// à tort est pire que muet.</summary>
+    [Fact]
+    public async Task Un_statut_hors_de_l_ensemble_connu_est_NON_RECONNU_jamais_autorise()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.OK, EnTetesDeReference.StatutInconnu);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.NonReconnu, snap.FiveHour.StatutServeur);
+        Assert.NotEqual(StatutServeur.Autorise, snap.FiveHour.StatutServeur);
+    }
+
+    /// <summary>En-têtes ABSENTS : le serveur n'a rien dit. <c>null</c> (rien rapporté) reste distinct de
+    /// <c>NonReconnu</c> (rapporté mais illisible) — les confondre ferait disparaître le signal dont la phase
+    /// a besoin pour constater que la famille d'en-têtes a été renommée.</summary>
+    [Fact]
+    public async Task Des_en_tetes_absents_ne_rapportent_aucun_statut()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Absents);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Null(snap.FiveHour.StatutServeur);
+        Assert.Null(snap.SevenDay.StatutServeur);
+    }
+
+    /// <summary>REPLI sur le statut GLOBAL. Le nom exact de chaque en-tête est une hypothèse : la famille
+    /// unifiée est absente de la documentation publique Anthropic, et le code d'origine lit bien
+    /// <c>anthropic-ratelimit-unified-status</c> SANS segment de fenêtre. Si seul ce nom arrive, il décrit le
+    /// COMPTE — donc les deux fenêtres.</summary>
+    [Fact]
+    public async Task Le_statut_global_sert_de_repli_pour_les_DEUX_fenetres()
+    {
+        var jeu = Derive(EnTetesDeReference.Nominal,
+                         (EnTetesDeReference.H5hStatut, null),
+                         (EnTetesDeReference.HStatutGlobal, "rejected"));
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, jeu);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.Rejete, snap.FiveHour.StatutServeur);
+        Assert.Equal(StatutServeur.Rejete, snap.SevenDay.StatutServeur);
+        Assert.Contains(EnTetesDeReference.HStatutGlobal, sonde.NomsEnTetesRecus);
+
+        // Sondé deux fois (repli de chaque fenêtre), déclaré UNE fois : le rapport de diagnostic nomme le
+        // serveur, pas notre ordre de lecture.
+        Assert.Single(sonde.NomsEnTetesRecus, n => n == EnTetesDeReference.HStatutGlobal);
+    }
+
+    /// <summary>PRÉFÉRENCE : le plus spécifique gagne. Un statut de COMPTE ne doit pas écraser ce que le
+    /// serveur dit d'une fenêtre précise — mais il reste le repli de celle qui n'a rien dit.</summary>
+    [Fact]
+    public async Task Le_statut_de_fenetre_prime_sur_le_statut_global()
+    {
+        var jeu = Derive(EnTetesDeReference.Nominal,
+                         (EnTetesDeReference.H5hStatut, "allowed"),
+                         (EnTetesDeReference.HStatutGlobal, "rejected"));
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, jeu);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.Autorise, snap.FiveHour.StatutServeur);   // le nom de fenêtre l'emporte
+        Assert.Equal(StatutServeur.Rejete, snap.SevenDay.StatutServeur);     // le global sert de repli
+    }
+
+    /// <summary><c>-7d-status</c> n'est confirmé NULLE PART : ni observation, ni lecture dans le code
+    /// d'origine. Il est donc lu en OPTION — son absence n'est pas une anomalie (les autres tests de cette
+    /// région le prouvent), mais sa présence doit être honorée plutôt que jetée.</summary>
+    [Fact]
+    public async Task Le_statut_hebdomadaire_est_lu_quand_il_est_present()
+    {
+        var jeu = Derive(EnTetesDeReference.Nominal, (EnTetesDeReference.H7dStatut, "allowed_warning"));
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, jeu);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.AutoriseAvertissement, snap.SevenDay.StatutServeur);
+        Assert.Equal(StatutServeur.Autorise, snap.FiveHour.StatutServeur);
+        Assert.Contains(EnTetesDeReference.H7dStatut, sonde.NomsEnTetesRecus);
+    }
+
+    /// <summary>Un statut sans chiffre n'a RIEN à décrire : <c>WindowState.Unavailable</c> doit rester neutre
+    /// (son test de neutralité l'exige, et la phase 19 s'appuie dessus). L'en-tête est néanmoins LU, pour que
+    /// le diagnostic puisse dire « le serveur a envoyé un statut mais aucun chiffre » — le signal exact d'un
+    /// renommage partiel de la famille unifiée.</summary>
+    [Fact]
+    public async Task Un_statut_sans_chiffre_ne_se_pose_sur_aucune_fenetre()
+    {
+        var jeu = Derive(EnTetesDeReference.Nominal,
+                         (EnTetesDeReference.H5hUtil, null),
+                         (EnTetesDeReference.H5hReset, null),
+                         (EnTetesDeReference.H5hStatut, "allowed"));
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, jeu);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+        Assert.Null(snap.FiveHour.StatutServeur);
+        Assert.Null(snap.FiveHour.Utilization);
+        Assert.Null(snap.FiveHour.ResetsAt);
+
+        // L'hebdo reste exacte, et le statut a bien été CONSTATÉ malgré son absence d'effet.
+        Assert.Equal(SourceReliability.Exact, snap.SevenDay.Reliability);
+        Assert.Contains(EnTetesDeReference.H5hStatut, sonde.NomsEnTetesRecus);
+    }
+
+    /// <summary>
+    /// INVARIANT DE SÉCURITÉ. Aucune chaîne venant du réseau ne doit remonter jusqu'au rapport de
+    /// diagnostic : les noms publiés proviennent TOUJOURS de l'ensemble de constantes de la sonde. Même
+    /// principe structurel que <c>ResultatRafraichissement</c> sans propriété <c>string</c> (phase 17) — un
+    /// vocabulaire fermé ne peut pas transporter un corps d'erreur, un jeton ni un en-tête forgé.
+    ///
+    /// Le jeu est en CASSE MÉLANGÉE à dessein : c'est la preuve que ce qui est publié est bien la constante
+    /// locale et non l'orthographe reçue. Si la sonde recopiait le nom du serveur, ce test tomberait.
+    /// </summary>
+    [Fact]
+    public async Task Les_noms_d_en_tete_publies_viennent_TOUJOURS_des_constantes_de_la_sonde()
+    {
+        var attendus = new[]
+        {
+            EnTetesDeReference.H5hUtil, EnTetesDeReference.H5hReset, EnTetesDeReference.H5hStatut,
+            EnTetesDeReference.H7dUtil, EnTetesDeReference.H7dReset, EnTetesDeReference.H7dStatut,
+            EnTetesDeReference.HOverUtil, EnTetesDeReference.HOverReset, EnTetesDeReference.HOverStatut,
+            EnTetesDeReference.HStatutGlobal, EnTetesDeReference.HClaim,
+        };
+
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.OK, EnTetesDeReference.NominalCasseMelangee);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        await sonde.GetAsync();
+
+        Assert.NotEmpty(sonde.NomsEnTetesRecus);
+        foreach (var nom in sonde.NomsEnTetesRecus)
+        {
+            Assert.Contains(nom, attendus);
+            Assert.Equal(nom.ToLowerInvariant(), nom);   // jamais la casse mélangée du serveur
+        }
+    }
+
     // --- HDR-06 : cadence bornée, coût maîtrisé, aucun couplage au tick de 60 s ---
 
     /// <summary>HDR-06. Le composite appelle les deux <c>GetAsync</c> SANS court-circuit : la sonde est donc

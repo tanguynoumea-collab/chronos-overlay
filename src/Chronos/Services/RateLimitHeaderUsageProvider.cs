@@ -76,10 +76,31 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
 
     // --- En-têtes de RÉPONSE. Noms et niveaux de confiance : cf. tests/EnTetesDeReference.cs. ---
 
+    // Chaque nom est une HYPOTHÈSE, pas un fait : la famille anthropic-ratelimit-unified-* est ABSENTE de
+    // la documentation publique Anthropic (qui ne documente que anthropic-ratelimit-{requests,tokens,
+    // input-tokens,output-tokens}-*, avec un reset en RFC 3339 et non en epoch). Deux écarts ont déjà été
+    // relevés entre 18-CONTEXT.md et le code d'origine. D'où : plusieurs noms candidats par information,
+    // absence -> null, et un test par en-tête absent.
+
     private const string H5hUtil = "anthropic-ratelimit-unified-5h-utilization";    // fraction 0..1, TEXTE
     private const string H5hReset = "anthropic-ratelimit-unified-5h-reset";         // epoch SECONDES, TEXTE
     private const string H7dUtil = "anthropic-ratelimit-unified-7d-utilization";    // fraction 0..1, TEXTE
     private const string H7dReset = "anthropic-ratelimit-unified-7d-reset";         // epoch SECONDES, TEXTE
+
+    /// <summary>HDR-03 — statut de la fenêtre de 5 h. CONFIANCE HAUTE : lu par le code d'origine ET observé
+    /// dans un dump indépendant (valeur vue : <c>allowed</c>).</summary>
+    private const string H5hStatut = "anthropic-ratelimit-unified-5h-status";
+
+    /// <summary>HDR-03 — statut de la fenêtre hebdomadaire. CONFIANCE NULLE : aucune observation, aucune
+    /// lecture dans le code d'origine. Lecture strictement OPTIONNELLE — son absence n'est PAS une
+    /// anomalie, et ne doit jamais être comblée par une valeur devinée.</summary>
+    private const string H7dStatut = "anthropic-ratelimit-unified-7d-status";
+
+    /// <summary>HDR-03 — statut GLOBAL, SANS segment de fenêtre. CONFIANCE MOYENNE : c'est le nom que lit
+    /// réellement le code d'origine dans sa branche de dépassement — correction d'un écart de
+    /// 18-CONTEXT.md, établie par lecture du code. Comme c'est un statut de COMPTE et non de fenêtre, il ne
+    /// sert QUE de repli : un statut nommé par fenêtre l'emporte toujours sur lui.</summary>
+    private const string HStatutGlobal = "anthropic-ratelimit-unified-status";
 
     /// <summary>Optionnel et purement informatif (ex. <c>five_hour</c>) : lu UNIQUEMENT pour alimenter
     /// <see cref="NomsEnTetesRecus"/>. Sa valeur n'est exploitée par aucun calcul de la phase 18.</summary>
@@ -302,7 +323,10 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
         string? v = null;
         if (resp.Headers.TryGetValues(nom, out var a)) v = a.FirstOrDefault();
         else if (resp.Content?.Headers.TryGetValues(nom, out var b) == true) v = b.FirstOrDefault();
-        if (v is not null) noms.Add(nom);
+        // SANS DOUBLON : le statut GLOBAL est SONDÉ plusieurs fois (repli des deux fenêtres, puis du
+        // dépassement). Un nom répété dans le rapport de diagnostic ne dirait rien de plus sur le serveur,
+        // seulement quelque chose sur notre ordre de lecture. L'ordre de première apparition est conservé.
+        if (v is not null && !noms.Contains(nom)) noms.Add(nom);
         return v;
     }
 
@@ -312,9 +336,9 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
     {
         var noms = new List<string>();
 
-        var cinqHeures = LireFenetre(resp, noms, WindowKind.FiveHour, H5hUtil, H5hReset,
+        var cinqHeures = LireFenetre(resp, noms, WindowKind.FiveHour, H5hUtil, H5hReset, H5hStatut,
                                      TimeSpan.FromHours(5), now);
-        var hebdo = LireFenetre(resp, noms, WindowKind.SevenDay, H7dUtil, H7dReset,
+        var hebdo = LireFenetre(resp, noms, WindowKind.SevenDay, H7dUtil, H7dReset, H7dStatut,
                                 TimeSpan.FromDays(7), now);
 
         Lire(resp, HClaim, noms);   // informatif : alimente l'observabilité, aucun calcul ne l'utilise
@@ -327,11 +351,17 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
     // même l'autre moitié de la sienne. Toute conversion passe par le point unique (piège de culture
     // fr-FR : une lecture « naturelle » rendrait false sur « 0.63 », donc une perte SILENCIEUSE).
     private static WindowState LireFenetre(HttpResponseMessage resp, List<string> noms, WindowKind kind,
-                                           string nomUtil, string nomReset, TimeSpan longueurFenetre,
-                                           DateTimeOffset now)
+                                           string nomUtil, string nomReset, string nomStatut,
+                                           TimeSpan longueurFenetre, DateTimeOffset now)
     {
         var util = UsageNormalization.FractionDepuisTexteFraction(Lire(resp, nomUtil, noms));
         var reset = UsageNormalization.InstantDepuisTexteEpoch(Lire(resp, nomReset, noms));
+
+        // Un statut sans chiffre n'a rien à décrire : Unavailable doit rester neutre (et son test
+        // WindowStateTests.Unavailable_neutralise_les_champs_et_garde_la_fenetre l'exige).
+        // On lit quand même l'en-tête de statut pour le déclarer dans NomsEnTetesRecus — le diagnostic doit
+        // pouvoir dire « le serveur a envoyé un statut mais aucun chiffre ».
+        var statut = LireStatut(resp, nomStatut, noms);
 
         // En-tête ABSENT n'est PAS « 0 % ». Le code d'origine rend 0 dans sa branche d'erreur ; transposé
         // tel quel, un en-tête manquant afficherait « 0 % de quota consommé » — le mensonge exactement
@@ -349,8 +379,19 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
             // persistance — la sonde corrige ce défaut pour elle-même.
             CapturedAt = now,
             FractionTimeRemaining = WindowState.FractionRemaining(reset, now, longueurFenetre),
+            StatutServeur = statut,       // HDR-03 — voyage par référence à travers Best()
         };
     }
+
+    // Trois noms candidats, du plus spécifique au plus global. Le nom de fenêtre l'emporte sur le global :
+    // « anthropic-ratelimit-unified-status » (SANS segment) est ce que lit la branche de dépassement du code
+    // d'origine — c'est un statut de COMPTE, donc un repli, jamais une vérité par fenêtre.
+    // Le mapping du vocabulaire vit dans StatutServeurTexte et NULLE PART ailleurs : aucun aiguillage de
+    // valeurs textuelles n'est dupliqué ici, sans quoi les deux copies divergeraient au premier nouveau
+    // statut inventé par le serveur.
+    private static StatutServeur? LireStatut(HttpResponseMessage resp, string nomFenetre, List<string> noms)
+        => StatutServeurTexte.DepuisEnTete(Lire(resp, nomFenetre, noms))
+           ?? StatutServeurTexte.DepuisEnTete(Lire(resp, HStatutGlobal, noms));
 
     // Exploitable = au moins une des deux fenêtres porte une utilisation OU un reset. Sinon : RIEN.
     private static bool EnTetesExploitables(UsageSnapshot s)
