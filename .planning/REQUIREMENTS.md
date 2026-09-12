@@ -46,7 +46,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
   un indice, jamais une vérité sur ce que fait la session.
 - [x] **EVT-03**: Des **battements de cœur** rafraîchissent « réfléchit » : l'état est **observé** tant que le
   travail continue, et cesse de dépendre d'un seuil d'expiration deviné.
-- [ ] **EVT-04**: Une **interruption utilisateur** (Échap — aucun `Stop` n'est émis) ne laisse plus la session
+- [x] **EVT-04**: Une **interruption utilisateur** (Échap — aucun `Stop` n'est émis) ne laisse plus la session
   dans un état faux ni invisible.
 - [ ] **EVT-05**: Le contrat des hooks est **documenté** dans `docs/`, au même titre que les autres sources.
   Son absence est ce qui a laissé la dérive du contrat externe passer inaperçue.
@@ -108,7 +108,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | EVT-01 | Phase 25 | Complete |
 | EVT-02 | Phase 25 | Complete |
 | EVT-03 | Phase 25 | Complete |
-| EVT-04 | Phase 25 | Pending |
+| EVT-04 | Phase 25 | Complete |
 | EVT-05 | Phase 25 | Pending |
 | FUS-01 | Phase 24 | Complete |
 | FUS-02 | Phase 24 | Complete |
