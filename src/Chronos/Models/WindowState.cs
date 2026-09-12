@@ -15,6 +15,20 @@ public sealed record WindowState
     /// deux peuvent donc venir de sources différentes à des instants différents.</summary>
     public DateTimeOffset? CapturedAt { get; init; }
 
+    /// <summary>HDR-03 — statut déclaré par le SERVEUR pour CETTE fenêtre. null = non rapporté (JAMAIS
+    /// inventé, jamais déduit d'un pourcentage local). Porté par WindowState et NON par UsageSnapshot :
+    /// CompositeUsageProvider.GetAsync reconstruit le snapshot par « new UsageSnapshot { … } » et non par
+    /// « with », donc tout champ de snapshot est détruit au passage — et ce fichier est interdit d'édition
+    /// jusqu'à la phase 19. Best() rend en revanche l'instance de WindowState PAR RÉFÉRENCE : ce champ
+    /// voyage gratuitement à travers toute la chaîne de composites.</summary>
+    public StatutServeur? StatutServeur { get; init; }
+
+    /// <summary>HDR-04 — usage en DÉPASSEMENT rapporté avec cette fenêtre. null = aucun dépassement
+    /// rapporté. Doublé par le canal latéral IEtatServeur : quand la forme overage est SEULE, les deux
+    /// fenêtres sont Unavailable et Best() peut retenir l'instance d'une autre source Exact, ce qui
+    /// écarterait ce champ. Un champ et un canal, parce qu'aucun des deux ne suffit seul.</summary>
+    public EtatDepassement? Depassement { get; init; }
+
     /// <summary>Épuisé si utilization connue >= 1. Inconnu (null) != épuisé.</summary>
     public bool Exhausted => Utilization is >= 1.0;
 

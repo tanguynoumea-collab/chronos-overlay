@@ -46,6 +46,10 @@ public class WindowStateTests
         Assert.Null(w.Utilization);
         Assert.Null(w.ResetsAt);
         Assert.Null(w.FractionTimeRemaining);
+        // Phase 18 (HDR-03/HDR-04) : les deux champs neufs doivent eux aussi naître à l'inconnu.
+        // Unavailable n'a PAS été réécrit — ils prennent simplement leur défaut null.
+        Assert.Null(w.StatutServeur);
+        Assert.Null(w.Depassement);
     }
 
     // --- DAT-03 : UsageSnapshot.Empty = deux fenêtres Unavailable de la bonne WindowKind ---
@@ -90,5 +94,35 @@ public class WindowStateTests
             Assert.NotNull(r);
             Assert.Equal(attendu.Value, r!.Value, 9); // tolérance 1e-9
         }
+    }
+
+    // --- HDR-03/HDR-04 (phase 18) : les deux champs neufs participent à l'identité du record ---
+
+    [Fact]
+    public void Les_champs_de_statut_participent_a_l_identite_du_record()
+    {
+        // 1) Sans les nouveaux champs, l'égalité structurelle ne change pas de résultat : null == null.
+        //    C'est ce qui garantit que les comparaisons de record déjà écrites ailleurs dans la suite
+        //    restent vraies après l'ajout des deux champs.
+        var nu1 = new WindowState { Kind = WindowKind.FiveHour, Utilization = 0.42, Reliability = SourceReliability.Exact };
+        var nu2 = new WindowState { Kind = WindowKind.FiveHour, Utilization = 0.42, Reliability = SourceReliability.Exact };
+
+        Assert.Equal(nu1, nu2);
+        Assert.Equal(nu1.GetHashCode(), nu2.GetHashCode());
+
+        // 2) Un porteur de statut n'est PAS égal au même sans statut : le champ est bien une donnée du
+        //    record, pas un ornement. Si cette assertion tombait, le statut ne voyagerait pas.
+        var avecStatut = nu1 with { StatutServeur = StatutServeur.AutoriseAvertissement };
+        Assert.NotEqual(nu1, avecStatut);
+        Assert.Equal(StatutServeur.AutoriseAvertissement, avecStatut.StatutServeur);
+
+        // 3) Idem pour le dépassement, et deux dépassements structurellement égaux rendent les deux
+        //    fenêtres égales (le record imbriqué compare par valeur, pas par référence).
+        var dep = new EtatDepassement { Utilization = 0.34 };
+        var avecDep1 = nu1 with { Depassement = dep };
+        var avecDep2 = nu1 with { Depassement = new EtatDepassement { Utilization = 0.34 } };
+
+        Assert.NotEqual(nu1, avecDep1);
+        Assert.Equal(avecDep1, avecDep2);
     }
 }
