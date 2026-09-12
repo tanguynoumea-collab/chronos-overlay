@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Chronos.Services;
 
@@ -42,11 +43,83 @@ public sealed record ResultatArbitrage(
 /// <summary>
 /// FUS-01 — quand deux sources parlent de la même session, c'est la plus RÉCENTE qui gagne.
 ///
-/// <para>SQUELETTE (étape ROUGE) : le contrat est posé, la décision ne l'est pas encore.</para>
+/// <para>Ce que ce type remplace : une fusion qui réaffectait une entrée indexée par identifiant, source
+/// après source. Le dernier écrivain l'emportait, donc l'ordre du code faisait loi. Mesuré : un signal de
+/// 7 heures battait un signal de 10 secondes.</para>
+///
+/// <para>LA DOCTRINE : un état ancien n'est pas une vérité plus solide parce qu'il est plus détaillé. La
+/// précision ne bat JAMAIS la fraîcheur. Elle ne sert qu'à départager deux signaux du MÊME âge — et ce
+/// départage est une règle écrite, testée et nommée, pas le hasard d'un parcours de collection.</para>
+///
+/// <para>Le vainqueur est le maximum d'un ordre TOTAL sur le CONTENU des signaux :
+/// <list type="number">
+///   <item>l'instant du signal, décroissant — LA FRAÎCHEUR ;</item>
+///   <item>à âge égal, le rang de la source (la plus spécifique d'abord) ;</item>
+///   <item>puis le rang d'urgence de l'état, par <see cref="AffichageSessions.Urgence"/> — appelé, jamais recopié ;</item>
+///   <item>puis le motif, puis le projet, en comparaison ordinale.</item>
+/// </list>
+/// Ces critères épuisent tous les champs de <see cref="SessionSnapshot"/> hors l'identifiant, qui est la
+/// clé de regroupement. Deux signaux encore ex aequo sont donc identiques champ pour champ : le choix ne
+/// PEUT plus dépendre de l'ordre d'entrée. C'est ce qui rend le test de permutation vrai par construction
+/// et non par chance.</para>
+///
+/// PUR : aucune E/S, aucune horloge, aucun type WPF. Les instants comparés sont ceux que les signaux
+/// portent — on ne demande jamais l'heure à qui que ce soit.
 /// </summary>
 public static class ArbitrageSessions
 {
     /// <summary>Tranche entre les signaux, session par session. Rend les retenus ET les désaccords.</summary>
     public static ResultatArbitrage Trancher(IEnumerable<SignalSession> signaux)
-        => throw new System.NotImplementedException();
+    {
+        var retenus = new List<SessionSnapshot>();
+        var desaccords = new List<DesaccordSources>();
+
+        // Le regroupement ET la sortie sont ordonnés par identifiant : la SÉQUENCE rendue est elle aussi
+        // indépendante de l'ordre d'entrée, sinon « le résultat ne dépend plus de l'ordre » ne vaudrait
+        // que pour les états, pas pour les lignes.
+        foreach (var groupe in signaux.GroupBy(s => s.Session.SessionId, System.StringComparer.Ordinal)
+                                      .OrderBy(g => g.Key, System.StringComparer.Ordinal))
+        {
+            var classes = groupe.OrderBy(s => s, Comparateur).ToList();
+            var vainqueur = classes[0];
+            retenus.Add(vainqueur.Session);
+
+            foreach (var ecarte in classes.Skip(1))
+            {
+                // Un DOUBLON n'est pas un désaccord : deux sources d'accord ne contredisent personne.
+                if (ecarte.Session.Activity == vainqueur.Session.Activity) continue;
+
+                desaccords.Add(new DesaccordSources(
+                    groupe.Key,
+                    vainqueur.Source, vainqueur.Session.Activity,
+                    ecarte.Source, ecarte.Session.Activity,
+                    vainqueur.Session.UpdatedAt - ecarte.Session.UpdatedAt));
+            }
+        }
+
+        return new ResultatArbitrage(retenus, desaccords);
+    }
+
+    private static readonly IComparer<SignalSession> Comparateur =
+        Comparer<SignalSession>.Create(Departager);
+
+    // Ordre TOTAL sur le contenu. Le rang 1 est la phase entière ; les rangs 2 à 5 n'existent que pour
+    // qu'aucun ex aequo ne soit laissé à la position dans la collection.
+    private static int Departager(SignalSession a, SignalSession b)
+    {
+        var c = b.Session.UpdatedAt.CompareTo(a.Session.UpdatedAt);   // 1. LA FRAÎCHEUR
+        if (c != 0) return c;
+
+        c = ((int)a.Source).CompareTo((int)b.Source);                 // 2. à âge ÉGAL : la plus spécifique
+        if (c != 0) return c;
+
+        c = AffichageSessions.Urgence(a.Session.Activity)             // 3. ce qui réclame une intervention
+                             .CompareTo(AffichageSessions.Urgence(b.Session.Activity));
+        if (c != 0) return c;
+
+        c = System.StringComparer.Ordinal.Compare(a.Session.Reason ?? "", b.Session.Reason ?? "");
+        if (c != 0) return c;                                         // 4. le motif
+
+        return System.StringComparer.Ordinal.Compare(a.Session.Project, b.Session.Project);  // 5. le projet
+    }
 }
