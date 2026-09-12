@@ -34,7 +34,7 @@ public sealed class SessionsPreviewViewModel : ObservableObject
     private void Add(string project, string state, Brush brush, bool attention = false, bool turn = false,
                      bool working = false, bool ghost = false, string detail = "")
     {
-        var it = new SessionItemVm(project, _ => { })   // archive no-op en prévisualisation
+        var it = new SessionItemVm(project, 0, _ => { }, _ => { }, () => { })   // gestes no-op en prévisualisation
         {
             Project = project,
             StateText = state,

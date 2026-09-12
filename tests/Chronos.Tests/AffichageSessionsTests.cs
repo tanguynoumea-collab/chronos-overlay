@@ -129,7 +129,8 @@ public class AffichageSessionsTests
 
         var vm = new SessionsViewModel(
             new SessionMonitor(TempDir(), source, new ArchiveStore(TempFichier())),
-            new FakeClock(Maintenant), new ArchiveStore(TempFichier()));
+            new FakeClock(Maintenant), new ArchiveStore(TempFichier()),
+            new TreatedStore(System.IO.Path.Combine(TempDir(), "t.json"), new FakeClock(Maintenant)));
         vm.Refresh(Maintenant);
 
         Assert.Equal(new[] { "à toi", "en cours" }, vm.Items.Select(i => i.StateText).ToArray());
@@ -194,7 +195,8 @@ public class AffichageSessionsTests
     {
         var vm = new SessionsViewModel(
             new SessionMonitor(TempDir(), new SourceFixe(snaps), new ArchiveStore(TempFichier())),
-            new FakeClock(Maintenant), new ArchiveStore(TempFichier()));
+            new FakeClock(Maintenant), new ArchiveStore(TempFichier()),
+            new TreatedStore(System.IO.Path.Combine(TempDir(), "t.json"), new FakeClock(Maintenant)));
         vm.Refresh(Maintenant);
         return vm;
     }

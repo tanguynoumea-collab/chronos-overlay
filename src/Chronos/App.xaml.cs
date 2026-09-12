@@ -277,7 +277,8 @@ public partial class App : Application
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<SessionMonitor>(),
             sp.GetRequiredService<IClock>(),
-            sp.GetRequiredService<ArchiveStore>()));
+            sp.GetRequiredService<ArchiveStore>(),
+            sp.GetRequiredService<TreatedStore>()));
 
         // Pipeline de donnees : chaine de sources EXACTES uniquement, exposee comme IUsageProvider
         // et coiffee du decorateur de persistance. Plus aucun repli estime (EXA-04).

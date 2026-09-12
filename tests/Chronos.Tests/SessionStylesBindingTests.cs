@@ -56,7 +56,8 @@ public class SessionStylesBindingTests
             new SessionSnapshot("s5", "interrompu",    SessionActivity.WaitingDeduced,   null, Maintenant.AddMinutes(-25)));
 
         var monitor = new SessionMonitor(TempDir(), source, new ArchiveStore(Path.Combine(TempDir(), "a.json")));
-        var vm = new SessionsViewModel(monitor, new FakeClock(Maintenant), new ArchiveStore(Path.Combine(TempDir(), "b.json")));
+        var vm = new SessionsViewModel(monitor, new FakeClock(Maintenant), new ArchiveStore(Path.Combine(TempDir(), "b.json")),
+                                       new TreatedStore(Path.Combine(TempDir(), "t.json"), new FakeClock(Maintenant)));
         vm.Refresh(Maintenant);
         Assert.Equal(5, vm.Items.Count);   // une fenêtre vide ne prouverait rien
         return vm;

@@ -18,17 +18,19 @@ public sealed class SessionsController : ISessionsController
     private readonly SessionMonitor _monitor;
     private readonly IClock _clock;
     private readonly ArchiveStore _archive;
+    private readonly TreatedStore _treated;
 
     private SessionsWindow? _window;
     private SessionsViewModel? _vm;
 
-    public SessionsController(SessionHookInstaller installer, SettingsService settings, SessionMonitor monitor, IClock clock, ArchiveStore archive)
+    public SessionsController(SessionHookInstaller installer, SettingsService settings, SessionMonitor monitor, IClock clock, ArchiveStore archive, TreatedStore treated)
     {
         _installer = installer;
         _settings = settings;
         _monitor = monitor;
         _clock = clock;
         _archive = archive;
+        _treated = treated;
     }
 
     private static string ExePath =>
@@ -95,7 +97,7 @@ public sealed class SessionsController : ISessionsController
         if (_window is null)
         {
             var s = _settings.Load();
-            var vm = new SessionsViewModel(_monitor, _clock, _archive)
+            var vm = new SessionsViewModel(_monitor, _clock, _archive, _treated)
             {
                 Style = s.SessionStyle,          // style persisté
                 Vertical = s.VerticalLayout,     // disposition (colonne) persistée

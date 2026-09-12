@@ -597,7 +597,7 @@ public sealed class DiagnosticService
     private static string LibelleMotif(MotifMasquage m) => m switch
     {
         MotifMasquage.Archivee => "archived.json (archivage — geste explicite de l'utilisateur)",
-        MotifMasquage.Traitee  => "treated.json (hystérésis « traité » — posée automatiquement)",
+        MotifMasquage.Traitee  => "treated.json (« traité » — hystérésis automatique OU geste explicite ; réversible)",
         _                      => "un filtre non nommé",
     };
 

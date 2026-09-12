@@ -10,11 +10,21 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Chronos.ViewModels;
 
-/// <summary>Une session dans la liste : projet, libellé d'état, couleur, détail temporel, + archivage.</summary>
+/// <summary>Une session dans la liste : projet, libellé d'état, couleur, détail temporel, et les trois
+/// gestes du menu contextuel (traiter celle-ci, tout traiter, archiver).</summary>
 public sealed partial class SessionItemVm : ObservableObject
 {
     public string SessionId { get; }
+
+    /// <summary>Instant que le SIGNAL de cette session portait au dernier rafraîchissement, en
+    /// millisecondes. C'est ce que le geste explicite écrit dans le magasin réversible : marquer traité,
+    /// c'est dire « j'ai vu CET épisode-là », pas « ne me montre plus jamais cette session ». Un signal
+    /// plus récent la ramènera (NET-03).</summary>
+    public long UpdatedAtMs { get; }
+
     private readonly System.Action<string> _archive;
+    private readonly System.Action<SessionItemVm> _traiter;
+    private readonly System.Action _traiterTout;
 
     [ObservableProperty] private string _project = "";
     [ObservableProperty] private string _stateText = "";
@@ -29,15 +39,35 @@ public sealed partial class SessionItemVm : ObservableObject
     [ObservableProperty] private bool _isWorking;    // en cours
     [ObservableProperty] private bool _isGhost;      // Unknown / périmé → fantôme
 
-    public SessionItemVm(string sessionId, System.Action<string> archive)
+    /// <summary>Libellé du geste de masse, porté par chaque ligne parce que le menu contextuel a pour
+    /// DataContext la ligne et non la liste. Il porte le NOMBRE : un geste qui agit sur vingt sessions
+    /// doit le dire avant d'être cliqué. Il dit AUSSI qu'il revient : encadré par un libellé réversible et
+    /// un libellé définitif, un libellé muet sur ce point serait l'ambiguïté même que le verrou UI de ce
+    /// projet interdit.</summary>
+    [ObservableProperty] private string _toutTraiterLibelle = "Tout marquer traité — elles reviennent si elles redemandent";
+
+    public SessionItemVm(string sessionId, long updatedAtMs, System.Action<string> archive,
+                         System.Action<SessionItemVm> traiter, System.Action traiterTout)
     {
         SessionId = sessionId;
+        UpdatedAtMs = updatedAtMs;
         _archive = archive;
+        _traiter = traiter;
+        _traiterTout = traiterTout;
     }
 
-    /// <summary>Clic droit → Archiver : retire la session de l'overlay (elle ne réapparaît plus).</summary>
+    /// <summary>Clic droit → Archiver : DÉFINITIF, la session ne revient jamais (TRT-04).</summary>
     [RelayCommand]
     private void Archive() => _archive(SessionId);
+
+    /// <summary>Clic droit → Marquer traitée : RÉVERSIBLE, la session revient si elle me redemande
+    /// quelque chose (TRT-03).</summary>
+    [RelayCommand]
+    private void MarquerTraitee() => _traiter(this);
+
+    /// <summary>Clic droit → Tout marquer traité : le même geste, sur toutes les lignes visibles.</summary>
+    [RelayCommand]
+    private void MarquerToutTraite() => _traiterTout();
 }
 
 /// <summary>
@@ -50,6 +80,7 @@ public sealed partial class SessionsViewModel : ObservableObject
     private readonly SessionMonitor _monitor;
     private readonly IClock _clock;
     private readonly ArchiveStore _archive;
+    private readonly TreatedStore _treated;
 
     public ObservableCollection<SessionItemVm> Items { get; } = new();
 
@@ -105,17 +136,36 @@ public sealed partial class SessionsViewModel : ObservableObject
         Refresh(_clock.UtcNow);   // recolore les items existants
     }
 
-    public SessionsViewModel(SessionMonitor monitor, IClock clock, ArchiveStore archive)
+    public SessionsViewModel(SessionMonitor monitor, IClock clock, ArchiveStore archive, TreatedStore treated)
     {
         _monitor = monitor;
         _clock = clock;
         _archive = archive;
+        _treated = treated;
     }
 
     // Archive une session puis rafraîchit (elle disparaît immédiatement de la liste).
     private void ArchiveSession(string sessionId)
     {
         _archive.Add(sessionId);
+        Refresh(_clock.UtcNow);
+    }
+
+    // Geste explicite, RÉVERSIBLE : on inscrit l'épisode que l'utilisateur vient de voir, pas l'instant
+    // du clic. Écrire « maintenant » masquerait aussi les demandes arrivées entre-temps — et c'est
+    // précisément la confusion que cette phase supprime.
+    private void MarquerSessionTraitee(SessionItemVm item)
+    {
+        _treated.Set(item.SessionId, item.UpdatedAtMs);
+        Refresh(_clock.UtcNow);
+    }
+
+    // L'effet de masse mesuré le 2026-09-12 : vingt sessions sur cinquante-quatre basculent ensemble en
+    // attente déduite. Un geste par session n'en serait pas un. La copie de la collection est
+    // indispensable : Refresh vide Items.
+    private void MarquerToutTraite()
+    {
+        foreach (var it in Items.ToList()) _treated.Set(it.SessionId, it.UpdatedAtMs);
         Refresh(_clock.UtcNow);
     }
 
@@ -138,7 +188,12 @@ public sealed partial class SessionsViewModel : ObservableObject
         Items.Clear();
         foreach (var s in snaps)
         {
-            var it = new SessionItemVm(s.SessionId, ArchiveSession) { Project = s.Project };
+            var it = new SessionItemVm(s.SessionId, s.UpdatedAt.ToUnixTimeMilliseconds(),
+                                       ArchiveSession, MarquerSessionTraitee, MarquerToutTraite)
+            {
+                Project = s.Project,
+                ToutTraiterLibelle = $"Tout marquer traité ({snaps.Count}) — elles reviennent si elles redemandent",
+            };
             (it.StateText, it.StateBrush, it.IsWaiting) = Describe(s.Activity);
             it.IsAttention = s.Activity == SessionActivity.WaitingAttention;
             // La déduction rejoint la famille VISUELLE des attentes. Un drapeau de gabarit décrit une
