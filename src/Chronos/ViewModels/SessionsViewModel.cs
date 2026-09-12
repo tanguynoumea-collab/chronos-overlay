@@ -141,7 +141,11 @@ public sealed partial class SessionsViewModel : ObservableObject
             var it = new SessionItemVm(s.SessionId, ArchiveSession) { Project = s.Project };
             (it.StateText, it.StateBrush, it.IsWaiting) = Describe(s.Activity);
             it.IsAttention = s.Activity == SessionActivity.WaitingAttention;
-            it.IsTurn = s.Activity == SessionActivity.WaitingTurn;
+            // La déduction rejoint la famille VISUELLE des attentes. Un drapeau de gabarit décrit une
+            // forme, il n'affirme rien : l'affirmation est dans StateText, et c'est lui qui porte
+            // l'interrogation. La ranger parmi les fantômes l'estomperait jusqu'à 0,22 d'opacité dans deux
+            // gabarits — une session qui m'attend peut-être ne doit pas être la plus effacée de l'écran.
+            it.IsTurn = s.Activity is SessionActivity.WaitingTurn or SessionActivity.WaitingDeduced;
             it.IsWorking = s.Activity == SessionActivity.Working;
             it.IsGhost = s.Activity == SessionActivity.Unknown;
             it.Detail = AffichageSessions.Age(now - s.UpdatedAt);
@@ -149,7 +153,10 @@ public sealed partial class SessionsViewModel : ObservableObject
         }
 
         TotalCount = snaps.Count;
-        WaitingCount = snaps.Count(s => s.Activity is SessionActivity.WaitingAttention or SessionActivity.WaitingTurn);
+        // Le compteur sert à ALERTER : taire une attente probable serait pire que l'annoncer avec un point
+        // d'interrogation. La déduction y entre donc, et son libellé dit ce qu'elle vaut.
+        WaitingCount = snaps.Count(s => s.Activity is SessionActivity.WaitingAttention
+                                        or SessionActivity.WaitingTurn or SessionActivity.WaitingDeduced);
         HasWaiting = WaitingCount > 0;
         Summary = TotalCount == 0 ? "Aucune session"
             : (WaitingCount > 0 ? $"{WaitingCount} en attente · {TotalCount} session(s)" : $"{TotalCount} session(s)");
@@ -161,11 +168,15 @@ public sealed partial class SessionsViewModel : ObservableObject
         => (AffichageSessions.Etat(a),
             a switch
             {
-                SessionActivity.WaitingAttention or SessionActivity.WaitingTurn => _amber,  // les deux attentes → rampe ambre
+                // Les deux attentes OBSERVÉES et l'attente DÉDUITE → rampe ambre. Le gris reste au seul
+                // inconnu : ce qu'on n'a pas pu lire s'efface, ce qu'on déduit se lit.
+                SessionActivity.WaitingAttention or SessionActivity.WaitingTurn
+                    or SessionActivity.WaitingDeduced => _amber,
                 SessionActivity.Working => _green,
                 _ => _gray,
             },
-            a is SessionActivity.WaitingAttention or SessionActivity.WaitingTurn);
+            a is SessionActivity.WaitingAttention or SessionActivity.WaitingTurn
+                 or SessionActivity.WaitingDeduced);
 
     private static Brush FrozenC(Color c)
     {

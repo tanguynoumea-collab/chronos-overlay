@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Templates des 8 styles du widget de sessions (refonte visuelle), PARTAGÉS entre la fenêtre réelle
          (SessionsWindow) et la galerie de prévisualisation. Loi commune : mouvement réservé à l'attente ;
-         « à toi » (Attention) respire, « tour fini » (Turn) fixe ; déduit (Ghost) = fantôme. -->
+         « à toi » (Attention) respire, « tour fini » (Turn) fixe ; Ghost = inconnu, estompé — l'attente DÉDUITE, elle, reste lisible. -->
     <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
     <!-- Pouls lent RÉSERVÉ à « à toi » (WaitingAttention). Appliqué à l'élément coloré de chaque style. -->

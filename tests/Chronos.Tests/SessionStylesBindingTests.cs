@@ -35,8 +35,10 @@ public class SessionStylesBindingTests
         return d;
     }
 
-    // Source substituée : rend une liste FIXE couvrant les QUATRE états, pour qu'aucun template ne soit
-    // mesuré à vide (une fenêtre sans élément passerait le test sans rien prouver).
+    // Source substituée : rend une liste FIXE couvrant les CINQ états, pour qu'aucun template ne soit
+    // mesuré à vide (une fenêtre sans élément passerait le test sans rien prouver). Le cinquième —
+    // l'attente DÉDUITE d'EVT-04 — porte le libellé le PLUS LONG des cinq (quatorze caractères) : sans
+    // lui dans la liste, la matrice 8 styles × 9 thèmes ne mesurerait rien du cas le plus contraignant.
     private sealed class SourceFixe : ISessionSource
     {
         private readonly IReadOnlyList<SessionSnapshot> _snaps;
@@ -50,12 +52,13 @@ public class SessionStylesBindingTests
             new SessionSnapshot("s1", "overlay",       SessionActivity.WaitingAttention, "permission_prompt", Maintenant),
             new SessionSnapshot("s2", "api-migration", SessionActivity.WaitingTurn,      null, Maintenant.AddMinutes(-3)),
             new SessionSnapshot("s3", "chronos",       SessionActivity.Working,          null, Maintenant),
-            new SessionSnapshot("s4", "legacy",        SessionActivity.Unknown,          null, Maintenant.AddMinutes(-12)));
+            new SessionSnapshot("s4", "legacy",        SessionActivity.Unknown,          null, Maintenant.AddMinutes(-12)),
+            new SessionSnapshot("s5", "interrompu",    SessionActivity.WaitingDeduced,   null, Maintenant.AddMinutes(-25)));
 
         var monitor = new SessionMonitor(TempDir(), source, new ArchiveStore(Path.Combine(TempDir(), "a.json")));
         var vm = new SessionsViewModel(monitor, new FakeClock(Maintenant), new ArchiveStore(Path.Combine(TempDir(), "b.json")));
         vm.Refresh(Maintenant);
-        Assert.Equal(4, vm.Items.Count);   // une fenêtre vide ne prouverait rien
+        Assert.Equal(5, vm.Items.Count);   // une fenêtre vide ne prouverait rien
         return vm;
     }
 
@@ -127,8 +130,8 @@ public class SessionStylesBindingTests
 
         var separateurs = TextesVisibles(racine).Count(tb => tb.Text is "  ·  ");
 
-        // 4 sessions × 1 séparateur (état · détail). Deux par session = un orphelin laissé par le retrait
+        // 5 sessions × 1 séparateur (état · détail). Deux par session = un orphelin laissé par le retrait
         // du libellé de type ; zéro = on a supprimé le mauvais TextBlock.
-        Assert.Equal(4, separateurs);
+        Assert.Equal(5, separateurs);
     }
 }

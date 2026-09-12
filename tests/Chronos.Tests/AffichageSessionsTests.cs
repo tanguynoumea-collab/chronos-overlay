@@ -137,6 +137,68 @@ public class AffichageSessionsTests
         Assert.Equal(1, vm.WaitingCount);
     }
 
+    /// <summary>
+    /// EVT-04, versant ÉCRAN. La déduction doit être VISIBLE — le critère n°3 du ROADMAP exige un état
+    /// juste ET visible, et deux gabarits estompent les fantômes jusqu'à 0,22 d'opacité : une session qui
+    /// m'attend peut-être ne doit pas être la plus effacée de l'écran.
+    ///
+    /// <para>Elle rejoint donc la famille VISUELLE des attentes (<c>IsTurn</c>), et c'est un choix de
+    /// FORME, pas une affirmation : un drapeau de gabarit ne dit rien, l'affirmation est dans
+    /// <c>StateText</c>, et c'est lui qui porte l'interrogation.</para>
+    /// </summary>
+    [Fact]
+    public void Une_session_deduite_est_visible_ambre_et_dit_sa_deduction()
+    {
+        var vm = VmAvec(new SessionSnapshot("s-deduit", "interrompu", SessionActivity.WaitingDeduced, null,
+                                            Maintenant.AddMinutes(-25)));
+
+        var item = Assert.Single(vm.Items);
+
+        Assert.Equal("à toi ? déduit", item.StateText);   // le libellé DIT qu'il déduit
+        Assert.False(item.IsGhost);                       // …et il n'est pas estompé comme un inconnu
+        Assert.False(item.IsWorking);                     // ni présenté comme un travail en cours
+        Assert.False(item.IsAttention);                   // ni comme une demande OBSERVÉE
+        Assert.True(item.IsTurn);                         // la famille visuelle des attentes
+        Assert.True(item.IsWaiting);
+
+        // La rampe AMBRE, celle des attentes — jamais le gris de l'inconnu. Comparée au pinceau qu'un
+        // WaitingTurn reçoit du même thème : c'est le seul moyen de l'asserter sans recopier une couleur.
+        var ambre = Assert.Single(VmAvec(new SessionSnapshot("s-tour", "p", SessionActivity.WaitingTurn, null,
+                                                             Maintenant)).Items).StateBrush;
+        var gris = Assert.Single(VmAvec(new SessionSnapshot("s-inconnu", "p", SessionActivity.Unknown, null,
+                                                            Maintenant)).Items).StateBrush;
+        Assert.Equal(ambre.ToString(), item.StateBrush.ToString());
+        Assert.NotEqual(gris.ToString(), item.StateBrush.ToString());
+    }
+
+    /// <summary>
+    /// Le compteur sert à ALERTER. Taire une attente probable serait pire que l'annoncer avec un point
+    /// d'interrogation : l'utilisateur verrait un compteur à zéro pendant qu'une session l'attend.
+    /// </summary>
+    [Fact]
+    public void Le_compteur_d_attente_inclut_la_deduction()
+    {
+        var vm = VmAvec(
+            new SessionSnapshot("s-deduit",  "interrompu", SessionActivity.WaitingDeduced, null, Maintenant.AddMinutes(-25)),
+            new SessionSnapshot("s-tour",    "p",          SessionActivity.WaitingTurn, null, Maintenant),
+            new SessionSnapshot("s-travail", "p",          SessionActivity.Working, null, Maintenant),
+            new SessionSnapshot("s-inconnu", "p",          SessionActivity.Unknown, null, Maintenant));
+
+        Assert.Equal(4, vm.TotalCount);
+        Assert.Equal(2, vm.WaitingCount);   // la déduction compte ; l'inconnu et le travail, non
+        Assert.True(vm.HasWaiting);
+    }
+
+    /// <summary>Un ViewModel dont la source de sessions est substituée et les magasins temporaires.</summary>
+    private static SessionsViewModel VmAvec(params SessionSnapshot[] snaps)
+    {
+        var vm = new SessionsViewModel(
+            new SessionMonitor(TempDir(), new SourceFixe(snaps), new ArchiveStore(TempFichier())),
+            new FakeClock(Maintenant), new ArchiveStore(TempFichier()));
+        vm.Refresh(Maintenant);
+        return vm;
+    }
+
     private sealed class SourceFixe : ISessionSource
     {
         private readonly IReadOnlyList<SessionSnapshot> _snaps;
