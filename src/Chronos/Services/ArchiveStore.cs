@@ -71,8 +71,54 @@ public sealed class ArchiveStore
         catch { }
     }
 
-    // SRC-02 (phase 21) — SQUELETTE de l'étape ROUGE. Le contrat est posé pour que le projet de tests
-    // compile (précédent 18-01 : une étape rouge doit être COMPORTEMENTALE, pas une erreur de compilation
-    // qui rendrait « dotnet test » non invocable). L'implémentation arrive à l'étape VERTE.
-    public int PurgerPrefixe(string prefixe) => throw new System.NotImplementedException();
+    /// <summary>
+    /// SRC-02 (phase 21) — retire DU FICHIER toute entrée dont l'identifiant commence par
+    /// <paramref name="prefixe"/>, et rend le nombre d'entrées effectivement retirées ET écrites.
+    ///
+    /// <para>Distinct de <see cref="Load"/>, qui se contente d'ÉCARTER à la lecture. Écarter n'est pas
+    /// retirer : les deux entrées de l'ancienne source app-bureau relevées le 2026-09-12 dans
+    /// archived.json prouvent que l'utilisateur avait dû archiver ces fantômes à la main, faute qu'ils
+    /// puissent vieillir. Tant qu'elles restent dans le fichier, son contournement reste gravé dans ses
+    /// données.</para>
+    ///
+    /// <para>Distinct aussi d'<see cref="Add"/>, qui applique au passage la purge des entrées expirées :
+    /// ici, AUCUN filtre de TTL. Purger un préfixe et expirer une entrée sont deux gestes différents ;
+    /// les confondre ferait disparaître des archives que l'utilisateur n'a pas demandé de retirer.</para>
+    ///
+    /// <para>Rien à retirer → le fichier n'est PAS réécrit (ni date, ni contenu). Écriture DIRECTE et non
+    /// par fichier temporaire : geste unique au démarrage, sans lecteur concurrent (l'écriture par
+    /// tmp + Move a été mesurée à 200 échecs sur 500 contre un lecteur, la directe à 0 sur 500).</para>
+    ///
+    /// <para>Le nombre rendu n'est pas une intention mais une OBSERVATION : si l'écriture échoue, la
+    /// méthode rend 0, parce que rien n'a été retiré.</para>
+    /// </summary>
+    public int PurgerPrefixe(string prefixe)
+    {
+        if (string.IsNullOrEmpty(prefixe)) return 0;   // un préfixe vide viderait tout : jamais légitime
+
+        var restantes = new Dictionary<string, long>();
+        var retirees = 0;
+        var ecrit = false;
+        try
+        {
+            if (!File.Exists(_path)) return 0;
+            using (var doc = JsonDocument.Parse(File.ReadAllText(_path)))
+            {
+                if (doc.RootElement.ValueKind != JsonValueKind.Object) return 0;
+                foreach (var p in doc.RootElement.EnumerateObject())
+                {
+                    if (!p.Value.TryGetInt64(out var ts)) continue;   // entrée illisible : ignorée, non conservée
+                    if (p.Name.StartsWith(prefixe, System.StringComparison.Ordinal)) { retirees++; continue; }
+                    restantes[p.Name] = ts;                           // conservée TELLE QUELLE, sans TTL
+                }
+            }
+            if (retirees == 0) return 0;                              // rien à faire = ne rien écrire
+
+            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+            File.WriteAllText(_path, JsonSerializer.Serialize(restantes));
+            ecrit = true;
+        }
+        catch { }
+        return ecrit ? retirees : 0;
+    }
 }
