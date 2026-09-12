@@ -821,4 +821,111 @@ public class MainViewModelTests
         Assert.False(vm.AfficherEtatSonde);
         Assert.Equal("", vm.TexteEtatSonde);
     }
+
+    // ================== EXA-05 : l'invitation à se connecter ==================
+
+    // Snapshot « on n'a JAMAIS rien eu » : deux fenêtres indisponibles ET le bit du magasin à false.
+    private static UsageSnapshot JamaisDExact(bool? bit = false) => new()
+    {
+        FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+        SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        UnExactADejaEteObtenu = bit,
+    };
+
+    /// <summary>EXA-05 — aucun exact jamais obtenu ET rien à afficher : l'overlay invite à se connecter
+    /// plutôt que de laisser un cadran muet. Il n'affiche AUCUN pourcentage (les deux textes sont vides).</summary>
+    [Fact]
+    public void Jamais_d_exact_et_rien_a_afficher_allume_l_invitation()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(JamaisDExact());
+
+        Assert.True(vm.AfficherInvitationConnexion);
+        Assert.True(vm.DataUnavailable);
+        Assert.Equal("", vm.FiveHour.UtilizationText);   // EXA-05 : jamais un pourcentage
+        Assert.Equal("", vm.SevenDay.UtilizationText);
+    }
+
+    /// <summary>EXA-05 — un exact a DÉJÀ été obtenu : sa fenêtre a simplement tourné, ou la source est
+    /// momentanément muette. On ne crie pas « connecte-toi » à quelqu'un qui l'est.</summary>
+    [Fact]
+    public void Un_exact_deja_obtenu_eteint_l_invitation()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(JamaisDExact(bit: true));
+
+        Assert.False(vm.AfficherInvitationConnexion);
+    }
+
+    /// <summary>EXA-05, le piège : <c>null</c> n'est pas <c>false</c>. Le magasin en panne (ou un snapshot
+    /// né hors de la couche de doctrine, dont <c>UsageSnapshot.Empty</c>) ne répond PAS « jamais » — il ne
+    /// répond pas du tout. Une absence de réponse ne doit jamais produire une affirmation.</summary>
+    [Fact]
+    public void Bit_non_evalue_null_n_allume_pas_l_invitation()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(JamaisDExact(bit: null));
+        Assert.False(vm.AfficherInvitationConnexion);
+
+        vm.ApplySnapshot(UsageSnapshot.Empty);          // le cas réel : Empty porte null
+        Assert.False(vm.AfficherInvitationConnexion);
+    }
+
+    /// <summary>EXA-05 — le bit dit « jamais d'exact », mais une fenêtre porte tout de même un chiffre
+    /// (plancher, repli) : l'overlay affiche déjà quelque chose, l'invitation n'a rien à ajouter.</summary>
+    [Fact]
+    public void Un_chiffre_disponible_eteint_l_invitation()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = Readable(WindowKind.FiveHour, Now, util: 0.42),
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+            UnExactADejaEteObtenu = false,
+        });
+
+        Assert.False(vm.DataUnavailable);
+        Assert.False(vm.AfficherInvitationConnexion);
+    }
+
+    /// <summary>EXA-05 / TOK-02 — EXCLUSIVITÉ. Les deux pastilles portent le MÊME geste
+    /// (ReconnecterCommand) ; les allumer ensemble sur un cadran de 170 px serait une redondance, pas une
+    /// information. La déconnexion est le diagnostic le plus précis des deux : elle gagne.</summary>
+    [Fact]
+    public void L_etat_Deconnecte_eteint_l_invitation()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(JamaisDExact());
+        vm.AppliquerEtatAuth(EtatAuthentification.Deconnecte);
+
+        Assert.True(vm.AfficherPastilleDeconnexion);
+        Assert.False(vm.AfficherInvitationConnexion);
+    }
+
+    /// <summary>Les deux entrées arrivent par DEUX canaux et à DEUX instants (un snapshot, un événement
+    /// d'authentification). Sans point de recomposition unique, le dernier arrivé écraserait l'autre et
+    /// l'invitation resterait périmée. Ce test est la raison d'être de <c>MajPastilles</c>.</summary>
+    [Fact]
+    public void Un_changement_d_etat_d_auth_apres_le_snapshot_recompose_l_invitation()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(JamaisDExact());
+        Assert.True(vm.AfficherInvitationConnexion);
+
+        vm.AppliquerEtatAuth(EtatAuthentification.Deconnecte);
+        Assert.False(vm.AfficherInvitationConnexion);   // effacée devant le diagnostic plus précis
+
+        vm.AppliquerEtatAuth(EtatAuthentification.Connecte);
+        Assert.True(vm.AfficherInvitationConnexion);    // RALLUMÉE sans nouveau snapshot
+
+        vm.AppliquerEtatAuth(EtatAuthentification.HorsLigne);
+        Assert.True(vm.AfficherInvitationConnexion);    // hors ligne est informatif : il n'efface rien
+        Assert.True(vm.AfficherPastilleHorsLigne);
+    }
 }

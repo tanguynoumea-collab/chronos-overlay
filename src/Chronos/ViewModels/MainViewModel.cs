@@ -72,6 +72,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _afficherPastilleDeconnexion;
     [ObservableProperty] private bool _afficherPastilleHorsLigne;
 
+    /// <summary>EXA-05 — aucun chiffre exact n'a JAMAIS été obtenu ET rien n'est disponible : l'overlay
+    /// invite à se connecter plutôt que d'afficher un pourcentage. ACTIONNABLE (ReconnecterCommand).
+    /// Distinct de la pastille de déconnexion : celle-ci dit « on a perdu la connexion », celle-là dit
+    /// « on n'a jamais rien eu » — deux diagnostics différents pour un même geste de réparation.</summary>
+    [ObservableProperty] private bool _afficherInvitationConnexion;
+
     /// <summary>HDR-06 — interrupteur de la sonde d'en-têtes. DISTINCT d'<see cref="IsOAuthUsageEnabled"/> :
     /// la sonde consomme une vraie micro-requête sur le compte, l'autre non. Les mélanger priverait
     /// l'utilisateur du seul interrupteur qui gouverne une dépense.</summary>

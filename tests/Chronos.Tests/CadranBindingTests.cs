@@ -219,8 +219,19 @@ public class CadranBindingTests
     /// </summary>
     private static (MainWindow fenetre, FrameworkElement racine) MonterPastille(
         EtatAuthentification etat, out MainViewModel vm)
+        => MonterPastille(etat, UsageSnapshot.Empty, out vm);
+
+    /// <summary>
+    /// Surcharge (phase 19) acceptant le SNAPSHOT : l'invitation EXA-05 dépend d'un fait porté par le
+    /// snapshot (<c>UnExactADejaEteObtenu</c>) et non de l'état d'authentification. La signature
+    /// historique est conservée telle quelle — les quatre tests de pastille de la phase 17 l'appellent
+    /// et doivent rester verts sans retouche (leur <c>UsageSnapshot.Empty</c> porte un bit <c>null</c>,
+    /// donc l'invitation y reste éteinte par construction).
+    /// </summary>
+    private static (MainWindow fenetre, FrameworkElement racine) MonterPastille(
+        EtatAuthentification etat, UsageSnapshot snap, out MainViewModel vm)
     {
-        var fenetre = BuildWindow(UsageSnapshot.Empty, out vm);
+        var fenetre = BuildWindow(snap, out vm);
         vm.AppliquerEtatAuth(etat);
 
         var racine = (FrameworkElement)fenetre.Content!;
@@ -316,5 +327,58 @@ public class CadranBindingTests
 
         Assert.Equal(Visibility.Collapsed, actionnable.Visibility);
         Assert.Equal(Visibility.Collapsed, informative.Visibility);
+    }
+
+    // ================== EXA-05 : la pastille d'invitation à se connecter ==================
+
+    // Snapshot « on n'a JAMAIS rien eu » : deux fenêtres indisponibles ET le bit du magasin à false.
+    private static UsageSnapshot JamaisDExact(bool? bit = false) => new()
+    {
+        FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+        SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        UnExactADejaEteObtenu = bit,
+    };
+
+    /// <summary>
+    /// EXA-05 — LE piège de la phase 17, hérité tel quel et verrouillé au niveau du XAML : l'invitation
+    /// doit porter <c>ReconnecterCommand</c>. Bindée sur <c>LoginClaudeCommand</c>, qui BASCULE sur
+    /// <c>IsLoggedIn == _store.Exists</c> (vrai dès que le fichier de coffre existe, même avec un jeton
+    /// mort), un clic SUPPRIMERAIT le coffre de jetons de l'utilisateur.
+    /// La comparaison porte sur l'INSTANCE de commande réellement bindée, pas sur un nom : un binding
+    /// vers la mauvaise commande porterait le même nom de propriété dans le XAML et passerait un test
+    /// textuel sans broncher.
+    /// </summary>
+    [WpfFact]
+    public void L_invitation_est_bindee_sur_ReconnecterCommand_et_JAMAIS_sur_LoginClaudeCommand()
+    {
+        var (fenetre, _) = MonterPastille(EtatAuthentification.Connecte, JamaisDExact(), out var vm);
+        var invitation = Assert.IsType<Button>(fenetre.FindName("PastilleInvitationConnexion"));
+
+        Assert.True(vm.AfficherInvitationConnexion);
+        Assert.Same(vm.ReconnecterCommand, invitation.Command);
+        Assert.NotSame(vm.LoginClaudeCommand, invitation.Command);
+        Assert.NotNull(invitation.Background);                 // hit-testable (Transparent suffit)
+        Assert.Equal(Visibility.Visible, invitation.Visibility);
+        Assert.Equal(HorizontalAlignment.Right, invitation.HorizontalAlignment);
+        Assert.Equal(VerticalAlignment.Bottom, invitation.VerticalAlignment);
+
+        // Exclusivité vérifiée sur les Visibility RÉSOLUES, pas seulement sur les booléens du VM.
+        var deconnexion = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
+        Assert.Equal(Visibility.Collapsed, deconnexion.Visibility);
+    }
+
+    /// <summary>EXA-05 — contre-épreuve : un exact a déjà été obtenu, l'invitation reste COLLAPSED. Et
+    /// l'empreinte 170x170 du cadran n'a pas bougé d'un pixel : cette pastille n'est pas de la
+    /// géométrie, elle est un signal posé hors de tout anneau.</summary>
+    [WpfFact]
+    public void L_invitation_reste_COLLAPSED_quand_un_exact_a_deja_ete_obtenu()
+    {
+        var (fenetre, _) = MonterPastille(EtatAuthentification.Connecte, JamaisDExact(bit: true), out var vm);
+        var invitation = Assert.IsType<Button>(fenetre.FindName("PastilleInvitationConnexion"));
+
+        Assert.False(vm.AfficherInvitationConnexion);
+        Assert.Equal(Visibility.Collapsed, invitation.Visibility);
+        Assert.Equal(170d, fenetre.Width);
+        Assert.Equal(170d, fenetre.Height);
     }
 }
