@@ -53,7 +53,10 @@
                         </Border.Effect>
                         <Border.ContextMenu>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                <MenuItem Header="Archiver (retirer de l'overlay)" Command="{Binding ArchiveCommand}"/>
+                                <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                             </ContextMenu>
                         </Border.ContextMenu>
                         <Grid>
@@ -85,7 +88,10 @@
                             ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
                         <Border.ContextMenu>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                <MenuItem Header="Archiver (retirer de l'overlay)" Command="{Binding ArchiveCommand}"/>
+                                <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                             </ContextMenu>
                         </Border.ContextMenu>
                         <Grid>
@@ -122,7 +128,10 @@
                               ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                    <MenuItem Header="Archiver" Command="{Binding ArchiveCommand}"/>
+                                    <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                    <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center">
@@ -162,7 +171,10 @@
                               ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                    <MenuItem Header="Archiver" Command="{Binding ArchiveCommand}"/>
+                                    <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                    <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Ellipse Width="16" Height="16" Stroke="{Binding StateBrush}" StrokeThickness="1.6" RenderTransformOrigin="0.5,0.5">
@@ -213,7 +225,10 @@
                         <Border Width="26" Height="20" Margin="3" CornerRadius="3" Background="{Binding StateBrush}" ToolTip="{Binding Project}">
                             <Border.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                    <MenuItem Header="Archiver" Command="{Binding ArchiveCommand}"/>
+                                    <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                    <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                                 </ContextMenu>
                             </Border.ContextMenu>
                             <Border.Style>
@@ -242,7 +257,10 @@
                               ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                    <MenuItem Header="Archiver" Command="{Binding ArchiveCommand}"/>
+                                    <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                    <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Rectangle VerticalAlignment="Bottom" HorizontalAlignment="Center" Height="60" RadiusX="2" RadiusY="2"
@@ -310,7 +328,10 @@
                             <Border CornerRadius="6" Margin="0,2" Padding="8,4" Background="{Binding StateBrush}" ToolTip="{Binding Project}">
                                 <Border.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                        <MenuItem Header="Archiver" Command="{Binding ArchiveCommand}"/>
+                                        <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                        <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                        <Separator/>
+                                        <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                                     </ContextMenu>
                                 </Border.ContextMenu>
                                 <Border.Style>
@@ -342,7 +363,10 @@
                               ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                    <MenuItem Header="Archiver" Command="{Binding ArchiveCommand}"/>
+                                    <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
+                                    <MenuItem Header="{Binding ToutTraiterLibelle}" Command="{Binding MarquerToutTraiteCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Archiver définitivement (ne revient jamais)" Command="{Binding ArchiveCommand}"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Grid Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVis}}">
