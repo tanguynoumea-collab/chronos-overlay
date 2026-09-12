@@ -34,7 +34,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
   devenus morts avec l'hystérésis par focus).
 - [ ] **SRC-02**: Les entrées fantômes `desktop:foreground:*` disparaissent, y compris celles déjà présentes
   dans `archived.json` — l'utilisateur avait dû les archiver à la main parce qu'elles ne vieillissaient jamais.
-- [ ] **SRC-03**: La limite de fichiers de transcripts est appliquée **après** le filtre des sous-agents, et
+- [x] **SRC-03**: La limite de fichiers de transcripts est appliquée **après** le filtre des sous-agents, et
   non avant : 94 % des transcripts sont des `agent-*.jsonl`, et une vague d'agents parallèles aveuglait la
   source jusqu'à faire disparaître la vraie session.
 
@@ -104,7 +104,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 |--------|-------|--------|
 | SRC-01 | Phase 21 | Pending |
 | SRC-02 | Phase 21 | Pending |
-| SRC-03 | Phase 21 | Pending |
+| SRC-03 | Phase 21 | Complete |
 | EVT-01 | Phase 25 | Pending |
 | EVT-02 | Phase 25 | Pending |
 | EVT-03 | Phase 25 | Pending |

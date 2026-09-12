@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: "Roadmap v1.6 créée — 6 phases (21-26), 18/18 exigences mappées. Prête à planifier."
-stopped_at: Roadmap v1.6 écrite ; prochaine action /gsd:plan-phase 21
-last_updated: "2026-09-12"
-last_activity: 2026-09-12 — Roadmap v1.6 créée (phases 21-26, couverture 18/18)
+status: executing
+stopped_at: "Complete 21-01-PLAN.md (SRC-03 : limite sur les sessions retenues)"
+last_updated: "2026-09-12T14:36:43.963Z"
+last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
   percent: 0
 ---
 
@@ -22,15 +22,15 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** v1.6 — le widget de sessions OBSERVE ses états au lieu de les déduire.
+**Current focus:** Phase 21 — Perimetre - le widget ne parle que de Claude Code
 
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: 21 — Périmètre : le widget ne parle que de Claude Code (not started)
-Plan: —
-Status: Roadmap créée (6 phases, 21→26), aucune phase planifiée
-Last activity: 2026-09-12 — Roadmap v1.6 créée, couverture 18/18
+Phase: 21 (Perimetre - le widget ne parle que de Claude Code) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-09-12
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -51,9 +51,11 @@ contre les classes réelles et contre la doc officielle des hooks Claude Code.
 1. **« Réfléchit » déduit par expiration, jamais observé.** Working n''est écrit que par UserPromptSubmit et
    SessionStart ; rien ne confirme que le travail continue. Et SessionMonitor.Read arbitre par ORDRE
    D''INSERTION : un hook de 7 h écrase un transcript de 10 s (mesuré).
+
 2. **« Attend » : sémantique fausse à la source.** Stop ne se déclenche PAS sur interruption utilisateur.
    Notification est une alerte « tu sembles absent », couvrant permission ET inactivité ET fin de tâche.
    Un événement PermissionRequest DÉDIÉ existe et n''est pas utilisé (~30 événements au catalogue, 5 utilisés).
+
 3. **« Traité » impossible en terminal.** SessionTreatmentTracker exige Origin == Desktop et un id
    desktop:foreground:* ; une session Claude Code a Origin = Cli et un UUID. Et NET-01 confond « l''utilisateur
    a répondu » avec « ma source a expiré » : preuve arithmétique, 478 min vs DropAfter 480 min → une session
@@ -160,6 +162,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 20 P03 | 16min | 3 tasks | 12 files |
 | Phase 20 P04 | 18min | 3 tasks | 2 files |
 | Phase 20 P05 | 14min | 3 tasks | 5 files |
+| Phase 21 P01 | 14min | 2 tasks | 3 files |
 
 ### Decisions
 
@@ -184,6 +187,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
   fraîcheur compare des horodatages ; une écriture perdue en silence (mesuré : 200 échecs sur 500 par
   `tmp`+`Move` sous lecteur concurrent) fait paraître un état plus vieux qu'il n'est et empoisonne
   l'arbitrage à sa racine. CYC-01 assainit en outre le terrain de mesure humain (54 fichiers dont 48 > 7 j,
+
   + 12 `.tmp`).
 
 - [v1.6/roadmap]: **FUS (24) avant EVT (25).** EVT-03 (battements de cœur) n'a aucune valeur sans FUS-01 :
@@ -360,6 +364,11 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 20]: Le tilde du diagnostic etait un OUBLI de la phase 19 : « >= » partout, un seul vocabulaire pour dire borne inferieure
 - [Phase 20]: Les deux segments d'EXA-06 (source, anciennete) sont INCONDITIONNELS : une fenetre sans source dit « non renseignee » plutot que de se taire
 - [Phase 20]: HDR-02 reste NON prouvee en production : le 429 reel exige une saturation du compte, la nuance est ecrite plutot que cochee en silence
+- [Phase 21]: [21-01] La limite de douze porte sur les sessions RETENUES (break apres Classify), plus sur les fichiers examines (Take avant filtre) : un sous-agent, un transcript sans message exploitable ou un fichier illisible ne consomme plus aucun emplacement. MaxSessions reste a 12 — le defaut n'etait pas la valeur mais son point d'application.
+- [Phase 21]: [21-01] Le pre-filtre de chemin EstSousAgent (dossier subagents/ ou nom agent-*) est une ECONOMIE d'I/O (94 % des 870 transcripts), JAMAIS l'autorite : le champ isSidechain lu ligne a ligne dans Classify reste le juge, et un test le verrouille sur un fichier mal range au nom banal.
+- [Phase 21]: [21-01] Le catch de Read ne protegeait rien : l'enumeration LINQ etait paresseuse, donc l'erreur disque survenait dans le foreach, HORS du try. ToList() a l'interieur du try. Non couvert par un test — injecter une panne d'enumeration exigerait une abstraction de systeme de fichiers absente du depot.
+- [Phase 21]: [21-01] ISessionSource porte par TranscriptSessionSource en vague 1, avant toute demolition : aucun corps de methode touche (la signature de Read satisfaisait deja le contrat), et le plan 21-02 peut faire prendre a SessionMonitor sa source de base PAR LE CONTRAT sans commit non compilable.
+- [Phase 21]: [21-01] L'invariant de securite 'oauth.dat mtime 1783863147' du 21-VALIDATION.md est FAUX (mesure : 1789211525 ; 1783867137 est celui d'archived.json — transposition). L'overlay en cours fait tourner le refresh token toutes les 60 s : un mtime fige ne peut pas etre un invariant. Invariant de remplacement pour le plan 21-04 : 518 OCTETS.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -419,12 +428,15 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
   dans `20-05-SUMMARY.md`. Deux d'entre eux ne peuvent PAS etre refermes par un agent :
   **HDR-02** (un 429 REEL porte-t-il bien les en-tetes `anthropic-ratelimit-unified-*` ?) et le **parcours
   de reconnexion** de bout en bout. Ne pas les cocher sur la foi d'un test a reponse fabriquee.
+
 - **L'exe deploye (`~/Downloads/Chronos-v2.8.1.exe`) est anterieur a TOUT le milestone v1.5** : tant qu'il
   n'est pas republie, rien des phases 15 a 20 n'est visible. La version du `.csproj` est encore 2.8.1 —
   une release v1.5 doit la monter.
+
 - **Le premier lancement purgera les 25 groupes de hooks** de `~/.claude/settings.json` (attendu, PUR-01 /
   PUR-03, avec sauvegarde horodatee). L'agent ne l'a pas declenche : le fichier est intact
   (6872 o, mtime 1785403369).
+
 - **Economie possible, a trancher apres constat** : si `/api/oauth/usage` sert deja la famille
   `anthropic-ratelimit-unified-*`, les ~288 micro-requetes/jour de la sonde deviennent redondantes.
 
@@ -435,7 +447,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12
-Stopped at: Roadmap v1.6 écrite (.planning/ROADMAP.md) — 6 phases 21→26, couverture 18/18
+Last session: 2026-09-12T14:36:30.867Z
+Stopped at: Complete 21-01-PLAN.md (SRC-03 : limite sur les sessions retenues)
 Resume file: None
 Next: /gsd:plan-phase 21 — Périmètre : retrait de la source app-bureau (SRC-01, SRC-02, SRC-03)

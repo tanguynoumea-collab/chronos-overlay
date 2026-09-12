@@ -120,7 +120,7 @@ retire `SessionKind` / `SessionOrigin` de `SessionSnapshot` et trois arguments d
 de démolition est la compilation, pas la logique — `tests/Chronos.Tests` référence `Chronos`)
 
 Plans:
-- [ ] 21-01-PLAN.md — SRC-03 : la limite de douze porte sur les sessions retenues, plus sur les fichiers examinés
+- [x] 21-01-PLAN.md — SRC-03 : la limite de douze porte sur les sessions retenues, plus sur les fichiers examinés
 - [ ] 21-02-PLAN.md — SRC-01 (1/2) : débrancher — moniteur, détecteur, DI et diagnostic quittent la source app-bureau
 - [ ] 21-03-PLAN.md — SRC-01 (2/2) : supprimer — 10 fichiers, la typologie bureau, le libellé de type, deux gardes de non-retour
 - [ ] 21-04-PLAN.md — SRC-02 : les fantômes archivés retirés du fichier, et le bilan nominatif du recul de couverture
@@ -254,7 +254,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 21. Périmètre — le widget ne parle que de Claude Code | 0/4 | Planned | - |
+| 21. Périmètre — le widget ne parle que de Claude Code | 1/4 | In Progress|  |
 | 22. Un instrument de mesure qui ne ment plus | 0/? | Not started | - |
 | 23. Un magasin qui ne croît plus et n'oublie plus | 0/? | Not started | - |
 | 24. L'arbitrage par fraîcheur | 0/? | Not started | - |

@@ -97,8 +97,8 @@ Carte posée par le planner, à RELEVER à l'exécution. Toutes les commandes se
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command (`--filter …`) | Δ tests | Total | Status |
 |---------|------|------|-------------|-----------|----------------------------------|---------|-------|--------|
-| 21-01 T1 — limite après le filtre sous-agents | 01 | 1 | SRC-03 | unité (TDD) | `~TranscriptSousAgentsTests` · `~SessionsTests` | +4 | 756 | ⬜ |
-| 21-01 T2 — `TranscriptSessionSource : ISessionSource` | 01 | 1 | SRC-03 (infra) | compilation + suite | *(suite complète)* | 0 | 756 | ⬜ |
+| 21-01 T1 — limite après le filtre sous-agents | 01 | 1 | SRC-03 | unité (TDD) | `~TranscriptSousAgentsTests` · `~SessionsTests` | +4 | 756 | ✅ 756 / 0 |
+| 21-01 T2 — `TranscriptSessionSource : ISessionSource` | 01 | 1 | SRC-03 (infra) | compilation + suite | *(suite complète)* | 0 | 756 | ✅ 756 / 0 |
 | 21-02 T1 — la couture : moniteur, détecteur, DI, 4 fichiers de tests | 02 | 2 | SRC-01 | unité + garde DI | `~SessionsTests` · `~TreatedSessionsTests` · `~CompositionRootTests` | −9 | 747 | ⬜ |
 | 21-02 T2 — diagnostic et inventaire de machine | 02 | 2 | SRC-01 | unité + pureté | `~DiagnosticServiceTests` · `~TokenRefreshServiceTests` · `~ServicesLayerPurityTests` | 0 | 747 | ⬜ |
 | 21-03 T1 — suppression des 10 fichiers + garde par réflexion | 03 | 3 | SRC-01 | garde d'assembly | `~GardesPerimetreTests` *(suite complète)* | −40 / +2 | 709 | ⬜ |
@@ -182,7 +182,7 @@ ligne à ligne.
 | Invariant | Commande | Attendu |
 |---|---|---|
 | Aucune donnée de session touchée | `ls "$APPDATA/Chronos/sessions" \| wc -l` | **66** (54 `.json` + 12 `.tmp`) |
-| Jeton intact | `ls -l "$APPDATA/Chronos/oauth.dat"` | **518** octets, mtime **1783863147** |
+| Jeton intact | `stat -c '%s' "$APPDATA/Chronos/oauth.dat"` | **518** octets. **CORRIGÉ au plan 21-01** : le mtime annoncé (1783863147) était en réalité celui d'`archived.json` (1783867137) — transposition de rédaction. Mesure du 2026-09-12 : **1789211525**. Et l'overlay en cours (pid 119412) fait tourner le refresh token toutes les 60 s : un mtime figé ne peut PAS être un invariant. Seule la **taille** l'est. |
 | `archived.json` non modifié par les tests | `ls -l "$APPDATA/Chronos/archived.json"` | **84** octets — la purge ne s'exécute qu'au prochain lancement **volontaire** de l'overlay |
 | Overlay ni lancé ni tué | — | pid **119412** toujours celui du départ |
 | Aucune dépendance NuGet nouvelle | `git diff --stat -- '*.csproj'` | aucun ajout de `PackageReference` |
