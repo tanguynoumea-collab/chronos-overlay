@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using Chronos.Models;
 using Chronos.Services;
 using Xunit;
@@ -685,5 +686,174 @@ public class RateLimitHeaderUsageProviderTests
             Assert.Equal(ResultatSonde.SuccesEnTetesLus, sonde.DernierResultat);
         }
         finally { CultureInfo.CurrentCulture = precedente; }
+    }
+
+    // --- HDR-06 : cadence bornée, coût maîtrisé, aucun couplage au tick de 60 s ---
+
+    /// <summary>HDR-06. Le composite appelle les deux <c>GetAsync</c> SANS court-circuit : la sonde est donc
+    /// sollicitée à chaque tick de <c>RefreshOrchestrator</c> (<c>RefreshOptions.PeriodicInterval</c> = 60 s)
+    /// et REFUSE elle-même 4 fois sur 5. Aucun couplage à <c>RefreshOptions</c>, aucun service de fond
+    /// supplémentaire : le frein vit dans la sonde, là où il ne peut pas être oublié par un appelant.</summary>
+    [Fact]
+    public async Task La_cadence_est_bornee_a_une_sonde_par_cadence_nominale()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Nominal);
+        var horloge = new FakeClock(Maintenant);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, horloge);
+
+        for (var i = 0; i < 5; i++) await sonde.GetAsync();
+        Assert.Equal(1, transport.SendCount);
+
+        // Le tick RÉEL de l'orchestrateur est de 60 s : seuls les pas cumulant >= 300 s déclenchent un envoi.
+        foreach (var secondes in new[] { 60, 120, 180, 240 })
+        {
+            horloge.UtcNow = Maintenant.AddSeconds(secondes);
+            await sonde.GetAsync();
+            Assert.Equal(1, transport.SendCount);
+            Assert.Equal(ResultatSonde.FreinActif, sonde.DernierResultat);
+        }
+
+        horloge.UtcNow = Maintenant.AddSeconds(300);
+        await sonde.GetAsync();
+        Assert.Equal(2, transport.SendCount);
+        Assert.Equal(ResultatSonde.SuccesEnTetesLus, sonde.DernierResultat);
+    }
+
+    /// <summary>LEÇON DE LA PHASE 17, défaut n° 3 du plan 17-01 : le garde-fou d'origine exigeait « un cache
+    /// existe » EN PLUS du recul, or le cache vit en RAM et est donc vide à CHAQUE démarrage de l'exe — le
+    /// frein disparaissait précisément quand le martèlement se produit. Ici un 401 ne produit aucun cache, et
+    /// le frein tient quand même.</summary>
+    [Fact]
+    public async Task Le_frein_tient_meme_sans_cache()
+    {
+        var transport = FakeHttpMessageHandler.SequenceAvecEnTetes(
+            (HttpStatusCode.Unauthorized, EnTetesDeReference.Absents),
+            (HttpStatusCode.Unauthorized, EnTetesDeReference.Absents));
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        await sonde.GetAsync();
+        Assert.Equal(2, transport.SendCount);                  // l'envoi initial + le rejeu unique
+        Assert.Equal(ResultatSonde.RefusServeur, sonde.DernierResultat);
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(2, transport.SendCount);                  // AUCUN cache, et pourtant aucun envoi
+        Assert.Equal(ResultatSonde.FreinActif, sonde.DernierResultat);
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+    }
+
+    /// <summary>Le cache de la sonde est volontairement PLUS COURT que les 15 min du provider
+    /// <c>/api/oauth/usage</c> : à fiabilité égale, <c>CompositeUsageProvider.Best()</c> privilégie le
+    /// <c>primary</c>, donc un cache long de la sonde battrait une lecture FRAÎCHE de l'autre source. Le
+    /// classement par fraîcheur est la phase 19 ; en attendant, on n'aggrave pas le problème.</summary>
+    [Fact]
+    public async Task Le_cache_de_la_sonde_ne_survit_pas_a_la_cadence()
+    {
+        var n = 0;
+        var transport = new FakeHttpMessageHandler(_ =>
+        {
+            if (n++ > 0) throw new HttpRequestException("réseau");
+            var r = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            foreach (var (k, v) in EnTetesDeReference.Nominal) r.Headers.TryAddWithoutValidation(k, v);
+            return r;
+        });
+        var horloge = new FakeClock(Maintenant);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, horloge);
+
+        await sonde.GetAsync();
+
+        // À 299 s le frein est actif ET le cache est encore utilisable : les chiffres du premier appel sont
+        // servis tels quels, avec leur CapturedAt d'origine — la fraîcheur n'est jamais maquillée.
+        horloge.UtcNow = Maintenant.AddSeconds(299);
+        var cache = await sonde.GetAsync();
+        Assert.Equal(1, transport.SendCount);
+        Assert.Equal(ResultatSonde.FreinActif, sonde.DernierResultat);
+        Assert.Equal(0.01, cache.FiveHour.Utilization!.Value, 9);
+        Assert.Equal(Maintenant, cache.FiveHour.CapturedAt);
+
+        // À 301 s le cache a dépassé sa durée d'utilisation : une panne réseau ne peut plus le ressortir.
+        horloge.UtcNow = Maintenant.AddSeconds(301);
+        var vide = await sonde.GetAsync();
+        Assert.Equal(2, transport.SendCount);
+        Assert.Equal(ResultatSonde.PanneReseau, sonde.DernierResultat);
+        Assert.Null(vide.FiveHour.Utilization);
+        Assert.Equal(SourceReliability.Unavailable, vide.FiveHour.Reliability);
+    }
+
+    /// <summary>L'interrupteur coupe l'accès RÉSEAU et l'accès au JETON, et sa relecture est FRAÎCHE à chaque
+    /// appel (motif <c>GatedOAuthUsageProvider</c>) : basculer le réglage prend effet au prochain passage,
+    /// sans redémarrer l'exe et sans reconstruire la sonde.</summary>
+    [Fact]
+    public async Task L_interrupteur_coupe_tout_acces_reseau_ET_tout_acces_au_jeton()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Nominal);
+        var (sonde, autorite, reglages) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant),
+                                                activee: false);
+
+        await sonde.GetAsync();
+
+        Assert.Equal(0, transport.SendCount);
+        Assert.Equal(ResultatSonde.Desactivee, sonde.DernierResultat);
+        // Le coffre est VALIDE : si le jeton avait été demandé, l'autorité aurait publié Connecte.
+        Assert.Equal(EtatAuthentification.NonConnecte, autorite.Etat);
+
+        reglages.Save(reglages.Load() with { SondeEnTetesActivee = true });   // SANS reconstruire la sonde
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Equal(1, transport.SendCount);
+        Assert.Equal(ResultatSonde.SuccesEnTetesLus, sonde.DernierResultat);
+        Assert.Equal(0.01, snap.FiveHour.Utilization!.Value, 9);
+        Assert.Equal(EtatAuthentification.Connecte, autorite.Etat);
+    }
+
+    /// <summary>Test de DOCUMENTATION EXÉCUTABLE : 288 sondes par jour est le chiffre qui sera écrit dans les
+    /// réglages au plan 18-06. S'ils divergent, ce test tombe.
+    ///
+    /// EFFET D'OBSERVATION, à dire et jamais à « compenser » : les chiffres rendus par les en-têtes INCLUENT
+    /// la sonde elle-même. C'est exact et honnête ; retrancher une estimation de sa propre consommation
+    /// serait inventer, donc exactement ce que v1.5 interdit.</summary>
+    [Fact]
+    public void Le_cout_annonce_correspond_a_la_cadence()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(300), RateLimitHeaderUsageProvider.CadenceNominale);
+        Assert.Equal(288, (int)(TimeSpan.FromDays(1) / RateLimitHeaderUsageProvider.CadenceNominale));
+    }
+
+    /// <summary>GARDE STRUCTURELLE PERMANENTE sur la sonde. Trois interdits, chacun pour une raison :
+    /// aucun type WPF (la couche Services reste neutre, motif <c>ServicesLayerPurityTests</c>) ; aucune
+    /// horloge système (sans quoi aucun test de cadence ne serait déterministe) ; aucun contrôle de succès
+    /// par exception et aucune lecture du corps de la réponse (les deux videraient HDR-02 de son sens, et la
+    /// seconde ferait remonter du texte venu du réseau).</summary>
+    [Fact]
+    public void Aucun_type_WPF_ni_aucune_horloge_systeme_dans_la_sonde()
+    {
+        var type = typeof(RateLimitHeaderUsageProvider);
+        string[] interditsWpf = { "PresentationCore", "PresentationFramework", "WindowsBase" };
+
+        var assembliesTouches = type.GetMethods()
+            .SelectMany(m => new[] { m.ReturnType }.Concat(m.GetParameters().Select(p => p.ParameterType)))
+            .Concat(type.GetProperties().Select(p => p.PropertyType))
+            .Select(x => x.Assembly.GetName().Name)
+            .Where(n => n is not null);
+
+        Assert.DoesNotContain(assembliesTouches, n => interditsWpf.Contains(n));
+
+        // Garde TEXTUELLE : la réflexion ne peut pas voir une horloge système ni un appel absent. Le chemin
+        // des sources est INJECTÉ par MSBuild (motif NormalisationUniqueTests) et jamais deviné.
+        var racine = typeof(RateLimitHeaderUsageProviderTests).Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "CheminSourcesChronos")?.Value ?? "";
+        Assert.False(string.IsNullOrWhiteSpace(racine));
+
+        var texte = File.ReadAllText(Path.Combine(racine, "Services", "RateLimitHeaderUsageProvider.cs"));
+
+        Assert.DoesNotContain("DateTimeOffset.UtcNow", texte);       // toute horloge passe par IClock
+        Assert.DoesNotContain("EnsureSuccessStatusCode", texte);     // jamais le chemin de contrôle (HDR-02)
+        Assert.DoesNotContain("JsonDocument", texte);                // le corps n'est jamais lu
+        Assert.DoesNotContain("ReadAsStreamAsync", texte);
+        Assert.DoesNotContain("ReadAsStringAsync", texte);
+        Assert.DoesNotContain("RefreshAsync", texte);                // jamais un troisième rafraîchisseur
+        Assert.Contains("UsageNormalization.", texte);               // aucune conversion locale
     }
 }
