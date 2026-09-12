@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Chronos.Models;
 using Chronos.Services;
 using Xunit;
@@ -234,5 +234,46 @@ public class LastExactStoreTests : IDisposable
 
         Assert.Equal(Path.Combine(_dir, "last-exact.json"), paths.LastExactFile);
         Assert.StartsWith(_dir, paths.LastExactFile);
+    }
+
+    // --- EXA-05 : « jamais rien vu » n'est PAS « vu, mais la fenêtre a roulé » ---
+
+    [Fact]
+    public void Aucun_fichier_signifie_qu_aucun_exact_n_a_JAMAIS_ete_obtenu()
+    {
+        Assert.False(new LastExactStore(_fichier).UnExactADejaEteObtenu());
+    }
+
+    [Fact]
+    public void Un_releve_dont_la_fenetre_a_roule_prouve_tout_de_meme_qu_un_exact_a_ete_obtenu()
+    {
+        var magasin = new LastExactStore(_fichier);
+        magasin.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddMinutes(-1), Now.AddHours(-6)),   // reset DÉJÀ passé
+            WindowState.Unavailable(WindowKind.SevenDay)));
+
+        Assert.Null(magasin.Load(Now));                  // plus rien de servable…
+        Assert.True(magasin.UnExactADejaEteObtenu());    // …mais l'utilisateur N'EST PAS « jamais connecté »
+    }
+
+    [Fact]
+    public void Un_fichier_illisible_ne_permet_d_affirmer_aucun_exact_obtenu()
+    {
+        File.WriteAllText(_fichier, "{ pas du JSON ]");
+        Assert.False(new LastExactStore(_fichier).UnExactADejaEteObtenu());
+    }
+
+    [Fact]
+    public void Une_fenetre_exacte_SANS_instant_de_capture_n_est_pas_persistee()
+    {
+        var sansCapture = new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact,
+            Utilization = 0.42, ResetsAt = Now.AddHours(3), CapturedAt = null,
+        };
+
+        new LastExactStore(_fichier).Save(Snap(sansCapture, WindowState.Unavailable(WindowKind.SevenDay)));
+
+        Assert.False(File.Exists(_fichier));   // rien de certifiable => pas même un fichier
     }
 }

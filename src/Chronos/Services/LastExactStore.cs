@@ -105,6 +105,9 @@ public sealed class LastExactStore
         return five is null && seven is null ? null : new LastExactWindows(five, seven);
     }
 
+    /// <summary>SQUELETTE (étape RED) — implémenté dans le commit suivant.</summary>
+    public bool UnExactADejaEteObtenu() => throw new NotImplementedException();
+
     /// <summary>
     /// Lecture brute du fichier, sans aucune garde de validité temporelle. Tolérante : toute
     /// défaillance (absence, E/S, JSON invalide, date illisible, version inconnue) rend null.
