@@ -180,6 +180,30 @@
                 </Grid>
             </Border>
 
+            <!-- HDR-06 : le coût est ANNONCÉ, jamais caché. Chaque passage de la sonde consomme une vraie
+                 requête sur le compte (modèle le moins cher, un seul jeton de sortie) : minuscule, mais
+                 réelle. Réglage DISTINCT de la connexion Claude : celle-ci ne coûte rien, la sonde si, et
+                 les mélanger priverait l'utilisateur du seul interrupteur qui gouverne une dépense. Les
+                 chiffres rendus incluent la sonde elle-même (effet d'observation) : c'est exact et
+                 honnête, on ne le compense pas. -->
+            <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,9" Margin="0,7,0,0">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" MaxWidth="225">
+                        <TextBlock Text="Sonde d'en-têtes" Foreground="{StaticResource Ink}" FontSize="13"/>
+                        <TextBlock Foreground="{StaticResource Ink2}" FontSize="10.5" TextWrapping="Wrap"
+                                   Text="chiffres exacts même en saturation — consomme une micro-requête sur ton compte toutes les 5 min (≈ 288/jour)"/>
+                        <TextBlock x:Name="LigneEtatSonde" Foreground="{StaticResource Ink2}" FontSize="10.5"
+                                   Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="{Binding TexteEtatSonde}"
+                                   Visibility="{Binding AfficherEtatSonde, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                    <ToggleButton x:Name="InterrupteurSonde" Style="{StaticResource Switch}"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  IsChecked="{Binding IsSondeEnTetesActivee, Mode=OneWay}"
+                                  Command="{Binding ToggleSondeEnTetesCommand}"/>
+                </Grid>
+            </Border>
+
             <!-- Thème -->
             <TextBlock Text="THÈME" Style="{StaticResource Section}"/>
             <ItemsControl ItemsSource="{Binding Themes}">
