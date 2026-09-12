@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Chronos.Models;
+using Chronos.Text;
 
 namespace Chronos.Services;
 
@@ -555,14 +556,35 @@ public sealed class DiagnosticService
     // DOUBLERAIT la dépense de quota à chaque ouverture du diagnostic. Les cinq branches de libellé
     // préexistantes sont conservées mot pour mot (des tests les assertent littéralement) ; les deux
     // suffixes ne s'ajoutent que lorsque le serveur a réellement dit quelque chose.
-    private static string Describe(WindowState w)
+    // EXA-06 — le rapport rend le COUPLE (QUI alimente cette fenêtre, DEPUIS QUAND) en plus de son état.
+    // C'est littéralement ce qui a manqué pendant deux mois : un « 10 % » parfaitement affiché, jamais
+    // daté, alimenté par une source morte depuis le 2026-07-12 — et aucun endroit où le lire.
+    //
+    // Le vocabulaire FR vient de Chronos.Text.LibelleSource : UN seul mapping pour tout le projet,
+    // partagé avec l'infobulle du cadran (20-04). Deux mappings divergeraient au premier changement de
+    // vocabulaire, et l'utilisateur lirait deux noms différents pour la même source selon l'endroit où
+    // il regarde. Méthode d'INSTANCE et non statique : l'ancienneté se mesure contre _clock, jamais
+    // contre DateTimeOffset.UtcNow — les deux sites d'appel sont dans la même instance, leur texte ne
+    // change pas.
+    private string Describe(WindowState w)
     {
         var baseTexte = w.Reliability switch
         {
             SourceReliability.Exact => "EXACT — " + (w.Utilization is { } u ? UsageNormalization.PourcentagePourAffichage(u) : "?"),
-            SourceReliability.Estimated => "estimé — " + (w.Utilization is { } u ? "~" + UsageNormalization.PourcentagePourAffichage(u) : "% inconnu"),
+            // « ≥ » et NON « ~ » (19-04) : l'incertitude d'un plancher est UNILATÉRALE. On connaît la
+            // borne inférieure, c'est la borne supérieure qui est inconnue. Un tilde dirait « autour
+            // de 42 », ce qui autoriserait la lecture « peut-être 38 » — un mensonge par symétrie.
+            SourceReliability.Estimated => "PLANCHER — " + (w.Utilization is { } u ? "≥ " + UsageNormalization.PourcentagePourAffichage(u) : "% inconnu"),
             _ => "indisponible",
         };
+
+        // Les deux segments d'EXA-06 sont INCONDITIONNELS : une fenêtre que personne n'alimente doit le
+        // dire (« non renseignée »), et non se taire. Un silence se lit comme « rien à signaler ».
+        baseTexte += " · source : " + LibelleSource.Format(w.Source);
+        baseTexte += " · relevé " + LibelleSource.Anciennete(w.CapturedAt, _clock.UtcNow);
+        // La provenance, elle, est CONDITIONNELLE : null veut dire « la doctrine ne s'est pas
+        // prononcée », et mieux vaut ne rien dire que qualifier un chiffre sur lequel personne n'a statué.
+        if (LibelleSource.Provenance(w.Provenance) is { Length: > 0 } prov) baseTexte += " · " + prov;
 
         if (w.StatutServeur is { } st) baseTexte += " · serveur : " + LibelleStatutServeur(st);
         if (w.Depassement?.Utilization is { } d)
