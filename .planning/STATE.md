@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: verifying
-stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-09-12T18:26:20.106Z"
+status: "25-01 livré et auto-vérifié — prochaine étape : 25-02 (EVT-03, battements de cœur)"
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-09-12T19:53:25.362Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
-  percent: 50
+  total_plans: 15
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -22,22 +22,27 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** Phase 23 — Un magasin qui ne croit plus et n oublie plus
+**Current focus:** Phase 25 — Le contrat d'événements refondé
 
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: 23 (Un magasin qui ne croit plus et n oublie plus) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Phase: 25 (Le contrat d'événements refondé) — EXECUTING
+Plan: 1 of 4 (vague 1/4 livrée)
+Status: 25-01 livré et auto-vérifié — prochaine étape : 25-02 (EVT-03, battements de cœur)
 Last activity: 2026-09-12
 
-Progress: [█████░░░░░] 50%  (3 phases sur 6 — phases 21, 22 et 23 closes ; 9 plans sur 9 livrés)
+Progress: [████████░░] 80%  (4 phases sur 6 — phases 21 à 24 closes ; 12 plans sur 15 livrés)
+
+**SHA d'entrée de phase 25 : `ce40e99cffe605e2baa93511e2555884aa6acdb8`** — les plans 25-02 à 25-04 en ont
+besoin tel quel pour leurs critères `git diff --stat <SHA>..HEAD` (un `git diff --stat` nu est muet après
+commit).
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 9
-- Suite de tests : **763 verts / 0 échec** en ~4 s (baseline d'entrée de phase 23 : 747 ; +7 en 23-01, +9 en 23-02)
+- Total plans completed (v1.6): 12
+- Suite de tests : **817 verts / 0 échec** en ~5 s (baseline d'entrée de phase 25 : 788 ; +7 en 25-01 T1,
+  +8 en T2, +14 en T3 ; attendu indicatif 816, écart de +1 justifié dans 25-01-SUMMARY.md)
 
 ## Milestone v1.5 (clos)
 
@@ -174,6 +179,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 23 P02 | 14min | 3 tasks | 6 files |
 | Phase 24 P01 | 41min | 3 tasks | 7 files |
 | Phase 24 P02 | 10min | 2 tasks | 6 files |
+| Phase 25 P01 | 50 min | 3 tasks | 6 files |
 
 ### Decisions
 
@@ -410,6 +416,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 24]: Un fragment illisible est une ABSENCE de signal : ni vieux signal date au minimum, ni signal retenu
 - [Phase 24]: Un ecart d'age se dit en DISTANCE (7 h), jamais en instant (il y a 7 h) ; le zero se dit 0 s pour que l'egalite d'age se voie.
 - [Phase 24]: Un desaccord a son PROPRE bloc dans le rapport : la session reste comptee parmi les AFFICHEES, le vocabulaire de masquage n'est pas elargi.
+- [Phase 25]: permission_prompt est absent du matcher de Notification ET veto au routage : PermissionRequest, l'evenement dedie, en a seul la charge — deux chemins pour un meme fait rendraient la source illisible.
+- [Phase 25]: Le veto de notification ne produit jamais d'etat, il n'en retire que : un type absent ou futur laisse l'attente intacte, donc un changement du nom de champ ne peut ni fabriquer ni perdre un etat en silence.
+- [Phase 25]: SessionHookInstaller.Events est conserve mais DERIVE de Cablage : une seule liste a tenir, jamais deux a garder d'accord.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -498,7 +507,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T18:26:13.931Z
-Stopped at: Completed 24-02-PLAN.md
+Last session: 2026-09-12T19:52:46.165Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)

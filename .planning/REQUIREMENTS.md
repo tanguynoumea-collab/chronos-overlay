@@ -40,9 +40,9 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 ### Contrat d'événements (EVT)
 
-- [ ] **EVT-01**: L'événement `PermissionRequest` alimente « en attente » — signal **exact et immédiat**, au
+- [x] **EVT-01**: L'événement `PermissionRequest` alimente « en attente » — signal **exact et immédiat**, au
   lieu du proxy `Notification`.
-- [ ] **EVT-02**: `Notification` cesse d'être traité comme un **état**. C'est une alerte d'absence : au mieux
+- [x] **EVT-02**: `Notification` cesse d'être traité comme un **état**. C'est une alerte d'absence : au mieux
   un indice, jamais une vérité sur ce que fait la session.
 - [ ] **EVT-03**: Des **battements de cœur** rafraîchissent « réfléchit » : l'état est **observé** tant que le
   travail continue, et cesse de dépendre d'un seuil d'expiration deviné.
@@ -105,8 +105,8 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | SRC-01 | Phase 21 | Complete |
 | SRC-02 | Phase 21 | Complete |
 | SRC-03 | Phase 21 | Complete |
-| EVT-01 | Phase 25 | Pending |
-| EVT-02 | Phase 25 | Pending |
+| EVT-01 | Phase 25 | Complete |
+| EVT-02 | Phase 25 | Complete |
 | EVT-03 | Phase 25 | Pending |
 | EVT-04 | Phase 25 | Pending |
 | EVT-05 | Phase 25 | Pending |
