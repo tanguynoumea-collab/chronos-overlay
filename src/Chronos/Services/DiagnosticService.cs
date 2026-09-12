@@ -474,17 +474,45 @@ public sealed class DiagnosticService
         }
         catch { }
 
-        // Ce que le widget AFFICHE réellement (transcripts ~/.claude/projects + hooks, fusionnés + staleness).
-        try
+        // OBS-01 — Ce que le widget AFFICHE, lu sur LE moniteur du widget (l'instance du conteneur DI), à
+        // l'instant du rapport. Ce fichier ne fabrique plus de moniteur : celui qu'il bâtissait était nu —
+        // sans magasin d'archives, sans filtre « traité », sans détecteur — donc le rapport décrivait un
+        // système qui ne tournait nulle part. Conséquence du partage d'instance : tout changement futur du
+        // câblage du widget se reflète ici SANS qu'une ligne de ce fichier ne change.
+        if (_moniteurSessions is null)
+            sb.AppendLine("  Sessions (widget) : MONITEUR NON INJECTÉ — rien n'a été observé ici.");
+        else
         {
-            var detected = new SessionMonitor().Read(_clock.UtcNow);
-            sb.AppendLine($"  Sessions détectées (widget) : {detected.Count}");
-            foreach (var d in detected.Take(8))
-                sb.AppendLine($"    · {d.Project} — {d.Activity} (maj il y a {(_clock.UtcNow - d.UpdatedAt).TotalMinutes:F0} min)");
-            if (detected.Count == 0)
-                sb.AppendLine("    → aucune session active récente (< 15 min). Utilise une session Claude Code puis rouvre ce diagnostic.");
+            try
+            {
+                var lecture = _moniteurSessions.Inspecter(_clock.UtcNow);
+
+                sb.AppendLine($"  Fichiers de hook écartés (trop anciens) : {lecture.FichiersEcartesParAnciennete}");
+
+                // Pas de troncature : le widget n'en applique aucune, et comparer ligne à ligne un rapport
+                // tronqué avec un écran complet, c'est reconstruire l'écart que ce plan ferme.
+                sb.AppendLine($"  Sessions AFFICHÉES par le widget : {lecture.Visibles.Count}");
+                foreach (var d in AffichageSessions.Ordonner(lecture.Visibles))
+                    sb.AppendLine($"    · {Court(d.SessionId)} {d.Project} — {AffichageSessions.Etat(d.Activity)}"
+                                + $" ({AffichageSessions.Age(_clock.UtcNow - d.UpdatedAt)})");
+                if (lecture.Visibles.Count == 0)
+                    sb.AppendLine("    → aucune session à l'écran. Si tu en attendais une, lis la liste des MASQUÉES juste en dessous.");
+
+                // Le critère n°2 de la phase. Une session écartée n'est pas absente : elle est écartée PAR
+                // QUELQUE CHOSE, et ce quelque chose a un nom et un fichier que l'utilisateur peut ouvrir.
+                // Cas fondateur, mesuré le 2026-09-12 : e465420e, session vivante en attente de permission
+                // depuis 10 h, écartée par treated.json — invisible du widget ET du rapport.
+                sb.AppendLine($"  Sessions MASQUÉES par un filtre : {lecture.Masquees.Count}");
+                foreach (var m in lecture.Masquees
+                             .OrderBy(m => AffichageSessions.Urgence(m.Session.Activity))
+                             .ThenByDescending(m => m.Session.UpdatedAt))
+                    sb.AppendLine($"    · {Court(m.Session.SessionId)} {m.Session.Project} — {AffichageSessions.Etat(m.Session.Activity)}"
+                                + $" ({AffichageSessions.Age(_clock.UtcNow - m.Session.UpdatedAt)}) — masquée par {LibelleMotif(m.Motif)}");
+                if (lecture.Masquees.Count == 0)
+                    sb.AppendLine("    (aucune — aucun filtre n'écarte de session en ce moment)");
+            }
+            catch (Exception ex) { sb.AppendLine("  (lecture du moniteur impossible : " + ex.GetType().Name + ")"); }
         }
-        catch (Exception ex) { sb.AppendLine("  (détection sessions impossible : " + ex.GetType().Name + ")"); }
 
         sb.AppendLine();
 
@@ -511,6 +539,19 @@ public sealed class DiagnosticService
         EtatAuthentification.NonConnecte => "jamais connecté (clic droit → « Se connecter à Claude »)",
         _                                => "(inconnu — autorité de jeton non injectée)",
     };
+
+    // Le filtre qui écarte, NOMMÉ AVEC SON FICHIER : « absent » n'apprend rien, « écarté par treated.json »
+    // dit quoi ouvrir. C'est toute la différence entre un défaut inélucidable et un défaut diagnosticable.
+    private static string LibelleMotif(MotifMasquage m) => m switch
+    {
+        MotifMasquage.Archivee => "archived.json (archivage — geste explicite de l'utilisateur)",
+        MotifMasquage.Traitee  => "treated.json (hystérésis « traité » — posée automatiquement)",
+        _                      => "un filtre non nommé",
+    };
+
+    // Huit premiers caractères de l'identifiant : assez pour retrouver le fichier d'état correspondant dans
+    // %APPDATA%\Chronos\sessions, assez court pour que la ligne reste lisible.
+    private static string Court(string id) => id.Length <= 8 ? id : id[..8];
 
     // Issue du dernier passage de la sonde, UN LIBELLÉ PAR MEMBRE. Le grain fin est le livrable : la panne
     // silencieuse que v1.5 corrige venait précisément de l'écrasement de causes distinctes en un seul
