@@ -44,9 +44,9 @@ public sealed class SessionsController : ISessionsController
             Persist(s => s with { SessionsWidgetEnabled = true });
             ShowWindow();
             MessageBox.Show(Owner(),
-                "Widget de sessions activé.\n\nIl affiche tes sessions Claude Code ACTIVES (app bureau incluse),\n" +
-                "détectées via leurs transcripts. Une session apparaît dès qu'elle a de l'activité récente\n" +
-                "et indique si elle a fini son tour (elle t'attend) ou travaille encore.",
+                "Widget de sessions activé.\n\nIl affiche tes sessions Claude Code ACTIVES, détectées via\n" +
+                "leurs transcripts. Une session apparaît dès qu'elle a de l'activité récente et indique si\n" +
+                "elle a fini son tour (elle t'attend) ou travaille encore.",
                 "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (System.Exception ex)

@@ -30,7 +30,9 @@ public class GardesPerimetreTests
         var revenants = asm.GetTypes()
             .Where(t => t.Name.Contains("Uia", StringComparison.Ordinal)
                      || t.Name.EndsWith("ForegroundWatch", StringComparison.Ordinal)
-                     || t.Name == "DesktopHealth")
+                     || t.Name == "DesktopHealth"
+                     || t.Name == "SessionKind"
+                     || t.Name == "SessionOrigin")
             .Select(t => t.FullName)
             .ToList();
 
@@ -47,6 +49,28 @@ public class GardesPerimetreTests
         var asm = typeof(Chronos.Services.IUsageProvider).Assembly;
         Assert.True(asm.GetTypes().Length >= 50, "réflexion muette : l'assembly Chronos n'est pas résolu");
         Assert.Contains(asm.GetTypes(), t => t.Name == "SessionMonitor");
+    }
+
+    /// <summary>
+    /// Le libellé de type de session (Chat / Code / Cowork) était bindé dans le SEUL template Pastilles —
+    /// mesuré : 3 occurrences, toutes entre les lignes 70 et 79 de SessionStyles.xaml, contrairement à ce
+    /// qu'annonçait le contexte de phase. Son producteur a disparu avec la source app-bureau : un binding
+    /// survivant afficherait une case vide ou décalerait la rangée. La réflexion ne voit pas un binding XAML,
+    /// d'où ce contrôle de SOURCE.
+    /// </summary>
+    [Fact]
+    public void Aucun_style_de_session_ne_binde_plus_un_libelle_de_type()
+    {
+        var fichier = Path.Combine(CheminSources(), "Resources", "SessionStyles.xaml");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Une garde qui lirait un fichier vide serait muette : on exige les 8 templates.
+        var templates = System.Text.RegularExpressions.Regex.Matches(texte, "DataTemplate x:Key=").Count;
+        Assert.Equal(8, templates);
+
+        Assert.DoesNotContain("KindLabel", texte, StringComparison.Ordinal);
     }
 
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE

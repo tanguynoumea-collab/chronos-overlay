@@ -24,15 +24,15 @@ public sealed class SessionsPreviewViewModel : ObservableObject
 
     public SessionsPreviewViewModel()
     {
-        Add("overlay", "à toi", Amber, attention: true, kind: "Code", detail: "à l'instant");
-        Add("api-migration", "tour fini", Amber, turn: true, kind: "Code", detail: "il y a 3 min");
-        Add("chronos", "en cours", Green, working: true, kind: "Cowork", detail: "à l'instant");
-        Add("docs-site", "en cours", Green, working: true, kind: "", detail: "il y a 1 min");
-        Add("legacy-vm", "inconnu", Gray, ghost: true, kind: "", detail: "il y a 12 min");
+        Add("overlay", "à toi", Amber, attention: true, detail: "à l'instant");
+        Add("api-migration", "tour fini", Amber, turn: true, detail: "il y a 3 min");
+        Add("chronos", "en cours", Green, working: true, detail: "à l'instant");
+        Add("docs-site", "en cours", Green, working: true, detail: "il y a 1 min");
+        Add("legacy-vm", "inconnu", Gray, ghost: true, detail: "il y a 12 min");
     }
 
     private void Add(string project, string state, Brush brush, bool attention = false, bool turn = false,
-                     bool working = false, bool ghost = false, string kind = "", string detail = "")
+                     bool working = false, bool ghost = false, string detail = "")
     {
         var it = new SessionItemVm(project, _ => { })   // archive no-op en prévisualisation
         {
@@ -40,7 +40,6 @@ public sealed class SessionsPreviewViewModel : ObservableObject
             StateText = state,
             StateBrush = brush,
             Detail = detail,
-            KindLabel = kind,
             IsWaiting = attention || turn,
             IsAttention = attention,
             IsTurn = turn,

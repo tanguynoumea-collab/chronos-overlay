@@ -21,7 +21,6 @@ public sealed partial class SessionItemVm : ObservableObject
     [ObservableProperty] private string _detail = "";
     [ObservableProperty] private Brush _stateBrush = Brushes.Gray;
     [ObservableProperty] private bool _isWaiting;
-    [ObservableProperty] private string _kindLabel = "";   // type bureau (Chat/Code/Cowork) ; vide pour les sessions CLI
 
     // États d'activité distincts, exposés pour les templates de la refonte visuelle (formes/rythmes par état).
     // « à toi » (Attention) vs « tour fini » (Turn) = les DEUX attentes, distinguées SANS deux oranges.
@@ -148,7 +147,6 @@ public sealed partial class SessionsViewModel : ObservableObject
             it.IsWorking = s.Activity == SessionActivity.Working;
             it.IsGhost = s.Activity == SessionActivity.Unknown;
             it.Detail = Age(now - s.UpdatedAt);
-            it.KindLabel = KindText(s.Kind);   // BUR-03 : type bureau visible ; vide (Unknown) pour les sessions CLI
             Items.Add(it);
         }
 
@@ -165,16 +163,6 @@ public sealed partial class SessionsViewModel : ObservableObject
         SessionActivity.WaitingTurn => 1,
         SessionActivity.Working => 2,
         _ => 3,
-    };
-
-    // BUR-03 : libellé court du type de session bureau. Unknown (sessions CLI) → "" (rien affiché, pas de bruit).
-    // « Chat », « Code », « Cowork » sont des noms propres de modes Claude, conservés tels quels.
-    private static string KindText(SessionKind k) => k switch
-    {
-        SessionKind.Chat => "Chat",
-        SessionKind.Code => "Code",
-        SessionKind.Cowork => "Cowork",
-        _ => "",
     };
 
     private (string, Brush, bool) Describe(SessionActivity a) => a switch

@@ -67,16 +67,6 @@
                                     <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10.5" FontWeight="SemiBold"/>
                                     <TextBlock Text="  ·  " Foreground="{DynamicResource SessMuted}" FontSize="10.5"/>
                                     <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource SessMuted}" FontSize="10.5"/>
-                                    <TextBlock Text="  ·  " Foreground="{DynamicResource SessMuted}" FontSize="10.5">
-                                        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers>
-                                            <DataTrigger Binding="{Binding KindLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                        </Style.Triggers></Style></TextBlock.Style>
-                                    </TextBlock>
-                                    <TextBlock Text="{Binding KindLabel}" Foreground="{DynamicResource SessMuted}" FontSize="10.5" FontWeight="SemiBold">
-                                        <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers>
-                                            <DataTrigger Binding="{Binding KindLabel}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                        </Style.Triggers></Style></TextBlock.Style>
-                                    </TextBlock>
                                 </StackPanel>
                             </StackPanel>
                         </Grid>
