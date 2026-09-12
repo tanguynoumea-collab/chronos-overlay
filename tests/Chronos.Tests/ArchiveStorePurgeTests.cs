@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using Chronos.Services;
 using Xunit;
@@ -27,6 +28,11 @@ public class ArchiveStorePurgeTests
         Assert.StartsWith(Path.GetTempPath(), f);
         return f;
     }
+
+    // Instant de référence FIXE. L'horloge du magasin est INJECTÉE, jamais lue au système : un test de
+    // durée adossé à l'heure de la machine est vert le jour où on l'écrit et rouge quelques heures plus tard,
+    // sans qu'une ligne de code ait bougé.
+    private static readonly DateTimeOffset T = new(2026, 9, 12, 21, 0, 0, TimeSpan.Zero);
 
     // Le contenu EXACT mesuré sur la machine de l'utilisateur le 2026-09-12.
     private const string ContenuReel =
@@ -114,5 +120,56 @@ public class ArchiveStorePurgeTests
 
         Assert.Equal(0, new ArchiveStore(f).PurgerPrefixe(""));
         Assert.Contains("une-session", File.ReadAllText(f));
+    }
+
+    /// <summary>
+    /// TRT-04 — ce qui est archivé NE REVIENT JAMAIS. Le magasin appliquait une durée de vie de six heures
+    /// pendant que son contrat annoncé et le libellé du menu promettaient le définitif : le clic droit
+    /// était une mise en sourdine, et l'utilisateur n'avait aucun moyen de le savoir. Huit jours plus tard,
+    /// l'entrée doit toujours être là.
+    /// </summary>
+    [Fact]
+    public void Une_archive_ne_s_evapore_jamais_meme_apres_huit_jours()
+    {
+        var f = TempFichier();
+        var huitJours = T.AddDays(-8).ToUnixTimeMilliseconds();
+        File.WriteAllText(f, $$"""{"s":{{huitJours}}}""");
+
+        var magasin = new ArchiveStore(f, new FakeClock(T));
+
+        Assert.Contains("s", magasin.Load());
+    }
+
+    /// <summary>
+    /// L'injection d'horloge n'est pas décorative : l'horodatage écrit vient de l'horloge REÇUE, jamais de
+    /// celle de la machine. Sans cette preuve, un paramètre pourrait être accepté puis ignoré.
+    /// </summary>
+    [Fact]
+    public void L_horodatage_d_une_archive_vient_de_l_horloge_injectee()
+    {
+        var f = TempFichier();
+
+        new ArchiveStore(f, new FakeClock(T)).Add("s");
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(f));
+        Assert.Equal(T.ToUnixTimeMilliseconds(), doc.RootElement.GetProperty("s").GetInt64());
+    }
+
+    /// <summary>
+    /// GARDE PAR RÉFLEXION, insensible au texte des commentaires : aucune durée ne siège plus dans le
+    /// magasin d'archives, et son horloge est injectable. Une XML-doc peut jurer le définitif pendant
+    /// qu'un champ de durée l'écarte en silence ; la réflexion, elle, ne lit pas les intentions.
+    /// </summary>
+    [Fact]
+    public void Le_magasin_d_archives_ne_connait_plus_aucune_duree_de_vie()
+    {
+        var t = typeof(ArchiveStore);
+
+        var champs = t.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.DoesNotContain(champs, c => c.FieldType == typeof(TimeSpan));
+
+        var parametres = t.GetConstructors().SelectMany(c => c.GetParameters()).ToList();
+        Assert.NotEmpty(parametres);                   // une garde qui ne verrait aucun paramètre serait muette
+        Assert.Contains(parametres, p => p.ParameterType == typeof(IClock));
     }
 }

@@ -243,7 +243,7 @@ public partial class App : Application
 
         // Widget de sessions Claude Code : moniteur des fichiers d'état (écrits par le mode --hook),
         // installateur des hooks, contrôleur du panneau flottant.
-        services.AddSingleton(_ => new ArchiveStore());
+        services.AddSingleton(sp => new ArchiveStore(null, sp.GetRequiredService<IClock>()));
 
         // Hystérésis (phase 14, réduite en phase 21) : magasin RÉVERSIBLE des sessions traitées + détecteur
         // STATEFUL. Déclarés AVANT le SessionMonitor qui les consomme. L'acquittement par focus est tombé

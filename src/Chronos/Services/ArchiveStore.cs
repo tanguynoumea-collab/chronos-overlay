@@ -16,15 +16,19 @@ public sealed class ArchiveStore
 {
     private static readonly System.TimeSpan Ttl = System.TimeSpan.FromHours(6);
     private readonly string _path;
+    private readonly IClock _horloge;
 
-    public ArchiveStore(string? path = null)
-        => _path = path ?? Path.Combine(
+    public ArchiveStore(string? path = null, IClock? clock = null)
+    {
+        _path = path ?? Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "archived.json");
+        _horloge = clock ?? new SystemClock();
+    }
 
     /// <summary>Identifiants archivés encore valides (TTL non dépassé).</summary>
     public ISet<string> Load()
     {
-        var now = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = _horloge.UtcNow.ToUnixTimeMilliseconds();
         var set = new HashSet<string>();
         try
         {
@@ -43,7 +47,7 @@ public sealed class ArchiveStore
     public void Add(string sessionId)
     {
         if (string.IsNullOrEmpty(sessionId)) return;
-        var now = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = _horloge.UtcNow.ToUnixTimeMilliseconds();
         var map = new Dictionary<string, long>();
         try
         {
