@@ -126,8 +126,8 @@ public sealed class ChronosOAuthUsageProvider : IUsageProvider
 
                 var snap = new UsageSnapshot
                 {
-                    FiveHour = Read(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5)),
-                    SevenDay = Read(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7)),
+                    FiveHour = Read(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5), now),
+                    SevenDay = Read(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7), now),
                     SourceCapturedAt = now,
                 };
                 _cached = snap; _cachedAt = now; _nextAllowedCall = now + MinInterval;
@@ -165,7 +165,10 @@ public sealed class ChronosOAuthUsageProvider : IUsageProvider
     // Schéma /api/oauth/usage : utilization en 0..100, resets_at en ISO 8601 (PAS epoch).
     // Fenêtre absente → Unavailable.
     // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
-    private WindowState Read(JsonElement root, string name, WindowKind kind, TimeSpan len)
+    // EXA-02 — instant de la RÉPONSE HTTP : ici la lecture EST la capture. Le cache sert l'instance
+    // d'origine, donc son horodatage d'origine vieillit honnêtement.
+    private WindowState Read(JsonElement root, string name, WindowKind kind, TimeSpan len,
+                             DateTimeOffset capturedAt)
     {
         if (!root.TryGetProperty(name, out var w) || w.ValueKind != JsonValueKind.Object)
             return WindowState.Unavailable(kind);
@@ -181,6 +184,7 @@ public sealed class ChronosOAuthUsageProvider : IUsageProvider
             Utilization = util,
             ResetsAt = reset,
             Reliability = SourceReliability.Exact,
+            CapturedAt = capturedAt,
             FractionTimeRemaining = WindowState.FractionRemaining(reset, _clock.UtcNow, len),
         };
     }

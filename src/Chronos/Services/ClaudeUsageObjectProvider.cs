@@ -48,8 +48,8 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
             DateTimeOffset? capturedAt = root.TryGetProperty("capturedAt", out var c) && c.TryGetInt64(out var ms)
                 ? UsageNormalization.InstantDepuisEpochMillisecondes(ms) : null;
 
-            var five = ReadWindow(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5));
-            var week = ReadWindow(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7));
+            var five = ReadWindow(root, "five_hour", WindowKind.FiveHour, TimeSpan.FromHours(5), capturedAt);
+            var week = ReadWindow(root, "seven_day", WindowKind.SevenDay, TimeSpan.FromDays(7), capturedAt);
 
             return new UsageSnapshot
             {
@@ -70,7 +70,16 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
     // HDR-05 : plus aucune conversion d'unite locale — tout passe par UsageNormalization.
     // Effet de bord ASSUME : le plancher de sanite du point unique (2020-01-01) transforme le
     // resets_at: 9 REEL de cette machine en inconnu, la ou il produisait une geometrie fausse.
-    private WindowState ReadWindow(JsonElement root, string name, WindowKind kind, TimeSpan len)
+    /// <summary>
+    /// EXA-02 — l'horodatage porté par la fenêtre est celui du FICHIER (clé capturedAt, epoch
+    /// millisecondes), et JAMAIS l'instant de lecture. Le pont statusLine peut avoir écrit ce fichier
+    /// il y a deux mois : lui attribuer l'heure courante le ferait paraître vieux de zéro seconde,
+    /// il franchirait la porte de fraîcheur de la doctrine, et le « 10 % » figé de cette machine
+    /// reviendrait — avec l'autorité d'une limite d'âge prétendument appliquée. Absent du fichier
+    /// ⇒ null (incertifiable), ce qui est strictement plus honnête qu'une date inventée.
+    /// </summary>
+    private WindowState ReadWindow(JsonElement root, string name, WindowKind kind, TimeSpan len,
+                                   DateTimeOffset? capturedAt)
     {
         if (!root.TryGetProperty(name, out var w) || w.ValueKind != JsonValueKind.Object)
             return WindowState.Unavailable(kind);
@@ -86,6 +95,7 @@ public sealed class ClaudeUsageObjectProvider : IUsageProvider
             Utilization = util,
             ResetsAt = reset,
             Reliability = SourceReliability.Exact,
+            CapturedAt = capturedAt,
             FractionTimeRemaining = WindowState.FractionRemaining(reset, _clock.UtcNow, len),
         };
     }
