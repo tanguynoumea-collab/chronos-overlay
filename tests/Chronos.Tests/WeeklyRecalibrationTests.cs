@@ -110,4 +110,44 @@ public class WeeklyRecalibrationTests
         // ceil(30/7)=5 → ancre + 35j.
         Assert.Equal(vieilleAncre + TimeSpan.FromDays(35), result.ResetsAt);
     }
+
+    /// <summary>
+    /// Phase 19 — une fenêtre hebdo passée en PLANCHER conserve le resets_at que le serveur avait donné.
+    /// Avec l'ancienne garde (exacte ET datée), elle serait tombée dans le chemin de synthèse et son
+    /// reset réel aurait été remplacé par « ancre + n semaines » : une régression silencieuse du compte
+    /// à rebours, précisément sur les fenêtres que cette phase fait exister.
+    ///
+    /// Le reset du serveur est à +5 j et NON à +3 j : l'ancre de cette classe synthétise justement
+    /// « now + 3 j », donc un reset à +3 j rendrait ce test vert même avec l'ancienne garde — il ne
+    /// garderait rien. Une garde qui ne peut pas échouer ne garde rien (précédent 18-01).
+    /// </summary>
+    [Fact]
+    public void Un_plancher_portant_un_reset_reel_n_est_PAS_recalibre()
+    {
+        var reelDuServeur = Now + TimeSpan.FromDays(5);
+        var plancher = Weekly(SourceReliability.Estimated, reelDuServeur);
+
+        var result = WeeklyRecalibration.Apply(plancher, Anchor, Now);
+
+        Assert.Equal(reelDuServeur, result.ResetsAt);                        // le fait du serveur survit
+        Assert.Equal(SourceReliability.Estimated, result.Reliability);
+        Assert.Equal(plancher, result);                                      // strictement inchangée
+    }
+
+    /// <summary>
+    /// La contre-épreuve : le chemin de synthèse reste vivant pour une fenêtre SANS reset, et il recevra
+    /// plus de trafic après la phase 19 (les fenêtres démotées n'en portent pas toujours un). La
+    /// fiabilité est conservée : le recalibrage donne une date, il ne prétend pas donner un chiffre.
+    /// </summary>
+    [Fact]
+    public void Une_fenetre_indisponible_sans_reset_reste_recalibrable_en_conservant_sa_fiabilite()
+    {
+        var indisponible = Weekly(SourceReliability.Unavailable, null);
+
+        var result = WeeklyRecalibration.Apply(indisponible, Anchor, Now);
+
+        Assert.NotNull(result.ResetsAt);
+        Assert.True(result.ResetsAt > Now);
+        Assert.Equal(SourceReliability.Unavailable, result.Reliability);
+    }
 }
