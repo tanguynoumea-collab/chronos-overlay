@@ -66,7 +66,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
   toute seule.
 - [ ] **TRT-03**: L'utilisateur dispose d'un **geste explicite** pour marquer une session traitée — le focus
   de fenêtre ne peut pas le fournir pour une session de terminal.
-- [ ] **TRT-04**: L'archivage respecte un **contrat unique** : permanent OU temporaire, pas les deux. Le clic
+- [x] **TRT-04**: L'archivage respecte un **contrat unique** : permanent OU temporaire, pas les deux. Le clic
   droit « Archiver » est aujourd'hui annoncé permanent mais expire au bout de 6 h.
 
 ### Cycle de vie du magasin (CYC)
@@ -115,7 +115,7 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | TRT-01 | Phase 26 | Complete |
 | TRT-02 | Phase 26 | Complete |
 | TRT-03 | Phase 26 | Pending |
-| TRT-04 | Phase 26 | Pending |
+| TRT-04 | Phase 26 | Complete |
 | CYC-01 | Phase 23 | Complete |
 | CYC-02 | Phase 23 | Complete |
 | OBS-01 | Phase 22 | Complete |

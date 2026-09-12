@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: En cours — vagues 2 à 4 à exécuter
-stopped_at: Completed 26-01-PLAN.md
-last_updated: "2026-09-12T22:28:12.145Z"
+status: executing
+stopped_at: Completed 26-02-PLAN.md
+last_updated: "2026-09-12T22:40:22.934Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
   percent: 84
 ---
 
@@ -28,8 +28,8 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 26 (« Traité » veut enfin dire quelque chose) — EXECUTING
-Plan: 2 of 4 (vague 1 livrée : 26-01)
-Status: En cours — vagues 2 à 4 à exécuter
+Plan: 3 of 4 (vague 1 livrée : 26-01)
+Status: Ready to execute
 Last activity: 2026-09-12
 
 Progress: [████████░░] 84%  (5 phases sur 6 — phases 21 à 25 closes ; 16 plans sur 19 livrés)
@@ -186,6 +186,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 25 P03 | 50 min | 3 tasks | 9 files |
 | Phase 25 P04 | ~45 min | 2 tasks | 3 files |
 | Phase 26 P01 | 35min | 3 tasks | 7 files |
+| Phase 26 P02 | ~10 min | 2 tasks | 4 files |
 
 ### Decisions
 
@@ -439,6 +440,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 26]: 26-01 (b bis) : la borne de TreatedStore cesse d'etre une duree de vie de 6 h et devient une RETENTION DE FICHIER de 24 h. Depuis TRT-02 la valeur memorisee est l'instant du SIGNAL ; une borne de 6 h adossee a cet instant rendait le magasin aveugle a toute session attendant depuis plus de six heures - c'est-a-dire e465420e elle-meme. La reversibilite reste portee par NET-03, jamais par une horloge.
 - [Phase 26]: 26-01 (TRT-01) : NET-01 exige desormais TROIS conditions - la MEME source aux deux cycles, une attente au precedent, un travail OBSERVE au courant. Une bascule de source ne conclut plus rien, et Unknown n'affirme plus qu'on a repondu.
 - [Phase 26]: 26-01 (TRT-02) : l'episode d'attente est date par l'instant que le SIGNAL porte, borne par l'instant courant - jamais par l'horloge du guetteur. C'est ce qui le fait survivre a un redemarrage sans purger le magasin qu'il vient de lire.
+- [Phase 26]: TRT-04 (code) : ArchiveStore perd toute duree de vie — ce qui est archive ne revient jamais ; horloge injectee, PurgerPrefixe intact a l'octet pres
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -527,7 +529,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T22:27:03.991Z
-Stopped at: Completed 26-01-PLAN.md
+Last session: 2026-09-12T22:40:17.839Z
+Stopped at: Completed 26-02-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
