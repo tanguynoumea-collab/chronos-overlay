@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
 status: verifying
-stopped_at: Completed 23-02-PLAN.md
-last_updated: "2026-09-12T17:14:34.325Z"
+stopped_at: Complete 24-01-PLAN.md
+last_updated: "2026-09-12T18:12:06.985Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 11
+  completed_plans: 10
   percent: 50
 ---
 
@@ -172,6 +172,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 22 P03 | 9 min | 2 tasks | 3 files |
 | Phase 23 P01 | 6min | 2 tasks | 4 files |
 | Phase 23 P02 | 14min | 3 tasks | 6 files |
+| Phase 24 P01 | 41min | 3 tasks | 7 files |
 
 ### Decisions
 
@@ -403,6 +404,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 23]: CYC-01 : un etat n'est balaye que s'il depasse 72 h ET qu'aucune source n'atteste la vie de sa session — l'age n'est jamais le seul critere (une session vivante depuis 40 jours survit)
 - [Phase 23]: Balayer ne conclut rien : le balayeur ne connait aucun magasin de verdict (garde par reflexion) et, apres balayage, Inspecter rend Visibles ET Masquees vides (garde de comportement)
 - [Phase 23]: Horloge IClock injectee des la conception : 0 occurrence de l'horloge systeme dans BalayageMagasinSessions.cs ET dans ses tests — le piege de test a retardement de la phase 22 n'est pas reproduit
+- [Phase 24]: FUS-01 : la FRAICHEUR tranche entre sources ; la specificite de la source ne departage qu'a age strictement egal
+- [Phase 24]: L'ordre d'arbitrage est TOTAL sur le contenu du signal : la permutation (720 ordres) est vraie par construction, pas par chance
+- [Phase 24]: Un fragment illisible est une ABSENCE de signal : ni vieux signal date au minimum, ni signal retenu
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -491,7 +495,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T17:14:24.239Z
-Stopped at: Completed 23-02-PLAN.md
+Last session: 2026-09-12T18:12:06.979Z
+Stopped at: Complete 24-01-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)

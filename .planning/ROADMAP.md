@@ -214,7 +214,7 @@ subir en silence.
 il lui faut le 4e champ de `LectureSessions`. Les fichiers des deux plans sont par ailleurs disjoints.)
 
 Plans:
-- [ ] 24-01-PLAN.md — FUS-01 : l'arbitrage se fait sur la fraîcheur, l'égalité d'âge a une règle nommée, et l'ordre d'insertion ne revient pas
+- [x] 24-01-PLAN.md — FUS-01 : l'arbitrage se fait sur la fraîcheur, l'égalité d'âge a une règle nommée, et l'ordre d'insertion ne revient pas
 - [ ] 24-02-PLAN.md — FUS-02 : le diagnostic nomme la source retenue, la source écartée et l'écart d'âge
 
 ### Phase 25 : Le contrat d'événements refondé
@@ -278,7 +278,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 | 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
 | 22. Un instrument de mesure qui ne ment plus | 3/3 | Complete   | 2026-09-12 |
 | 23. Un magasin qui ne croît plus et n'oublie plus | 2/2 | Complete   | 2026-09-12 |
-| 24. L'arbitrage par fraîcheur | 0/? | Not started | - |
+| 24. L'arbitrage par fraîcheur | 1/2 | In Progress|  |
 | 25. Le contrat d'événements refondé | 0/? | Not started | - |
 | 26. « Traité » veut enfin dire quelque chose | 0/? | Not started | - |
 
