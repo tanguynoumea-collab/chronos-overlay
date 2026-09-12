@@ -52,11 +52,110 @@ public class SessionsTests
     [Fact]
     public void Notification_conserve_le_notification_type_en_reason()
     {
+        // Le type de fixture est passé de « permission_prompt » à « agent_needs_input » : depuis EVT-02,
+        // permission_prompt est VETOÉ (PermissionRequest, l'événement dédié, en a seul la charge) et ne
+        // produit donc plus d'état à observer. L'intention du test — le type voyage dans « reason » — est
+        // inchangée.
         var r = SessionHookProcessor.Process("Notification",
-            """{"session_id":"s","cwd":"C:\\p","notification_type":"permission_prompt"}""", 0);
+            """{"session_id":"s","cwd":"C:\\p","notification_type":"agent_needs_input"}""", 0);
         using var doc = JsonDocument.Parse(r.StateJson!);
-        Assert.Equal("permission_prompt", doc.RootElement.GetProperty("reason").GetString());
+        Assert.Equal("agent_needs_input", doc.RootElement.GetProperty("reason").GetString());
     }
+
+    // --- EVT-01 / EVT-02 : PermissionRequest fonde l'attente, le bus cesse d'en fabriquer une ---
+
+    /// <summary>
+    /// EVT-01. Le signal DÉDIÉ, exact et immédiat. Le motif écrit dans le fichier d'état est le NOM DE
+    /// L'ÉVÉNEMENT : deux lectures du relevé se sont contredites sur le nom du champ de contexte de
+    /// permission, donc rien ne doit s'y appuyer. Le nom de l'événement, lui, est un fait observé —
+    /// c'est nous qui l'avons câblé.
+    /// </summary>
+    [Fact]
+    public void PermissionRequest_fonde_l_attente_et_dit_le_nom_de_l_evenement()
+    {
+        var r = SessionHookProcessor.Process("PermissionRequest",
+            """{"session_id":"s","cwd":"C:\\dev\\MonProjet"}""", 1000);
+
+        Assert.False(r.Ignore);
+        Assert.False(r.Delete);
+        using var doc = JsonDocument.Parse(r.StateJson!);
+        Assert.Equal("WaitingAttention", doc.RootElement.GetProperty("activity").GetString());
+        Assert.Equal("MonProjet", doc.RootElement.GetProperty("project").GetString());
+        Assert.Equal("PermissionRequest", doc.RootElement.GetProperty("reason").GetString());
+        Assert.Equal(1000, doc.RootElement.GetProperty("updated_at").GetInt64());
+    }
+
+    /// <summary>EVT-02. Les TROIS seuls types du bus qui sont de véritables DEMANDES.</summary>
+    [Theory]
+    [InlineData("agent_needs_input")]
+    [InlineData("elicitation_dialog")]
+    [InlineData("elicitation_url_dialog")]
+    public void Les_trois_vraies_demandes_du_bus_fondent_l_attente(string type)
+    {
+        var r = SessionHookProcessor.Process("Notification", StdinNotification(type), 0);
+
+        Assert.False(r.Ignore);
+        using var doc = JsonDocument.Parse(r.StateJson!);
+        Assert.Equal("WaitingAttention", doc.RootElement.GetProperty("activity").GetString());
+        Assert.Equal(type, doc.RootElement.GetProperty("reason").GetString());
+    }
+
+    /// <summary>
+    /// EVT-02, le cas emblématique : « l'utilisateur semble parti » ne dit RIEN de ce que fait la session.
+    /// </summary>
+    [Fact]
+    public void Une_alerte_d_absence_ne_fabrique_plus_aucun_etat()
+    {
+        var r = SessionHookProcessor.Process("Notification", StdinNotification("idle_prompt"), 0);
+
+        Assert.True(r.Ignore);
+        Assert.Null(r.StateJson);
+    }
+
+    /// <summary>
+    /// Les huit autres types du bus qui ne sont pas des demandes. « permission_prompt » en fait partie :
+    /// l'événement dédié en a la charge, et deux chemins pour un même fait rendraient la source illisible.
+    /// Une authentification réussie et une reprise de quota fabriquaient jusqu'ici une attente.
+    /// </summary>
+    [Theory]
+    [InlineData("permission_prompt")]
+    [InlineData("auth_success")]
+    [InlineData("elicitation_complete")]
+    [InlineData("elicitation_response")]
+    [InlineData("agent_completed")]
+    [InlineData("quota_auto_resume_fired")]
+    [InlineData("quota_auto_resume_stale")]
+    [InlineData("quota_auto_resume_disabled")]
+    public void Les_huit_autres_types_du_bus_sans_demande_ne_fabriquent_plus_aucun_etat(string type)
+    {
+        var r = SessionHookProcessor.Process("Notification", StdinNotification(type), 0);
+
+        Assert.True(r.Ignore);
+        Assert.Null(r.StateJson);
+    }
+
+    /// <summary>
+    /// Le VETO ne produit jamais d'état, il n'en retire que. On ne fait donc JAMAIS dépendre la PRODUCTION
+    /// d'un état de la présence d'un champ dont le nom n'est pas confirmable : sans type lisible, ou avec
+    /// un type futur inconnu, le tri par matcher a déjà fait son office en amont et l'attente subsiste.
+    /// </summary>
+    [Fact]
+    public void Un_type_de_notification_absent_ou_futur_ne_fait_jamais_disparaitre_l_attente()
+    {
+        var sansType = SessionHookProcessor.Process("Notification", """{"session_id":"s"}""", 0);
+        Assert.False(sansType.Ignore);
+        using (var doc = JsonDocument.Parse(sansType.StateJson!))
+            Assert.Equal("WaitingAttention", doc.RootElement.GetProperty("activity").GetString());
+
+        var futur = SessionHookProcessor.Process("Notification", StdinNotification("un_type_futur_inconnu"), 0);
+        Assert.False(futur.Ignore);
+        using (var doc = JsonDocument.Parse(futur.StateJson!))
+            Assert.Equal("WaitingAttention", doc.RootElement.GetProperty("activity").GetString());
+    }
+
+    /// <summary>Stdin d'un hook Notification portant le type donné (session_id et cwd sont des champs communs).</summary>
+    private static string StdinNotification(string type)
+        => """{"session_id":"s","cwd":"C:/p","notification_type":"@TYPE@"}""".Replace("@TYPE@", type);
 
     // --- SessionHookInstaller ---
 

@@ -15,12 +15,13 @@ public sealed record SessionHookResult(string? SessionId, bool Delete, string? S
 /// fichier d'état de session. Prouvé sur la vraie machine : les hooks Notification/Stop/UserPromptSubmit/
 /// SessionStart/SessionEnd portent <c>session_id</c> et <c>cwd</c> sur stdin.
 ///
-/// Sémantique :
-///   Notification (permission/idle/agent_needs_input…) → WaitingAttention (réclame une action MAINTENANT)
-///   Stop                                              → WaitingTurn (a fini, attend ton message)
-///   UserPromptSubmit / SessionStart                   → Working
-///   SessionEnd                                        → suppression du fichier
-///   SubagentStop / inconnu                            → ignoré (activité d'un sous-agent, pas la session)
+/// Sémantique RÉELLEMENT produite :
+///   PermissionRequest                 → WaitingAttention (une permission est DEMANDÉE : exact, immédiat)
+///   Notification (3 types de demande) → WaitingAttention (filtré par matcher ; veto sur les neuf autres)
+///   Stop                              → WaitingTurn (le tour s'est terminé, c'est OBSERVÉ)
+///   UserPromptSubmit / SessionStart   → Working
+///   SessionEnd                        → suppression du fichier
+///   inconnu                           → ignoré
 /// </summary>
 public static class SessionHookProcessor
 {
@@ -29,6 +30,18 @@ public static class SessionHookProcessor
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+    };
+
+    /// <summary>Les types du bus de notifications qui ne disent RIEN de ce que fait la session.
+    /// Relevé du 2026-09-12 : le bus en compte douze, et Chronos les réduisait TOUS à un seul état —
+    /// une authentification réussie et une reprise de quota fabriquaient donc une attente.
+    /// Le filtre PRIMAIRE est le matcher posé dans settings.json ; ceci n'en est que le VETO de
+    /// second rideau, qui protège aussi les réglages d'une version antérieure, encore sans matcher.</summary>
+    private static readonly string[] NotificationsSansEtat =
+    {
+        "permission_prompt", "idle_prompt", "auth_success",
+        "elicitation_complete", "elicitation_response", "agent_completed",
+        "quota_auto_resume_fired", "quota_auto_resume_stale", "quota_auto_resume_disabled",
     };
 
     public static SessionHookResult Process(string? eventName, string? stdinJson, long nowMs)
@@ -58,8 +71,18 @@ public static class SessionHookProcessor
         var ev = (eventName ?? "").Trim();
         if (ev is "SessionEnd") return new SessionHookResult(sid, Delete: true, null, false);
 
+        // VETO de second rideau. Le sens EXACT de ce test : il ne produit JAMAIS d'état, il n'en retire
+        // que. On ne lit ce champ que pour ÉCARTER, jamais pour conclure — c'est ce qui rend le code
+        // robuste au fait que son nom n'est pas confirmable (page de référence tronquée). S'il changeait,
+        // on retomberait simplement sur le tri par matcher, sans jamais fabriquer d'attente.
+        if (ev is "Notification"
+            && notifType.Length > 0
+            && System.Array.IndexOf(NotificationsSansEtat, notifType) >= 0)
+            return SessionHookResult.Ignored;
+
         SessionActivity? activity = ev switch
         {
+            "PermissionRequest" => SessionActivity.WaitingAttention, // le signal DÉDIÉ, exact et immédiat
             "Notification" => SessionActivity.WaitingAttention,
             "Stop" => SessionActivity.WaitingTurn,
             "UserPromptSubmit" => SessionActivity.Working,
@@ -68,7 +91,18 @@ public static class SessionHookProcessor
         };
         if (activity is null) return SessionHookResult.Ignored;
 
-        var json = BuildStateJson(sid, ProjectFromCwd(cwd), activity.Value, ev == "Notification" ? notifType : null, nowMs);
+        // Le motif inscrit dans le fichier d'état : pour Notification, le type quand il est lisible ; pour
+        // PermissionRequest, le NOM DE L'ÉVÉNEMENT. Deux lectures du relevé se sont contredites sur le nom
+        // du champ de contexte de permission : rien ne doit s'y appuyer. Le nom de l'événement, lui, est un
+        // fait observé — c'est nous qui l'avons câblé.
+        var motif = ev switch
+        {
+            "Notification" => notifType,
+            "PermissionRequest" => ev,
+            _ => null,
+        };
+
+        var json = BuildStateJson(sid, ProjectFromCwd(cwd), activity.Value, motif, nowMs);
         return new SessionHookResult(sid, Delete: false, json, false);
     }
 
