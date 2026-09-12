@@ -54,13 +54,22 @@ public sealed class SessionMonitor
     };
 
     /// <summary>
-    /// Instantané courant des sessions Claude Code (staleness appliquée). FUSIONNE deux sources par
-    /// session_id :
+    /// Ce que le widget AFFICHE. Simple PROJECTION d'<see cref="Inspecter"/> : il n'existe qu'une
+    /// implémentation des filtres dans ce fichier, donc aucun consommateur — widget ou rapport — ne peut
+    /// décrire un système différent de celui qui tourne. C'est la condition d'OBS-01 : partager une
+    /// instance ne suffirait pas si chaque appelant refaisait le tri dans son coin.
+    /// </summary>
+    public IReadOnlyList<SessionSnapshot> Read(System.DateTimeOffset now) => Inspecter(now).Visibles;
+
+    /// <summary>
+    /// OBS-01 — la MÊME lecture que <see cref="Read"/>, doublée de ce qu'elle a écarté et pourquoi.
+    /// FUSIONNE deux sources par session_id :
     ///   • transcripts (~/.claude/projects) — la base, universelle ;
     ///   • fichiers d'état des HOOKS (%APPDATA%\Chronos\sessions) — plus précis (permission),
     ///     PRIORITAIRES quand présents.
+    /// Puis applique les filtres, EN RENDANT COMPTE de chacun au lieu de jeter en silence.
     /// </summary>
-    public IReadOnlyList<SessionSnapshot> Read(System.DateTimeOffset now)
+    public LectureSessions Inspecter(System.DateTimeOffset now)
     {
         var byId = new Dictionary<string, SessionSnapshot>();
 
@@ -71,9 +80,15 @@ public sealed class SessionMonitor
         string[] files;
         try { files = System.IO.Directory.Exists(_dir) ? System.IO.Directory.GetFiles(_dir, "*.json") : System.Array.Empty<string>(); }
         catch { files = System.Array.Empty<string>(); }
+
+        // Un fichier écarté pour son ÂGE est un fait observable, pas un non-événement : c'est l'écart entre
+        // « 54 fichiers sur disque » et « 1 ligne à l'écran ». Un fichier ILLISIBLE n'est pas compté ici —
+        // il n'a pas été écarté pour son âge, il n'a pas été lu.
+        var ecartesParAnciennete = 0;
         foreach (var f in files)
         {
-            var snap = TryRead(f, now);
+            var snap = TryRead(f, now, out var perimee);
+            if (perimee) { ecartesParAnciennete++; continue; }
             if (snap is not null) byId[snap.SessionId] = snap;
         }
 
@@ -86,26 +101,27 @@ public sealed class SessionMonitor
         //    la purge des entrées treated ; ici on MASQUE simplement toute session encore présente dans le magasin.
         //    On NE ré-implémente PAS la comparaison treatedWaitingTs >= UpdatedAt : la réversibilité NET-03 est
         //    portée par le détecteur (purge sur nouvel épisode), pas par ce filtre.
+        //    L'ORDRE d'évaluation est significatif : une session à la fois archivée et traitée est annoncée
+        //    archivée, parce que c'est le geste de l'utilisateur qui prime sur une hystérésis automatique.
         var archived = _archive.Load();
         var treatedMap = _treated?.Load();
-        var result = new List<SessionSnapshot>(byId.Count);
+        var visibles = new List<SessionSnapshot>(byId.Count);
+        var masquees = new List<SessionMasquee>();
         foreach (var s in byId.Values)
         {
-            if (archived.Contains(s.SessionId)) continue;                                 // NET-04 : permanent, jamais réversible
-            if (treatedMap is not null && treatedMap.ContainsKey(s.SessionId)) continue;  // traité => caché (réversible)
-            result.Add(s);
+            if (archived.Contains(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Archivee)); continue; }
+            if (treatedMap is not null && treatedMap.ContainsKey(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Traitee)); continue; }
+            visibles.Add(s);
         }
-        return result;
+        return new LectureSessions(visibles, masquees, ecartesParAnciennete);
     }
 
-    /// <summary>
-    /// OBS-01 — la MÊME lecture que <see cref="Read"/>, doublée de ce qu'elle a écarté et pourquoi.
-    /// </summary>
-    public LectureSessions Inspecter(System.DateTimeOffset now)
-        => throw new System.NotImplementedException();
-
-    private static SessionSnapshot? TryRead(string file, System.DateTimeOffset now)
+    // <paramref name="perimee"/> distingue « lu, mais trop vieux pour valoir quelque chose » de
+    // « illisible » : les deux rendent null, et les confondre effacerait l'information qui explique
+    // l'essentiel de l'écart entre le disque et l'écran.
+    private static SessionSnapshot? TryRead(string file, System.DateTimeOffset now, out bool perimee)
     {
+        perimee = false;
         try
         {
             using var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -127,7 +143,7 @@ public sealed class SessionMonitor
                 activity = SessionActivity.Unknown;
 
             var age = now - updatedAt;
-            if (age > DropAfter) return null; // session morte (SessionEnd manqué) → on ne l'affiche plus
+            if (age > DropAfter) { perimee = true; return null; } // session morte (SessionEnd manqué) → on ne l'affiche plus
 
             // Working périmé → Unknown (on ne ment pas sur un fil perdu). Les attentes persistent telles quelles.
             if (activity == SessionActivity.Working && age > StaleWorking)
