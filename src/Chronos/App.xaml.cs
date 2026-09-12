@@ -366,6 +366,7 @@ public partial class App : Application
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IUsageProvider>(),
             sp.GetRequiredService<IClock>(),
-            sp.GetRequiredService<IAuthStatus>()));   // TOK-02 : le rapport dit l'état RÉEL
+            sp.GetRequiredService<IAuthStatus>(),     // TOK-02 : le rapport dit l'état RÉEL
+            sp.GetRequiredService<IEtatServeur>()));  // HDR-03/HDR-04 : le rapport nomme ce que la sonde reçoit
     }
 }

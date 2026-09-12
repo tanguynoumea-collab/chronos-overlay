@@ -26,13 +26,17 @@ public sealed class DiagnosticService
     private readonly IUsageProvider _composite;
     private readonly IClock _clock;
     private readonly IAuthStatus? _authStatus;
+    private readonly IEtatServeur? _etatServeur;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
     /// tests) compilent sans retouche, et la DI passe le vrai service.</param>
+    /// <param name="etatServeur">Canal latéral de la sonde d'en-têtes (HDR-03/HDR-04) et son issue.
+    /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants (1 en
+    /// production, 9 en tests) compilent sans retouche. Précédent : authStatus, phase 17.</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
-                             IAuthStatus? authStatus = null)
+                             IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -40,6 +44,7 @@ public sealed class DiagnosticService
         _composite = composite;
         _clock = clock;
         _authStatus = authStatus;
+        _etatServeur = etatServeur;
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -99,6 +104,44 @@ public sealed class DiagnosticService
         // machine a expiré le 2026-07-12 alors que oauth.dat était bien présent : c'est exactement le
         // silence que la phase 17 brise. On affiche donc l'état RÉEL, pas la présence d'un fichier.
         sb.AppendLine("  État d'authentification : " + LibelleAuth(_authStatus?.Etat));
+        sb.AppendLine();
+
+        // 2a-bis) LA SONDE D'EN-TÊTES (HDR-01/HDR-02/HDR-06) : désormais la PREMIÈRE source de la chaîne
+        // exacte, et la SEULE qui réponde encore quand l'API refuse. Cette section est la seule fenêtre de
+        // l'utilisateur sur ce qu'elle reçoit réellement : la famille d'en-têtes « unified » n'est
+        // documentée NULLE PART chez Anthropic, donc seul un rapport de terrain peut dire si elle existe
+        // toujours sous ce nom. (Le préfixe littéral n'est écrit QU'UNE fois dans ce fichier, dans le
+        // filtre de l'inventaire ci-dessous : un préfixe dupliqué est un préfixe qui divergera.)
+        sb.AppendLine("[Source exacte — sonde d'en-têtes de rate-limit]");
+        if (!s.SondeEnTetesActivee)
+            sb.AppendLine("  Interrupteur : désactivée (menu clic droit → Réglages) — aucune requête, aucun coût");
+        else
+        {
+            // Cadence et coût DÉRIVÉS de la constante du provider, jamais recopiés : un chiffre recopié
+            // diverge le jour où la cadence change, et ce rapport deviendrait un mensonge poli.
+            var minutes = (int)RateLimitHeaderUsageProvider.CadenceNominale.TotalMinutes;
+            var parJour = (int)(TimeSpan.FromDays(1).TotalSeconds
+                                / RateLimitHeaderUsageProvider.CadenceNominale.TotalSeconds);
+            sb.AppendLine($"  Interrupteur : ACTIVÉE — une micro-requête sur ton compte toutes les {minutes} min (≈ {parJour}/jour)");
+            sb.AppendLine("  Dernière sonde : " + LibelleSonde(_etatServeur?.DernierResultat));
+
+            // SÉCURITÉ : ces noms proviennent des CONSTANTES de la sonde, jamais du serveur (invariant
+            // prouvé au plan 18-04, test en casse mélangée). Les NOMS, et JAMAIS leurs valeurs : une
+            // valeur d'en-tête venue du réseau ne doit pas pouvoir se réinjecter dans un affichage.
+            var noms = _etatServeur?.NomsEnTetesRecus ?? Array.Empty<string>();
+            sb.AppendLine("  En-têtes « unified » reconnus : " + (noms.Count == 0
+                ? "AUCUN — la famille « unified » n'est documentée nulle part chez Anthropic et peut avoir changé de nom"
+                : string.Join(", ", noms) + $" ({noms.Count})"));
+
+            // HDR-04 — canal LATÉRAL : ce dépassement survit même quand Best() a écarté la fenêtre qui le
+            // portait. Pourcentage par le point unique de normalisation (garde NormalisationUniqueTests).
+            var dep = _etatServeur?.Depassement;
+            sb.AppendLine("  Dépassement : " + (dep is null || !dep.EstRenseigne
+                ? "aucun dépassement rapporté"
+                : UsageNormalization.PourcentagePourAffichage(dep.Utilization)
+                  + (dep.ResetsAt is { } dr ? " (reset le " + dr.ToLocalTime().ToString("yyyy-MM-dd HH:mm") + ")" : "")
+                  + " · serveur : " + LibelleStatutServeur(dep.Statut)));
+        }
         sb.AppendLine();
 
         // 2b) Source exacte secondaire : pont statusLine Claude Code (usage.json), terminal uniquement.
@@ -265,6 +308,21 @@ public sealed class DiagnosticService
                 req.Headers.TryAddWithoutValidation("anthropic-beta", "oauth-2025-04-20");
                 using var resp = await http.SendAsync(req, ct);
                 sb.AppendLine("    → HTTP " + (int)resp.StatusCode + " " + resp.StatusCode);
+
+                // OUVERTURE : on ne sait PAS si /api/oauth/usage porte AUSSI la famille unified.
+                // S'il la portait, HDR-01..HDR-04 seraient satisfaits SANS dépenser un jeton de quota et le
+                // coût de la sonde disparaîtrait (candidat phase 19+). Impossible à trancher sans jeton
+                // valide : son 401 est rendu en bordure (request_id nul) et ne porte aucun en-tête de
+                // limite. On liste donc les NOMS — JAMAIS les valeurs, JAMAIS le corps : la question se
+                // tranchera au premier rafraîchissement réussi de l'utilisateur.
+                var nomsLimite = resp.Headers.Select(h => h.Key)
+                    .Where(k => k.StartsWith("anthropic-ratelimit", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                sb.AppendLine("    → en-têtes de limite présents : " + (nomsLimite.Count == 0
+                    ? "AUCUN"
+                    : string.Join(", ", nomsLimite) + $" ({nomsLimite.Count})"));
+
                 if (resp.IsSuccessStatusCode)
                 {
                     var body = await resp.Content.ReadAsStringAsync(ct);
@@ -421,6 +479,38 @@ public sealed class DiagnosticService
         _                                => "(inconnu — autorité de jeton non injectée)",
     };
 
+    // Issue du dernier passage de la sonde, UN LIBELLÉ PAR MEMBRE. Le grain fin est le livrable : la panne
+    // silencieuse que v1.5 corrige venait précisément de l'écrasement de causes distinctes en un seul
+    // « pas de données ». « 429 porteur des chiffres » et « 429 muet » ne disent pas la même chose.
+    private static string LibelleSonde(ResultatSonde? r) => r switch
+    {
+        ResultatSonde.Desactivee            => "désactivée",
+        ResultatSonde.PasDeJeton            => "pas de jeton (clic droit → Se connecter à Claude)",
+        ResultatSonde.FreinActif            => "cadence bornée : sonde refusée localement, aucune requête émise",
+        ResultatSonde.SuccesEnTetesLus      => "200 — en-têtes lus, chiffres exacts",
+        ResultatSonde.SuccesSansEnTetes     => "200 mais AUCUN en-tête unified reconnu — la famille a peut-être été renommée",
+        ResultatSonde.SaturationEnTetesLus  => "429 — en-têtes lus quand même, les chiffres restent exacts",
+        ResultatSonde.SaturationSansEnTetes => "429 SANS en-tête unified — rien affiché plutôt qu'un chiffre inventé",
+        ResultatSonde.RefusServeur          => "refus serveur (401/403) — seule une reconnexion répare",
+        ResultatSonde.ModeleRefuse          => "modèle refusé par le serveur — identifiant de modèle à mettre à jour",
+        ResultatSonde.PanneReseau           => "réseau injoignable (recul progressif)",
+        // JamaisSondee ET le cas « canal latéral non injecté » : dans les deux cas, rien n'a encore été
+        // observé — et ce n'est pas une panne.
+        _                                   => "pas encore sondé (la première sonde arrive au prochain tick)",
+    };
+
+    // Statut DÉCLARÉ par le serveur (HDR-03). « non rapporté » (en-tête absent) et « non reconnu »
+    // (en-tête présent, valeur inédite) sont deux faits distincts : une valeur inconnue n'est JAMAIS
+    // rangée d'autorité dans « autorisé », sans quoi l'overlay rassurerait à tort.
+    private static string LibelleStatutServeur(StatutServeur? s) => s switch
+    {
+        StatutServeur.Autorise              => "AUTORISÉ",
+        StatutServeur.AutoriseAvertissement => "AUTORISÉ (avertissement)",
+        StatutServeur.Rejete                => "REJETÉ",
+        StatutServeur.NonReconnu            => "statut non reconnu (valeur inconnue, non interprétée)",
+        _                                   => "non rapporté",
+    };
+
     // Cherche (profondeur bornée, dossiers volumineux ignorés) les fichiers config.json contenant
     // « oauth:tokenCache » → révèle où l'app bureau range son coffre, quel que soit son nom/emplacement.
     private static IEnumerable<string> FindTokenVaults(string root)
@@ -487,11 +577,24 @@ public sealed class DiagnosticService
            && w.TryGetProperty("utilization", out var u) && u.TryGetDouble(out var p)
            ? UsageNormalization.PourcentagePourAffichage(UsageNormalization.FractionDepuisPourcentage(p)) : "absent";
 
+    // HDR-03/HDR-04 — le statut serveur et le dépassement sont lus ICI, sur le snapshot DÉJÀ obtenu, et
+    // non dans la section de la sonde : un second appel au composite déclencherait une seconde sonde, donc
+    // DOUBLERAIT la dépense de quota à chaque ouverture du diagnostic. Les cinq branches de libellé
+    // préexistantes sont conservées mot pour mot (des tests les assertent littéralement) ; les deux
+    // suffixes ne s'ajoutent que lorsque le serveur a réellement dit quelque chose.
     private static string Describe(WindowState w)
-        => w.Reliability switch
+    {
+        var baseTexte = w.Reliability switch
         {
             SourceReliability.Exact => "EXACT — " + (w.Utilization is { } u ? UsageNormalization.PourcentagePourAffichage(u) : "?"),
             SourceReliability.Estimated => "estimé — " + (w.Utilization is { } u ? "~" + UsageNormalization.PourcentagePourAffichage(u) : "% inconnu"),
             _ => "indisponible",
         };
+
+        if (w.StatutServeur is { } st) baseTexte += " · serveur : " + LibelleStatutServeur(st);
+        if (w.Depassement?.Utilization is { } d)
+            baseTexte += " · dépassement " + UsageNormalization.PourcentagePourAffichage(d);
+
+        return baseTexte;
+    }
 }
