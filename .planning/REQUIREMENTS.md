@@ -102,26 +102,37 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| SRC-01 | TBD | Pending |
-| SRC-02 | TBD | Pending |
-| SRC-03 | TBD | Pending |
-| EVT-01 | TBD | Pending |
-| EVT-02 | TBD | Pending |
-| EVT-03 | TBD | Pending |
-| EVT-04 | TBD | Pending |
-| EVT-05 | TBD | Pending |
-| FUS-01 | TBD | Pending |
-| FUS-02 | TBD | Pending |
-| TRT-01 | TBD | Pending |
-| TRT-02 | TBD | Pending |
-| TRT-03 | TBD | Pending |
-| TRT-04 | TBD | Pending |
-| CYC-01 | TBD | Pending |
-| CYC-02 | TBD | Pending |
-| OBS-01 | TBD | Pending |
-| OBS-02 | TBD | Pending |
+| SRC-01 | Phase 21 | Pending |
+| SRC-02 | Phase 21 | Pending |
+| SRC-03 | Phase 21 | Pending |
+| EVT-01 | Phase 25 | Pending |
+| EVT-02 | Phase 25 | Pending |
+| EVT-03 | Phase 25 | Pending |
+| EVT-04 | Phase 25 | Pending |
+| EVT-05 | Phase 25 | Pending |
+| FUS-01 | Phase 24 | Pending |
+| FUS-02 | Phase 24 | Pending |
+| TRT-01 | Phase 26 | Pending |
+| TRT-02 | Phase 26 | Pending |
+| TRT-03 | Phase 26 | Pending |
+| TRT-04 | Phase 26 | Pending |
+| CYC-01 | Phase 23 | Pending |
+| CYC-02 | Phase 23 | Pending |
+| OBS-01 | Phase 22 | Pending |
+| OBS-02 | Phase 22 | Pending |
 
-**Couverture :** 18 requirements à mapper (roadmap à créer).
+**Couverture :** 18 / 18 requirements mappés — aucun orphelin, aucun doublon.
+
+**Regroupement par phase :**
+
+| Phase | Intitulé | Requirements |
+|-------|----------|--------------|
+| 21 | Périmètre — le widget ne parle que de Claude Code | SRC-01, SRC-02, SRC-03 |
+| 22 | Un instrument de mesure qui ne ment plus | OBS-01, OBS-02 |
+| 23 | Un magasin qui ne croît plus et n'oublie plus | CYC-01, CYC-02 |
+| 24 | L'arbitrage par fraîcheur | FUS-01, FUS-02 |
+| 25 | Le contrat d'événements refondé | EVT-01, EVT-02, EVT-03, EVT-04, EVT-05 |
+| 26 | « Traité » veut enfin dire quelque chose | TRT-01, TRT-02, TRT-03, TRT-04 |
 
 ---
-*Last updated: 2026-09-12 — exigences v1.6 définies (18 requirements ; recherche passée, investigation déjà faite)*
+*Last updated: 2026-09-12 — roadmap v1.6 créée : 6 phases (21-26), traçabilité complète 18/18*

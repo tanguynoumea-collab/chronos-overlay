@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: "Milestone v1.6 démarré le 2026-09-12. Définition des exigences."
-stopped_at: Milestone v1.6 initialisé
+status: "Roadmap v1.6 créée — 6 phases (21-26), 18/18 exigences mappées. Prête à planifier."
+stopped_at: Roadmap v1.6 écrite ; prochaine action /gsd:plan-phase 21
 last_updated: "2026-09-12"
-last_activity: 2026-09-12 — Milestone v1.6 démarré (investigation widget-sessions-statuts complète)
+last_activity: 2026-09-12 — Roadmap v1.6 créée (phases 21-26, couverture 18/18)
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -27,10 +27,10 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: Not started (defining requirements)
+Phase: 21 — Périmètre : le widget ne parle que de Claude Code (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-12 — Milestone v1.6 started
+Status: Roadmap créée (6 phases, 21→26), aucune phase planifiée
+Last activity: 2026-09-12 — Roadmap v1.6 créée, couverture 18/18
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -162,6 +162,51 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 20 P05 | 14min | 3 tasks | 5 files |
 
 ### Decisions
+
+- [v1.6/roadmap]: **6 phases, numérotées 21 → 26** (continuité après la phase 20 de v1.5). Couverture
+  18/18 requirements, aucun orphelin, aucun doublon. Granularité `standard`.
+
+- [v1.6/roadmap]: **SRC-01/02/03 en Phase 21, en tête et sans discussion.** Le retrait de la source
+  app-bureau supprime ~690 lignes de `src/` et ~530 de tests, fait tomber `WindowsForegroundWatch` /
+  `IForegroundWatch`, retire `SessionKind` / `SessionOrigin` de `SessionSnapshot` et trois arguments de
+  construction de `SessionMonitor`. Toute phase antérieure travaillerait sur un terrain démoli juste après.
+  SRC-03 (limite de transcripts appliquée APRÈS le filtre sous-agents) y est joint : même fichier de source,
+  même question de périmètre.
+
+- [v1.6/roadmap]: **OBS-01 placé TÔT (Phase 22) et non en fin de milestone — choix contraire à l'ordre naïf,
+  assumé.** L'argument « il documenterait un état intermédiaire » ne tient que si OBS-01 est livré comme une
+  COPIE du comportement du widget. Livré comme **partage d'instance** (le diagnostic interroge le moniteur du
+  widget au lieu d'en reconstruire un nu), il reste vrai à chaque commit ultérieur par construction. Le
+  placer en fin ferait vérifier les phases 23 à 26 avec l'instrument faussé qui a empêché d'élucider le
+  problème pendant des mois. Placé après la Phase 21 seulement pour ne pas le recâbler deux fois.
+
+- [v1.6/roadmap]: **CYC en Phase 23, AVANT FUS (24) — c'est une dépendance, pas un ménage.** L'arbitrage par
+  fraîcheur compare des horodatages ; une écriture perdue en silence (mesuré : 200 échecs sur 500 par
+  `tmp`+`Move` sous lecteur concurrent) fait paraître un état plus vieux qu'il n'est et empoisonne
+  l'arbitrage à sa racine. CYC-01 assainit en outre le terrain de mesure humain (54 fichiers dont 48 > 7 j,
+  + 12 `.tmp`).
+
+- [v1.6/roadmap]: **FUS (24) avant EVT (25).** EVT-03 (battements de cœur) n'a aucune valeur sans FUS-01 :
+  un battement frais serait écrasé par un hook ancien, exactement le défaut mesuré (hook de 7 h battant un
+  transcript de 10 s). Les battements multiplient aussi le volume d'écritures, d'où la Phase 23 en amont.
+
+- [v1.6/roadmap]: **EVT-01..05 gardés dans UNE phase (25).** EVT-05 documente le contrat FINAL : le séparer
+  ferait documenter un contrat en cours de refonte. Les cinq touchent le même chemin
+  (`App.xaml.cs` mode `--hook`, `SessionHookProcessor`, `SessionHookInstaller`).
+
+- [v1.6/roadmap]: **TRT en Phase 26, dernière.** « Traité » = transition observée sur la MÊME source : la
+  notion de « même source » et de fraîcheur (24) et les transitions observables (25) doivent exister avant.
+
+- [v1.6/roadmap]: **Phases 21, 25 et 26 marquées « UI hint: yes »** — 21 retire le libellé de type bindé dans
+  les 8 styles, 25 change le vocabulaire d'état affiché, 26 ajoute un geste explicite (TRT-03) dans
+  `SessionsWindow.xaml` / `SessionsController`. Toute modification visuelle doit rester cohérente sur les
+  **8 styles de session** et les **9 thèmes**. Note : `ui_phase: false` dans config.json — l'indice est
+  consigné, aucune phase UI dédiée n'est déclenchée.
+
+- [v1.6/roadmap]: Toute phase doit conserver vertes les **752 tests xUnit** (suite ~4 s) et les gardes
+  `ServicesLayerPurityTests`, `CompositionRootTests`, `NormalisationUniqueTests`, `GardesDoctrineTests`,
+  `La_sonde_d_en_tetes_est_le_PRIMAIRE_de_la_chaine_exacte`. Exception explicite en Phase 21 : le recul du
+  compte de tests y est le LIVRABLE (code supprimé), critère = 0 échec + justification nominative.
 
 - [v1.5/roadmap]: **6 phases, numérotées 15 → 20** (continuité après la phase 14 de v1.4). Couverture
   24/24 requirements, aucun orphelin, aucun doublon.
@@ -351,7 +396,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- Prochaine action v1.5 : `/gsd:plan-phase 20` (derniere phase du milestone).
+- **Prochaine action v1.6 : `/gsd:plan-phase 21`** (Périmètre — retrait de la source app-bureau).
+- ~~Prochaine action v1.5 : `/gsd:plan-phase 20`~~ (fait, milestone v1.5 clos).
 - **A faire par l'utilisateur, hors GSD — NOUVEAU** : constater la bascule « 10 % » -> « indisponible +
   invitation » en lancant la version du DEPOT. Protocole complet sous « A VERIFIER PAR L'UTILISATEUR »
   dans `19-05-SUMMARY.md`. **Attention** : lancer l'overlay purge les 25 groupes de hooks de
@@ -389,7 +435,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T07:30:16.591Z
-Stopped at: Completed 20-05-PLAN.md — dernier plan du milestone v1.5 ; 9 constats humains en attente
+Last session: 2026-09-12
+Stopped at: Roadmap v1.6 écrite (.planning/ROADMAP.md) — 6 phases 21→26, couverture 18/18
 Resume file: None
-Next: /gsd:verify-phase 20 — puis les 9 constats humains du protocole de 20-05-SUMMARY.md avant de clore v1.5
+Next: /gsd:plan-phase 21 — Périmètre : retrait de la source app-bureau (SRC-01, SRC-02, SRC-03)
