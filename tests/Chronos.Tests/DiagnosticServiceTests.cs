@@ -538,6 +538,7 @@ public class DiagnosticServiceTests
 
         Assert.Contains("MONITEUR NON INJECTÉ", report);
         Assert.DoesNotContain("Sessions AFFICHÉES par le widget", report);
+        Assert.DoesNotContain("Désaccords entre sources", report);
     }
 
     [Fact]
@@ -594,6 +595,57 @@ public class DiagnosticServiceTests
 
         Assert.Contains("Sessions MASQUÉES par un filtre : 1", report);
         Assert.Contains("masquée par archived.json", report);
+    }
+
+    // --- Phase 24 (FUS-02) : les désaccords entre sources deviennent lisibles ---
+
+    /// <summary>Le relevé du 2026-09-12, rejoué de bout en bout : un fichier de hook figé depuis 7 h contre
+    /// un transcript de 10 s. La phase 24 fait gagner le transcript ; cette ligne-ci dit à l'utilisateur
+    /// POURQUOI — et surtout que sa source de hooks ne bouge plus.</summary>
+    [Fact]
+    public async Task Un_desaccord_nomme_la_source_retenue_la_source_ecartee_et_l_ecart_d_age()
+    {
+        const string Id = "e465420e-83e0-428f-97f1-f0174c0848fc";
+        var dir = TempDir22();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(dir, Id + ".json"),
+            SessionHookProcessor.BuildStateJson(Id, "PROJET ADVANCED SHEET", SessionActivity.WaitingAttention,
+                "permission_prompt", T22.AddHours(-7).ToUnixTimeMilliseconds()));
+
+        var moniteur = new SessionMonitor(dir,
+            new SourceFixe22(new SessionSnapshot(Id, "PROJET ADVANCED SHEET", SessionActivity.Working,
+                                                 null, T22.AddSeconds(-10))),
+            new ArchiveStore(TempFichier22()));
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Désaccords entre sources : 1", report);
+
+        // La ligne à puce du désaccord, isolée par ses deux marqueurs : l'identifiant ET le mot « retenu ».
+        var ligne = report.Split('\n').Single(l => l.Contains("e465420e") && l.Contains("retenu "));
+        Assert.Contains("transcript (~/.claude/projects)", ligne);
+        Assert.Contains("en cours", ligne);
+        Assert.Contains(@"fichier de hook (%APPDATA%\Chronos\sessions)", ligne);
+        Assert.Contains("à toi", ligne);
+        Assert.Contains("plus ancien de 6 h", ligne);   // 7 h moins 10 s → 6 h 59 min 50 s, tronqué à l'heure
+
+        // Un désaccord n'est PAS un masquage : la session est bel et bien à l'écran.
+        Assert.Contains("Sessions AFFICHÉES par le widget : 1", report);
+        Assert.Contains("Sessions MASQUÉES par un filtre : 0", report);
+    }
+
+    /// <summary>Le silence se DIT. Un rapport muet sur les désaccords laisserait croire qu'il n'a pas regardé —
+    /// c'est la même faute, une octave plus bas, que celle que la phase 22 a corrigée sur les masquages.</summary>
+    [Fact]
+    public async Task Sans_contradiction_le_rapport_annonce_zero_desaccord_et_le_dit()
+    {
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot("solo-0001", "Projet", SessionActivity.Working, null, T22)),
+            new ArchiveStore(TempFichier22()));
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Désaccords entre sources : 0", report);
+        Assert.Contains("aucune source n'en contredit une autre", report);
     }
 
     /// <summary>OBS-02 — la troncature à huit disparaît : comparer ligne à ligne un rapport tronqué avec un
