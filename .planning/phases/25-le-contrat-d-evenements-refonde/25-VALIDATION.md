@@ -293,7 +293,7 @@ s'interdit de lancer ou de tuer l'overlay, et de toucher au `settings.json` de l
 
 | Constat | Où il est écrit | Pourquoi il n'est PAS corrigé ici |
 |---|---|---|
-| `SessionTreatmentTracker.cs:39` (`EstAttente`) **exclut** `WaitingDeduced`, alors que le widget la compte dans `WaitingCount` : une session déduite n'ouvre pas d'épisode d'attente | §3 de `docs/hooks-contract.md` (plan 25-04) | La phase 26 redéfinit ce que « traité » veut dire ; corriger le tracker ici, c'est l'anticiper à moitié. Le diff de `SessionTreatmentTracker.cs` doit rester VIDE. |
+| `SessionTreatmentTracker.cs:38` (`IsWaiting` — nom RELEVÉ dans le code ; cet artefact l'a d'abord appelé `EstAttente` l. 39, c'est lui qui avait tort, `docs/hooks-contract.md` §3 était exact) **exclut** `WaitingDeduced`, alors que le widget la compte dans `WaitingCount` : une session déduite n'ouvre pas d'épisode d'attente | §3 de `docs/hooks-contract.md` (plan 25-04) | La phase 26 redéfinit ce que « traité » veut dire ; corriger le tracker ici, c'est l'anticiper à moitié. Le diff de `SessionTreatmentTracker.cs` doit rester VIDE. |
 | Dans `ArbitrageSessions.Departager`, le rang **source** précède le rang **urgence** : à horodatage égal **à la milliseconde**, un hook `WaitingDeduced` bat un transcript `Working` | test `Un_hook_deduit_et_un_transcript_travaillant_du_MEME_instant_sont_departages_par_la_source` (plan 25-03 T2), qui **fige** le comportement sans le modifier, + SUMMARY 25-03 | Héritage de la phase 24. Le `25-CONTEXT.md` l'exigeait : « ne pas modifier l'arbitrage sans qu'un test le motive ». Le test écrit le comportement ; il ne le corrige pas. |
 
 ## Clôture — mesurée le 2026-09-12, au plan 25-04
