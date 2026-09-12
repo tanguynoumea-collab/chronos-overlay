@@ -63,7 +63,7 @@ public class SessionsTests
     private const string Exe = @"C:\Apps\Chronos.exe";
 
     [Fact]
-    public void Install_ajoute_les_5_hooks_en_slashes_avant()
+    public void Install_pose_un_groupe_par_evenement_cable_en_slashes_avant()
     {
         var outJson = SessionHookInstaller.TransformForInstall(null, Exe);
         var hooks = (JsonNode.Parse(outJson!) as JsonObject)!["hooks"] as JsonObject;
@@ -107,10 +107,10 @@ public class SessionsTests
     }
 
     // PUR-01 — critère de succès 1 : trois installations depuis trois chemins d'exe DIFFÉRENTS
-    // laissent exactement 1 groupe Chronos par événement (5 au total), et non 3 par événement.
+    // laissent exactement 1 groupe Chronos par événement câblé, et non 3 par événement.
     // C'est très exactement la régression qui a produit 25 groupes sur la vraie machine.
     [Fact]
-    public void Trois_chemins_dexe_successifs_ne_laissent_que_cinq_hooks()
+    public void Trois_chemins_dexe_successifs_ne_laissent_qu_un_groupe_par_evenement()
     {
         var v25 = SessionHookInstaller.TransformForInstall(null, @"C:\DL\Chronos-v2.5.exe");
         var v26 = SessionHookInstaller.TransformForInstall(v25, @"C:\DL\Chronos-v2.6.exe");
@@ -217,6 +217,146 @@ public class SessionsTests
         var installer = new SessionHookInstaller(fichier);   // chemin TEMP, jamais le profil utilisateur
         Assert.False(installer.IsInstalled(Exe));                              // pas CET exe
         Assert.True(installer.IsInstalled(@"C:\DL\Chronos-v2.8.1.exe"));       // mais bien celui-là
+    }
+
+    // --- EVT-01 / EVT-02 : le câblage déclaratif, validé contre la liste blanche AVANT écriture ---
+
+    /// <summary>Le matcher du bus : seuls les TROIS types qui sont de vraies DEMANDES l'atteignent.</summary>
+    [Fact]
+    public void Le_groupe_Notification_ne_laisse_passer_que_les_trois_vraies_demandes()
+    {
+        var outJson = SessionHookInstaller.TransformForInstall(null, Exe);
+        var groupes = ((JsonNode.Parse(outJson!) as JsonObject)!["hooks"]!["Notification"] as JsonArray)!;
+
+        Assert.Single(groupes);
+        Assert.Equal("agent_needs_input|elicitation_dialog|elicitation_url_dialog",
+                     groupes[0]!["matcher"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// La moitié « câblée » d'EVT-01 : sans elle, la boucle sur Events serait tautologique. Le groupe ne
+    /// porte AUCUN matcher — l'événement est déjà, à lui seul, le fait qu'on veut observer.
+    /// </summary>
+    [Fact]
+    public void Le_cablage_installe_bien_le_groupe_PermissionRequest()
+    {
+        var outJson = SessionHookInstaller.TransformForInstall(null, Exe);
+        var groupes = ((JsonNode.Parse(outJson!) as JsonObject)!["hooks"]!["PermissionRequest"] as JsonArray)!;
+
+        Assert.Single(groupes);
+        var groupe = (groupes[0] as JsonObject)!;
+        Assert.False(groupe.ContainsKey("matcher"));           // aucun filtre : tout PermissionRequest compte
+        Assert.Equal(SessionHookInstaller.HookCommand(Exe, "PermissionRequest"),
+                     groupe["hooks"]![0]!["command"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// Le CONTENU exact du câblage, figé. Un comptage seul (Events.Length == 6) ne prouverait rien :
+    /// les tests de purge comparent des handlers à Events.Length et restent verts quelle qu'en soit la valeur.
+    /// </summary>
+    [Fact]
+    public void Le_cablage_est_exactement_celui_que_la_phase_annonce()
+    {
+        Assert.Equal(new[] { "SessionStart", "UserPromptSubmit", "Stop", "SessionEnd", "PermissionRequest", "Notification" },
+                     SessionHookInstaller.Events);
+    }
+
+    /// <summary>
+    /// Le sort d'un nom d'événement INCONNU n'est pas documenté : il produirait un hook mort et muet.
+    /// Il n'est donc JAMAIS écrit — prouvé par câblage injecté, sans jamais salir le câblage réel.
+    /// </summary>
+    [Fact]
+    public void Un_evenement_dont_le_nom_est_inconnu_n_est_jamais_ecrit()
+    {
+        var root = new JsonObject();
+        SessionHookInstaller.ApplyHooks(root, Exe, wanted: true,
+            new[] { new EvenementCable("Notifcation", null, "faute de frappe") });
+
+        Assert.Null(root["hooks"]);   // rien n'a été écrit, pas même une clé « hooks » vide
+    }
+
+    /// <summary>
+    /// Un matcher posé sur un événement sans support est SILENCIEUSEMENT ignoré : le groupe ne ferait
+    /// pas ce qu'il annonce. Une configuration morte ne s'installe pas.
+    /// </summary>
+    [Fact]
+    public void Un_matcher_sur_un_evenement_qui_n_en_accepte_pas_n_est_jamais_ecrit()
+    {
+        var root = new JsonObject();
+        SessionHookInstaller.ApplyHooks(root, Exe, wanted: true,
+            new[] { new EvenementCable("Stop", "quelque_chose", "un matcher que Stop n'accepte pas") });
+
+        Assert.Null(root["hooks"]);
+        Assert.Null(root["hooks"]?["Stop"]);
+    }
+
+    /// <summary>
+    /// La purge est LARGE : un groupe Chronos posé sur un événement qu'on cesse de câbler ne survit plus,
+    /// invisible, pour toujours.
+    /// </summary>
+    [Fact]
+    public void Un_groupe_Chronos_sur_un_evenement_qui_n_est_plus_cable_est_purge()
+    {
+        const string ancien =
+            """{"hooks":{"SubagentStop":[{"hooks":[{"type":"command","command":"\"C:/Apps/Chronos.exe\" --hook SubagentStop","timeout":10}]}]}}""";
+
+        var outJson = SessionHookInstaller.TransformForInstall(ancien, Exe);
+        var hooks = ((JsonNode.Parse(outJson!) as JsonObject)!["hooks"] as JsonObject)!;
+
+        Assert.False(hooks.ContainsKey("SubagentStop"));
+    }
+
+    /// <summary>
+    /// La contrepartie de la purge large : les hooks d'un AUTRE outil survivent intégralement, en place.
+    /// On n'asserte JAMAIS la longueur du tableau — un plan ultérieur ajoutera un groupe Chronos APRÈS
+    /// le groupe tiers, et ce test doit rester vert sans retouche.
+    /// </summary>
+    [Fact]
+    public void La_purge_large_epargne_les_hooks_d_un_autre_outil()
+    {
+        const string tiers = """
+        {"hooks":{
+          "PreToolUse":[{"matcher":"Write|Edit","hooks":[{"type":"command","command":"node gsd-prompt-guard.js","timeout":5}]}],
+          "PostToolUse":[{"matcher":"Bash|Edit|Write","hooks":[{"type":"command","command":"node gsd-context-monitor.js","timeout":20}]}]
+        }}
+        """;
+
+        var hooks = ((JsonNode.Parse(SessionHookInstaller.TransformForInstall(tiers, Exe)!) as JsonObject)!["hooks"] as JsonObject)!;
+
+        var pre = ((hooks["PreToolUse"] as JsonArray)![0] as JsonObject)!;
+        Assert.Equal("Write|Edit", pre["matcher"]!.GetValue<string>());
+        Assert.Equal("node gsd-prompt-guard.js", pre["hooks"]![0]!["command"]!.GetValue<string>());
+        Assert.Equal(5, pre["hooks"]![0]!["timeout"]!.GetValue<int>());
+
+        var post = ((hooks["PostToolUse"] as JsonArray)![0] as JsonObject)!;
+        Assert.Equal("Bash|Edit|Write", post["matcher"]!.GetValue<string>());
+        Assert.Equal("node gsd-context-monitor.js", post["hooks"]![0]!["command"]!.GetValue<string>());
+        Assert.Equal(20, post["hooks"]![0]!["timeout"]!.GetValue<int>());
+    }
+
+    /// <summary>
+    /// Le marqueur SEUL ne suffit pas à nous appartenir : un outil tiers peut adopter « --hook ». Et un
+    /// handler sans champ « command » (http/mcp_tool/prompt/agent) n'est jamais à nous non plus. Les deux
+    /// survivent à l'installation ET à la désinstallation.
+    /// </summary>
+    [Fact]
+    public void La_purge_large_ne_prend_pas_pour_nous_le_hook_d_un_tiers_qui_porte_le_meme_argument()
+    {
+        const string tiers = """
+        {"hooks":{"PreCompact":[
+          {"hooks":[{"type":"command","command":"node outil.js --hook PreCompact"}]},
+          {"hooks":[{"type":"http","url":"https://exemple.invalid/pre-compact"}]}
+        ]}}
+        """;
+
+        foreach (var produit in new[] { SessionHookInstaller.TransformForInstall(tiers, Exe),
+                                        SessionHookInstaller.TransformForUninstall(tiers) })
+        {
+            var arr = ((JsonNode.Parse(produit!) as JsonObject)!["hooks"]!["PreCompact"] as JsonArray)!;
+            Assert.Equal(2, arr.Count);
+            Assert.Equal("node outil.js --hook PreCompact", arr[0]!["hooks"]![0]!["command"]!.GetValue<string>());
+            Assert.Equal("https://exemple.invalid/pre-compact", arr[1]!["hooks"]![0]!["url"]!.GetValue<string>());
+        }
     }
 
     // --- SessionMonitor ---

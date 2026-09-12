@@ -27,10 +27,46 @@ namespace Chronos.Services;
 /// Rappel prouvé : la config des hooks est lue au DÉMARRAGE d'une session → seules les sessions Claude
 /// Code lancées APRÈS l'installation seront suivies (comme pour statusLine).
 /// </summary>
+/// <summary>Un événement CÂBLÉ par Chronos : son nom, le matcher qui le filtre (<c>null</c> = tout), et ce
+/// qu'il produit. Le rôle n'est pas décoratif : c'est lui qu'on recopie dans docs/ (EVT-05).</summary>
+public sealed record EvenementCable(string Evenement, string? Matcher, string Role);
+
 public sealed class SessionHookInstaller
 {
-    // Les 5 événements qui portent l'état « attente vs travail » (SubagentStop/PostToolUse exclus).
-    public static readonly string[] Events = { "Notification", "Stop", "UserPromptSubmit", "SessionStart", "SessionEnd" };
+    /// <summary>
+    /// LE CÂBLAGE — source de vérité unique de ce que Chronos installe.
+    ///
+    /// <para><b>Pourquoi <c>Notification</c> porte un matcher.</b> Ce n'est pas une alerte d'absence mais
+    /// un BUS généraliste : le relevé du 2026-09-12 en dénombre douze types (<c>permission_prompt</c>,
+    /// <c>idle_prompt</c>, <c>auth_success</c>, quatre <c>elicitation_*</c>, <c>agent_needs_input</c>,
+    /// <c>agent_completed</c>, trois <c>quota_auto_resume_*</c>). Chronos les réduisait TOUS à un seul
+    /// état : une authentification réussie et une reprise de quota fabriquaient donc une attente. Seuls
+    /// les TROIS types qui sont de véritables DEMANDES passent désormais le filtre.</para>
+    ///
+    /// <para><c>permission_prompt</c> est volontairement ABSENT du matcher : <c>PermissionRequest</c> est
+    /// le signal dédié, exact et immédiat, et deux chemins pour un même fait rendraient la source
+    /// illisible. <c>idle_prompt</c> est une alerte d'ABSENCE : au mieux un indice sur l'utilisateur,
+    /// jamais une vérité sur ce que fait la session.</para>
+    ///
+    /// <para><b>Pourquoi ce matcher-là est sûr.</b> Il ne contient que des lettres, des tirets bas et des
+    /// barres verticales : il est donc évalué comme une LISTE EXACTE, et non comme une expression
+    /// régulière NON ANCRÉE. C'est exactement le piège documenté (<c>Edit.*</c> attrape aussi
+    /// <c>NotebookEdit</c>) — on n'y entre pas.</para>
+    /// </summary>
+    public static readonly EvenementCable[] Cablage =
+    {
+        new("SessionStart",      null, "la session démarre → en cours"),
+        new("UserPromptSubmit",  null, "un message est envoyé → en cours"),
+        new("Stop",              null, "le tour se termine → tour fini"),
+        new("SessionEnd",        null, "fin de session → le fichier d'état est supprimé"),
+        new("PermissionRequest", null, "une permission est DEMANDÉE → à toi (EVT-01)"),
+        new("Notification",      "agent_needs_input|elicitation_dialog|elicitation_url_dialog",
+                                 "les TROIS types du bus qui sont de vraies demandes → à toi (EVT-02)"),
+    };
+
+    /// <summary>Les noms des événements câblés. CONSERVÉ (le diagnostic et plusieurs tests le lisent)
+    /// mais DÉRIVÉ du câblage : une seule source de vérité, jamais deux listes à tenir d'accord.</summary>
+    public static readonly string[] Events = Cablage.Select(c => c.Evenement).ToArray();
 
     private readonly string _settingsPath;
 
@@ -82,7 +118,7 @@ public sealed class SessionHookInstaller
     // --- Cœurs PURS testables ---
 
     /// <summary>
-    /// Amène l'arbre <paramref name="root"/> à l'ÉTAT DÉSIRÉ pour les 5 événements de Chronos :
+    /// Amène l'arbre <paramref name="root"/> à l'ÉTAT DÉSIRÉ du <see cref="Cablage"/> de Chronos :
     /// retirer-puis-ajouter INCONDITIONNEL. Idempotent par construction — il ne dépend d'aucun prédicat
     /// de présence exact, donc il ne peut plus empiler (cause du cumul de 25 groupes).
     /// <paramref name="wanted"/> == false ⇒ ZÉRO groupe Chronos (désinstallation / purge).
@@ -90,6 +126,27 @@ public sealed class SessionHookInstaller
     /// et leurs champs inconnus sont préservés (mutation en place, aucun reparentage de JsonNode).
     /// </summary>
     public static void ApplyHooks(JsonObject root, string exePath, bool wanted)
+        => ApplyHooks(root, exePath, wanted, Cablage);
+
+    /// <summary>
+    /// Surcharge à câblage INJECTÉ : elle existe pour que la validation (liste blanche, support du
+    /// matcher) soit prouvable sans jamais écrire un nom douteux dans le câblage réel.
+    ///
+    /// <para><b>La purge est LARGE, l'installation reste CIBLÉE.</b> Jusqu'ici seuls les événements
+    /// câblés étaient parcourus : un groupe Chronos posé sur un événement qu'on cesse de câbler aurait
+    /// survécu pour toujours, invisible. On balaie donc TOUTES les clés de <c>hooks</c>. Deux prudences
+    /// envers les autres outils : une clé dont la valeur n'est PAS un tableau est ignorée sans être
+    /// écrite, et une clé dont le tableau était DÉJÀ vide à l'entrée n'est jamais retirée — seules les
+    /// clés dont on a effectivement retiré un groupe à nous peuvent disparaître.</para>
+    ///
+    /// <para><b>La validation précède toute mutation.</b> Un nom absent de
+    /// <see cref="CatalogueEvenementsHooks"/> produirait un hook MORT et MUET (le sort d'un nom inconnu
+    /// n'est pas documenté). Un matcher posé sur un événement qui n'en accepte pas est silencieusement
+    /// ignoré : le groupe ne ferait alors pas ce qu'il annonce. Dans les deux cas, on n'écrit RIEN pour
+    /// cette entrée — une configuration morte ne s'installe pas.</para>
+    /// </summary>
+    public static void ApplyHooks(JsonObject root, string exePath, bool wanted,
+                                  IReadOnlyList<EvenementCable> cablage)
     {
         if (root["hooks"] is not JsonObject hooks)
         {
@@ -98,40 +155,56 @@ public sealed class SessionHookInstaller
             root["hooks"] = hooks;
         }
 
-        foreach (var ev in Events)
+        // 1) PURGE LARGE. On fige d'abord les clés : on ne peut pas retirer une clé d'un JsonObject
+        //    pendant qu'on l'énumère.
+        var purgees = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var cle in hooks.Select(kv => kv.Key).ToList())
         {
-            if (hooks[ev] is not JsonArray arr)
-            {
-                if (!wanted) continue;
-                arr = new JsonArray();
-                hooks[ev] = arr;                 // réassigner la MÊME instance ne lève pas
-            }
+            if (hooks[cle] is not JsonArray arr) continue;   // valeur non-tableau (tiers mal formé) : intouchée
 
             // Parcours DESCENDANT : les indices restants restent valides, aucun reparentage.
             for (int i = arr.Count - 1; i >= 0; i--)
                 if (ClaudeSettingsJson.IsChronosGroup(arr[i], ClaudeSettingsJson.HookMarker))
-                    arr.RemoveAt(i);
-
-            if (wanted)
-                arr.Add(new JsonObject
                 {
-                    ["hooks"] = new JsonArray(new JsonObject
-                    {
-                        ["type"] = "command",
-                        ["command"] = HookCommand(exePath, ev),   // slashes avant : leçon terrain, conservée
-                        ["timeout"] = 10,
-                    }),
-                });
-
-            if (arr.Count == 0) hooks.Remove(ev);   // événement devenu vide → retirer la clé
+                    arr.RemoveAt(i);
+                    purgees.Add(cle);
+                }
         }
+
+        // 2) INSTALLATION CIBLÉE, validée AVANT toute mutation.
+        if (wanted)
+            foreach (var c in cablage)
+            {
+                if (!CatalogueEvenementsHooks.EstConnu(c.Evenement)) continue;
+                if (c.Matcher is not null && !CatalogueEvenementsHooks.AccepteUnMatcher(c.Evenement)) continue;
+
+                if (hooks[c.Evenement] is not JsonArray arr)
+                {
+                    arr = new JsonArray();
+                    hooks[c.Evenement] = arr;    // réassigner la MÊME instance ne lève pas
+                }
+
+                var groupe = new JsonObject();
+                if (c.Matcher is not null) groupe["matcher"] = c.Matcher;   // clé ABSENTE quand il n'y en a pas
+                groupe["hooks"] = new JsonArray(new JsonObject
+                {
+                    ["type"] = "command",
+                    ["command"] = HookCommand(exePath, c.Evenement),   // slashes avant : leçon terrain, conservée
+                    ["timeout"] = 10,
+                });
+                arr.Add(groupe);
+            }
+
+        // 3) Les clés QU'ON A PURGÉES et devenues vides disparaissent ; celles des autres, jamais.
+        foreach (var cle in purgees)
+            if (hooks[cle] is JsonArray vide && vide.Count == 0) hooks.Remove(cle);
 
         if (hooks.Count == 0) root.Remove("hooks");
     }
 
     /// <summary>
-    /// Pose les 5 hooks de CET exe. Renvoie <c>null</c> — « NE RIEN ÉCRIRE » — si le JSON fourni est
-    /// inexploitable.
+    /// Pose les hooks du <see cref="Cablage"/> pour CET exe. Renvoie <c>null</c> — « NE RIEN ÉCRIRE » —
+    /// si le JSON fourni est inexploitable.
     /// </summary>
     public static string? TransformForInstall(string? settingsJson, string exePath)
     {

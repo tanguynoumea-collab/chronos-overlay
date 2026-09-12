@@ -54,9 +54,10 @@ public class ClaudeSettingsReconcilerTests
 
     // --- Cœur PUR : convergence sur la fixture de l'état réel (PUR-03) ---
 
-    /// <summary>PUR-03 / critère de succès 3 : 25 groupes Chronos deviennent 5, sans intervention manuelle.</summary>
+    /// <summary>PUR-03 / critère de succès 3 : les 25 groupes Chronos deviennent UN SEUL par événement câblé,
+    /// sans intervention manuelle. Le 25 d'entrée reste un littéral : c'est un fait figé du 2026-09-09.</summary>
     [Fact]
-    public void Purge_la_fixture_reelle_de_25_a_5_hooks_Chronos()
+    public void Purge_la_fixture_reelle_de_25_groupes_a_un_seul_par_evenement_cable()
     {
         var avant = FixturePollue();
         Assert.Equal(25, CompteHooks(avant, ClaudeSettingsJson.HookMarker));
@@ -64,7 +65,7 @@ public class ClaudeSettingsReconcilerTests
         var apres = ClaudeSettingsReconciler.ReconcileJson(avant, Exe, hooksWanted: true);
 
         Assert.NotNull(apres);
-        Assert.Equal(5, CompteHooks(apres!, ClaudeSettingsJson.HookMarker));
+        Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(apres!, ClaudeSettingsJson.HookMarker));
 
         // Un groupe par événement, pointant sur l'exe courant (slashes avant).
         var hooks = (Racine(apres!)["hooks"] as JsonObject)!;
@@ -250,7 +251,7 @@ public class ClaudeSettingsReconcilerTests
 
             // 1re passe : écriture réelle + UNE sauvegarde identique octet pour octet à l'original.
             Assert.True(reconciler.Reconcile(hooksWanted: true));
-            Assert.Equal(5, CompteHooks(File.ReadAllText(settings), ClaudeSettingsJson.HookMarker));
+            Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(File.ReadAllText(settings), ClaudeSettingsJson.HookMarker));
 
             var sauvegardes = Directory.GetFiles(backups, "claude-settings-*.json");
             Assert.Single(sauvegardes);
