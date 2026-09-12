@@ -155,7 +155,7 @@ automatiquement chaque changement ultérieur, sans retouche et sans jamais figer
 22-03 se disputent `DiagnosticService.cs`, la propriété exclusive des fichiers impose donc l'ordre)
 
 Plans:
-- [ ] 22-01-PLAN.md — OBS-01 (1/2) : le moniteur devient inspectable (ce qu'il masque, par quel filtre) et sa mise en forme devient partageable
+- [x] 22-01-PLAN.md — OBS-01 (1/2) : le moniteur devient inspectable (ce qu'il masque, par quel filtre) et sa mise en forme devient partageable
 - [ ] 22-02-PLAN.md — OBS-01 (2/2) : partage d'instance — le rapport interroge le moniteur du conteneur, nomme les masquages, deux gardes de non-retour falsifiables
 - [ ] 22-03-PLAN.md — OBS-02 : des fichiers d'état choisis par pertinence au lieu de l'ordre alphabétique, et la carte de vérification de la phase
 
@@ -262,7 +262,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
-| 22. Un instrument de mesure qui ne ment plus | 0/3 | Planned | - |
+| 22. Un instrument de mesure qui ne ment plus | 1/3 | In Progress|  |
 | 23. Un magasin qui ne croît plus et n'oublie plus | 0/? | Not started | - |
 | 24. L'arbitrage par fraîcheur | 0/? | Not started | - |
 | 25. Le contrat d'événements refondé | 0/? | Not started | - |

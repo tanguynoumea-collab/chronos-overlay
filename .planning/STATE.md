@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: verifying
-stopped_at: Completed 21-04-PLAN.md
-last_updated: "2026-09-12T15:15:54.364Z"
+status: executing
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-09-12T15:59:18.989Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 7
+  completed_plans: 5
   percent: 17
 ---
 
@@ -22,21 +22,21 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** Phase 21 close (SRC-01/02/03) — prochaine : Phase 22, OBS (l'instrument de mesure)
+**Current focus:** Phase 22 — Un instrument de mesure qui ne ment plus
 
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: 21 (Perimetre - le widget ne parle que de Claude Code) — COMPLETE, en attente de verification
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 22 (Un instrument de mesure qui ne ment plus) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-09-12
 
 Progress: [█░░░░░░░░░] 17%  (1 phase sur 6 — phase 21 close, 4 plans sur 4)
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 4
+- Total plans completed (v1.6): 5
 
 ## Milestone v1.5 (clos)
 
@@ -166,6 +166,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 21 P02 | 12min | 2 tasks | 11 files |
 | Phase 21 P03 | 8min | 3 tasks | 18 files |
 | Phase 21 P04 | 9min | 3 tasks | 5 files |
+| Phase 22 P01 | 6 min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -381,6 +382,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 21]: [21-04] Purger un prefixe et expirer une entree sont deux gestes DISTINCTS : PurgerPrefixe n'applique AUCUN filtre de TTL, et un test verrouille qu'une entree de 7 h non prefixee SURVIT a la purge (Load continue de ne pas la rendre). Les confondre ferait disparaitre, a l'occasion d'un nettoyage, des archives que l'utilisateur n'a jamais demande de retirer. Le TTL de 6 h reste : c'est TRT-04, phase 26.
 - [Phase 21]: [21-04] Le nombre rendu est une OBSERVATION et non une intention (return ecrit ? retirees : 0) : une ecriture en echec rend 0, parce que rien n'a ete retire. Et rien a retirer => le fichier n'est PAS reecrit, date de derniere ecriture comprise.
 - [Phase 21]: [21-04] Porte de phase franchie : 719/719 en DEUX executions consecutives, 5 gardes nommees vertes, recul 752 -> 719 reconcilie a l'unite apres CHAQUE tache. Precision mesuree : le bilan compte des CAS (49) et non des methodes (41) — DesktopUiaSessionSourceTests portait 28 methodes pour 36 cas (3 [Theory], 11 [InlineData]).
+- [Phase 22]: SessionMonitor.Read devient une pure projection d'Inspecter — Une seule implementation des filtres (archivage, traite) subsiste : aucun consommateur ne peut decrire un systeme different de celui qui tourne. C'est la condition structurelle des phases 23 a 26.
+- [Phase 22]: Un fichier de hook ecarte pour anciennete est compte a part, il n'est pas masque — Une session dont le signal a expire n'est pas cachee, elle est inconnue. Confondre les deux effacait le fait qui explique l'ecart entre 54 fichiers sur disque et 1 ligne a l'ecran.
+- [Phase 22]: OBS-01 reste Pending apres 22-01 — L'exigence est partagee avec le plan 22-02, qui porte le cablage du diagnostic. La cocher ici affirmerait une capacite qui n'existe pas encore.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -419,6 +423,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 - **Prochaine action v1.6 : `/gsd:plan-phase 22`** (OBS — l'instrument de mesure : le diagnostic partage
   l'instance du moniteur du widget au lieu d'en reconstruire un nu).
+
 - ~~Prochaine action v1.6 : `/gsd:plan-phase 21`~~ (fait, phase 21 close : SRC-01, SRC-02, SRC-03).
 - **A faire par l'utilisateur, hors GSD — NOUVEAU (phase 21)** : au prochain lancement VOLONTAIRE de
   l'overlay, constater que `%APPDATA%\Chronos\archived.json` passe de **84 octets** a `{}` (2 octets).
@@ -426,6 +431,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
   8 styles x 9 themes, style Pastilles sans separateur orphelin ; et apres quelques heures d'usage, plus
   aucune ligne prefixee `desktop:`). Protocole complet sous « A VERIFIER PAR L'UTILISATEUR » dans
   `21-04-SUMMARY.md` et `21-VALIDATION.md`. Ne bloque pas la phase 22.
+
 - ~~Prochaine action v1.5 : `/gsd:plan-phase 20`~~ (fait, milestone v1.5 clos).
 - **A faire par l'utilisateur, hors GSD — NOUVEAU** : constater la bascule « 10 % » -> « indisponible +
   invitation » en lancant la version du DEPOT. Protocole complet sous « A VERIFIER PAR L'UTILISATEUR »
@@ -467,7 +473,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T15:15:45.609Z
-Stopped at: Completed 21-04-PLAN.md
+Last session: 2026-09-12T15:59:09.759Z
+Stopped at: Completed 22-01-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
