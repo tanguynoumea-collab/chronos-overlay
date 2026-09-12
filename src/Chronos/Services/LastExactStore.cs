@@ -105,8 +105,19 @@ public sealed class LastExactStore
         return five is null && seven is null ? null : new LastExactWindows(five, seven);
     }
 
-    /// <summary>SQUELETTE (étape RED) — implémenté dans le commit suivant.</summary>
-    public bool UnExactADejaEteObtenu() => throw new NotImplementedException();
+    /// <summary>
+    /// EXA-05 — un relevé exact a-t-il DÉJÀ été obtenu et mémorisé, au moins une fois ? Distinct de
+    /// <see cref="Load"/>, qui rend null aussi bien pour « jamais rien vu » que pour « quelque chose a
+    /// été vu, mais sa fenêtre a roulé depuis ». Les deux cas ne se traitent PAS pareil : le premier
+    /// appelle une invitation à se connecter, le second non — l'utilisateur EST connecté, sa fenêtre a
+    /// simplement tourné. Lui crier « connecte-toi » serait une fausse alerte.
+    ///
+    /// Aucune évolution de schéma : <see cref="SchemaVersion"/> reste 1 (trois fixtures épinglent
+    /// "version":1 et "version":999). C'est une LECTURE de plus, pas un champ de plus.
+    /// Tolérant par construction : s'appuie sur LireBrut, qui ne lève jamais.
+    /// </summary>
+    public bool UnExactADejaEteObtenu()
+        => LireBrut() is { } p && (p.FiveHour is not null || p.SevenDay is not null);
 
     /// <summary>
     /// Lecture brute du fichier, sans aucune garde de validité temporelle. Tolérante : toute
@@ -130,14 +141,16 @@ public sealed class LastExactStore
     }
 
     /// <summary>
-    /// Extrait l'entrée persistable d'une fenêtre. Seule une fenêtre exacte porteuse d'un
-    /// pourcentage ET d'un instant de reset est mémorisable : sans reset on ne saurait ni
-    /// détecter que la fenêtre a été remise à zéro, ni recalculer sa géométrie — on servirait
-    /// alors un chiffre invérifiable.
+    /// Extrait l'entrée persistable d'une fenêtre. Trois conditions, pas deux : exacte, porteuse d'un
+    /// pourcentage, d'un instant de reset ET d'un instant de CAPTURE. Le troisième est l'ajout de la
+    /// phase 19 : un relevé sans instant de capture est définitivement incertifiable — ni son âge ni la
+    /// question « de l'activité depuis ? » ne peuvent lui être posés. Le persister reviendrait à graver
+    /// sur disque un chiffre que la doctrine devra rejeter à chaque lecture.
     /// </summary>
     private static Entry? Convertir(WindowState w)
-        => w.Reliability == SourceReliability.Exact && w.Utilization is { } u && w.ResetsAt is { } r
-            ? new Entry { Utilization = u, ResetsAt = r, CapturedAt = w.CapturedAt }
+        => w.Reliability == SourceReliability.Exact && w.Utilization is { } u
+           && w.ResetsAt is { } r && w.CapturedAt is { } c
+            ? new Entry { Utilization = u, ResetsAt = r, CapturedAt = c }
             : null;
 
     /// <summary>
