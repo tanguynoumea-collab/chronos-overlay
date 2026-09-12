@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -11,11 +11,17 @@ namespace Chronos.Services;
 /// (ajout NET-01) et le purge (réapparition NET-03) ; le <see cref="SessionMonitor"/> masque les
 /// sessions encore présentes.
 ///
-/// Calqué sur <see cref="ArchiveStore"/> (mêmes patterns : écriture atomique tmp+move, lecture tolérante
-/// via <see cref="JsonDocument"/>, chemins %APPDATA%) MAIS avec une sémantique DISTINCTE :
-///   • archivé (<see cref="ArchiveStore"/>) = PERMANENT, ne réapparaît jamais (NET-04) ;
-///   • traité (ce magasin) = RÉVERSIBLE via <see cref="Remove"/> (la session réapparaît sur un nouvel
-///     épisode d'attente, NET-03).
+/// Les deux magasins jumeaux se distinguent désormais PAR LEUR CODE autant que par leur sémantique : ils
+/// ne partagent plus que l'écriture atomique tmp+move, la lecture tolérante via <see cref="JsonDocument"/>
+/// et les chemins %APPDATA%. Depuis TRT-04, aucune durée de vie n'est commune :
+///   • archivé (<see cref="ArchiveStore"/>) = PERMANENT. Ce magasin-là ne borne plus RIEN et ne
+///     réapparaît jamais (NET-04) ; son seul retrait est un geste, jamais une horloge ;
+///   • traité (ce magasin) = RÉVERSIBLE via <see cref="Remove"/> (NET-03) : il dure tant que la session
+///     ne redemande rien — et c'est la SEULE chose qui le défait.
+/// La rétention du fichier décrite ci-dessous n'est pas un délai d'affichage mais une borne de
+/// croissance : choisie supérieure au seuil au-delà duquel le moniteur cesse de lire une session, elle
+/// ne peut pas, PAR CONSTRUCTION, faire réapparaître une session encore lisible. C'est cela qui rend le
+/// libellé du menu exact.
 ///
 /// L'horloge est INJECTÉE, jamais lue au système : un filtre de durée adossé à l'heure de la machine
 /// rend ses tests verts le jour où on les écrit et rouges six heures plus tard, sans qu'une ligne de

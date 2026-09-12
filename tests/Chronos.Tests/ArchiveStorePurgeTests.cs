@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using Chronos.Services;
@@ -56,30 +56,35 @@ public class ArchiveStorePurgeTests
     public void Une_session_Claude_Code_archivee_survit_intacte()
     {
         var f = TempFichier();
-        var recent = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var recent = T.ToUnixTimeMilliseconds();
         File.WriteAllText(f, $$"""{"e465420e-83e0-428f-97f1-f0174c0848fc":{{recent}},"desktop:foreground:code":1783867137990}""");
 
-        Assert.Equal(1, new ArchiveStore(f).PurgerPrefixe("desktop:"));
+        Assert.Equal(1, new ArchiveStore(f, new FakeClock(T)).PurgerPrefixe("desktop:"));
 
         using var doc = JsonDocument.Parse(File.ReadAllText(f));
         Assert.Equal(recent, doc.RootElement.GetProperty("e465420e-83e0-428f-97f1-f0174c0848fc").GetInt64());
         Assert.False(doc.RootElement.TryGetProperty("desktop:foreground:code", out _));
-        Assert.Contains("e465420e-83e0-428f-97f1-f0174c0848fc", new ArchiveStore(f).Load());
+        Assert.Contains("e465420e-83e0-428f-97f1-f0174c0848fc", new ArchiveStore(f, new FakeClock(T)).Load());
     }
 
+    /// <summary>
+    /// Purger un préfixe et expirer une entrée étaient deux gestes différents ; depuis TRT-04 il n'en
+    /// reste plus qu'un, et c'est un GESTE. La purge ciblée ne touche pas l'entrée d'à côté, et le temps
+    /// qui passe ne la touche pas davantage : elle reste LISIBLE, sept heures après comme le premier jour.
+    /// </summary>
     [Fact]
-    public void Purger_n_est_pas_expirer_une_entree_vieille_reste_dans_le_fichier()
+    public void Purger_n_est_pas_expirer_et_une_entree_vieille_reste_lisible()
     {
         var f = TempFichier();
-        var vieux = DateTimeOffset.UtcNow.AddHours(-7).ToUnixTimeMilliseconds();   // au-delà du TTL de 6 h
+        var vieux = T.AddHours(-7).ToUnixTimeMilliseconds();   // bien au-delà de l'ancienne durée de vie
         File.WriteAllText(f, $$"""{"une-vieille-session":{{vieux}},"desktop:session:X":1783867137990}""");
 
-        Assert.Equal(1, new ArchiveStore(f).PurgerPrefixe("desktop:"));
+        Assert.Equal(1, new ArchiveStore(f, new FakeClock(T)).PurgerPrefixe("desktop:"));
 
         using var doc = JsonDocument.Parse(File.ReadAllText(f));
         Assert.True(doc.RootElement.TryGetProperty("une-vieille-session", out var v));
         Assert.Equal(vieux, v.GetInt64());                              // la purge ne l'a PAS touchée…
-        Assert.DoesNotContain("une-vieille-session", new ArchiveStore(f).Load());  // …et Load ne la rend pas
+        Assert.Contains("une-vieille-session", new ArchiveStore(f, new FakeClock(T)).Load());  // …et Load la rend
     }
 
     [Fact]
