@@ -21,7 +21,7 @@ validated: (à mesurer)
 | **Full suite command** | `dotnet test Chronos.sln -c Debug --nologo -v q` |
 | **Quick run (arbitrage)** | `… --filter "FullyQualifiedName~Arbitrage\|FullyQualifiedName~Inspection\|FullyQualifiedName~Sessions\|FullyQualifiedName~Diagnostic\|FullyQualifiedName~Affichage\|FullyQualifiedName~GardesPerimetre"` |
 | **Baseline d'entrée de phase** | **763 tests / 0 échec / ~4 s** (fin de phase 23) |
-| **Cible de fin de phase** | **0 échec, aucun test supprimé**, total **> 763** — environ **+20** attendus (≈ 9 en 24-01 T1, ≈ 8 en 24-01 T2, 2 en 24-01 T3, ≈ 3 en 24-02). Chiffre **INDICATIF** : le critère est « 0 échec + aucune suppression », pas un total. |
+| **Cible de fin de phase** | **0 échec, aucun test supprimé**, total **> 763** — environ **+25** attendus (≈ 9 en 24-01 T1, ≈ 9 en 24-01 T2 *(avec la permutation rendue probante)*, 2 en 24-01 T3, **6** en 24-02 — la `[Theory]` `L_ecart_d_age_se_dit_en_distance_pas_en_instant` compte **4** cas xUnit, plus 2 `[Fact]`) → total attendu **≈ 788**. Chiffre **INDICATIF** : le critère est « 0 échec + aucune suppression », pas un total. |
 | **Total mesuré après 24-01** | (à mesurer) |
 | **Total mesuré après 24-02** | (à mesurer) |
 | **Deux exécutions consécutives** | (à mesurer) |
@@ -40,7 +40,7 @@ Un total inférieur à 763 doit être expliqué **nominativement**, jamais absor
 | # | Critère | Preuve nommée | Résultat mesuré |
 |---|---------|---------------|-----------------|
 | 1 | **Le cas mesuré ne se reproduit plus** — un transcript de 10 s bat un hook de 7 h ; les trois inversions du relevé disparaissent (FUS-01) | `InspectionSessionsTests.Un_hook_Working_de_25_min_ne_rend_plus_un_transcript_frais_inconnu`, `…Un_hook_WaitingTurn_de_7_h_ne_bat_plus_un_transcript_de_10_s`, `…Un_hook_WaitingAttention_de_7_h_ne_bat_plus_un_transcript_de_10_s` | (à mesurer) |
-| 2 | **Le résultat ne dépend plus de l'ordre** — permuter l'ordre d'enregistrement des sources ne change pas un seul état affiché (FUS-01) | `ArbitrageSessionsTests.Permuter_l_ordre_des_signaux_ne_change_pas_un_seul_etat_ni_un_seul_desaccord` (**720** permutations, `Assert.Single(distincts)`) + `InspectionSessionsTests.Permuter_l_ordre_rendu_par_la_source_ne_change_pas_l_affichage` (**6** permutations) | (à mesurer) |
+| 2 | **Le résultat ne dépend plus de l'ordre** — permuter l'ordre d'enregistrement des sources ne change pas un seul état affiché (FUS-01) | **Le critère au sens strict est porté par** `ArbitrageSessionsTests.Permuter_l_ordre_des_signaux_ne_change_pas_un_seul_etat_ni_un_seul_desaccord` (**720** permutations, `Assert.Single(distincts)` ; le cas d'égalité d'âge casserait toute implémentation reposant sur un tri stable ou sur l'ordre de regroupement). `InspectionSessionsTests.Permuter_l_ordre_rendu_par_la_source_ne_change_pas_l_affichage` (**6** permutations) prouve, lui, l'ordre rendu **par une source** — corpus ex aequo imposé pour qu'il soit rouge avant le correctif. | (à mesurer) |
 | 3 | **Les désaccords sont lisibles** — le diagnostic nomme la source retenue, la source écartée et l'écart d'âge (FUS-02) | `DiagnosticServiceTests.Un_desaccord_nomme_la_source_retenue_la_source_ecartee_et_l_ecart_d_age` + `…Sans_contradiction_le_rapport_annonce_zero_desaccord_et_le_dit` | (à mesurer) |
 | 4 | **La précision ne bat pas la fraîcheur** — un signal plus spécifique mais plus ancien n'écrase jamais un signal plus récent, et l'égalité d'âge est tranchée par une règle explicite et testée | `ArbitrageSessionsTests.Un_permission_prompt_plus_ancien_ne_bat_pas_un_signal_plus_recent` + `…A_age_egal_la_source_la_plus_specifique_tranche_et_l_ordre_inverse_donne_le_meme_resultat` | (à mesurer) |
 
@@ -58,6 +58,13 @@ Vérité terrain : le modèle travaille, transcript écrit il y a 10 secondes.
 
 **Trois inversions étaient rouges, pas cinq.** Écrire le contraire serait exactement le genre d'affirmation
 non observée que ce milestone bannit — la carte s'applique à elle-même la doctrine qu'elle vérifie.
+
+**Un quatrième test rouge-avant, hors tableau :**
+`InspectionSessionsTests.Permuter_l_ordre_rendu_par_la_source_ne_change_pas_l_affichage`. Son corpus impose
+deux sessions **ex aequo** sur (urgence, horodatage) : avant le correctif, une entrée indexée par identifiant
+rend l'ordre d'insertion et le tri de `Ordonner` est stable, donc les deux sessions sortent dans l'ordre où
+la source les a rendues — le test est **rouge**. Avec un corpus aux couples tous distincts il aurait été vert
+avant comme après : une garde muette. Le corpus n'est donc pas un détail, c'est la preuve.
 
 ## Le cas hérité de la phase 23 : un fragment n'est pas un vieux signal
 
@@ -96,7 +103,7 @@ Seules les preuves structurelles les distinguent :
 grep -cF "byId["                       src/Chronos/Services/SessionMonitor.cs      # attendu : 0
 grep -cF "ArbitrageSessions.Trancher(" src/Chronos/Services/SessionMonitor.cs      # attendu : 1
 grep -cF "DateTimeOffset.UtcNow"       src/Chronos/Services/ArbitrageSessions.cs   # attendu : 0
-grep -cF "AffichageSessions.Urgence"   src/Chronos/Services/ArbitrageSessions.cs   # attendu : 1
+grep -cF "AffichageSessions.Urgence("  src/Chronos/Services/ArbitrageSessions.cs   # attendu : 2
 grep -cF "lecture.Desaccords"          src/Chronos/Services/DiagnosticService.cs   # attendu : 3
 grep -cF "new SessionMonitor"          src/Chronos/Services/DiagnosticService.cs   # attendu : 0
 grep -cF "?? new "                     src/Chronos/Services/DiagnosticService.cs   # attendu : 2
@@ -108,7 +115,7 @@ Résultats mesurés : (à mesurer).
 
 | Mutation | Test attendu en échec | Résultat mesuré | Révocation prouvée |
 |---|---|---|---|
-| `ArbitrageSessions.Trancher(` → `ArbitrageSessions.TrancherMUTANT(` dans `SessionMonitor.cs` (via alias temporaire, pour que le dépôt reste compilable) | `GardesPerimetreTests.Le_moniteur_n_arbitre_plus_par_ordre_d_insertion` | (à mesurer) | (à mesurer) — `git diff --stat -- src/Chronos/Services/` vide ET `grep -rcF "MUTANT"` → 0 |
+| `ArbitrageSessions.Trancher(` → `ArbitrageSessions.TrancherMUTANT(` dans `SessionMonitor.cs` (via alias temporaire, pour que le dépôt reste compilable) | **DEUX** tests : `GardesPerimetreTests.Le_moniteur_n_arbitre_plus_par_ordre_d_insertion` (l'appel a changé de nom) **et** `GardesPerimetreTests.L_arbitrage_ne_connait_ni_horloge_ni_magasin_ni_chemin` (l'alias public statique ajoute une seconde porte d'entrée et casse son `Assert.Single(declarees)`). Double falsification attendue, pas une surprise. | (à mesurer) | (à mesurer) — `git diff --stat -- src/Chronos/Services/` **vide** ET `grep -rlF "MUTANT" --include=*.cs src/Chronos tests/Chronos.Tests \| wc -l` → **0** (sans `--include=*.cs`, le balayage traverse `bin/` et `obj/` où le nom muté survit dans les assemblies) |
 
 Rappel de méthode (précédents 23-01 et 23-02) : une mutation qui ne **compile pas** fait échouer *toute*
 l'invocation `dotnet test` et ne dit **rien** de la garde. On la joue donc par alias, et on révoque alias
