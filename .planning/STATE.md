@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: executing
-stopped_at: Complete 25-03-PLAN.md
-last_updated: "2026-09-12T20:34:16.272Z"
+status: verifying
+stopped_at: Complete 25-04-PLAN.md — phase 25 terminee, 862 tests verts
+last_updated: "2026-09-12T20:52:56.562Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 87
 ---
 
@@ -29,7 +29,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 25 (Le contrat d'événements refondé) — EXECUTING
 Plan: 4 of 4 (vagues 1 et 2 livrées)
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
 Progress: [█████████░] 87%  (4 phases sur 6 — phases 21 à 24 closes ; 14 plans sur 15 livrés)
@@ -182,6 +182,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 25 P01 | 50 min | 3 tasks | 6 files |
 | Phase 25 P02 | 55 min | 3 tasks | 8 files |
 | Phase 25 P03 | 50 min | 3 tasks | 9 files |
+| Phase 25 P04 | ~45 min | 2 tasks | 3 files |
 
 ### Decisions
 
@@ -429,6 +430,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 25]: EVT-04 livre comme une DEDUCTION qui se dit deduction : aucun des 33 evenements ne couvre l'interruption au clavier, seul le silence des battements est observable
 - [Phase 25]: Garde de masse CHIFFREE : 20 sessions sur 54 visibles basculent ensemble en « a toi ? deduit » (corpus deterministe de 66 etats) - contrepartie de la decision A10
 - [Phase 25]: Le cas d'egalite a la milliseconde (rang source avant rang urgence) est FIGE par un test et NON corrige : diff d'ArbitrageSessions.cs vide
+- [Phase 25]: EVT-05 : docs/hooks-contract.md ecrit (9 sections, 344 lignes) — ce qui n'est PAS garanti y occupe autant de place que ce qui l'est, date 2026-09-12 dans le §5 lui-meme
+- [Phase 25]: La garde de non-derive compare le nom, le matcher ET LE ROLE de chaque ligne au cablage reel : une mutation n'alterant que la 3e colonne fait echouer 1 test, et lui seul
+- [Phase 25]: La divergence SessionTreatmentTracker.IsWaiting / WaitingDeduced est DOCUMENTEE et NON corrigee : diff du tracker VIDE sur toute la phase 25, entree de la phase 26
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -517,7 +521,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T20:34:16.264Z
-Stopped at: Complete 25-03-PLAN.md
+Last session: 2026-09-12T20:52:56.555Z
+Stopped at: Complete 25-04-PLAN.md — phase 25 terminee, 862 tests verts
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
