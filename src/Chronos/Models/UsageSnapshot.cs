@@ -6,10 +6,13 @@ public sealed record UsageSnapshot
     public required WindowState FiveHour { get; init; }
     public required WindowState SevenDay { get; init; }
 
-    /// <summary>LEGACY (phase 19). Horodatage de capture au niveau SNAPSHOT. La vérité de la doctrine est
-    /// désormais PAR FENÊTRE (WindowState.CapturedAt + Provenance) ; ce champ et le IsStale du ViewModel
-    /// qui en dérive ne sont bindés nulle part et sont conservés tels quels pour ne rien casser. La
-    /// phase 20 les retire en bindant la provenance par fenêtre. Ne pas le croire canonique.</summary>
+    /// <summary>Ancienneté de SOURCE : à quand remonte la donnée sous-jacente du snapshot, tous providers
+    /// confondus. Distincte de la fraîcheur PAR FENÊTRE, que portent <c>WindowState.CapturedAt</c> et
+    /// <c>WindowState.Provenance</c> — seule cette dernière fait autorité pour juger un chiffre.
+    ///
+    /// Conservée en phase 20 parce qu'elle est assertée par les tests de plusieurs providers : ce champ
+    /// DIT quelque chose de vrai. Ce qui a été supprimé, c'est la seconde notion de « périmé » que le
+    /// ViewModel en dérivait avec son propre seuil, concurrente de celle de la doctrine.</summary>
     public DateTimeOffset? SourceCapturedAt { get; init; }
 
     /// <summary>EXA-05 — un relevé exact a-t-il déjà été obtenu au moins une fois ? <c>null</c> = non

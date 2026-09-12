@@ -337,6 +337,63 @@ public class GardesDoctrineTests
         SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
     };
 
+    // ==================== EXA-03 (phase 20) : UNE SEULE notion de « périmé » ====================
+
+    /// <summary>
+    /// GARDE DE NON-RETOUR — aucun seuil d'ancienneté ne se recalcule dans les ViewModels de la doctrine.
+    ///
+    /// Avant la phase 20, deux notions de « périmé » coexistaient : celle de la doctrine (dérivée de la
+    /// cadence de la sonde) et un seuil de deux minutes calculé par <c>MainViewModel</c>, bindé nulle part.
+    /// La bonne forme n'était pas d'aligner l'une sur l'autre, c'était de supprimer le calcul concurrent :
+    /// la doctrine seule a l'autorité sur la provenance, le ViewModel la RAPPORTE.
+    ///
+    /// PORTÉE DÉLIBÉRÉMENT RESTREINTE À DEUX FICHIERS. <c>SessionsViewModel</c> compare légitimement des
+    /// durées pour formater l'ancienneté d'une session du widget — sujet distinct de la doctrine d'usage.
+    /// Élargir cette garde au dossier entier la rendrait rouge sur du code correct, donc inexploitable :
+    /// une garde qu'on apprend à ignorer ne garde rien.
+    /// </summary>
+    [Fact]
+    public void Aucun_seuil_d_anciennete_n_est_calcule_dans_les_ViewModels_de_la_doctrine()
+    {
+        var racine = CheminSources();
+
+        var fichiers = new[] { "MainViewModel.cs", "WindowGaugeViewModel.cs" }
+            .Select(n => Path.Combine(racine, "ViewModels", n))
+            .ToList();
+
+        // Une garde qui ne lit rien est muette : on exige que les deux fichiers existent ET aient du corps.
+        foreach (var fichier in fichiers)
+        {
+            Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+            Assert.True(new FileInfo(fichier).Length > 1000,
+                $"{Path.GetFileName(fichier)} est suspicieusement court : la garde ne lit manifestement "
+                + "pas le vrai fichier source.");
+        }
+
+        // Les DEUX sens de la comparaison : « âge > seuil » et « seuil < âge ».
+        var motif = new Regex(@"[<>]=?\s*(System\.)?TimeSpan\.From|TimeSpan\.From\w+\([^)]*\)\s*[<>]=?");
+
+        var infractions = new List<string>();
+
+        foreach (var fichier in fichiers)
+        {
+            var lignes = File.ReadAllLines(fichier);
+            for (var i = 0; i < lignes.Length; i++)
+                if (motif.IsMatch(lignes[i]))
+                    infractions.Add($"{Path.GetFileName(fichier)}:{i + 1} : {lignes[i].Trim()}");
+        }
+
+        Assert.True(infractions.Count == 0,
+            "La limite d'âge d'un relevé appartient à DoctrineFraicheur.LimiteAge : elle est DÉRIVÉE de la "
+            + "cadence de la sonde, et non réglable, parce qu'EXA-02 est une propriété de sûreté et non une "
+            + "préférence. Un second seuil calculé dans un ViewModel recréerait exactement le défaut que ce "
+            + "milestone corrige — le précédent est documenté dans ce dépôt : une source de plafond passée "
+            + "en « Manual » a gelé à vie un chiffre faux, parce que deux autorités se disputaient la même "
+            + "décision. Le ViewModel RAPPORTE ce que la doctrine a statué (WindowState.Provenance → "
+            + "EstDate), il ne le redéduit jamais.\n  "
+            + string.Join("\n  ", infractions));
+    }
+
     /// <summary>Chemin des sources tel qu'injecté par MSBuild (jamais deviné depuis la sortie de build).</summary>
     private static string CheminSources()
         => typeof(GardesDoctrineTests).Assembly

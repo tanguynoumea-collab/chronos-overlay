@@ -30,8 +30,31 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     [ObservableProperty] private SourceReliability _reliability = SourceReliability.Unavailable;
     [ObservableProperty] private bool _estPlancher;                             // DEL-04 — le chiffre est une BORNE
                                                                                 // INFÉRIEURE (« au moins X »), jamais une estimation
+    /// <summary>EXA-03 — « ce chiffre a été relevé il y a un moment ». RAPPORTÉ par la doctrine, jamais
+    /// recalculé : aucune comparaison d'horodatage ne vit dans ce ViewModel, et c'est la garantie
+    /// STRUCTURELLE qu'un second seuil de « périmé » ne peut pas réapparaître à côté de LimiteAge.
+    /// Frais → false. EncoreValide → true ET juste : la doctrine est ALLÉE VÉRIFIER qu'aucune réponse
+    /// assistant n'est survenue depuis la capture. Provenance null (fenêtre née hors doctrine) → false :
+    /// on ne salit pas un chiffre sur lequel la doctrine ne s'est pas prononcée.
+    ///
+    /// Indépendante de <see cref="EstPlancher"/> et COMPOSABLE avec elle : un plancher est aussi daté
+    /// (la doctrine ne peut atteindre sa branche 3 qu'après avoir échoué le laissez-passer d'âge), mais un
+    /// EncoreValide est daté SANS être un plancher — c'est un chiffre PROUVÉ juste.</summary>
+    [ObservableProperty] private bool _estDate;
+
     [ObservableProperty] private string _tokensText = "";                       // « ≈ N M/k tokens » ; vide si masqué (NET-02)
     [ObservableProperty] private bool _hasTokens;                               // vrai SSI TokensDepuisReleve>0 (pilote la visibilité)
+
+    /// <summary>EXA-06 — QUI alimente cette fenêtre, tel que nommé par le producteur lui-même ; <c>null</c>
+    /// si personne ne l'alimente. Volontairement PAS observable : elle n'est bindée nulle part, elle est
+    /// lue par <c>MainViewModel</c> pour composer l'infobulle du relevé.</summary>
+    public SourceUsage? SourceDuReleve { get; private set; }
+
+    /// <summary>EXA-03 — QUAND ce chiffre a été capturé ; <c>null</c> si la source ne le dit pas. Non
+    /// observable pour la même raison que <see cref="SourceDuReleve"/>. Elle est TRANSPORTÉE telle quelle :
+    /// la mettre en mots (« il y a 12 min ») appartient à <c>Chronos.Text.LibelleSource</c>, et la juger
+    /// (« trop vieux ») appartient à la doctrine — jamais à ce ViewModel.</summary>
+    public DateTimeOffset? InstantDuReleve { get; private set; }
 
     // HDR-03 — l'état déclaré par le SERVEUR pour CETTE fenêtre, en texte FR prêt à afficher.
     // Posées et testées ici pour que la phase 20 (EXA-03, distinction visuelle frais / daté /
@@ -72,6 +95,14 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         // propriété porte donc enfin le nom du fait qu'elle décrit — une BORNE INFÉRIEURE — là où
         // l'ancienne marque d'estimation désignait un concept que la phase 19 a supprimé.
         EstPlancher = s.Reliability == SourceReliability.Estimated;
+
+        // EXA-03 — le fait est RECOPIÉ de la doctrine, pas redéduit : aucune soustraction d'horodatage,
+        // aucune constante de durée. La seule limite d'âge du projet vit dans DoctrineFraicheur.LimiteAge.
+        EstDate = s.Provenance is ProvenanceReleve.EncoreValide or ProvenanceReleve.PlancherAvecActivite;
+
+        // EXA-06 — le COUPLE (qui, depuis quand) transporté tel quel jusqu'à l'infobulle.
+        SourceDuReleve = s.Source;
+        InstantDuReleve = s.CapturedAt;
 
         // VIS-05 + DEL-04 : le préfixe est décidé par la PROVENANCE et non par la fiabilité — « ≥ » ne
         // doit apparaître que sur un plancher, jamais sur un exact encore valide (DEL-03), qui est un

@@ -13,7 +13,8 @@ namespace Chronos.Tests;
 /// - RAF-04 : un snapshot poussé HORS thread UI est appliqué via IUiDispatcher.Post EXACTEMENT une fois
 ///   (frontière de thread unique), et les sous-VM reflètent le snapshot ; DataUnavailable = deux fenêtres Unavailable.
 /// - RAF-03 : Interpolate(now) est PUR (recalcule fraction d'arc + compte à rebours) SANS aucun I/O
-///   (GetAsync jamais appelé au tick) ; staleness dérivée de SourceCapturedAt.
+///   (GetAsync jamais appelé au tick) et sans AUCUN jugement d'ancienneté : depuis la phase 20, juger
+///   l'âge d'un relevé appartient à la doctrine seule, le ViewModel se borne à le rapporter.
 /// - FEN-05/06, DEP-02, ROB-03 : ToggleBackground/ToggleAutostart/Recalibrate/Quit pilotent bien les
 ///   collaborateurs (IWindowController/IAutostartService/IRecalibrationPrompt) et le recalibrage recale
 ///   le repli hebdo EN CONSERVANT le badge « estimée » (honnêteté des chiffres).
@@ -181,29 +182,15 @@ public class MainViewModelTests
         Assert.Equal(0, provider.GetCount); // Pitfall 1 : aucune relecture disque au tick d'interpolation
     }
 
-    // --- RAF-03 : staleness dérivée de SourceCapturedAt (> 2 min → périmé) ---
-
-    [Fact]
-    public void IsStale_vrai_quand_la_capture_depasse_deux_minutes()
-    {
-        var vm = NewVm(out _, out _, out _);
-
-        vm.ApplySnapshot(new UsageSnapshot
-        {
-            FiveHour = Readable(WindowKind.FiveHour, Now),
-            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
-            SourceCapturedAt = Now - TimeSpan.FromMinutes(3), // capturé il y a 3 min
-        });
-        Assert.True(vm.IsStale);
-
-        vm.ApplySnapshot(new UsageSnapshot
-        {
-            FiveHour = Readable(WindowKind.FiveHour, Now),
-            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
-            SourceCapturedAt = Now, // frais
-        });
-        Assert.False(vm.IsStale);
-    }
+    // --- EXA-03 : la seconde notion de « périmé » est MORTE ---
+    //
+    // Le test qui vivait ici vérifiait qu'un seuil de DEUX minutes, calculé par ce ViewModel et bindé
+    // nulle part, déclarait périmée une capture de trois minutes. Il ne décrivait plus une exigence mais
+    // une incohérence : la limite d'âge du projet vit dans DoctrineFraicheur, dérivée de la cadence de
+    // la sonde. Il n'a pas été retiré sans remplaçant — il en a TROIS :
+    //   . GardesDoctrineTests.Aucun_seuil_d_anciennete_n_est_calcule_dans_les_ViewModels_de_la_doctrine
+    //   . WindowGaugeViewModelTests.EstDate_est_RAPPORTE_par_la_doctrine_et_jamais_recalcule
+    //   . WindowGaugeViewModelTests.Un_plancher_est_AUSSI_date_et_un_encore_valide_est_date_SANS_etre_plancher
 
     // --- FEN-05 : ToggleBackground bascule l'état ET pilote le controller (arrière-plan / premier plan) ---
 

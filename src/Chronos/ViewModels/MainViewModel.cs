@@ -41,8 +41,6 @@ public sealed partial class MainViewModel : ObservableObject
     public WindowGaugeViewModel SevenDay { get; } = new(TimeSpan.FromDays(7));
 
     [ObservableProperty] private bool _dataUnavailable;
-    [ObservableProperty] private DateTimeOffset? _capturedAt; // staleness pour l'UI Phase 5
-    [ObservableProperty] private bool _isStale;
 
     // Anneau 24 h (JOUR-01/02) : fraction du jour local + resets 5 h projetés sur l'axe des 24 h.
     // Recalculés à chaque Interpolate (rafraîchis chaque seconde). La couleur 24 h réutilisera
@@ -346,7 +344,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         FiveHour.Apply(snap.FiveHour);
         SevenDay.Apply(weekly);
-        CapturedAt = snap.SourceCapturedAt;
         DataUnavailable = snap.FiveHour.Reliability == SourceReliability.Unavailable
                        && snap.SevenDay.Reliability == SourceReliability.Unavailable;
 
@@ -393,7 +390,9 @@ public sealed partial class MainViewModel : ObservableObject
     {
         FiveHour.Interpolate(now);
         SevenDay.Interpolate(now);
-        IsStale = CapturedAt is { } c && (now - c) > TimeSpan.FromMinutes(2);
+        // AUCUN jugement d'ancienneté ici, et c'est gardé par un test de source : la seule limite d'âge du
+        // projet vit dans DoctrineFraicheur.LimiteAge, dérivée de la cadence de la sonde et non réglable.
+        // Ce ViewModel se contente de RAPPORTER ce que la doctrine a déjà statué (FiveHour/SevenDay.EstDate).
 
         // JOUR-01/02 : timeline 24 h. now est UTC → convertir en heure locale pour lire minuit/le jour local.
         // Les angles se calent sur le resets_at 5 h courant (converti local) ; vides si inconnu.

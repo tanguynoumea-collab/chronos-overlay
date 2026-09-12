@@ -40,6 +40,91 @@ public class WindowGaugeViewModelTests
         Assert.True(vm.EstPlancher);               // honnêteté dans l'autre sens
     }
 
+    // --- EXA-03 : « daté » est RAPPORTÉ par la doctrine, jamais redéduit par le ViewModel ---
+
+    /// <summary>Les trois provenances possibles, et l'absence de provenance. Aucun horodatage n'entre
+    /// dans la décision : c'est le fait énoncé par la doctrine qui tranche, et rien d'autre. Une fenêtre
+    /// née HORS doctrine (provenance null : provider nu, magasin, test) n'est PAS déclarée datée — on ne
+    /// salit pas un chiffre sur lequel personne ne s'est prononcé.</summary>
+    [Fact]
+    public void EstDate_est_RAPPORTE_par_la_doctrine_et_jamais_recalcule()
+    {
+        static bool Date(ProvenanceReleve? p)
+        {
+            var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+            vm.Apply(new WindowState
+            {
+                Kind = WindowKind.FiveHour,
+                Reliability = SourceReliability.Exact,
+                Utilization = 0.5,
+                // Horodatage VOLONTAIREMENT très ancien : si ce ViewModel jugeait l'âge lui-même, le cas
+                // « Frais » ci-dessous rendrait true. Il rend false, donc il RAPPORTE.
+                CapturedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                Provenance = p,
+            });
+            return vm.EstDate;
+        }
+
+        Assert.False(Date(ProvenanceReleve.Frais));                 // sous la limite d'âge : rien à signaler
+        Assert.True(Date(ProvenanceReleve.EncoreValide));           // daté… et pourtant juste (DEL-03)
+        Assert.True(Date(ProvenanceReleve.PlancherAvecActivite));   // daté ET dégradé (DEL-04)
+        Assert.False(Date(null));                                   // née hors doctrine : aucun jugement
+    }
+
+    /// <summary>« plancher ⊂ daté » : les deux marques se COMPOSENT, elles ne s'excluent pas. Un
+    /// EncoreValide est daté SANS être un plancher — le griser serait mentir sur une preuve positive :
+    /// la doctrine est allée vérifier qu'aucune réponse assistant n'était survenue depuis la capture.</summary>
+    [Fact]
+    public void Un_plancher_est_AUSSI_date_et_un_encore_valide_est_date_SANS_etre_plancher()
+    {
+        var plancher = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        plancher.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Estimated,
+            Utilization = 0.8,
+            Provenance = ProvenanceReleve.PlancherAvecActivite,
+        });
+        Assert.True(plancher.EstDate);
+        Assert.True(plancher.EstPlancher);
+
+        var encoreValide = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        encoreValide.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.8,
+            Provenance = ProvenanceReleve.EncoreValide,
+        });
+        Assert.True(encoreValide.EstDate);
+        Assert.False(encoreValide.EstPlancher);   // daté ET juste : non-régression d'honnêteté
+    }
+
+    /// <summary>EXA-06 — le couple (qui alimente, depuis quand) est TRANSPORTÉ tel quel, sans mise en
+    /// mots ni jugement : c'est la matière que <c>MainViewModel</c> confiera à <c>LibelleSource</c>.</summary>
+    [Fact]
+    public void Le_couple_source_et_instant_du_releve_est_transporte_tel_quel()
+    {
+        var capture = new DateTimeOffset(2026, 9, 12, 8, 0, 0, TimeSpan.Zero);
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        vm.Apply(new WindowState
+        {
+            Kind = WindowKind.FiveHour,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.5,
+            Source = SourceUsage.SondeEnTetes,
+            CapturedAt = capture,
+        });
+
+        Assert.Equal(SourceUsage.SondeEnTetes, vm.SourceDuReleve);
+        Assert.Equal(capture, vm.InstantDuReleve);
+
+        // Une fenêtre que personne n'alimente ne nomme personne : le couple précédent ne SURVIT pas.
+        vm.Apply(WindowState.Unavailable(WindowKind.FiveHour));
+        Assert.Null(vm.SourceDuReleve);
+        Assert.Null(vm.InstantDuReleve);
+    }
+
     // --- VIS-05 : PercentFormatter pur (honnêteté : null → rien, « ~ » si estimé, arrondi entier) ---
 
     [Fact]
