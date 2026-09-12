@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: executing
-stopped_at: Complete 26-03-PLAN.md
-last_updated: "2026-09-12T22:55:31.125Z"
+status: verifying
+stopped_at: Completed 26-04-PLAN.md
+last_updated: "2026-09-12T23:11:55.640Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
   percent: 84
 ---
 
@@ -29,7 +29,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 26 (« Traité » veut enfin dire quelque chose) — EXECUTING
 Plan: 4 of 4 (vague 1 livrée : 26-01)
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
 Progress: [████████░░] 84%  (5 phases sur 6 — phases 21 à 25 closes ; 16 plans sur 19 livrés)
@@ -188,6 +188,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 26 P01 | 35min | 3 tasks | 7 files |
 | Phase 26 P02 | ~10 min | 2 tasks | 4 files |
 | Phase 26 P03 | ~11 min | 3 tasks | 11 files |
+| Phase 26 P04 | ~30 min | 2 tasks | 3 files |
 
 ### Decisions
 
@@ -444,6 +445,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 26]: TRT-04 (code) : ArchiveStore perd toute duree de vie — ce qui est archive ne revient jamais ; horloge injectee, PurgerPrefixe intact a l'octet pres
 - [Phase 26]: 26-03 : le geste explicite n'ecrit que dans le magasin REVERSIBLE (TreatedStore), jamais dans ArchiveStore - un geste ordinaire ne peut pas devenir destructif
 - [Phase 26]: 26-03 : le libelle du geste de masse vient du ViewModel (ToutTraiterLibelle), jamais du XAML - en dur dans le gabarit, il ne pourrait plus porter le nombre de sessions
+- [Phase 26]: La garde croisee document/code porte sur la chaine EXACTE de la regle, jamais sur des mots qui figurent deja ailleurs : mutation M2 mesuree (le compte de la chaine generique MONTE a 3 et la garde rougit quand meme)
+- [Phase 26]: REQUIREMENTS.md non modifie au plan 26-04 : les 4 TRT etaient deja cochees. TRT-04 l'avait ete en 26-02, une vague avant l'arrivee de son volet UI - consigne comme ecart, pas lisse
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -532,7 +535,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T22:55:31.119Z
-Stopped at: Complete 26-03-PLAN.md
+Last session: 2026-09-12T23:11:55.634Z
+Stopped at: Completed 26-04-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)

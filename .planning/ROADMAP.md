@@ -89,7 +89,7 @@ sur les **8 styles de session** (galerie `--sessions`) et les **9 thèmes**.
 - [x] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables
  (completed 2026-09-12)
 - [x] **Phase 25 : Le contrat d'événements refondé** - `PermissionRequest` au lieu du proxy `Notification`, « réfléchit » observé par battements de cœur, interruption utilisateur couverte, contrat documenté (completed 2026-09-12)
-- [ ] **Phase 26 : « Traité » veut enfin dire quelque chose** - Déduit d'une transition observée sur la même source, persistant au redémarrage, assorti d'un geste explicite et d'un contrat d'archivage unique
+- [x] **Phase 26 : « Traité » veut enfin dire quelque chose** - Déduit d'une transition observée sur la même source, persistant au redémarrage, assorti d'un geste explicite et d'un contrat d'archivage unique (completed 2026-09-12)
 
 ### Phase Details
 
@@ -297,7 +297,7 @@ Plans:
 - [x] 26-01-PLAN.md — TRT-01 + TRT-02 : la transition observée sur la MÊME source, le scénario mesuré des 478 minutes rejoué en rouge, et l'épisode daté par le signal qui survit au redémarrage
 - [x] 26-02-PLAN.md — TRT-04 : le magasin d'archives perd sa durée de vie de six heures et gagne une horloge injectable — ce qui est archivé ne revient jamais
 - [x] 26-03-PLAN.md — TRT-03 (+ volet UI de TRT-04) : le geste explicite et le geste de masse sur les 8 styles et les 9 thèmes, avec des libellés qui disent s'ils reviennent
-- [ ] 26-04-PLAN.md — le §3 du contrat des hooks suit le câblage, une garde croisée document/code le tient, et la carte de validation se clot sur des chiffres mesurés
+- [x] 26-04-PLAN.md — le §3 du contrat des hooks suit le câblage, une garde croisée document/code le tient, et la carte de validation se clot sur des chiffres mesurés
 **UI hint**: yes
 
 ### Progress
@@ -314,7 +314,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 | 23. Un magasin qui ne croît plus et n'oublie plus | 2/2 | Complete   | 2026-09-12 |
 | 24. L'arbitrage par fraîcheur | 2/2 | Complete   | 2026-09-12 |
 | 25. Le contrat d'événements refondé | 4/4 | Complete   | 2026-09-12 |
-| 26. « Traité » veut enfin dire quelque chose | 3/4 | In Progress|  |
+| 26. « Traité » veut enfin dire quelque chose | 4/4 | Complete   | 2026-09-12 |
 
 ### Couverture des exigences
 
