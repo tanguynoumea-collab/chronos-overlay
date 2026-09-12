@@ -193,6 +193,68 @@ public class GardesPerimetreTests
         Assert.Contains("GetRequiredService<SessionMonitor>().Directory", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE NON-RETOUR (FUS-01, phase 24) — le moniteur ne fusionne plus en réaffectant une entrée
+    /// indexée par identifiant, source après source.
+    ///
+    /// <para>Le défaut mesuré le 2026-09-12 n'était pas une faute de frappe mais une classe d'erreur :
+    /// l'ordre du code faisait loi. Étape 1 les transcripts, étape 2 les hooks — donc un signal de 7 heures
+    /// battait un signal de 10 secondes, et « à toi » s'affichait pendant que le modèle travaillait.</para>
+    ///
+    /// <para>Cette garde vaut surtout pour l'AVENIR : les phases 25 et 26 ajoutent des signaux et une notion
+    /// de « traité » adossée à la fraîcheur. Qu'une source redevienne prioritaire par construction un seul
+    /// commit, et les deux phases suivantes reposeraient à nouveau sur un arbitrage faussé, sans rien signaler.</para>
+    /// </summary>
+    [Fact]
+    public void Le_moniteur_n_arbitre_plus_par_ordre_d_insertion()
+    {
+        var fichier = Path.Combine(CheminSources(), "Services", "SessionMonitor.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Une garde qui lirait un fichier vide, ou dont la méthode aurait disparu, serait muette.
+        Assert.Contains("public LectureSessions Inspecter(", texte, StringComparison.Ordinal);
+        Assert.Contains("ArbitrageSessions.Trancher(", texte, StringComparison.Ordinal);
+
+        // L'idiome EXACT de l'écrasement mesuré.
+        Assert.DoesNotContain("byId[", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dictionary<string, SessionSnapshot>", texte, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE DE PURETÉ (FUS-01). L'arbitrage ne compare QUE les instants que les signaux portent. Qu'il
+    /// acquière une horloge, un chemin ou un magasin, et il pourrait « rafraîchir » un signal muet — c'est-à-dire
+    /// présenter comme observé ce qui ne l'a pas été, le seul interdit absolu de ce milestone.
+    /// La réflexion ne lit pas les commentaires : elle lit la surface du type.
+    /// </summary>
+    [Fact]
+    public void L_arbitrage_ne_connait_ni_horloge_ni_magasin_ni_chemin()
+    {
+        var t = typeof(Chronos.Services.ArbitrageSessions);
+
+        Assert.True(t.IsAbstract && t.IsSealed, "ArbitrageSessions doit rester une classe statique");
+
+        var declarees = t.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        var trancher = Assert.Single(declarees);                       // une seule porte d'entrée
+        Assert.Equal("Trancher", trancher.Name);
+        var parametre = Assert.Single(trancher.GetParameters());       // …et un seul argument
+        Assert.Equal(typeof(IEnumerable<Chronos.Services.SignalSession>), parametre.ParameterType);
+
+        // Aucun champ statique ne peut cacher une horloge, un magasin de verdict ou un chemin de dossier.
+        var contrebande = t.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(f => f.FieldType == typeof(Chronos.Services.IClock)
+                     || f.FieldType == typeof(Chronos.Services.TreatedStore)
+                     || f.FieldType == typeof(Chronos.Services.ArchiveStore)
+                     || f.FieldType == typeof(string))
+            .Select(f => f.Name)
+            .ToList();
+
+        Assert.True(contrebande.Count == 0,
+            "L'arbitrage doit rester pur : ni horloge, ni magasin de verdict, ni chemin.\n  "
+            + string.Join("\n  ", contrebande));
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()
