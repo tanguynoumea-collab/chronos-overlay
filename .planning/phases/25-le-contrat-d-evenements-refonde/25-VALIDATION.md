@@ -25,13 +25,13 @@ validated: null
 | **Full suite command** | `dotnet test Chronos.sln -c Debug --nologo -v q` |
 | **Quick run (contrat d'événements)** | `… --filter "FullyQualifiedName~CatalogueEvenementsHooks\|FullyQualifiedName~BattementsCoeur\|FullyQualifiedName~Sessions\|FullyQualifiedName~Inspection\|FullyQualifiedName~ClaudeSettings\|FullyQualifiedName~Affichage\|FullyQualifiedName~ContratHooksDocumente\|FullyQualifiedName~GardesPerimetre"` |
 | **Baseline d'entrée de phase** | **788 tests / 0 échec / ~4 s** (fin de phase 24, remesurée par le vérificateur) |
-| **Cible de fin de phase** | **0 échec, aucun test supprimé**, total **> 788**. Estimation indicative : ≈ +7 (25-01 T1), ≈ +7 (25-01 T2), ≈ +14 (25-01 T3, deux `[Theory]`), ≈ +9 (25-02 T1), ≈ +4 (25-02 T2), ≈ +4 (25-02 T3), ≈ +9 (25-03 T1), ≈ +4 (25-03 T2), ≈ +2 (25-03 T3), ≈ +6 (25-04 T2) → **≈ 854**. Chiffre **INDICATIF** : le critère est « 0 échec + aucune suppression », jamais un total. |
+| **Cible de fin de phase** | **0 échec, aucun test supprimé.** Le critère de chaque plan n'est PAS un plancher (un plancher se franchit sans rien ajouter) mais une **égalité** : `total = total mesuré du plan précédent + nombre de cas ajoutés`, tout écart — **même positif** — justifié **nominativement** dans le SUMMARY. Attendus **indicatifs** par plan : **816** (25-01), **833** (25-02), **848** (25-03), **854** (25-04). Détail indicatif : ≈ +7 (25-01 T1), ≈ +7 (25-01 T2), ≈ +14 (25-01 T3, deux `[Theory]`), ≈ +9 (25-02 T1), ≈ +4 (25-02 T2), ≈ +4 (25-02 T3), ≈ +9 (25-03 T1), ≈ +4 (25-03 T2), ≈ +2 (25-03 T3), ≈ +6 (25-04 T2). |
 | **Total mesuré après 25-01** | _à mesurer_ |
 | **Total mesuré après 25-02** | _à mesurer_ |
 | **Total mesuré après 25-03** | _à mesurer_ |
 | **Total mesuré après 25-04** | _à mesurer_ |
 | **Deux exécutions consécutives** | _à mesurer_ (attendu : même total, 0 échec les deux fois) |
-| **Renommages prévus** | **5, tous annoncés** : 3 tests de comptage de hooks (25-01 T2), le champ `StaleWorking` → `SilenceDesBattements` (25-02 T3), et l'assertion de `Vingt_et_une_minutes_de_SILENCE…` qui passe d'`Unknown` à `WaitingDeduced` (25-03 T2). Tout renommage supplémentaire doit être **justifié nominativement** dans le SUMMARY concerné. |
+| **Renommages prévus** | **7, tous annoncés** : 3 noms de tests de comptage de hooks (25-01 T2) ; le champ `StaleWorking` → `SilenceDesBattements` (25-02 T3) ; et **3 assertions héritées** converties d'`Unknown` à `WaitingDeduced` en 25-03 T2 — `Vingt_et_une_minutes_de_SILENCE_ne_se_disent_plus_en_cours`, `Monitor_lit_les_sessions_et_applique_la_staleness` (`SessionsTests`), et `Un_hook_Working_de_25_min_ne_rend_plus_un_transcript_frais_inconnu` (`InspectionSessionsTests`, l. 195-208), ce dernier **renommé** `…_frais_deduit`. Tout renommage supplémentaire doit être **justifié nominativement** dans le SUMMARY concerné. |
 
 ## Le critère de cette phase n'est PAS un chiffre de couverture
 
@@ -58,7 +58,7 @@ Un total inférieur à 788 doit être expliqué **nominativement**, jamais absor
 | 1 | **« Attend » naît d'une vraie demande** — une permission demandée bascule en « à toi » ; une alerte d'absence ne fabrique plus aucun état (EVT-01, EVT-02) | Routage `PermissionRequest`, veto `idle_prompt` / `auth_success` / `quota_auto_resume_*`, matcher installé | _à mesurer_ |
 | 2 | **« Réfléchit » ne s'éteint plus tout seul** — réaffirmé par battements, y compris au-delà d'une heure (EVT-03) | `Un_battement_frais_maintient_en_cours_bien_au_dela_d_une_heure` (pipeline complet : `Process` → `EcritureEtatSession` → `SessionMonitor.Read`) | _à mesurer_ |
 | 3 | **Échap est couvert** — état juste et visible, ni figé « en cours », ni disparu (EVT-04) | `Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini` (avec `Assert.NotEqual(WaitingTurn, …)`) + `IsGhost == false` | _à mesurer_ |
-| 4 | **Le silence se dit « inconnu »** — jamais « terminée » ni « tour fini » | `Une_activite_illisible_reste_inconnue_et_non_deduite`, `Une_attente_observee_ne_se_convertit_jamais_en_deduction`, et le libellé `"à toi ? déduit"` | _à mesurer_ |
+| 4 | **Le silence n'affirme que ce qui a été observé** — jamais « terminée » ni « tour fini », et une déduction se **dit** déduction (**critère amendé au ROADMAP le 2026-09-12** : la lettre « se dit inconnu » imposait `Unknown`, l'intention était l'honnêteté de l'affirmation) | `Une_activite_illisible_reste_inconnue_et_non_deduite`, `Une_attente_observee_ne_se_convertit_jamais_en_deduction`, `Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini`, et le libellé `"à toi ? déduit"` | _à mesurer_ |
 | 5 | **Le contrat est écrit** dans `docs/`, avec ce qui n'est PAS garanti | `docs/hooks-contract.md` §5 (les trois trous datés et sourcés) + `ContratHooksDocumenteTests` | _à mesurer_ |
 
 ## Ce qui rendrait cette phase creuse
@@ -117,17 +117,27 @@ grep -cF "new SessionMonitor"          src/Chronos/Services/DiagnosticService.cs
 grep -cF "?? new "                     src/Chronos/Services/DiagnosticService.cs      # attendu : 2
 grep -cF "MotifMasquage"               src/Chronos/Services/DiagnosticService.cs      # attendu : 3, INCHANGÉ
 
+# La matrice de rendu VOIT le nouvel état, et la dette de commentaire est soldée
+grep -c "WaitingDeduced"  tests/Chronos.Tests/SessionStylesBindingTests.cs            # attendu : >= 1
+grep -c "SessionTreatmentTracker" docs/hooks-contract.md                              # attendu : >= 1
+
+# ATTENTION : `git diff --stat` NU est MUET après un commit (il ne compare que l'arbre de travail).
+# SHA = le SHA d'entrée de phase, relevé par `git rev-parse HEAD` AVANT le premier commit de la phase
+# et consigné dans le SUMMARY 25-01.
+
 # La phase 26 n'est pas anticipée
-git diff --stat -- src/Chronos/Services/SessionTreatmentTracker.cs \
-                   src/Chronos/Services/TreatedStore.cs \
-                   src/Chronos/Services/ArchiveStore.cs                               # attendu : VIDE
+git diff --stat $SHA..HEAD -- src/Chronos/Services/SessionTreatmentTracker.cs \
+                              src/Chronos/Services/TreatedStore.cs \
+                              src/Chronos/Services/ArchiveStore.cs                    # attendu : VIDE
 
-# L'arbitrage de la phase 24 n'est pas retouché
-git diff --stat -- src/Chronos/Services/ArbitrageSessions.cs \
-                   src/Chronos/Services/LectureSessions.cs                            # attendu : VIDE
+# L'arbitrage de la phase 24 n'est pas retouché (même quand un test fige son cas d'égalité)
+git diff --stat $SHA..HEAD -- src/Chronos/Services/ArbitrageSessions.cs \
+                              src/Chronos/Services/LectureSessions.cs                 # attendu : VIDE
 
-# Aucun XAML touché
-git diff --stat -- '*.xaml'                                                            # attendu : VIDE
+# Le SEUL changement XAML autorisé : le commentaire de tête de SessionStyles.xaml (l. 5, « déduit
+# (Ghost) = fantôme » devenu faux). Aucun DataTemplate, Style, Trigger ni x:Key dans le diff.
+git diff --stat  $SHA..HEAD -- '*.xaml'                    # attendu : SessionStyles.xaml, et lui seul
+git diff --numstat $SHA..HEAD -- src/Chronos/Resources/SessionStyles.xaml   # attendu : <= 1 ajout / 1 retrait
 ```
 
 _Résultats mesurés : à remplir, un par un, au plan 25-04._
@@ -137,7 +147,8 @@ _Résultats mesurés : à remplir, un par un, au plan 25-04._
 | Mutation | Test attendu en échec | Mesuré |
 |---|---|---|
 | Retirer une ligne de la table §1 de `docs/hooks-contract.md` (worktree jetable) | `ContratHooksDocumenteTests.La_table_documentee_liste_EXACTEMENT_les_evenements_cables` | _à mesurer_ |
-| Supprimer le veto sous-agent dans `SessionHookProcessor` (worktree jetable) | les cinq cas de veto de `BattementsCoeurTests` | _à mesurer_ |
+| Supprimer le veto sous-agent dans `SessionHookProcessor` (worktree jetable) | **3** cas si jouée en 25-02 T1, **5** si rejouée en fin de 25-02 T2 (seule mesure probante) — dont `Un_SessionEnd_de_sous_agent_ne_supprime_pas_le_fichier_d_etat_du_parent`, qui asserte `Ignore == true` ET `Delete == false` | _à mesurer_ |
+| Faire écrire huit processus en parallèle sans la parade du point (f) de 25-02 T2 (worktree jetable) | `Huit_ecrivains_paralleles_sur_la_meme_session_n_echouent_jamais` | _à mesurer_ |
 | Rendre `WaitingTurn` au lieu de `WaitingDeduced` dans `SessionMonitor.TryRead` (worktree jetable) | `Le_silence_apres_travail_produit_une_attente_DEDUITE_jamais_un_tour_fini` | _à mesurer_ |
 
 **Méthode obligatoire** (précédents 23-01, 23-02, 24-01) : une mutation qui **ne compile pas** fait échouer
@@ -151,7 +162,7 @@ et vérifié tel (`git status --porcelain` vide, `grep -rlF "MUTANT" --include=*
 |---|---|---|---|
 | 25-01 T1 | `CatalogueEvenementsHooksTests` | tous (squelette `NotImplementedException`) | _à mesurer_ |
 | 25-01 T3 | `SessionsTests` | ≥ 10 (le routage `PermissionRequest` + les neuf vetos) | _à mesurer_ |
-| 25-02 T1 | `BattementsCoeurTests` | ≥ 5 (les cas de veto sous-agent) | _à mesurer_ |
+| 25-02 T1 | `BattementsCoeurTests` | **≥ 3 (mesuré en T1)** puis **≥ 5 (re-mesuré après 25-02 T2)** — `PreToolUse` / `PostToolUse` ne sont routés qu'à la tâche 2 : leurs deux cas de veto sont **vacueusement verts** en T1 et ne prouvent rien. La mutation « supprimer le veto » est **rejouée en fin de T2**. | _à mesurer_ |
 | 25-03 T2 | `InspectionSessionsTests` | ≥ 2 | _à mesurer_ |
 | 25-04 T2 | `ContratHooksDocumenteTests` | tous tant que le document n'est pas lu | _à mesurer_ |
 
@@ -187,6 +198,29 @@ et vérifié tel (`git status --porcelain` vide, `grep -rlF "MUTANT" --include=*
 Les tests prouvent le **mécanisme** ; ils ne prouvent pas ce que l'écran montre (leçon 21-04). La phase
 s'interdit de lancer ou de tuer l'overlay, et de toucher au `settings.json` de l'utilisateur.
 
+> ### A11 — Effet de masse **(garde obligatoire, contrepartie de la décision A10)**
+>
+> **Effet de masse.** Après republication, relever combien de sessions passent simultanément en
+> « à toi ? déduit » et ce que devient le compteur d'attente. Si le widget se remplit de déductions, le
+> signal utile est noyé — c'est alors le choix de l'**événement porteur** qu'il faut rouvrir, **pas** le
+> seuil.
+>
+> Cette vérification n'est pas laissée au hasard de l'observation : le plan **25-03 T2** porte le test
+> `Combien_de_sessions_d_un_corpus_realiste_basculent_ensemble_en_deduction`, qui **chiffre** l'effet sur
+> un corpus déterministe de soixante-six états. Le nombre mesuré est reporté ici, **avant** republication.
+>
+> | Mesure | Attendu | Mesuré |
+> |---|---|---|
+> | Sessions basculant ensemble en « à toi ? déduit » (corpus de 66 états, test de 25-03 T2) | chiffré, pas deviné | _à mesurer_ |
+> | Sessions en « à toi ? déduit » dans le widget réel, après republication | à relever in vivo | _à mesurer_ |
+> | `WaitingCount` correspondant | à relever in vivo | _à mesurer_ |
+>
+> **Pourquoi cette garde existe.** Le critère n°4 du ROADMAP disait « le silence se dit **inconnu** » ; les
+> plans livrent « à toi ? déduit ». L'utilisateur a tranché le 2026-09-12 en faveur de « à toi ? déduit »,
+> **avec cette garde de masse pour contrepartie**, et le ROADMAP a été amendé en conséquence. Un « inconnu »
+> estompé est honnête mais inutile ; une déduction affichée partout serait visible mais assourdissante. Ce
+> qui départage les deux, c'est un NOMBRE — et il doit être connu avant, pas après.
+
 1. **Critère n°1, in vivo.** Une demande de permission réelle doit basculer la session en **« à toi »**
    immédiatement. Et rester au terminal sans rien taper ne doit produire **aucun** changement d'état.
 2. **Critère n°2, in vivo.** Une session qui travaille plus d'une heure (exécution de phase, long build)
@@ -216,6 +250,13 @@ s'interdit de lancer ou de tuer l'overlay, et de toucher au `settings.json` de l
 8. **Reliquats hérités**, à présenter **groupés** en fin de milestone : purge réelle d'`archived.json`
    (phase 21), comparaison ligne à ligne widget ↔ rapport (phase 22), résorption du magasin de 66 entrées
    (phase 23), les quatre vérifications in vivo de la phase 24.
+
+## Entrées ouvertes, transmises à la phase 26
+
+| Constat | Où il est écrit | Pourquoi il n'est PAS corrigé ici |
+|---|---|---|
+| `SessionTreatmentTracker.cs:39` (`EstAttente`) **exclut** `WaitingDeduced`, alors que le widget la compte dans `WaitingCount` : une session déduite n'ouvre pas d'épisode d'attente | §3 de `docs/hooks-contract.md` (plan 25-04) | La phase 26 redéfinit ce que « traité » veut dire ; corriger le tracker ici, c'est l'anticiper à moitié. Le diff de `SessionTreatmentTracker.cs` doit rester VIDE. |
+| Dans `ArbitrageSessions.Departager`, le rang **source** précède le rang **urgence** : à horodatage égal **à la milliseconde**, un hook `WaitingDeduced` bat un transcript `Working` | test `Un_hook_deduit_et_un_transcript_travaillant_du_MEME_instant_sont_departages_par_la_source` (plan 25-03 T2), qui **fige** le comportement sans le modifier, + SUMMARY 25-03 | Héritage de la phase 24. Le `25-CONTEXT.md` l'exigeait : « ne pas modifier l'arbitrage sans qu'un test le motive ». Le test écrit le comportement ; il ne le corrige pas. |
 
 ## Clôture
 

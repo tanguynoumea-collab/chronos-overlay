@@ -237,8 +237,17 @@ d'écritures — un chemin d'écriture qui perd en silence les rendrait inutiles
   3. **Échap est couvert** : interrompre une réponse en cours (aucun `Stop` n'est émis par Claude Code) laisse
      la session dans un état juste et visible — elle m'attend — au lieu de rester figée sur « en cours » ou
      de disparaître (EVT-04).
-  4. **Le silence se dit « inconnu »** : une session dont plus aucun signal n'arrive est annoncée inconnue,
-     jamais « terminée » ni « tour fini » — l'expiration cesse d'être présentée comme une observation.
+  4. **Le silence n'affirme que ce qui a été observé** : une session dont plus aucun signal n'arrive est
+     annoncée d'un état **qui n'affirme rien qui n'ait été observé** — jamais « terminée » ni « tour
+     fini », et une déduction se **dit** déduction. L'expiration cesse d'être présentée comme une
+     observation.
+     > _Amendé le 2026-09-12._ La lettre d'origine — « est annoncée **inconnue**, jamais « terminée »
+     > ni « tour fini » » — imposait l'ÉTAT `Unknown` là où l'intention était l'honnêteté de
+     > l'affirmation. Un « inconnu » estompé à 0,22 d'opacité est honnête mais inutile : il contredit le
+     > critère n°3, qui exige un état *juste ET visible*. L'état livré est donc `WaitingDeduced`, libellé
+     > « à toi ? déduit » : l'incertitude est dans le mot, la visibilité dans la forme.
+     > **Contrepartie obligatoire** : la garde de masse **A11**, en tête du § « À VÉRIFIER PAR
+     > L'UTILISATEUR » de `25-VALIDATION.md`, et le test qui CHIFFRE l'effet de masse au plan 25-03.
   5. **Le contrat est écrit** : `docs/` décrit les événements câblés, les champs lus, les états produits et
      surtout **ce qui n'est pas garanti** (`Stop` muet sur interruption, `SessionEnd.reason` qui ne couvre ni
      terminal tué ni crash) — une future dérive du contrat externe redevient détectable (EVT-05).
