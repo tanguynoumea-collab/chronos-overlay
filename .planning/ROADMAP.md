@@ -82,7 +82,8 @@ sur les **8 styles de session** (galerie `--sessions`) et les **9 thèmes**.
 - Phases décimales (21.1, 21.2) : insertions urgentes (marquées INSERTED)
 
 - [x] **Phase 21 : Périmètre — le widget ne parle que de Claude Code** - La source app-bureau par UI Automation disparaît avec ses entrées fantômes, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents (completed 2026-09-12)
-- [x] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes (completed 2026-09-12)
+- [x] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes
+ (completed 2026-09-12)
 - [ ] **Phase 23 : Un magasin qui ne croît plus et n'oublie plus** - Les états expirés et les `.tmp` orphelins sont balayés, et une écriture de hook ne peut plus être perdue en silence
 - [ ] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables
 - [ ] **Phase 25 : Le contrat d'événements refondé** - `PermissionRequest` au lieu du proxy `Notification`, « réfléchit » observé par battements de cœur, interruption utilisateur couverte, contrat documenté
@@ -181,6 +182,13 @@ une dépendance.
   4. **Le balayage ne ment pas** : une session dont l'état a été balayé disparaît du widget sans jamais être
      annoncée « terminée » ni « traitée » — expirer, c'est ne plus savoir, et une session vivante depuis
      plusieurs jours survit au nettoyage.
+**Plans**: 2 plans, 2 vagues strictement sérielles (23-01 et 23-02 se disputent `App.xaml.cs` et
+`GardesPerimetreTests.cs` ; et le balayage date les fichiers par leur `updated_at`, donc il a besoin que
+23-01 ait d'abord rendu ces dates fiables)
+
+Plans:
+- [ ] 23-01-PLAN.md — CYC-02 : l'écriture d'état quitte la couche WPF, devient directe, et son échec se voit
+- [ ] 23-02-PLAN.md — CYC-01 : balayage des états périmés et des débris temporaires, sur critère double, sans jamais conclure
 
 ### Phase 24 : L'arbitrage par fraîcheur
 **Goal**: Quand deux sources parlent de la même session, c'est la **plus récente** qui gagne — jamais celle
