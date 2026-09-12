@@ -211,7 +211,22 @@ rigoureusement valide → dernier exact + delta borné avec sa marge → indispo
   5. **Doctrine reproductible sous test** : les quatre branches de la doctrine (frais / encore valide /
      delta / indisponible) sont vérifiables par des scénarios déterministes, et les gardes de pureté et de
      composition restent vertes.
-**Plans**: TBD
+**Plans**: 5 plans (5 vagues, séquentielles : chaque plan consomme ce que le précédent livre)
+
+Plans:
+- [ ] 19-01-PLAN.md — CapturedAt par fenêtre dans les 3 providers exacts qui l'omettent (le piège : l'âge
+      du FICHIER, jamais celui de la lecture), magasin qui refuse l'incertifiable et sait dire « jamais
+      rien vu », mémoïseur d'activité, faux manquant, inventaire réel des impacts
+- [ ] 19-02-PLAN.md — Le modèle à quatre états sans casser un seul site de construction, la doctrine PURE
+      (4 branches falsifiables une par une), et deux gardes de non-retour (recomposition du snapshot,
+      interdiction EXA-04)
+- [ ] 19-03-PLAN.md — La doctrine branchée en tête de chaîne : lecture paresseuse et mémoïsée des
+      transcripts, 4 sites de construction adaptés dans la même tâche, correctif d'une ligne de
+      WeeklyRecalibration
+- [ ] 19-04-PLAN.md — L'honnêteté visible : « ≥ N % » plutôt que « ~N % », matière brute rattachée au bon
+      champ, et l'invitation à se connecter d'EXA-05 (moitié visible incluse)
+- [ ] 19-05-PLAN.md — Porte de phase : preuves automatisées rassemblées, carte de validation remplie, et
+      vérification humaine de la bascule « 10 % » vers « indisponible + invitation » sur la machine réelle
 
 ### Phase 20 : Honnêteté visible — cadran & diagnostic
 **Goal**: Ce que la doctrine sait, l'utilisateur le voit : le cadran distingue à l'œil un chiffre exact frais,
@@ -247,7 +262,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
-| 19. Nouvelle doctrine du composite | 0/? | Not started | - |
+| 19. Nouvelle doctrine du composite | 0/5 | Planned | - |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 
 ### Couverture des exigences
