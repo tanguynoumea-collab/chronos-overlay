@@ -192,6 +192,25 @@
                  ToolTip="Cliquer : basculer pourcentage / temps avant reset"
                  MouseLeftButtonDown="CentreHit_MouseLeftButtonDown"/>
 
+        <!-- M-INDISPO (EXA-03) : « je ne sais pas ». LE MOT, et pas seulement l'absence de chiffre —
+             l'absence seule est AMBIGUË avec l'état « en attente » (aucune donnée encore reçue), qui
+             rend exactement le même neutre dans les quatre styles alternatifs. Sans le mot, la
+             quatrième apparence de la sémiologie n'existe pas.
+             Couche racine => un seul exemplaire pour 5 styles × 2 modes × 9 thèmes, et le seul endroit
+             du projet qui soit en {DynamicResource}. TexteSecondaire est déjà, par son commentaire
+             d'origine, le token des mentions annexes (estimée, épuisé, indisponible, périmée) : aucun
+             token nouveau, donc rien à ajouter aux neuf thèmes.
+             BAS-GAUCHE : hors de la géométrie des anneaux (> 71,5 px du centre) ET hors de la colonne
+             de la rangée de pastilles, quelle que soit la taille de celle-ci — un mot centré en bas
+             entrerait en collision avec la rangée dès trois pastilles.
+             IsHitTestVisible=False : le clic continue d'atteindre CentreHit, donc la bascule
+             pourcentage / temps fonctionne même quand il n'y a rien à afficher. -->
+        <TextBlock x:Name="MotIndisponible" Text="indisponible"
+                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,6"
+                   FontSize="10.5" IsHitTestVisible="False"
+                   Foreground="{DynamicResource TexteSecondaire}"
+                   Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}"/>
+
         <!-- ============ RANGÉE DE PASTILLES (TOK-02 / TOK-03 / EXA-05 / EXA-03) ============
              DERNIERS enfants du Grid racine => au-dessus de TOUS les styles de cadran : uniques pour
              les 5 styles (Anneaux/Braises/Fusible/Marée/Volets) et les 2 modes, sans duplication, et
