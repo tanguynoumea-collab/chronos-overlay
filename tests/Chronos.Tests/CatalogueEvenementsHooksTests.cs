@@ -95,11 +95,24 @@ public class CatalogueEvenementsHooksTests
     /// <summary>
     /// GARDE ANTI-MUTISME. Si l'un des noms que Chronos câble aujourd'hui manquait au catalogue, la
     /// validation d'installation le rejetterait — et le widget deviendrait muet sans un mot d'erreur.
+    ///
+    /// <para>La liste est DÉRIVÉE de <see cref="SessionHookInstaller.Cablage"/>, jamais recopiée : elle
+    /// l'était, figée à CINQ noms, et le câblage en comptait déjà HUIT depuis EVT-01/02/03. Les trois
+    /// événements les plus récents — ceux-là mêmes que la phase a ajoutés — étaient donc les seuls que
+    /// cette garde ne gardait pas. Un nom de test qui annonce un nombre est une seconde source de vérité,
+    /// et une seconde source de vérité finit toujours par diverger.</para>
     /// </summary>
     [Fact]
-    public void Les_cinq_noms_cables_aujourd_hui_sont_tous_connus()
+    public void Tous_les_noms_cables_aujourd_hui_sont_au_catalogue()
     {
-        foreach (var nom in new[] { "SessionStart", "SessionEnd", "UserPromptSubmit", "Stop", "Notification" })
+        var cables = SessionHookInstaller.Cablage.Select(c => c.Evenement).ToArray();
+
+        // Une garde qui parcourrait une liste vide serait muette. Le compte EXACT du câblage est figé
+        // ailleurs (WaitingDeduced_n_est_jamais_ecrit_dans_un_fichier_d_etat, la table de docs/) : ici,
+        // un plancher suffit et ne mentira jamais si le câblage grandit.
+        Assert.True(cables.Length >= 8, $"Seulement {cables.Length} événements câblés vus : garde muette.");
+
+        foreach (var nom in cables)
             Assert.True(CatalogueEvenementsHooks.EstConnu(nom), nom + " est câblé : il DOIT être au catalogue");
     }
 }
