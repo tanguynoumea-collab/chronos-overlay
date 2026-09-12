@@ -38,10 +38,18 @@ namespace Chronos.Services;
 /// assumé : on ne peut pas distinguer un 429 de quota d'un 429 de plafond de dépense — et l'on n'en a
 /// pas besoin, l'absence d'en-tête unifié suffit à décider de ne rien afficher.
 ///
+/// ELLE EST AUSSI LE CANAL LATÉRAL <see cref="IEtatServeur"/> (HDR-03 / HDR-04), et non un service
+/// parallèle qui devrait se resynchroniser : la même instance sera réexposée sous les deux contrats en DI
+/// (motif <see cref="ChronosTokenAuthority"/> / <c>IAuthStatus</c>, plan 18-05). POURQUOI un canal en plus
+/// des champs de <c>WindowState</c> : quand la forme « dépassement » est SEULE, les deux fenêtres de la
+/// sonde sont légitimement indisponibles, et <c>Best()</c> retient alors l'instance d'une AUTRE source
+/// <c>Exact</c> — le dépassement porté par la fenêtre écartée disparaîtrait sans bruit. Le statut serveur,
+/// lui, n'a pas besoin de canal : il DÉCRIT une fenêtre, donc il doit mourir avec elle.
+///
 /// Type NEUTRE : aucun type WPF. Aucune horloge système : tout passe par <see cref="IClock"/>, sans quoi
 /// aucun test de cadence ne serait déterministe.
 /// </summary>
-public sealed class RateLimitHeaderUsageProvider : IUsageProvider
+public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
 {
     // --- Requête. Constantes GROUPÉES et DATÉES : chaque nom d'en-tête est une HYPOTHÈSE, pas un fait. ---
 
@@ -95,6 +103,18 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
     /// lecture dans le code d'origine. Lecture strictement OPTIONNELLE — son absence n'est PAS une
     /// anomalie, et ne doit jamais être comblée par une valeur devinée.</summary>
     private const string H7dStatut = "anthropic-ratelimit-unified-7d-status";
+
+    /// <summary>HDR-04 — fraction d'usage en DÉPASSEMENT, en 0..1. CONFIANCE MOYENNE : lu par le code
+    /// d'origine, jamais observé sur cette machine (autre type d'abonnement).</summary>
+    private const string HOverUtil = "anthropic-ratelimit-unified-overage-utilization";
+
+    /// <summary>HDR-04 — instant de reset du dépassement, epoch SECONDES. CONFIANCE MOYENNE : lu par le code
+    /// d'origine, jamais observé ici.</summary>
+    private const string HOverReset = "anthropic-ratelimit-unified-overage-reset";
+
+    /// <summary>HDR-04 — statut du dépassement. CONFIANCE NULLE : annoncé par 18-CONTEXT.md, mais le code
+    /// d'origine lit le statut global SANS segment. Lu par précaution, jamais exigé.</summary>
+    private const string HOverStatut = "anthropic-ratelimit-unified-overage-status";
 
     /// <summary>HDR-03 — statut GLOBAL, SANS segment de fenêtre. CONFIANCE MOYENNE : c'est le nom que lit
     /// réellement le code d'origine dans sa branche de dépassement — correction d'un écart de
@@ -163,6 +183,15 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
     /// locales, jamais l'orthographe du serveur : aucune chaîne venant du réseau ne remonte au
     /// diagnostic. Vide = la famille a été renommée, ou ce plan n'en a pas.</summary>
     public IReadOnlyList<string> NomsEnTetesRecus { get; private set; } = Array.Empty<string>();
+
+    /// <summary>HDR-04 — dernier dépassement rapporté. null = rien rapporté. Mis à jour UNIQUEMENT quand
+    /// des en-têtes ont effectivement été lus (2xx ou 429) : une panne de transport ne doit pas effacer un
+    /// fait de compte, et un frein actif n'apprend rien de neuf.</summary>
+    public EtatDepassement? Depassement { get; private set; }
+
+    /// <summary>Émis sur un thread du POOL, sur TRANSITION uniquement. L'abonné marshalle lui-même
+    /// (frontière RAF-04). Motif ChronosTokenAuthority.EtatChange / RefreshOrchestrator.SnapshotChanged.</summary>
+    public event EventHandler<EtatDepassement?>? DepassementChange;
 
     public async Task<UsageSnapshot> GetAsync(CancellationToken ct = default)
     {
@@ -247,6 +276,12 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
                 {
                     _prochainAppelAutorise = now + Recul429(resp, now);
 
+                    // Branche SaturationEnTetesLus / SaturationSansEnTetes : les en-têtes ONT été lus — le
+                    // serveur a répondu. Qu'il ne rapporte aucun dépassement est une information, pas un
+                    // silence de transport : publier null est donc correct ici, alors que ce serait un
+                    // mensonge sur une panne réseau ou derrière le frein.
+                    PublierDepassement(snap.FiveHour.Depassement);
+
                     if (exploitables)
                     {
                         // Un 429 PROUVE que le jeton est valide : ne pas le signaler laisserait la
@@ -283,6 +318,10 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
                     _autorite.SignalerSucces();   // un 2xx déverrouille l'état, même sans chiffres
                     _reculReseau = TimeSpan.Zero;
                     _prochainAppelAutorise = now + CadenceNominale;
+
+                    // Branche SuccesEnTetesLus / SuccesSansEnTetes : même raison que sur le 429 — le serveur
+                    // a parlé, donc son silence sur le dépassement est une réponse et non une absence.
+                    PublierDepassement(snap.FiveHour.Depassement);
 
                     if (exploitables)
                     {
@@ -336,10 +375,15 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
     {
         var noms = new List<string>();
 
+        // UNE SEULE lecture de la famille de dépassement, AVANT les fenêtres : c'est un fait de COMPTE, pas
+        // une propriété de fenêtre. La même instance est ensuite posée à l'identique sur les deux — ce qui
+        // permet aussi à EnTetesExploitables de n'en tester qu'une.
+        var depassement = LireDepassement(resp, noms);
+
         var cinqHeures = LireFenetre(resp, noms, WindowKind.FiveHour, H5hUtil, H5hReset, H5hStatut,
-                                     TimeSpan.FromHours(5), now);
+                                     TimeSpan.FromHours(5), now, depassement);
         var hebdo = LireFenetre(resp, noms, WindowKind.SevenDay, H7dUtil, H7dReset, H7dStatut,
-                                TimeSpan.FromDays(7), now);
+                                TimeSpan.FromDays(7), now, depassement);
 
         Lire(resp, HClaim, noms);   // informatif : alimente l'observabilité, aucun calcul ne l'utilise
 
@@ -352,7 +396,8 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
     // fr-FR : une lecture « naturelle » rendrait false sur « 0.63 », donc une perte SILENCIEUSE).
     private static WindowState LireFenetre(HttpResponseMessage resp, List<string> noms, WindowKind kind,
                                            string nomUtil, string nomReset, string nomStatut,
-                                           TimeSpan longueurFenetre, DateTimeOffset now)
+                                           TimeSpan longueurFenetre, DateTimeOffset now,
+                                           EtatDepassement? depassement)
     {
         var util = UsageNormalization.FractionDepuisTexteFraction(Lire(resp, nomUtil, noms));
         var reset = UsageNormalization.InstantDepuisTexteEpoch(Lire(resp, nomReset, noms));
@@ -366,7 +411,13 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
         // En-tête ABSENT n'est PAS « 0 % ». Le code d'origine rend 0 dans sa branche d'erreur ; transposé
         // tel quel, un en-tête manquant afficherait « 0 % de quota consommé » — le mensonge exactement
         // inverse de celui que v1.5 corrige.
-        if (util is null && reset is null) return WindowState.Unavailable(kind);
+        // WindowState.Unavailable(kind) reste la FABRIQUE NEUTRE (son test de neutralité l'exige, et la
+        // phase 19 s'appuie dessus) : on ne l'élargit pas. Ici on construit explicitement parce qu'une
+        // fenêtre indisponible peut néanmoins TRANSPORTER un fait de compte — c'est exactement la forme
+        // « dépassement seul », où les deux fenêtres sont légitimement inconnues.
+        if (util is null && reset is null)
+            return new WindowState { Kind = kind, Reliability = SourceReliability.Unavailable,
+                                     Depassement = depassement };
 
         return new WindowState
         {
@@ -380,7 +431,34 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
             CapturedAt = now,
             FractionTimeRemaining = WindowState.FractionRemaining(reset, now, longueurFenetre),
             StatutServeur = statut,       // HDR-03 — voyage par référence à travers Best()
+            Depassement = depassement,    // HDR-04 — canal n° 1 ; le canal latéral est le n° 2
         };
+    }
+
+    // HDR-04. Le code d'origine lit les deux familles en branches ALTERNATIVES, donc comme mutuellement
+    // exclusives. C'est un choix d'AFFICHAGE de sa part, pas une contrainte de protocole : on lit les deux.
+    // Le dépassement est un fait de COMPTE (la branche de dépassement correspond à « acct: ent », qui n'a ni
+    // 5 h ni 7 j), d'où le double canal — champ de fenêtre ET canal latéral.
+    private static EtatDepassement? LireDepassement(HttpResponseMessage resp, List<string> noms)
+    {
+        var d = new EtatDepassement
+        {
+            Utilization = UsageNormalization.FractionDepuisTexteFraction(Lire(resp, HOverUtil, noms)),
+            ResetsAt    = UsageNormalization.InstantDepuisTexteEpoch(Lire(resp, HOverReset, noms)),
+            Statut      = StatutServeurTexte.DepuisEnTete(Lire(resp, HOverStatut, noms))
+                          ?? StatutServeurTexte.DepuisEnTete(Lire(resp, HStatutGlobal, noms)),
+        };
+        return d.EstRenseigne ? d : null;   // rien rapporté != un dépassement de 0 %
+    }
+
+    // Égalité STRUCTURELLE de record : la comparaison est exacte et gratuite, et c'est elle qui garantit
+    // « sur transition uniquement ». Sans cette garde, l'abonné recevrait un événement par tick de sonde —
+    // donc 288 par jour disant tous la même chose.
+    private void PublierDepassement(EtatDepassement? nouveau)
+    {
+        if (nouveau == Depassement) return;
+        Depassement = nouveau;
+        DepassementChange?.Invoke(this, nouveau);
     }
 
     // Trois noms candidats, du plus spécifique au plus global. Le nom de fenêtre l'emporte sur le global :
@@ -393,10 +471,16 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider
         => StatutServeurTexte.DepuisEnTete(Lire(resp, nomFenetre, noms))
            ?? StatutServeurTexte.DepuisEnTete(Lire(resp, HStatutGlobal, noms));
 
-    // Exploitable = au moins une des deux fenêtres porte une utilisation OU un reset. Sinon : RIEN.
+    // Exploitable = au moins une des deux fenêtres porte une utilisation OU un reset, OU un dépassement est
+    // rapporté. Sinon : RIEN.
     private static bool EnTetesExploitables(UsageSnapshot s)
         => s.FiveHour.Utilization is not null || s.FiveHour.ResetsAt is not null
-        || s.SevenDay.Utilization is not null || s.SevenDay.ResetsAt is not null;
+        || s.SevenDay.Utilization is not null || s.SevenDay.ResetsAt is not null
+        // HDR-04 — la forme « dépassement seul » n'a NI 5 h NI 7 j. Sans cette ligne elle serait classée
+        // SuccesSansEnTetes et JETÉE, alors que c'est une réponse parfaitement exploitable : elle porte le
+        // seul fait que ce compte-là rapporte. Le dépassement est posé à l'identique sur les deux fenêtres,
+        // en tester une suffit donc.
+        || s.FiveHour.Depassement is not null;
 
     // Recul après un 429 : la valeur typée du serveur si elle est présente et plus longue que le
     // plancher, sinon le plancher. Une sonde rejetée ne consommant pas de quota, rester réactif pendant

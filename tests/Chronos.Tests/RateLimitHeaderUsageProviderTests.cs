@@ -901,6 +901,249 @@ public class RateLimitHeaderUsageProviderTests
         }
     }
 
+    // --- HDR-04 : le dépassement, fait de COMPTE, porté par DEUX canaux ---
+
+    /// <summary>
+    /// LA FORME « DÉPASSEMENT SEUL », et la raison d'être du canal latéral.
+    ///
+    /// LIMITATION DOCUMENTÉE, consignée ici pour qu'elle ne se perde pas : l'utilisateur de cette machine est
+    /// sur un abonnement Max x20, donc sur la branche <c>"acct": "pro"</c> du code d'origine. La forme
+    /// « dépassement seul » correspond à <c>"acct": "ent"</c> et n'est PAS atteignable ici — elle ne pourra
+    /// jamais être vérifiée en production sur ce compte. HDR-04 l'exige néanmoins, et ce test la GRAVE :
+    /// c'est le seul moyen honnête de livrer un comportement non observable sans le livrer au hasard.
+    ///
+    /// Le canal latéral existe précisément parce que <c>Best()</c> peut écarter la fenêtre porteuse au profit
+    /// d'une autre source <c>Exact</c> — c'est déjà gravé par
+    /// <c>CompositeUsageProviderTests.Le_depassement_de_la_fenetre_ecartee_est_JETE_par_le_composite</c>
+    /// (plan 18-02). Le champ de fenêtre seul perdrait donc l'information sans bruit.
+    /// </summary>
+    [Fact]
+    public async Task La_forme_depassement_seul_reste_exploitable_et_survit_par_le_canal_lateral()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.OK, EnTetesDeReference.DepassementSeul);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.NotNull(sonde.Depassement);
+        Assert.Equal(0.34, sonde.Depassement!.Utilization!.Value, 9);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1783800000), sonde.Depassement.ResetsAt);
+        Assert.Equal(StatutServeur.AutoriseAvertissement, sonde.Depassement.Statut);   // par le nom GLOBAL
+
+        // AUCUNE fenêtre inventée : cette forme de réponse n'a ni 5 h ni 7 j, et l'on n'en fabrique pas.
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+        Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
+        Assert.Null(snap.FiveHour.Utilization);
+        Assert.Null(snap.SevenDay.ResetsAt);
+
+        // … et pourtant elles TRANSPORTENT le fait de compte : une fenêtre indisponible reste un véhicule.
+        Assert.Same(sonde.Depassement, snap.FiveHour.Depassement);
+        Assert.Same(sonde.Depassement, snap.SevenDay.Depassement);
+
+        // La réponse est donc EXPLOITABLE : classée SuccesSansEnTetes, elle aurait été jetée.
+        Assert.Equal(ResultatSonde.SuccesEnTetesLus, sonde.DernierResultat);
+    }
+
+    /// <summary>LES DEUX FAMILLES SONT LUES ENSEMBLE, sans branche exclusive. Le code d'origine les traite en
+    /// branches alternatives liées au type de compte : c'est un choix d'AFFICHAGE de sa part, pas une
+    /// contrainte de protocole. Rien n'interdit à un serveur de rapporter les deux, et les jeter serait une
+    /// perte d'information gratuite.</summary>
+    [Fact]
+    public async Task Les_DEUX_familles_d_en_tetes_sont_lues_ENSEMBLE()
+    {
+        var jeu = Derive(EnTetesDeReference.Nominal,
+                         (EnTetesDeReference.HOverUtil, "0.12"),
+                         (EnTetesDeReference.HOverReset, "1783800000"),
+                         (EnTetesDeReference.HOverStatut, "allowed_warning"));
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, jeu);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        // Les deux fenêtres restent EXACTES : la présence d'un dépassement ne les efface pas.
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(SourceReliability.Exact, snap.SevenDay.Reliability);
+        Assert.Equal(0.01, snap.FiveHour.Utilization!.Value, 9);
+        Assert.Equal(0.63, snap.SevenDay.Utilization!.Value, 9);
+
+        // … et le dépassement est là, sur les deux canaux à la fois.
+        Assert.NotNull(sonde.Depassement);
+        Assert.Equal(0.12, sonde.Depassement!.Utilization!.Value, 9);
+        Assert.Same(sonde.Depassement, snap.FiveHour.Depassement);
+        Assert.Same(sonde.Depassement, snap.SevenDay.Depassement);
+    }
+
+    /// <summary>En-têtes ABSENTS : rien rapporté. Un dépassement entièrement vide n'est JAMAIS publié — il ne
+    /// dirait rien tout en ayant l'air d'un fait, et « 0 % de dépassement » est une affirmation que le serveur
+    /// n'a pas faite.</summary>
+    [Fact]
+    public async Task Des_en_tetes_absents_ne_rapportent_aucun_depassement()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Absents);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Null(sonde.Depassement);
+        Assert.Null(snap.FiveHour.Depassement);
+        Assert.Null(snap.SevenDay.Depassement);
+    }
+
+    /// <summary>Jeu NOMINAL : deux fenêtres parfaitement renseignées et AUCUN en-tête de dépassement. Le cas
+    /// de tous les jours sur cette machine — il ne doit rien fabriquer.</summary>
+    [Fact]
+    public async Task Deux_fenetres_exactes_sans_en_tete_de_depassement_ne_rapportent_aucun_depassement()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, EnTetesDeReference.Nominal);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        var snap = await sonde.GetAsync();
+
+        Assert.Null(sonde.Depassement);
+        Assert.Null(snap.FiveHour.Depassement);
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(ResultatSonde.SuccesEnTetesLus, sonde.DernierResultat);
+    }
+
+    /// <summary>DEUX noms candidats pour le statut du dépassement, et le plus spécifique gagne.
+    /// <c>-overage-status</c> est annoncé par 18-CONTEXT.md mais confirmé par rien ; le statut global SANS
+    /// segment est celui que lit réellement le code d'origine. On lit les deux, dans cet ordre, et l'absence
+    /// du premier n'est pas une anomalie.</summary>
+    [Fact]
+    public async Task Le_statut_du_depassement_prefere_son_nom_specifique_au_statut_global()
+    {
+        var specifique = Derive(EnTetesDeReference.DepassementSeul,
+                                (EnTetesDeReference.HOverStatut, "rejected"),
+                                (EnTetesDeReference.HStatutGlobal, "allowed"));
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2),
+                                  FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, specifique),
+                                  new FakeClock(Maintenant));
+
+        await sonde.GetAsync();
+
+        Assert.Equal(StatutServeur.Rejete, sonde.Depassement!.Statut);
+
+        // Sans le nom spécifique, le statut GLOBAL sert de repli — jamais un statut deviné.
+        var global = Derive(EnTetesDeReference.DepassementSeul,
+                            (EnTetesDeReference.HOverStatut, null),
+                            (EnTetesDeReference.HStatutGlobal, "rejected"));
+        var (sonde2, _, _) = Sonde(Maintenant.AddHours(2),
+                                   FakeHttpMessageHandler.AvecEnTetes(HttpStatusCode.OK, global),
+                                   new FakeClock(Maintenant));
+
+        await sonde2.GetAsync();
+
+        Assert.Equal(StatutServeur.Rejete, sonde2.Depassement!.Statut);
+    }
+
+    /// <summary>TRANSITION UNIQUEMENT, jamais un événement par tick. La sonde passe 288 fois par jour : sans
+    /// l'égalité structurelle du record en garde, l'abonné recevrait 288 notifications disant toutes la même
+    /// chose. Motif <c>ChronosTokenAuthority.Publier</c> / <c>RefreshOrchestrator.SnapshotChanged</c>.</summary>
+    [Fact]
+    public async Task Le_depassement_n_est_publie_que_sur_TRANSITION()
+    {
+        var transport = FakeHttpMessageHandler.SequenceAvecEnTetes(
+            (HttpStatusCode.OK, EnTetesDeReference.DepassementSeul),
+            (HttpStatusCode.OK, EnTetesDeReference.DepassementSeul),
+            (HttpStatusCode.OK, Derive(EnTetesDeReference.DepassementSeul,
+                                       (EnTetesDeReference.HOverUtil, "0.55"))),
+            (HttpStatusCode.OK, EnTetesDeReference.Absents));
+        var horloge = new FakeClock(Maintenant);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, horloge);
+
+        var emissions = new List<EtatDepassement?>();
+        ((IEtatServeur)sonde).DepassementChange += (_, d) => emissions.Add(d);
+
+        await sonde.GetAsync();
+        Assert.Single(emissions);
+        Assert.Equal(0.34, emissions[0]!.Utilization!.Value, 9);
+
+        // MÊME jeu au passage suivant : aucune émission. C'est la garde d'égalité qui le prouve.
+        horloge.UtcNow = Maintenant + RateLimitHeaderUsageProvider.CadenceNominale;
+        await sonde.GetAsync();
+        Assert.Single(emissions);
+
+        horloge.UtcNow = Maintenant + 2 * RateLimitHeaderUsageProvider.CadenceNominale;
+        await sonde.GetAsync();
+        Assert.Equal(2, emissions.Count);
+        Assert.Equal(0.55, emissions[1]!.Utilization!.Value, 9);
+
+        // Le serveur ne rapporte plus rien : c'est une RÉPONSE, donc une transition vers null.
+        horloge.UtcNow = Maintenant + 3 * RateLimitHeaderUsageProvider.CadenceNominale;
+        await sonde.GetAsync();
+        Assert.Equal(3, emissions.Count);
+        Assert.Null(emissions[2]);
+        Assert.Null(sonde.Depassement);
+    }
+
+    /// <summary>Un état VOLATILE ne doit pas être effacé par une panne de transport. Derrière le frein on
+    /// n'apprend rien de neuf ; sur une panne réseau on n'apprend rien du tout. Dans les deux cas, le dernier
+    /// fait rapporté par le serveur reste le dernier fait connu — l'oublier ferait clignoter l'affichage au
+    /// rythme du wifi.</summary>
+    [Fact]
+    public async Task Ni_le_frein_ni_une_panne_reseau_n_effacent_le_depassement()
+    {
+        var n = 0;
+        var transport = new FakeHttpMessageHandler(_ =>
+        {
+            if (n++ > 0) throw new HttpRequestException("réseau");
+            var r = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            foreach (var (k, v) in EnTetesDeReference.DepassementSeul) r.Headers.TryAddWithoutValidation(k, v);
+            return r;
+        });
+        var horloge = new FakeClock(Maintenant);
+        var (sonde, _, _) = Sonde(Maintenant.AddHours(2), transport, horloge);
+
+        var emissions = 0;
+        sonde.DepassementChange += (_, _) => emissions++;
+
+        await sonde.GetAsync();
+        var rapporte = sonde.Depassement;
+        Assert.NotNull(rapporte);
+        Assert.Equal(1, emissions);
+
+        // Frein actif : aucun envoi, donc aucun apprentissage — et aucun oubli.
+        await sonde.GetAsync();
+        Assert.Equal(ResultatSonde.FreinActif, sonde.DernierResultat);
+        Assert.Same(rapporte, sonde.Depassement);
+        Assert.Equal(1, emissions);
+
+        // Panne réseau : surtout pas d'effacement. Ce n'est pas le serveur qui s'est tu, c'est le transport.
+        horloge.UtcNow = Maintenant + RateLimitHeaderUsageProvider.CadenceNominale;
+        await sonde.GetAsync();
+        Assert.Equal(ResultatSonde.PanneReseau, sonde.DernierResultat);
+        Assert.Same(rapporte, sonde.Depassement);
+        Assert.Equal(1, emissions);
+    }
+
+    /// <summary>Le contrat <c>IEtatServeur</c> est satisfait par la sonde elle-même : c'est la MÊME instance
+    /// qui sera réexposée en DI au plan 18-05 (motif <c>ChronosTokenAuthority</c> / <c>IAuthStatus</c>), et
+    /// non un service parallèle qui devrait se resynchroniser. Tout passe ici par l'interface, jamais par le
+    /// type concret : si un membre manquait, ce test ne compilerait pas.</summary>
+    [Fact]
+    public async Task La_sonde_EST_l_implementation_d_IEtatServeur()
+    {
+        var transport = FakeHttpMessageHandler.AvecEnTetes(
+            HttpStatusCode.OK, EnTetesDeReference.DepassementSeul);
+        var (concrete, _, _) = Sonde(Maintenant.AddHours(2), transport, new FakeClock(Maintenant));
+
+        IEtatServeur etat = concrete;
+        var emissions = 0;
+        etat.DepassementChange += (_, _) => emissions++;
+
+        Assert.Null(etat.Depassement);
+        Assert.Equal(ResultatSonde.JamaisSondee, etat.DernierResultat);
+        Assert.Empty(etat.NomsEnTetesRecus);
+
+        await concrete.GetAsync();
+
+        Assert.Equal(0.34, etat.Depassement!.Utilization!.Value, 9);
+        Assert.Equal(ResultatSonde.SuccesEnTetesLus, etat.DernierResultat);
+        Assert.Contains(EnTetesDeReference.HOverUtil, etat.NomsEnTetesRecus);
+        Assert.Equal(1, emissions);
+    }
+
     // --- HDR-06 : cadence bornée, coût maîtrisé, aucun couplage au tick de 60 s ---
 
     /// <summary>HDR-06. Le composite appelle les deux <c>GetAsync</c> SANS court-circuit : la sonde est donc
