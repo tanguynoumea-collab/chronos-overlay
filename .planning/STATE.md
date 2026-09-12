@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: executing
-stopped_at: Completed 23-01-PLAN.md
-last_updated: "2026-09-12T16:58:28.347Z"
+status: verifying
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-09-12T17:14:34.325Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
-  percent: 33
+  completed_plans: 9
+  percent: 50
 ---
 
 # Project State
@@ -29,15 +29,15 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 Milestone: v1.6 — Observer au lieu de déduire
 Phase: 23 (Un magasin qui ne croit plus et n oublie plus) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [███░░░░░░░] 33%  (2 phases sur 6 — phases 21 et 22 closes ; 8 plans sur 9, plan 23-01 livré)
+Progress: [█████░░░░░] 50%  (3 phases sur 6 — phases 21, 22 et 23 closes ; 9 plans sur 9 livrés)
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 8
-- Suite de tests : **754 verts / 0 échec** (baseline d'entrée de phase 23 : 747 ; +6 en 23-01 T1, +1 en 23-01 T2)
+- Total plans completed (v1.6): 9
+- Suite de tests : **763 verts / 0 échec** en ~4 s (baseline d'entrée de phase 23 : 747 ; +7 en 23-01, +9 en 23-02)
 
 ## Milestone v1.5 (clos)
 
@@ -171,6 +171,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 22 P02 | 6 min | 2 tasks | 5 files |
 | Phase 22 P03 | 9 min | 2 tasks | 3 files |
 | Phase 23 P01 | 6min | 2 tasks | 4 files |
+| Phase 23 P02 | 14min | 3 tasks | 6 files |
 
 ### Decisions
 
@@ -399,6 +400,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 23]: [23-01] ArchiveStore.Add garde volontairement son ecriture par fichier temporaire : methode void appelee depuis l'UI, aucun canal pour rendre un echec constatable — changer sa mecanique aurait produit un correctif invérifiable.
 - [Phase 23]: [23-01] DiagnosticService.cs est ABSENT du diff : le rapport reflete le changement sans qu'une ligne n'y bouge. C'est la premiere preuve a l'usage du partage d'instance livre en phase 22.
 - [Phase 23]: [23-01] La mutation de falsification a ete jouee avec un ALIAS TEMPORAIRE (AppliquerMUTANT => Appliquer) pour que le depot reste compilable : sans cela dotnet test aurait echoue a la compilation et n'aurait rien dit de la garde. Echec constate nominativement, puis alias et mutation revoques (git diff vide).
+- [Phase 23]: CYC-01 : un etat n'est balaye que s'il depasse 72 h ET qu'aucune source n'atteste la vie de sa session — l'age n'est jamais le seul critere (une session vivante depuis 40 jours survit)
+- [Phase 23]: Balayer ne conclut rien : le balayeur ne connait aucun magasin de verdict (garde par reflexion) et, apres balayage, Inspecter rend Visibles ET Masquees vides (garde de comportement)
+- [Phase 23]: Horloge IClock injectee des la conception : 0 occurrence de l'horloge systeme dans BalayageMagasinSessions.cs ET dans ses tests — le piege de test a retardement de la phase 22 n'est pas reproduit
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -487,7 +491,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T16:58:12.262Z
-Stopped at: Completed 23-01-PLAN.md
+Last session: 2026-09-12T17:14:24.239Z
+Stopped at: Completed 23-02-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)

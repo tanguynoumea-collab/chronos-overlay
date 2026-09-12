@@ -84,7 +84,7 @@ sur les **8 styles de session** (galerie `--sessions`) et les **9 thèmes**.
 - [x] **Phase 21 : Périmètre — le widget ne parle que de Claude Code** - La source app-bureau par UI Automation disparaît avec ses entrées fantômes, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents (completed 2026-09-12)
 - [x] **Phase 22 : Un instrument de mesure qui ne ment plus** - Le diagnostic partage le moniteur du widget au lieu d'en reconstruire un nu, et liste les sessions pertinentes
  (completed 2026-09-12)
-- [ ] **Phase 23 : Un magasin qui ne croît plus et n'oublie plus** - Les états expirés et les `.tmp` orphelins sont balayés, et une écriture de hook ne peut plus être perdue en silence
+- [x] **Phase 23 : Un magasin qui ne croît plus et n'oublie plus** - Les états expirés et les `.tmp` orphelins sont balayés, et une écriture de hook ne peut plus être perdue en silence (completed 2026-09-12)
 - [ ] **Phase 24 : L'arbitrage par fraîcheur** - Un signal n'en écrase un autre que s'il est plus récent, jamais par ordre d'insertion, et les désaccords deviennent traçables
 - [ ] **Phase 25 : Le contrat d'événements refondé** - `PermissionRequest` au lieu du proxy `Notification`, « réfléchit » observé par battements de cœur, interruption utilisateur couverte, contrat documenté
 - [ ] **Phase 26 : « Traité » veut enfin dire quelque chose** - Déduit d'une transition observée sur la même source, persistant au redémarrage, assorti d'un geste explicite et d'un contrat d'archivage unique
@@ -188,7 +188,7 @@ une dépendance.
 
 Plans:
 - [x] 23-01-PLAN.md — CYC-02 : l'écriture d'état quitte la couche WPF, devient directe, et son échec se voit
-- [ ] 23-02-PLAN.md — CYC-01 : balayage des états périmés et des débris temporaires, sur critère double, sans jamais conclure
+- [x] 23-02-PLAN.md — CYC-01 : balayage des états périmés et des débris temporaires, sur critère double, sans jamais conclure
 
 ### Phase 24 : L'arbitrage par fraîcheur
 **Goal**: Quand deux sources parlent de la même session, c'est la **plus récente** qui gagne — jamais celle
@@ -271,7 +271,7 @@ d'événements, exige 24 pour les battements de cœur) → Phase 26 (« traité 
 |-------|----------------|--------|-----------|
 | 21. Périmètre — le widget ne parle que de Claude Code | 4/4 | Complete   | 2026-09-12 |
 | 22. Un instrument de mesure qui ne ment plus | 3/3 | Complete   | 2026-09-12 |
-| 23. Un magasin qui ne croît plus et n'oublie plus | 1/2 | In Progress|  |
+| 23. Un magasin qui ne croît plus et n'oublie plus | 2/2 | Complete   | 2026-09-12 |
 | 24. L'arbitrage par fraîcheur | 0/? | Not started | - |
 | 25. Le contrat d'événements refondé | 0/? | Not started | - |
 | 26. « Traité » veut enfin dire quelque chose | 0/? | Not started | - |
