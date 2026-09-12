@@ -23,14 +23,14 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
                                                                                 // (temps = géométrie) ont de quoi dessiner ;
                                                                                 // faux (chargement/pas de reset) → état « en attente »
     [ObservableProperty] private double? _utilization;                          // 0..1 ou null → couleur (Phase 5)
-    [ObservableProperty] private string _utilizationText = "";                  // « 80 % » / « ~80 % » / «» (VIS-05)
+    [ObservableProperty] private string _utilizationText = "";                  // « 80 % » / « ≥ 80 % » / «» (VIS-05, DEL-04)
     [ObservableProperty] private bool _hasUtilizationText;                      // vrai SSI utilization connue (pilote le séparateur « · »)
     [ObservableProperty] private string _countdownText = "—";
     [ObservableProperty] private bool _exhausted;
     [ObservableProperty] private SourceReliability _reliability = SourceReliability.Unavailable;
     [ObservableProperty] private bool _isEstimated;                             // provenance → marquage « estimé » (DAT-08 Phase 5)
     [ObservableProperty] private string _tokensText = "";                       // « ≈ N M/k tokens » ; vide si masqué (NET-02)
-    [ObservableProperty] private bool _hasTokens;                               // vrai SSI Estimated + tokens>0 (pilote la visibilité)
+    [ObservableProperty] private bool _hasTokens;                               // vrai SSI TokensDepuisReleve>0 (pilote la visibilité)
 
     // HDR-03 — l'état déclaré par le SERVEUR pour CETTE fenêtre, en texte FR prêt à afficher.
     // Posées et testées ici pour que la phase 20 (EXA-03, distinction visuelle frais / daté /
@@ -68,9 +68,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         Reliability = s.Reliability;
         IsEstimated = s.Reliability == SourceReliability.Estimated; // pré-câble DAT-08 (Phase 5)
 
-        // VIS-05 : % honnête au centre du cadran. « ~ » si estimé, «» si utilization null (jamais de plafond inventé).
+        // VIS-05 + DEL-04 : le préfixe est décidé par la PROVENANCE et non par la fiabilité — « ≥ » ne
+        // doit apparaître que sur un plancher, jamais sur un exact encore valide (DEL-03), qui est un
+        // chiffre juste et n'a rien à porter. «» si utilization null (jamais de plafond inventé).
         // HasUtilizationText pilote la visibilité du séparateur « · » côté XAML (même pattern que HasTokens).
-        UtilizationText = PercentFormatter.Format(s.Utilization, IsEstimated);
+        UtilizationText = PercentFormatter.Format(s.Utilization, s.Provenance);
         HasUtilizationText = s.Utilization is not null;
 
         // HDR-03 — l'état déclaré par le SERVEUR, pas un seuil déduit d'un pourcentage. Absent → rien
@@ -79,10 +81,14 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         TexteStatutServeur = LibelleStatut(s.StatutServeur);
         HasStatutServeur = s.StatutServeur is not null;
 
-        // NET-02 : surfacer les tokens estimés (matière première) UNIQUEMENT en source Estimated avec tokens>0.
-        // Jamais en Exact (les pourcentages exacts suffisent) ni sans donnée — honnêteté préservée.
-        HasTokens = s.Reliability == SourceReliability.Estimated && s.EstimatedTokens is > 0;
-        TokensText = HasTokens ? TokenFormatter.Format(s.EstimatedTokens!.Value) : "";
+        // NET-02 + DEL-04 : la matière première brute est le compte de tokens observés DEPUIS le relevé,
+        // et non EstimatedTokens, qui portait la somme de l'estimation ABSOLUE supprimée en phase 16.
+        // Réutiliser l'ancien champ rattacherait au nouveau chiffre une sémantique que ce milestone a
+        // tuée. Aucune conversion : ce compte est affiché tel quel, il ne devient JAMAIS un pourcentage
+        // (les limites Anthropic pondèrent par modèle — tokens / plafond restera faux à jamais).
+        // Seule une fenêtre corrigée par delta en porte un : aucun test de fiabilité n'est nécessaire.
+        HasTokens = s.TokensDepuisReleve is > 0;
+        TokensText = HasTokens ? TokenFormatter.Format(s.TokensDepuisReleve!.Value) : "";
     }
 
     /// <summary>

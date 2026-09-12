@@ -40,5 +40,11 @@ public static class PercentFormatter
     /// sur lequel la doctrine ne s'est pas prononcée.
     /// </summary>
     public static string Format(double? utilization, Chronos.Models.ProvenanceReleve? provenance)
-        => throw new System.NotImplementedException(); // SQUELETTE — étape RED, implémenté au commit GREEN
+    {
+        if (utilization is null) return ""; // honnêteté : pas d'utilisation → pas de %
+
+        int pct = (int)System.Math.Round(utilization.Value * 100, System.MidpointRounding.AwayFromZero);
+        string prefixe = provenance == Chronos.Models.ProvenanceReleve.PlancherAvecActivite ? "≥ " : "";
+        return $"{prefixe}{pct} %"; // espace normal avant %
+    }
 }
