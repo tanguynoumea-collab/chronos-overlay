@@ -49,8 +49,12 @@ deux doublures :
 Le test exige que la section « sonde » rende l'état d'**après** l'interrogation, et que les deux sections
 racontent la même histoire.
 
-**Falsifiabilité vérifiée** : remettre l'appel dans la section « Ce qui est affiché maintenant » fait
-retomber le test (voir le SUMMARY d'exécution ci-dessous).
+**Falsifiabilité VÉRIFIÉE par mutation réelle**, après le commit du correctif (leçon du plan 19-03 : une
+révocation par `git checkout` emporte tout correctif non committé) :
+
+- Mutation appliquée — appel retiré de la tête, remis dans la section « Ce qui est affiché maintenant ».
+- Résultat : `Échoué! - échec : 1, réussite : 0` sur le test ciblé.
+- Mutation révoquée par `git checkout --`, arbre propre, suite complète re-verte.
 
 ## Résultat
 
