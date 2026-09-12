@@ -26,5 +26,15 @@
       <_Parameter1>CheminSourcesChronos</_Parameter1>
       <_Parameter2>$(MSBuildProjectDirectory)\..\..\src\Chronos</_Parameter2>
     </AssemblyAttribute>
+    <!-- EVT-05 : la garde de non-dérive du contrat des hooks lit le TEXTE de docs/hooks-contract.md et le
+         compare au câblage réel. Même raison que ci-dessus, et elle vaut mot pour mot : CLAUDE.md interdit
+         de localiser un assembly par son chemin de fichier (cette propriété est VIDE en publication
+         mono-fichier), et une remontée de dossiers depuis AppContext.BaseDirectory casserait EN SILENCE au
+         premier changement d'agencement de sortie — une garde qui ne trouve plus son fichier ne garde
+         rien, et elle ne le dit pas. Le chemin est donc INJECTÉ, jamais deviné. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>CheminDocsChronos</_Parameter1>
+      <_Parameter2>$(MSBuildProjectDirectory)\..\..\docs</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 </Project>
