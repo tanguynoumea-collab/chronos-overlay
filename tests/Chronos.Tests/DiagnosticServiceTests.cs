@@ -617,4 +617,95 @@ public class DiagnosticServiceTests
         Assert.Equal(9, lignes.Count);
         Assert.Contains("projet-8", lignes[0]);   // l'attente passe devant, comme dans le widget
     }
+
+    // --- Phase 22 (OBS-02) : des fichiers d'état PERTINENTS, pas les huit premiers de l'alphabet ---
+
+    private static void EcrireEtat(string dir, string id, string projet, SessionActivity a, DateTimeOffset maj)
+        => System.IO.File.WriteAllText(System.IO.Path.Combine(dir, id + ".json"),
+               SessionHookProcessor.BuildStateJson(id, projet, a, null, maj.ToUnixTimeMilliseconds()));
+
+    private static SessionMonitor MoniteurSur(string dir)
+        => new(dir, new SourceFixe22(), new ArchiveStore(TempFichier22()));
+
+    /// <summary>OBS-02 — le défaut mesuré : sur 54 fichiers dont 48 vieux de plus de sept jours, le rapport
+    /// montrait les huit premiers par ordre alphabétique d'UUID. Ici les identifiants sont choisis pour que
+    /// l'ordre alphabétique et l'ordre de pertinence soient OPPOSÉS : « aaa… » est le plus vieux et le plus
+    /// muet, « zzz… » est la session qui attend. Un tri alphabétique la reléguerait hors de la liste.</summary>
+    [Fact]
+    public async Task Les_fichiers_listes_sont_ceux_qui_attendent_et_les_plus_recents()
+    {
+        var dir = TempDir22();
+        for (var i = 0; i < 9; i++)
+            EcrireEtat(dir, $"aaa-{i:D2}", $"vieux-{i}", SessionActivity.Unknown, T22.AddDays(-30 - i));
+        EcrireEtat(dir, "zzz-attente", "PROJET QUI ATTEND", SessionActivity.WaitingAttention, T22.AddHours(-40));
+
+        var report = await Rapport(MoniteurSur(dir));
+
+        Assert.Contains("Fichiers d'état", report);
+        Assert.Contains($"({dir}) : 10", report);   // le compte TOTAL reste celui du dossier
+        // Le bloc des fichiers d'état PRÉCÈDE celui des sessions dans le rapport : les premières lignes
+        // à puce sont donc bien les siennes.
+        var lignes = report.Split('\n').Where(l => l.TrimStart().StartsWith("· ")).ToList();
+        Assert.Contains("PROJET QUI ATTEND", lignes[0]);        // l'attente passe devant, malgré son âge
+        Assert.Contains("… et 2 autre(s) non listé(s)", report);
+    }
+
+    [Fact]
+    public async Task Huit_fichiers_ou_moins_ne_produisent_aucune_ligne_de_reste()
+    {
+        var dir = TempDir22();
+        for (var i = 0; i < 8; i++)
+            EcrireEtat(dir, $"s-{i:D2}", $"p-{i}", SessionActivity.Working, T22.AddMinutes(-i));
+
+        var report = await Rapport(MoniteurSur(dir));
+
+        Assert.DoesNotContain("non listé(s)", report);
+        for (var i = 0; i < 8; i++) Assert.Contains($"p-{i}", report);
+    }
+
+    /// <summary>Doctrine du milestone : une date absente reste absente. Lui attribuer l'instant courant
+    /// ferait passer un fichier muet pour un fichier frais, et le placerait en tête de la liste.</summary>
+    [Fact]
+    public async Task Un_fichier_sans_horodatage_est_annonce_de_date_inconnue_et_relegue()
+    {
+        var dir = TempDir22();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "muet.json"),
+            """{"session_id":"muet","project":"SANS DATE","activity":"WaitingAttention"}""");
+        EcrireEtat(dir, "date", "AVEC DATE", SessionActivity.Working, T22.AddMinutes(-3));
+
+        var report = await Rapport(MoniteurSur(dir));
+
+        var lignes = report.Split('\n').Where(l => l.TrimStart().StartsWith("· ")).ToList();
+        Assert.Contains("AVEC DATE", lignes[0]);                          // le daté passe devant
+        Assert.Contains("SANS DATE", lignes[1]);
+        Assert.Contains("date inconnue", lignes[1]);
+    }
+
+    [Fact]
+    public async Task Un_fichier_corrompu_est_ignore_sans_casser_le_rapport()
+    {
+        var dir = TempDir22();
+        System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "corrompu.json"), "pas du JSON {{{");
+        EcrireEtat(dir, "bon", "PROJET SAIN", SessionActivity.Working, T22);
+
+        var report = await Rapport(MoniteurSur(dir));
+
+        Assert.Contains($"({dir}) : 2", report);    // 2 fichiers sur disque…
+        Assert.Contains("PROJET SAIN", report);     // …1 seul lisible, et le rapport tient debout
+        Assert.Contains("[Conseil]", report);
+    }
+
+    /// <summary>Le rapport inspecte le dossier que le MONITEUR lit, pas un dossier déduit d'un autre
+    /// chemin : deux dossiers pour un seul widget rouvriraient l'écart qu'OBS-01 vient de fermer.</summary>
+    [Fact]
+    public async Task Le_dossier_inspecte_est_celui_du_moniteur_du_widget()
+    {
+        var dir = TempDir22();
+        EcrireEtat(dir, "s1", "PROJET DU MONITEUR", SessionActivity.Working, T22);
+
+        var report = await Rapport(MoniteurSur(dir));
+
+        Assert.Contains(dir, report);
+        Assert.Contains("PROJET DU MONITEUR", report);
+    }
 }
