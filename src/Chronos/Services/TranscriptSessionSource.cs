@@ -23,7 +23,10 @@ namespace Chronos.Services;
 ///
 /// Lecture EFFICACE : seule la fin du fichier (~64 Ko) est lue (les transcripts font plusieurs Mo).
 /// </summary>
-public sealed class TranscriptSessionSource
+// Le contrat ISessionSource n'avait qu'une seule implémentation, la source app-bureau, qui disparaît en
+// phase 21. Le porter ici évite deux choses : une interface orpheline, et — c'est le point mécanique —
+// un SessionMonitor qui dépendrait du TYPE CONCRET de sa source de base, donc intestable par substitution.
+public sealed class TranscriptSessionSource : ISessionSource
 {
     private static readonly System.TimeSpan ActiveWindow = System.TimeSpan.FromMinutes(15);
     private const int MaxSessions = 12;
