@@ -93,6 +93,61 @@ public class GardesPerimetreTests
         Assert.Contains("PurgerPrefixe(\"desktop:\")", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE NON-RETOUR (OBS-01, phase 22) — le diagnostic ne peut plus fabriquer son propre moniteur.
+    ///
+    /// <para>Le défaut corrigé n'était pas une faute de frappe mais une classe d'erreur : un rapport qui
+    /// décrit un système reconstruit à la volée, donc différent de celui qui tourne. Relevé le 2026-09-12 :
+    /// le moniteur fabriqué dans le rapport n'avait ni magasin d'archives, ni filtre « traité », ni
+    /// détecteur. L'utilisateur lisait des sessions vieilles de plusieurs semaines dans le RAPPORT, jamais
+    /// dans le widget — c'est très probablement pourquoi le problème n'a jamais été élucidé.</para>
+    ///
+    /// <para>Cette garde vaut surtout pour l'AVENIR : les phases 23 à 26 modifient le widget, et elles sont
+    /// vérifiées avec cet instrument. Qu'il redevienne autonome un seul commit, et elles seraient vérifiées
+    /// avec un instrument à nouveau faussé, sans que rien ne le signale.</para>
+    /// </summary>
+    [Fact]
+    public void Le_diagnostic_ne_fabrique_aucun_moniteur_de_sessions()
+    {
+        var fichier = Path.Combine(CheminSources(), "Services", "DiagnosticService.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Une garde qui lirait un fichier vide, ou un fichier où la section a disparu, serait muette.
+        Assert.Contains("BuildReportAsync", texte, StringComparison.Ordinal);
+        Assert.Contains("_moniteurSessions.Inspecter(_clock.UtcNow)", texte, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("new SessionMonitor", texte, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE DE PARTAGE D'INSTANCE (OBS-01). La garde précédente empêche la FABRICATION ; celle-ci exige
+    /// l'INJECTION. Sans elle, supprimer l'argument de composition laisserait le rapport parfaitement
+    /// honnête — il dirait « moniteur non injecté » — et parfaitement inutile, en silence.
+    ///
+    /// <para>L'assertion porte sur le fragment d'enregistrement du DiagnosticService et non sur le fichier
+    /// entier : `GetRequiredService&lt;SessionMonitor&gt;()` figure aussi dans l'enregistrement du contrôleur
+    /// du widget, et une recherche globale resterait verte alors que le diagnostic aurait été débranché.</para>
+    /// </summary>
+    [Fact]
+    public void Le_diagnostic_recoit_le_moniteur_du_conteneur()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        var debut = texte.IndexOf("new DiagnosticService(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "Enregistrement du DiagnosticService introuvable dans App.xaml.cs");
+        var fin = texte.IndexOf("));", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin de l'enregistrement du DiagnosticService introuvable");
+
+        var enregistrement = texte[debut..fin];
+        Assert.Contains("moniteurSessions: sp.GetRequiredService<SessionMonitor>()", enregistrement,
+                        StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()

@@ -371,6 +371,13 @@ public partial class App : Application
             sp.GetRequiredService<IUsageProvider>(),
             sp.GetRequiredService<IClock>(),
             sp.GetRequiredService<IAuthStatus>(),     // TOK-02 : le rapport dit l'état RÉEL
-            sp.GetRequiredService<IEtatServeur>()));  // HDR-03/HDR-04 : le rapport nomme ce que la sonde reçoit
+            sp.GetRequiredService<IEtatServeur>(),    // HDR-03/HDR-04 : le rapport nomme ce que la sonde reçoit
+            // OBS-01 — LE moniteur du widget, pas un second exemplaire. PARTAGE D'INSTANCE : le singleton
+            // que Views.SessionsController consomme (l. 240) est exactement celui que le rapport interroge.
+            // C'est ce qui rend le rapport vrai à chaque commit ultérieur PAR CONSTRUCTION : les phases 23
+            // à 26 changeront le câblage du widget sans qu'une ligne du diagnostic ne change. Une copie du
+            // comportement du widget aurait rouvert l'écart dès la phase suivante.
+            // `machine` est sauté par argument NOMMÉ : la production conserve son repli réel (phase 20).
+            moniteurSessions: sp.GetRequiredService<SessionMonitor>()));
     }
 }

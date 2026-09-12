@@ -157,6 +157,12 @@ public class CompositionRootTests
         // Résolution sans exception = graphe câblé dans le BON ORDRE (aucun service manquant/mal ordonné).
         Assert.NotNull(provider.GetRequiredService<SessionMonitor>());
 
+        // OBS-01 — le partage d'instance repose entièrement sur la portée : passer ce moniteur en transient
+        // donnerait au diagnostic un exemplaire distinct de celui du widget, avec ses propres magasins
+        // rechargés et son propre détecteur sans mémoire. Le rapport redeviendrait faux, sans rien casser
+        // au build ni au démarrage.
+        Assert.Same(provider.GetRequiredService<SessionMonitor>(), provider.GetRequiredService<SessionMonitor>());
+
         provider.Dispose();
     }
 
