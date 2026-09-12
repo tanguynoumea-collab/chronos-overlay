@@ -36,21 +36,28 @@ chiffre exact.
 - ✓ Source UIA app bureau : états honnêtes, distinction Chat/Code/Cowork, énumération de la sidebar (SESS-01..05) — Phase 13
 - ✓ Auto-disparition hystérésis réversible + archivage manuel conservé (SESS-06..09) — Phase 14
 - ✓ Matching souple fr/en, test de santé, dégradation, lecture non bloquante (SESS-10..11) — Phases 13-14
+- ✓ Installateurs de hooks et statusLine idempotents + purge des entrées fantômes (PUR-01..03) — Phase 15
+- ✓ Dernier relevé exact persisté ; transcripts devenus source de DELTA ; sous-système de plafonds démoli (EXA-01, DEL-01..06) — Phase 16
+- ✓ Autorité unique du jeton, rafraîchissement préventif, panne d'authentification visible et réparable (TOK-01..03) — Phase 17
+- ✓ Source exacte par en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur 429 (HDR-01..06) — Phase 18
+- ✓ Doctrine « exact ou rien » : exact frais → encore exact → plancher « ≥ N % » → indisponible (EXA-02/04/05, DEL-03/04) — Phase 19
+- ✓ Quatre états lisibles à l'œil + diagnostic nommant la source et son âge (EXA-03, EXA-06) — Phase 20
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-Milestone v1.5 — Exactitude permanente : éradiquer la bascule silencieuse en estimation pure.
-- **Exactitude & doctrine d'affichage (EXA)** : persistance disque du dernier relevé exact, limite d'âge sur
-  toute source exacte, distinction visuelle frais / daté / indisponible, plus jamais d'utilization absolue
-  dérivée d'un comptage de tokens.
-- **Correction par delta (DEL)** : les transcripts JSONL ne produisent plus de pourcentage absolu mais
-  répondent à « activité depuis T ? » et « tokens depuis T ? » ; suppression complète du sous-système de plafonds.
-- **Source exacte par en-têtes de rate-limit (HDR)** : requête jetable `max_tokens:1` + lecture des en-têtes
-  `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement.
-- **Cycle de vie du jeton (TOK)** : rafraîchissement préventif, panne d'authentification visible et réparable en un clic.
-- **Idempotence des intégrations (PUR)** : installateurs de hooks et de statusLine qui remplacent au lieu de cumuler.
+Milestone v1.6 — Observer au lieu de déduire : le widget de sessions.
+- **Périmètre (SRC)** : le widget ne couvre plus que les sessions **Claude Code** ; la source app-bureau
+  (UI Automation) est retirée, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents.
+- **Contrat d'événements (EVT)** : `PermissionRequest` au lieu du proxy `Notification`, battements de cœur
+  qui font **observer** « réfléchit » au lieu de le déduire par expiration, cas de l'interruption utilisateur
+  couvert, et contrat des hooks enfin documenté.
+- **Fusion (FUS)** : arbitrage par **fraîcheur**, jamais par ordre d'insertion ; désaccords traçables.
+- **« Traité » (TRT)** : déduit d'une transition observée sur la MÊME source, jamais d'une expiration ;
+  survit au redémarrage ; geste explicite pour l'utilisateur ; contrat d'archivage unique.
+- **Cycle de vie (CYC)** : balayage des états expirés et des `.tmp` orphelins ; plus d'écriture perdue en silence.
+- **Observabilité (OBS)** : le diagnostic dit **exactement** ce que le widget affiche.
 
 ### Out of Scope
 
@@ -66,51 +73,57 @@ Milestone v1.5 — Exactitude permanente : éradiquer la bascule silencieuse en 
 - **Estimation absolue par tokens / plafond** — retirée en v1.5 : les limites Anthropic pondèrent par modèle, donc `tokens / plafond` reste faux même avec le bon plafond. Les transcripts ne servent plus qu'à corriger un delta borné.
 - **Calibration des plafonds (manuelle ou automatique)** — supprimée avec l'estimation absolue ; c'était la cause racine des pourcentages faux après un changement de forfait
 - **Détection ou saisie du forfait (Max x5 / x20)** — inutile dès lors que les chiffres viennent du serveur, qui connaît déjà le forfait
+- **Source app-bureau via UI Automation pour le widget de sessions** — retirée en v1.6 : le widget ne couvre que Claude Code. Ses entrées `desktop:foreground:*` ne vieillissaient jamais et ne pouvaient donc jamais expirer ; l'utilisateur a dû les archiver à la main.
+- **Hystérésis « traité » par focus de fenêtre** — supprimée avec l'UIA : elle exigeait `Origin == Desktop` et n'atteignait donc JAMAIS une session Claude Code. Remplacée par une transition observée et un geste explicite.
 
-## Current State (entrée en v1.5 — 2026-09-09)
+## Current State (entrée en v1.6 — 2026-09-12)
 
-Chronos affiche les quotas Claude dans un cadran compact à fond transparent, avec deux modes (Normal épuré /
-Étendu 3 anneaux) et 3 thèmes, plus un widget sessions couvrant Claude Code et l'app de bureau (UIA). Exe
-mono-fichier v2.8.1. **Mais le pipeline d'usage est en panne silencieuse** : les trois sources exactes sont
-tombées simultanément (jeton OAuth expiré le 2026-07-12 → HTTP 401 muet ; `usage.json` figé au 2026-07-10 mais
-toujours servi comme `Exact` faute de limite d'âge ; cache exact en RAM seulement, donc perdu à chaque
-redémarrage), et le composite classe uniquement par fiabilité — une donnée « exacte » de deux mois bat une
-estimation fraîche. Le repli divise une somme de tokens par des plafonds calibrés sous l'ancien forfait Max x5,
-d'où des pourcentages faux d'environ 4× depuis le passage en Max x20. `IsStale` est calculé mais bindé nulle
-part : rien ne le signale à l'écran. Effet de bord découvert au passage : 25 hooks Chronos cumulés dans
-`~/.claude/settings.json` au lieu de 5, pointant sur des exes de versions révolues.
+**Le cadran est réglé.** Le milestone v1.5 « Exactitude permanente » est livré : 6 phases, 24 exigences,
+328 → 752 tests verts. L'estimation absolue `tokens / plafond` est supprimée et gardée morte ; le dernier
+relevé exact est persisté ; une sonde d'en-têtes `anthropic-ratelimit-unified-*` alimente le cadran et répond
+même en saturation ; le jeton est rafraîchi préventivement et sa panne est visible. Constaté en production le
+2026-09-12 après reconnexion : `5 h : EXACT — 23 % · source : sonde d'en-têtes · frais · serveur : AUTORISÉ`.
+Exe publié en **3.0.2**.
 
-## Current Milestone: v1.5 — Exactitude permanente
+**Le widget de sessions, lui, ne l'est pas.** Investigation menée le même jour
+(`.planning/debug/widget-sessions-statuts.md`) : trois causes racines distinctes, prouvées contre les classes
+réelles et contre la documentation officielle des hooks. Le widget **déduit** des états au lieu de les
+**observer** — exactement le défaut que v1.5 vient de corriger sur le cadran. « Réfléchit » est deviné par
+expiration et se fait écraser par des signaux de 7 h ; « attend » repose sur une sémantique d'événements qui a
+dérivé (`Stop` ne se déclenche pas sur interruption, `Notification` est une alerte d'absence) ; « traité » ne
+peut structurellement pas fonctionner pour une session de terminal. Et l'instrument de mesure lui-même était
+faussé : le diagnostic construisait son propre moniteur nu, sans les filtres du widget — ce qui explique
+probablement pourquoi le problème n'a jamais été élucidé.
 
-**Goal :** Éradiquer la bascule silencieuse en estimation pure — Chronos n'affiche plus jamais qu'un chiffre
-exact, éventuellement corrigé d'un delta borné et marqué comme tel, ou rien du tout.
+## Current Milestone: v1.6 — Observer au lieu de déduire
+
+**Goal :** Le widget de sessions répond enfin, de façon fiable, à « quelle session m'attend ? » — en
+**observant** les trois états au lieu de les déduire, et sur le seul périmètre des sessions Claude Code.
 
 **Target features :**
-- **Démolition du sous-système de plafonds** — `BudgetCalibration`, `BudgetAutoCalibrator`, `BudgetSource`, le
-  dialogue de calibration, l'entrée de menu et les 6 champs de `settings.json` disparaissent. C'est ce qui rend
-  le bug de forfait structurellement impossible.
-- **`JsonlEstimationProvider` transformé en source de delta** — plus d'`Utilization` absolue ; il répond à
-  « y a-t-il eu une réponse assistant depuis T ? » et « combien de tokens depuis T ? », et sort du composite
-  comme source concurrente.
-- **Persistance disque du dernier relevé exact** — tue la bascule au redémarrage de l'exe, le cas le plus
-  fréquent et jamais identifié jusqu'ici.
-- **Nouvelle doctrine du composite** — exact frais → dernier exact persisté *si aucune activité depuis* (auquel
-  cas il est encore rigoureusement exact) → dernier exact + delta borné avec sa marge → indisponible.
-- **Source exacte par en-têtes de rate-limit** — `POST /v1/messages` (`max_tokens:1`, Haiku) puis lecture des
-  en-têtes `anthropic-ratelimit-unified-*`. Technique reprise de `github.com/juppeee/claude-session-browser`
-  (`clawdmeter.py:150`). Elle répond **même sur un 429**, et apporte le statut serveur et le dépassement.
-- **Jeton toujours vivant, panne toujours visible** — rafraîchissement préventif au lieu du refresh paresseux,
-  pastille de déconnexion cliquable. Un 401 ne sera plus muet.
-- **Installateurs idempotents** — hooks et statusLine remplacent au lieu de cumuler, et purgent les entrées
-  fantômes existantes.
+- **Périmètre réduit à Claude Code** — retrait de la source app-bureau (UI Automation, ~690 lignes) et de
+  l'hystérésis par focus qui en dépendait. Les entrées fantômes `desktop:foreground:*`, qui ne vieillissaient
+  jamais, disparaissent avec elle.
+- **Un contrat d'événements refondé** — `PermissionRequest` (signal exact, aujourd'hui inutilisé) au lieu du
+  proxy `Notification` ; des battements de cœur pour que « réfléchit » soit **observé** ; le cas de
+  l'interruption utilisateur enfin couvert ; le contrat documenté dans `docs/`, comme les autres sources.
+- **Une fusion qui arbitre par fraîcheur** — aujourd'hui un hook de 7 h écrase un transcript de 10 secondes,
+  par simple ordre d'insertion dans un dictionnaire.
+- **Un « traité » qui veut dire quelque chose** — déduit d'une transition **observée sur la même source**,
+  jamais d'une expiration de source ; persistant au redémarrage ; et assorti d'un geste explicite, puisque le
+  focus ne peut pas le fournir en terminal.
+- **Un magasin qui ne croît plus indéfiniment** — balayage des états expirés et des `.tmp` orphelins, puisque
+  `SessionEnd` ne couvre ni terminal tué, ni crash, ni redémarrage machine.
+- **Un instrument de mesure honnête** — le diagnostic dit exactement ce que le widget affiche.
 
-**Note de versioning :** le tracking GSD (v1.0→v1.4) est découplé du versioning de l'exe (2.8.1). Ce milestone
-est **v1.5** côté GSD ; l'ampleur du changement de doctrine justifiera vraisemblablement une **v3.0** côté exe.
+**Doctrine héritée de v1.5, appliquée au widget :** ne jamais présenter comme un fait ce qui n'a pas été
+observé. Un état dont la source a expiré n'est pas « terminé » : il est **inconnu**.
 
-## Next Milestone Goals (après v1.5)
+## Next Milestone Goals (après v1.6)
 
-Sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray, taille réglable, notification Windows en bonus du
-signal UIA (`UserNotificationListener`), préavis avant saturation du quota et notification au reset.
+Sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray, taille réglable, préavis avant saturation du quota et
+notification au reset. Piste d'économie à trancher : si `/api/oauth/usage` sert un jour la famille
+`anthropic-ratelimit-unified-*`, les ≈ 288 micro-requêtes/jour de la sonde deviennent supprimables.
 
 ## Context
 
@@ -158,6 +171,9 @@ signal UIA (`UserNotificationListener`), préavis avant saturation du quota et n
 | Doctrine « exact ou rien » : dernier exact persisté + delta borné, jamais d'estimation absolue | Un chiffre exact vieux de 3 min vaut infiniment mieux qu'une estimation fausse de 400 % | À valider — refonte du composite en v1.5 |
 | Les transcripts JSONL deviennent un correcteur de delta, plus une source concurrente | Ils savent dire *si* et *combien* depuis un instant T ; ils ne savent pas dire un pourcentage absolu | À valider — v1.5 |
 | Source exacte supplémentaire par en-têtes `anthropic-ratelimit-unified-*` | Seule voie qui répond encore quand l'API renvoie 429, et qui expose statut serveur et dépassement | À valider — reprise de claude-session-browser, v1.5 |
+| Le widget de sessions se limite aux sessions Claude Code (v1.6) | La source app-bureau produisait des entrées qui ne vieillissaient jamais, et l'hystérésis par focus qu'elle imposait n'atteignait structurellement jamais une session de terminal | À valider — retrait de ~690 lignes |
+| Les états de session sont OBSERVÉS, jamais déduits par expiration (v1.6) | Un état dont la source a expiré n'est pas « terminé », il est INCONNU. Même doctrine que « exact ou rien » appliquée au cadran en v1.5 | À valider |
+| La fusion des sources arbitre par FRAÎCHEUR (v1.6) | L'ordre d'insertion laissait un signal de 7 h écraser un signal de 10 s — mesuré contre les classes réelles | À valider |
 
 ## Evolution
 
@@ -177,4 +193,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-09 — démarrage du milestone v1.5 « Exactitude permanente »*
+*Last updated: 2026-09-12 — démarrage du milestone v1.6 « Observer au lieu de déduire »*

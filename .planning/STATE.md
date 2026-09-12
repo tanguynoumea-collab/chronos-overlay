@@ -1,77 +1,73 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: — Exactitude permanente
-status: verifying
-stopped_at: Completed 20-05-PLAN.md — dernier plan du milestone v1.5 ; 9 constats humains en attente
-last_updated: "2026-09-12T07:30:24.242Z"
-last_activity: 2026-09-12
+milestone: v1.6
+milestone_name: — Observer au lieu de déduire (widget de sessions)
+status: "Milestone v1.6 démarré le 2026-09-12. Définition des exigences."
+stopped_at: Milestone v1.6 initialisé
+last_updated: "2026-09-12"
+last_activity: 2026-09-12 — Milestone v1.6 démarré (investigation widget-sessions-statuts complète)
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 28
-  completed_plans: 28
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-09)
+See: .planning/PROJECT.md (updated 2026-09-12)
 
-**Core value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste sur les
-deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
-**Current focus:** Phase 20 — Honnetete visible - cadran et diagnostic
+**Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
+jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
+**Current focus:** v1.6 — le widget de sessions OBSERVE ses états au lieu de les déduire.
 
 ## Current Position
 
-Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
-Phase: 20 (Honnetete visible - cadran et diagnostic) — COMPLETE (porte franchie 2026-09-12)
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-09-12
+Milestone: v1.6 — Observer au lieu de déduire
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-09-12 — Milestone v1.6 started
 
-Progress: [██████████] 100% (6/6 phases closes ; 28/28 plans executes)
-
-**Milestone v1.5 — Exactitude permanente : les 24 exigences sont implementees et testees (748 tests verts).**
-NEUF constats humains restent en attente : ils sont listes, ordonnes et actionnables dans
-`.planning/phases/20-honn-tet-visible-cadran-diagnostic/20-05-SUMMARY.md`, section
-**« A VERIFIER PAR L'UTILISATEUR »**. Aucun n'a ete simule.
-
-**Ordre d'exécution :** 15 (indépendante) → 16 (fondations : persistance + delta + démolition des plafonds)
-→ 17 (jeton vivant) → 18 (source en-têtes) → 19 (doctrine du composite, exige 16 et 18) → 20 (rendu visible).
-
-| Phase | Titre | Requirements | Statut |
-|-------|-------|--------------|--------|
-| 15 | Idempotence des intégrations | PUR-01..03 | Complete (3/3) |
-| 16 | Fondations du delta — persistance & démolition des plafonds | EXA-01, DEL-01, DEL-02, DEL-05, DEL-06 | Complete (4/4) |
-| 17 | Jeton toujours vivant, panne toujours visible | TOK-01..03 | Complete (5/5) |
-| 18 | Source exacte par en-têtes de rate-limit | HDR-01..06 | Complete (6/6) |
-| 19 | Nouvelle doctrine du composite | EXA-02, EXA-04, EXA-05, DEL-03, DEL-04 | Complete (5/5) — porte verte, constat humain delegue |
-| 20 | Honnêteté visible — cadran & diagnostic | EXA-03, EXA-06 | Complete (5/5) — porte verte, 9 constats humains delegues |
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity:**
+- Total plans completed (v1.6): 0
 
-- Total plans completed (v1.5): **28 / 28**
-- Tests: **699 → 748**, suite en **3 s** (contre 2 min 12 s avant 20-01)
+## Milestone v1.5 (clos)
 
-| Phase | Plan | Durée | Tâches | Fichiers |
-|-------|------|-------|--------|----------|
-| 20 | 01 | 34min | 3 | 9 |
-| 20 | 02 | 10min | 3 | 15 |
-| 20 | 03 | 16min | 3 | 12 |
-| 20 | 04 | 18min | 3 | 2 |
-| 20 | 05 | 14min | 3 (dont 1 substituée) | 5 |
+Livré le 2026-09-12 : 6 phases (15-20), 24 exigences, 328 → 752 tests verts. Exe 3.0.2 publié et vérifié en
+production. Détail dans .planning/v1.5-MILESTONE-AUDIT.md.
 
-*Updated after each plan completion*
+## Contexte technique v1.6 (investigation DÉJÀ FAITE — ne pas re-enquêter)
 
-## Milestone v1.4 (clos)
+Rapport complet : **.planning/debug/widget-sessions-statuts.md**. Trois causes racines distinctes, prouvées
+contre les classes réelles et contre la doc officielle des hooks Claude Code.
 
-v1.4 validé en UAT app-réelle le 2026-07-11 (phases 13-14, 5 plans, 327 tests verts). Livré hors GSD depuis :
-refonte visuelle des deux overlays + 3 thèmes, cadran deux modes, exe v2.8.1.
+1. **« Réfléchit » déduit par expiration, jamais observé.** Working n''est écrit que par UserPromptSubmit et
+   SessionStart ; rien ne confirme que le travail continue. Et SessionMonitor.Read arbitre par ORDRE
+   D''INSERTION : un hook de 7 h écrase un transcript de 10 s (mesuré).
+2. **« Attend » : sémantique fausse à la source.** Stop ne se déclenche PAS sur interruption utilisateur.
+   Notification est une alerte « tu sembles absent », couvrant permission ET inactivité ET fin de tâche.
+   Un événement PermissionRequest DÉDIÉ existe et n''est pas utilisé (~30 événements au catalogue, 5 utilisés).
+3. **« Traité » impossible en terminal.** SessionTreatmentTracker exige Origin == Desktop et un id
+   desktop:foreground:* ; une session Claude Code a Origin = Cli et un UUID. Et NET-01 confond « l''utilisateur
+   a répondu » avec « ma source a expiré » : preuve arithmétique, 478 min vs DropAfter 480 min → une session
+   réellement en attente masquée 6 h. Le tracker est en mémoire : le traité ne survit pas au redémarrage.
+
+**Amplificateurs prouvés :** DiagnosticService construit son propre SessionMonitor NU (sans filtre traité,
+sans source bureau) et liste files.Take(8) par ordre alphabétique — l''instrument de mesure était faussé, ce
+qui explique probablement que le problème n''ait jamais été élucidé. Take(12) est appliqué AVANT le filtre
+isSidechain alors que 94 % des transcripts sont des agent-*.jsonl. Aucun balayage d''expiration nulle part :
+54 fichiers d''état dont 48 de plus de 7 jours, + 12 .tmp orphelins. ArchiveStore applique un TTL de 6 h
+alors que son contrat annoncé est « permanent ».
+
+**Ce qui N''EST PAS la cause :** le fan-out des 25 hooks concurrents (corrigé en phase 15) n''a produit que
+des débris, pas de corruption — poids mesuré ~0,7 événement perdu sur 5 000.
 
 ## Accumulated Context
 
