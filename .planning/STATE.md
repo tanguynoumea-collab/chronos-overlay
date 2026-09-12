@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-09-12T04:13:42.926Z"
+stopped_at: Completed 19-03-PLAN.md
+last_updated: "2026-09-12T04:38:06.539Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 83
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 19 (Nouvelle doctrine du composite) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -144,6 +144,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 18 P06 | 18min | 3 tasks | 6 files |
 | Phase 19 P01 | 24min | 3 tasks | 10 files |
 | Phase 19 P02 | 15min | 3 tasks | 8 files |
+| Phase 19 P03 | 38 min | 3 tasks | 6 files |
 
 ### Decisions
 
@@ -263,6 +264,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 19]: [19-02] 0L et null ne disent pas la meme chose : branche 2 rend TokensDepuisReleve == 0 (MESURE a zero), branche 1 rend null (NON MESURE). Les confondre ferait d'une absence de mesure une affirmation.
 - [Phase 19]: [19-02] Falsifiabilite JOUEE et non affirmee : 4 mutations reelles de DoctrineFraicheur (branche 1 supprimee -> 5 echecs ; HasActivity inverse -> 2 ; Covers neutralise -> 1 ; Utilization conservee a la demotion -> 3) plus la mutation EXA-04 (echec nommant DoctrineFraicheur.cs:85), toutes revoquees, git diff vide.
 - [Phase 19]: [19-02] EXA-02/EXA-04/DEL-03/DEL-04 laisses Pending : la doctrine existe, pure et prouvee, mais AUCUN appelant ne l'invoque a ce commit. Le cablage est 19-03. CompositeUsageProvider n'a recu aucune injection — modification strictement documentaire (ctor et champs intacts, new UsageSnapshot conserve).
+- [Phase 19]: La doctrine de fraicheur est branchee en TETE de chaine (LastExactUsageProvider), pas dans Best() — Seule cette couche detient simultanement horloge, magasin et source d activite, et elle est au-dessus de tout composite : elle statue UNE fois sur le snapshot final au lieu de statuer a chacun des trois niveaux imbriques. CompositeUsageProvider reste intouche, ses 14 tests verts.
+- [Phase 19]: La passe de transcripts est PARESSEUSE et memoisee : zero lecture en regime nominal, une seule pour deux fenetres degradees — Mesure reelle du 2026-09-12 : une passe coute 2,7 a 3,2 s et lit 536 Mo. Au tick de 60 s, une lecture inconditionnelle serait une E/S permanente. Trois tests gardent la propriete, deux mutations en prouvent la falsifiabilite.
+- [Phase 19]: La garde de WeeklyRecalibration porte desormais sur le RESET SEUL, plus sur la fiabilite — Un resets_at connu est un FAIT. La garde precedente (exacte ET datee) aurait fait tomber les fenetres hebdo passees en plancher dans le chemin de synthese, remplacant le reset reel du serveur par une supposition « ancre + n semaines ».
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -318,7 +322,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T04:13:42.920Z
-Stopped at: Completed 19-02-PLAN.md
+Last session: 2026-09-12T04:37:55.135Z
+Stopped at: Completed 19-03-PLAN.md
 Resume file: None
 Next: /gsd:plan-phase 18

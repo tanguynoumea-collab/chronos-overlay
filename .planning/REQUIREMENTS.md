@@ -32,7 +32,7 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 
 - [x] **EXA-01**: Le dernier relevé exact est **persisté sur disque** avec son horodatage et rechargé au
   démarrage, pour que Chronos ne reparte jamais sans chiffre (tue la bascule au redémarrage de l'exe).
-- [ ] **EXA-02**: Au-delà d'un **âge maximal**, une source exacte cesse d'être présentée comme exacte —
+- [x] **EXA-02**: Au-delà d'un **âge maximal**, une source exacte cesse d'être présentée comme exacte —
   fin du « 10 % vieux de deux mois marqué `Exact` ».
 - [ ] **EXA-03**: Le cadran **distingue visuellement** trois états : chiffre exact frais, chiffre exact daté,
   état indisponible. `IsStale` (aujourd'hui calculé mais bindé nulle part) devient un signal réel à l'écran.
@@ -47,9 +47,9 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 - [x] **DEL-01**: Les transcripts JSONL répondent à « y a-t-il eu une **réponse assistant depuis l'instant T** ? »
   sans produire de pourcentage.
 - [x] **DEL-02**: Les transcripts JSONL fournissent la **somme de tokens depuis l'instant T**.
-- [ ] **DEL-03**: **Sans activité** depuis le dernier relevé exact, ce relevé est présenté comme **encore exact**
+- [x] **DEL-03**: **Sans activité** depuis le dernier relevé exact, ce relevé est présenté comme **encore exact**
   (l'utilisation n'a pas bougé) — et non comme périmé.
-- [ ] **DEL-04**: **Avec activité** depuis, l'affichage est « dernier exact **+ delta estimé** », **marqué avec sa
+- [x] **DEL-04**: **Avec activité** depuis, l'affichage est « dernier exact **+ delta estimé** », **marqué avec sa
   marge d'incertitude** — jamais confondu avec un relevé exact.
 - [x] **DEL-05**: Le **sous-système de plafonds disparaît** du code, des réglages et du menu (`BudgetCalibration`,
   `BudgetAutoCalibrator`, `BudgetSource`, `BudgetDialog` + VM, `IBudgetPrompt`/`BudgetPrompt`, l'entrée
@@ -114,15 +114,15 @@ S'y ajoute une source exacte supplémentaire reprise de `github.com/juppeee/clau
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
 | EXA-01 | Phase 16 | Complete |
-| EXA-02 | Phase 19 | Pending |
+| EXA-02 | Phase 19 | Complete |
 | EXA-03 | Phase 20 | Pending |
 | EXA-04 | Phase 19 | Pending |
 | EXA-05 | Phase 19 | Pending |
 | EXA-06 | Phase 20 | Pending |
 | DEL-01 | Phase 16 | Complete |
 | DEL-02 | Phase 16 | Complete |
-| DEL-03 | Phase 19 | Pending |
-| DEL-04 | Phase 19 | Pending |
+| DEL-03 | Phase 19 | Complete |
+| DEL-04 | Phase 19 | Complete |
 | DEL-05 | Phase 16 | Complete |
 | DEL-06 | Phase 16 | Complete |
 | HDR-01 | Phase 18 | Complete |
