@@ -56,10 +56,7 @@ public static class EcritureEtatSession
             }
             if (resultat.StateJson is null) return ResultatEcritureEtat.Reussie;
 
-            var octets = new System.Text.UTF8Encoding(false).GetBytes(resultat.StateJson);
-            using var flux = new FileStream(fichier, FileMode.Create, FileAccess.Write, FileShare.Read);
-            flux.Write(octets, 0, octets.Length);
-            flux.Flush();
+            EcrireAvecReprise(fichier, new System.Text.UTF8Encoding(false).GetBytes(resultat.StateJson));
             return ResultatEcritureEtat.Reussie;
         }
         catch (System.Exception ex)
@@ -67,6 +64,56 @@ public static class EcritureEtatSession
             // Jamais de relance : un hook ne doit pas casser la session Claude Code. Mais plus jamais de
             // silence non plus — l'appelant reçoit de quoi le dire.
             return ResultatEcritureEtat.Echouee(ex.GetType().Name + " : " + ex.Message);
+        }
+    }
+
+    /// <summary>Nombre d'essais AU TOTAL. Borné, et petit : ce code est sur le chemin critique d'un hook
+    /// BLOQUANT dont le délai de grâce est de trois secondes. Un budget non borné transformerait une
+    /// contention en gel de l'appel d'outil — exactement ce que le délai court cherche à éviter.</summary>
+    private const int EssaisMax = 60;
+
+    /// <summary>
+    /// EVT-03 — LA PARADE AUX ÉCRIVAINS CONCURRENTS, et la raison pour laquelle elle existe.
+    ///
+    /// <para>Avant les battements de cœur, l'écrivain unique était GARANTI : les événements câblés étaient
+    /// tous des signaux de cycle de vie, un à la fois. Il ne l'est plus. Claude Code lance jusqu'à cinq
+    /// processus de hook en parallèle par événement, et les appels d'outil parallèles existent — donc
+    /// plusieurs processus ouvrent le MÊME fichier d'état au même instant. Le partage retenu ci-dessous
+    /// admet les lecteurs mais EXCLUT tout autre écrivain : le second arrivant se voit refuser l'accès.</para>
+    ///
+    /// <para><b>Ce qui a été mesuré, et non supposé</b> (huit écrivains, cinquante battements chacun, sur
+    /// la même session) : sans parade, 288 écritures refusées sur 400. Avec une reprise UNIQUE et
+    /// immédiate — la parade d'abord retenue — encore 209 puis 180 sur 400 : elle ne corrige pas, parce
+    /// qu'elle retente pendant que le détenteur écrit toujours. Il faut donc CÉDER LA MAIN entre deux
+    /// essais, et s'y reprendre plus d'une fois. Avec la reprise bornée ci-dessous : zéro sur 400.</para>
+    ///
+    /// <para><b>Pourquoi pas un partage élargi en écriture.</b> Deux écrivains entrelacés produiraient un
+    /// FRAGMENT là où il y avait un état — et la phase 23 a posé que « un fragment = une absence ». On
+    /// troquerait un refus visible contre une perte silencieuse. Le partage reste donc exclusif entre
+    /// écrivains, et l'attente est ce qui les sérialise.</para>
+    ///
+    /// <para><b>Et surtout pas un fichier temporaire déplacé par-dessus la cible</b> : c'est la mécanique
+    /// que la phase 23 a retirée après avoir mesuré 290 pertes sur 500. Elle ne revient pas.</para>
+    /// </summary>
+    private static void EcrireAvecReprise(string fichier, byte[] octets)
+    {
+        for (var essai = 1; ; essai++)
+        {
+            try
+            {
+                using var flux = new FileStream(fichier, FileMode.Create, FileAccess.Write, FileShare.Read);
+                flux.Write(octets, 0, octets.Length);
+                flux.Flush();
+                return;
+            }
+            catch (IOException) when (essai < EssaisMax)
+            {
+                // Céder la main, sans jamais dormir longtemps : les premiers essais rendent simplement leur
+                // tranche de temps (une écriture concurrente dure des microsecondes), les suivants
+                // attendent réellement, le temps qu'un détenteur obstiné relâche la cible.
+                if (essai <= 12) System.Threading.Thread.Yield();
+                else System.Threading.Thread.Sleep(1);
+            }
         }
     }
 }

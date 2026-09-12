@@ -356,8 +356,52 @@ public class SessionsTests
     [Fact]
     public void Le_cablage_est_exactement_celui_que_la_phase_annonce()
     {
-        Assert.Equal(new[] { "SessionStart", "UserPromptSubmit", "Stop", "SessionEnd", "PermissionRequest", "Notification" },
+        Assert.Equal(new[] { "SessionStart", "UserPromptSubmit", "Stop", "SessionEnd", "PermissionRequest",
+                             "Notification", "PreToolUse", "PostToolUse" },
                      SessionHookInstaller.Events);
+    }
+
+    /// <summary>
+    /// EVT-03 — les deux battements sont posés SANS matcher : on veut TOUT outil, et un matcher omis vaut
+    /// « tout ». Poser un matcher ici reviendrait à ne réaffirmer l'activité que pour certains outils.
+    /// </summary>
+    [Fact]
+    public void Les_deux_battements_sont_poses_sans_matcher()
+    {
+        var hooks = ((JsonNode.Parse(SessionHookInstaller.TransformForInstall(null, Exe)!) as JsonObject)!["hooks"] as JsonObject)!;
+
+        foreach (var ev in new[] { "PreToolUse", "PostToolUse" })
+        {
+            var groupes = (hooks[ev] as JsonArray)!;
+            var groupe = Assert.IsType<JsonObject>(Assert.Single(groupes));
+            Assert.False(groupe.ContainsKey("matcher"));
+            Assert.Equal(SessionHookInstaller.HookCommand(Exe, ev),
+                         groupe["hooks"]![0]!["command"]!.GetValue<string>());
+        }
+    }
+
+    /// <summary>
+    /// A4 — le <c>timeout</c> cesse d'être uniforme, et ce n'est pas un réglage cosmétique :
+    /// <c>PreToolUse</c> est BLOQUANT. Dix secondes de gel par appel d'outil coûteraient infiniment plus
+    /// cher que le battement ne rapporte. Les six entrées de cycle de vie, elles, gardent leur délai.
+    /// Un grep ne prouverait rien ici — c'est la valeur écrite dans le JSON produit qui compte.
+    /// </summary>
+    [Fact]
+    public void Les_deux_battements_portent_un_timeout_court_et_les_six_autres_le_timeout_normal()
+    {
+        var hooks = ((JsonNode.Parse(SessionHookInstaller.TransformForInstall(null, Exe)!) as JsonObject)!["hooks"] as JsonObject)!;
+
+        var courts = 0;
+        foreach (var ev in SessionHookInstaller.Events)
+        {
+            var attendu = ev is "PreToolUse" or "PostToolUse" ? 3 : 10;
+            if (attendu == 3) courts++;
+            var groupe = ((hooks[ev] as JsonArray)![0] as JsonObject)!;
+            Assert.Equal(attendu, groupe["hooks"]![0]!["timeout"]!.GetValue<int>());
+        }
+
+        Assert.Equal(2, courts);                                  // une garde qui n'en verrait aucun serait muette
+        Assert.Equal(8, SessionHookInstaller.Events.Length);
     }
 
     /// <summary>

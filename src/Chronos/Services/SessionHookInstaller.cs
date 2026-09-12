@@ -29,7 +29,18 @@ namespace Chronos.Services;
 /// </summary>
 /// <summary>Un événement CÂBLÉ par Chronos : son nom, le matcher qui le filtre (<c>null</c> = tout), et ce
 /// qu'il produit. Le rôle n'est pas décoratif : c'est lui qu'on recopie dans docs/ (EVT-05).</summary>
-public sealed record EvenementCable(string Evenement, string? Matcher, string Role);
+/// <param name="Evenement">Le nom exact, validé contre <see cref="CatalogueEvenementsHooks"/> avant écriture.</param>
+/// <param name="Matcher">Le filtre PRIMAIRE, ou <c>null</c> quand on veut tout.</param>
+/// <param name="Role">Ce que l'entrée produit — recopié tel quel dans docs/hooks-contract.md (EVT-05).</param>
+/// <param name="Timeout">
+/// Le délai de grâce, en secondes, accordé au processus de hook. Il CESSE d'être uniforme depuis EVT-03,
+/// et ce n'est pas un réglage cosmétique : <c>PreToolUse</c> est BLOQUANT — Claude Code attend la fin du
+/// hook avant de lancer l'outil. Dix secondes de gel sur CHAQUE appel d'outil coûteraient infiniment plus
+/// cher que le battement ne rapporte, alors que l'écriture d'un fichier d'état se compte en
+/// millisecondes. Les deux battements portent donc trois secondes, les six entrées de cycle de vie —
+/// rares, et jamais dans le chemin critique d'un outil — gardent dix.
+/// </param>
+public sealed record EvenementCable(string Evenement, string? Matcher, string Role, int Timeout = 10);
 
 public sealed class SessionHookInstaller
 {
@@ -52,6 +63,22 @@ public sealed class SessionHookInstaller
     /// barres verticales : il est donc évalué comme une LISTE EXACTE, et non comme une expression
     /// régulière NON ANCRÉE. C'est exactement le piège documenté (<c>Edit.*</c> attrape aussi
     /// <c>NotebookEdit</c>) — on n'y entre pas.</para>
+    ///
+    /// <para><b>Pourquoi les BATTEMENTS DE CŒUR sont ces deux-là (EVT-03).</b> Le catalogue relevé le
+    /// 2026-09-12 ne contient AUCUN battement périodique : il n'y a pas de tick horloge à câbler. Ces
+    /// deux entrées sont donc une preuve de vie IMPARFAITE, et l'imperfection est assumée — entre le
+    /// signal d'entrée d'un build de dix minutes et son signal de sortie, rien n'arrive ; idem pendant
+    /// une longue réflexion sans appel d'outil. La limite est écrite dans docs/ (EVT-05), pas tue.</para>
+    ///
+    /// <para><c>MessageDisplay</c> serait un battement bien plus FIN, mais il se déclenche pendant le
+    /// streaming du texte affiché : un processus Chronos par fragment. Il est écarté pour son COÛT, pas
+    /// pour sa précision — un battement ne doit pas coûter plus cher que ce qu'il observe.</para>
+    ///
+    /// <para>Leur <c>matcher</c> est volontairement ABSENT : on veut TOUT outil, et un matcher omis vaut
+    /// « tout ». Enfin, ces deux clés hébergent sur cette machine des groupes appartenant à un AUTRE
+    /// OUTIL. La purge de Chronos repère les siens par marqueur d'argument et nom de fichier
+    /// <c>Chronos*.exe</c>, JAMAIS par la clé : les groupes tiers ne sont ni touchés, ni comptés comme
+    /// nôtres, et un test le prouve.</para>
     /// </summary>
     public static readonly EvenementCable[] Cablage =
     {
@@ -62,6 +89,8 @@ public sealed class SessionHookInstaller
         new("PermissionRequest", null, "une permission est DEMANDÉE → à toi (EVT-01)"),
         new("Notification",      "agent_needs_input|elicitation_dialog|elicitation_url_dialog",
                                  "les TROIS types du bus qui sont de vraies demandes → à toi (EVT-02)"),
+        new("PreToolUse",        null, "un outil va être appelé → battement de cœur : en cours (EVT-03)", 3),
+        new("PostToolUse",       null, "un outil vient de réussir → battement de cœur : en cours (EVT-03)", 3),
     };
 
     /// <summary>Les noms des événements câblés. CONSERVÉ (le diagnostic et plusieurs tests le lisent)
@@ -190,7 +219,7 @@ public sealed class SessionHookInstaller
                 {
                     ["type"] = "command",
                     ["command"] = HookCommand(exePath, c.Evenement),   // slashes avant : leçon terrain, conservée
-                    ["timeout"] = 10,
+                    ["timeout"] = c.Timeout,   // A4 : court pour les battements, PreToolUse étant BLOQUANT
                 });
                 arr.Add(groupe);
             }

@@ -20,10 +20,16 @@ public sealed record SessionHookResult(string? SessionId, bool Delete, string? S
 ///   Notification (3 types de demande) → WaitingAttention (filtré par matcher ; veto sur les neuf autres)
 ///   Stop                              → WaitingTurn (le tour s'est terminé, c'est OBSERVÉ)
 ///   UserPromptSubmit / SessionStart   → Working
+///   PreToolUse / PostToolUse          → Working (battement de cœur ; jamais émis par un sous-agent,
+///                                       voir le veto plus bas)
 ///   SessionEnd                        → suppression du fichier
 ///   sous-agent (agent_id / agent_type présent)
 ///                                     → ignoré, SAUF demande de permission ou demande du bus
 ///   inconnu                           → ignoré
+///
+/// <para><b>La doctrine des battements, en une phrase :</b> un battement dit « ça travaillait à cet
+/// instant », JAMAIS « ça travaille encore maintenant ». C'est pour cela que le seuil de silence du
+/// moniteur subsiste, et qu'il porte désormais ce nom-là.</para>
 /// </summary>
 public static class SessionHookProcessor
 {
@@ -108,18 +114,21 @@ public static class SessionHookProcessor
             "Stop" => SessionActivity.WaitingTurn,
             "UserPromptSubmit" => SessionActivity.Working,
             "SessionStart" => SessionActivity.Working,
-            _ => null, // SubagentStop, PostToolUse, inconnu → ignorer
+            "PreToolUse" => SessionActivity.Working,   // battement de cœur (EVT-03)
+            "PostToolUse" => SessionActivity.Working,  // battement de cœur (EVT-03)
+            _ => null, // SubagentStop, PostToolBatch, inconnu → ignorer
         };
         if (activity is null) return SessionHookResult.Ignored;
 
         // Le motif inscrit dans le fichier d'état : pour Notification, le type quand il est lisible ; pour
-        // PermissionRequest, le NOM DE L'ÉVÉNEMENT. Deux lectures du relevé se sont contredites sur le nom
-        // du champ de contexte de permission : rien ne doit s'y appuyer. Le nom de l'événement, lui, est un
+        // PermissionRequest et les deux battements, le NOM DE L'ÉVÉNEMENT. Deux lectures du relevé se sont
+        // contredites sur le nom du champ de contexte de permission : rien ne doit s'y appuyer, et aucun
+        // champ spécifique à un battement n'est confirmable non plus. Le nom de l'événement, lui, est un
         // fait observé — c'est nous qui l'avons câblé.
         var motif = ev switch
         {
             "Notification" => notifType,
-            "PermissionRequest" => ev,
+            "PermissionRequest" or "PreToolUse" or "PostToolUse" => ev,
             _ => null,
         };
 

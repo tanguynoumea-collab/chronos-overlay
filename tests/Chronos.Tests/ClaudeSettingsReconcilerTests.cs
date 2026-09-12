@@ -106,6 +106,48 @@ public class ClaudeSettingsReconcilerTests
         Assert.Contains("gsd-check-update.js", (sessionStart[0] as JsonObject)!["hooks"]![0]!["command"]!.ToString());
     }
 
+    /// <summary>
+    /// EVT-03 — LE test que le milestone exige, et il devient porteur au moment EXACT où Chronos se met à
+    /// écrire sur des clés qu'un autre outil occupe déjà. <c>PreToolUse</c> et <c>PostToolUse</c> portent,
+    /// sur cette machine, les hooks GSD relevés le 2026-09-09 : ils doivent survivre INTACTS et EN TÊTE,
+    /// le groupe Chronos venant APRÈS eux.
+    ///
+    /// <para>Ce qui rend cela vrai : la purge repère Chronos par marqueur d'argument ET nom de fichier
+    /// <c>Chronos*.exe</c>, jamais par la clé d'événement. Une clé partagée n'est donc pas une clé à nous.</para>
+    /// </summary>
+    [Fact]
+    public void Les_battements_n_evincent_pas_les_hooks_d_un_autre_outil_sur_PreToolUse_et_PostToolUse()
+    {
+        var apres = ClaudeSettingsReconciler.ReconcileJson(FixturePollue(), Exe, hooksWanted: true);
+        var hooks = (Racine(apres!)["hooks"] as JsonObject)!;
+
+        foreach (var (cle, matcher, fichier, delai) in new[]
+        {
+            ("PreToolUse",  "Write|Edit",                        "gsd-prompt-guard.js",    5),
+            ("PostToolUse", "Bash|Edit|Write|MultiEdit|Agent|Task", "gsd-context-monitor.js", 10),
+        })
+        {
+            var groupes = (hooks[cle] as JsonArray)!;
+
+            // 1) Le groupe tiers est TOUJOURS à l'index 0, avec sa commande, son matcher et son timeout.
+            var tiers = (groupes[0] as JsonObject)!;
+            Assert.False(ClaudeSettingsJson.IsChronosGroup(tiers, ClaudeSettingsJson.HookMarker));
+            Assert.Equal(matcher, tiers["matcher"]!.ToString());
+            Assert.Contains(fichier, tiers["hooks"]![0]!["command"]!.ToString());
+            Assert.Equal(delai, (tiers["hooks"] as JsonArray)![0]!["timeout"]!.GetValue<int>());
+
+            // 2) Un SEUL groupe Chronos, et il est ajouté APRÈS le groupe tiers.
+            var notres = groupes.Where(g => ClaudeSettingsJson.IsChronosGroup(g, ClaudeSettingsJson.HookMarker)).ToArray();
+            var notre = Assert.Single(notres);
+            Assert.True(groupes.IndexOf(notre) > 0, $"Le groupe Chronos de {cle} doit suivre le groupe tiers.");
+            Assert.Equal(SessionHookInstaller.HookCommand(Exe, cle),
+                         (notre as JsonObject)!["hooks"]![0]!["command"]!.ToString());
+        }
+
+        // 3) La clé INCONNUE « if » du groupe PostToolUse survit : on ne réécrit pas ce qu'on ne comprend pas.
+        Assert.Equal("always", ((hooks["PostToolUse"] as JsonArray)![0] as JsonObject)!["if"]!.ToString());
+    }
+
     /// <summary>Les clés racine des autres outils ne sont ni perdues ni réordonnées.</summary>
     [Fact]
     public void Preserve_agentPushNotifEnabled_et_les_cles_racine_inconnues()
