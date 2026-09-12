@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Chronos.Models;
 using Chronos.Services;
+using Chronos.Text;
 using Chronos.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -41,6 +42,27 @@ public sealed partial class MainViewModel : ObservableObject
     public WindowGaugeViewModel SevenDay { get; } = new(TimeSpan.FromDays(7));
 
     [ObservableProperty] private bool _dataUnavailable;
+
+    /// <summary>EXA-03 — au moins une des deux fenêtres porte un chiffre DATÉ (relevé au-delà de la
+    /// limite d'âge, réhabilité ou dégradé en plancher par la doctrine). Marque INFORMATIVE et ADDITIVE :
+    /// elle s'ajoute À CÔTÉ du chiffre, elle ne lui retire ni luminance ni netteté — un EncoreValide est
+    /// un chiffre PROUVÉ juste, le voiler serait une régression d'honnêteté.
+    /// PORTÉE GLOBALE assumée : l'âge n'est pas une propriété de la fenêtre, c'est une propriété du
+    /// PIPELINE (les deux fenêtres viennent de la même chaîne de sources). Règle de composition :
+    /// on montre la marque dès que l'UNE des deux est datée — le plus vieux des deux, jamais le plus
+    /// jeune. Une synthèse conservatrice n'est pas un mensonge ; une synthèse optimiste en serait un.
+    /// Le détail par fenêtre est dans l'infobulle.</summary>
+    [ObservableProperty] private bool _afficherReleveDate;
+
+    /// <summary>EXA-06 au cadran — le COUPLE (qui alimente, depuis quand) pour chaque fenêtre, plus la
+    /// matière brute de DEL-04 quand elle existe. Le vocabulaire n'est PAS remappé ici : il vient de
+    /// Chronos.Text.LibelleSource, un seul point pour tout le projet.
+    ///
+    /// Recomposée une fois par RAFRAÎCHISSEMENT (≈ 60 s) et non à chaque tick d'interpolation (1 s) :
+    /// reconstruire une chaîne chaque seconde pour un texte qui n'est visible qu'au survol serait du
+    /// travail permanent pour un affichage occasionnel. Conséquence assumée et écrite plutôt que laissée
+    /// à deviner : l'ancienneté affichée peut retarder d'un tick de rafraîchissement.</summary>
+    [ObservableProperty] private string _infobulleReleve = "";
 
     // Anneau 24 h (JOUR-01/02) : fraction du jour local + resets 5 h projetés sur l'axe des 24 h.
     // Recalculés à chaque Interpolate (rafraîchis chaque seconde). La couleur 24 h réutilisera
@@ -311,15 +333,23 @@ public sealed partial class MainViewModel : ObservableObject
     private EtatAuthentification _etatAuth = EtatAuthentification.Connecte;
     private bool _jamaisDExactEtRienAAfficher;
 
-    /// <summary>Thread UI uniquement. Recompose les TROIS pastilles à partir des entrées brutes.
+    /// <summary>Thread UI uniquement. Recompose les QUATRE marques du cadran à partir des entrées
+    /// brutes — les trois pastilles, et depuis la phase 20 la marque du relevé daté.
     /// L'invitation s'efface devant la pastille de déconnexion : les deux portent le MÊME geste
     /// (ReconnecterCommand), les afficher ensemble sur un cadran de 170 px serait une redondance, pas
-    /// une information — et la déconnexion est le diagnostic le plus précis des deux.</summary>
+    /// une information — et la déconnexion est le diagnostic le plus précis des deux.
+    ///
+    /// POINT DE RECOMPOSITION UNIQUE, et c'est la raison d'être de cette méthode : un empilement de
+    /// visibilités posées chacune à son propre instant laisserait la plus ancienne périmée.</summary>
     private void MajPastilles()
     {
         AfficherPastilleDeconnexion = _etatAuth == EtatAuthentification.Deconnecte;
         AfficherPastilleHorsLigne   = _etatAuth == EtatAuthentification.HorsLigne;
         AfficherInvitationConnexion = _jamaisDExactEtRienAAfficher && !AfficherPastilleDeconnexion;
+
+        // EXA-03 — RAPPORTÉ par les deux jauges, qui le tiennent elles-mêmes de la doctrine. Aucune
+        // comparaison d'horodatage ici : c'est ce que la garde de source impose, et c'est la forme.
+        AfficherReleveDate = FiveHour.EstDate || SevenDay.EstDate;
     }
 
     /// <summary>Thread UI uniquement. NonConnecte n'allume RIEN par lui-même, phase 19 comprise : c'est
@@ -355,6 +385,7 @@ public sealed partial class MainViewModel : ObservableObject
         MajPastilles();
 
         MajTexteEtatSonde();        // HDR-03 : le statut déclaré suit les fenêtres, tick par tick
+        MajInfobulleReleve();       // EXA-06 : et l'infobulle nomme QUI les alimente, et depuis quand
         Interpolate(_clock.UtcNow); // premier rendu immédiat (pas d'overlay vide entre deux ticks)
     }
 
@@ -383,6 +414,41 @@ public sealed partial class MainViewModel : ObservableObject
 
         TexteEtatSonde = string.Join(" · ", morceaux);
         AfficherEtatSonde = TexteEtatSonde.Length > 0;
+    }
+
+    /// <summary>
+    /// EXA-06 au cadran — thread UI uniquement. Une ligne par fenêtre : QUI l'alimente, DEPUIS QUAND, ce
+    /// que la doctrine a vérifié, et la matière brute de DEL-04 si elle existe.
+    ///
+    /// Le vocabulaire n'est PAS remappé ici — il vient intégralement de <see cref="LibelleSource"/>,
+    /// point unique du projet : deux mappings divergeraient, et l'utilisateur lirait deux noms différents
+    /// pour la même source selon l'endroit où il regarde (même règle que MajTexteEtatSonde).
+    ///
+    /// AUCUNE arithmétique d'horodatage ici : la mise en mots de l'ancienneté appartient à
+    /// LibelleSource.Anciennete, et la garde de source de ce ViewModel reste verte par construction.
+    ///
+    /// Le compte de tokens est joint TEL QUEL, jamais converti en points de pourcentage (EXA-04) : les
+    /// limites Anthropic pondèrent par modèle, donc « tokens / plafond » restera faux à jamais.
+    ///
+    /// Appelée UNIQUEMENT depuis ApplySnapshot (≈ 60 s) et jamais depuis Interpolate (1 s) : voir
+    /// <see cref="InfobulleReleve"/> pour le pourquoi et le retard assumé qui en découle.
+    /// </summary>
+    private void MajInfobulleReleve()
+    {
+        var now = _clock.UtcNow;
+        InfobulleReleve = Ligne("5 h", FiveHour, now) + "\n" + Ligne("hebdo", SevenDay, now);
+
+        static string Ligne(string etiquette, WindowGaugeViewModel g, DateTimeOffset now)
+        {
+            var morceaux = new List<string>
+            {
+                LibelleSource.Format(g.SourceDuReleve),
+                "relevé " + LibelleSource.Anciennete(g.InstantDuReleve, now),
+            };
+            if (LibelleSource.Provenance(g.ProvenanceDuReleve) is { Length: > 0 } p) morceaux.Add(p);
+            if (g.HasTokens) morceaux.Add(g.TokensText);
+            return etiquette + " : " + string.Join(" · ", morceaux);
+        }
     }
 
     /// <summary>PUR, aucun I/O (RAF-03) — appelé chaque seconde par le DispatcherTimer (StartClock).</summary>

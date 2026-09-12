@@ -51,6 +51,20 @@ public class MainViewModelTests
             ResetsAt = now + (remaining ?? TimeSpan.FromHours(2)),
         };
 
+    // Fenêtre EXACTE et lisible dont la doctrine a statué la PROVENANCE : matière des tests EXA-03.
+    // Un ResetsAt futur est fourni pour que le recalibrage hebdo best-effort ne s'en mêle pas.
+    private static WindowState Provenue(WindowKind kind, ProvenanceReleve p) =>
+        new()
+        {
+            Kind = kind,
+            Reliability = SourceReliability.Exact,
+            Utilization = 0.5,
+            ResetsAt = Now + TimeSpan.FromHours(2),
+            Provenance = p,
+            Source = SourceUsage.SondeEnTetes,
+            CapturedAt = Now - TimeSpan.FromMinutes(12),
+        };
+
     // Fenêtre hebdo en REPLI (estimée) sans resets_at : cas où le recalibrage best-effort s'applique (ROB-03).
     private static WindowState EstimatedWeekly() =>
         new() { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Estimated };
@@ -191,6 +205,138 @@ public class MainViewModelTests
     //   . GardesDoctrineTests.Aucun_seuil_d_anciennete_n_est_calcule_dans_les_ViewModels_de_la_doctrine
     //   . WindowGaugeViewModelTests.EstDate_est_RAPPORTE_par_la_doctrine_et_jamais_recalcule
     //   . WindowGaugeViewModelTests.Un_plancher_est_AUSSI_date_et_un_encore_valide_est_date_SANS_etre_plancher
+
+    // --- EXA-03 : la marque « relevé daté », globale et CONSERVATRICE (le plus vieux des deux) ---
+
+    /// <summary>Le cas nominal ne porte AUCUNE marque : deux fenêtres fraîches, rien à signaler. Sans ce
+    /// test, une marque allumée en permanence passerait pour un succès.</summary>
+    [Fact]
+    public void Deux_fenetres_fraiches_ne_portent_AUCUNE_marque_d_age()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = Provenue(WindowKind.FiveHour, ProvenanceReleve.Frais),
+            SevenDay = Provenue(WindowKind.SevenDay, ProvenanceReleve.Frais),
+            SourceCapturedAt = Now,
+        });
+
+        Assert.False(vm.AfficherReleveDate);
+    }
+
+    /// <summary>« Le plus vieux des deux, jamais le plus jeune » : une SEULE fenêtre datée suffit. Une
+    /// synthèse conservatrice n'est pas un mensonge ; une synthèse optimiste en serait un. Et l'hebdo est
+    /// ici EncoreValide : datée, mais PROUVÉE juste — la marque est informative, elle ne dégrade rien.</summary>
+    [Fact]
+    public void Une_seule_fenetre_datee_suffit_a_allumer_la_marque()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = Provenue(WindowKind.FiveHour, ProvenanceReleve.Frais),
+            SevenDay = Provenue(WindowKind.SevenDay, ProvenanceReleve.EncoreValide),
+            SourceCapturedAt = Now,
+        });
+
+        Assert.True(vm.AfficherReleveDate);
+        Assert.False(vm.SevenDay.EstPlancher);   // datée ET juste : aucune dégradation du chiffre
+    }
+
+    /// <summary>Rien à dater quand il n'y a pas de chiffre : deux fenêtres indisponibles n'allument pas
+    /// la marque. Dater le vide reviendrait à affirmer qu'un chiffre existe, et qu'il est vieux.</summary>
+    [Fact]
+    public void Deux_fenetres_indisponibles_n_ont_rien_a_dater()
+    {
+        var vm = NewVm(out _, out _, out _);
+        vm.ApplySnapshot(UsageSnapshot.Empty);
+
+        Assert.True(vm.DataUnavailable);
+        Assert.False(vm.AfficherReleveDate);
+    }
+
+    // --- EXA-06 au cadran : l'infobulle nomme QUI alimente chaque fenêtre, et DEPUIS QUAND ---
+
+    /// <summary>Les DEUX fenêtres sont nommées, chacune avec son libellé de source et son ancienneté.
+    /// Assertions par PRÉSENCE et jamais par égalité stricte : une égalité sur un texte composé se casse
+    /// au premier ajout de séparateur et n'apprend rien de plus. Le vocabulaire asserté est celui de
+    /// LibelleSource — si quelqu'un remappait les libellés en local, ces assertions tomberaient.</summary>
+    [Fact]
+    public void L_infobulle_nomme_les_DEUX_fenetres_avec_leur_source_et_leur_anciennete()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.4,
+                ResetsAt = Now + TimeSpan.FromHours(2), Provenance = ProvenanceReleve.Frais,
+                Source = SourceUsage.SondeEnTetes, CapturedAt = Now - TimeSpan.FromMinutes(12),
+            },
+            SevenDay = new WindowState
+            {
+                Kind = WindowKind.SevenDay, Reliability = SourceReliability.Exact, Utilization = 0.7,
+                ResetsAt = Now + TimeSpan.FromDays(3), Provenance = ProvenanceReleve.EncoreValide,
+                Source = SourceUsage.EndpointOAuthChronos, CapturedAt = Now - TimeSpan.FromHours(3),
+            },
+            SourceCapturedAt = Now,
+        });
+
+        Assert.Contains("5 h :", vm.InfobulleReleve);
+        Assert.Contains("hebdo :", vm.InfobulleReleve);
+        Assert.Contains("sonde d'en-têtes de rate-limit", vm.InfobulleReleve);
+        Assert.Contains("endpoint OAuth (login Chronos)", vm.InfobulleReleve);
+        Assert.Contains("relevé il y a 12 min", vm.InfobulleReleve);
+        Assert.Contains("relevé il y a 3 h 00", vm.InfobulleReleve);
+        Assert.Contains("encore valide", vm.InfobulleReleve);   // ce que la doctrine a VÉRIFIÉ
+    }
+
+    /// <summary>DEL-04 + EXA-04 — la matière brute d'un plancher devient enfin visible, à la demande, et
+    /// TELLE QUELLE. Elle n'est jamais convertie en points de pourcentage : les limites Anthropic
+    /// pondèrent par modèle, donc « tokens / plafond » restera faux quel que soit le plafond. C'est aussi
+    /// la levée de la dette n° 1 de la phase 19 — TokensText cessait d'être calculé pour personne.</summary>
+    [Fact]
+    public void Une_fenetre_plancher_joint_son_compte_de_tokens_BRUT_jamais_un_pourcentage()
+    {
+        var vm = NewVm(out _, out _, out _);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = new WindowState
+            {
+                Kind = WindowKind.FiveHour, Reliability = SourceReliability.Estimated, Utilization = 0.8,
+                ResetsAt = Now + TimeSpan.FromHours(2), Provenance = ProvenanceReleve.PlancherAvecActivite,
+                Source = SourceUsage.MagasinDernierExact, CapturedAt = Now - TimeSpan.FromHours(3),
+                TokensDepuisReleve = 643_649_933,
+            },
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+            SourceCapturedAt = Now,
+        });
+
+        Assert.True(vm.AfficherReleveDate);
+        Assert.True(vm.FiveHour.EstPlancher);
+        Assert.Contains("tokens", vm.InfobulleReleve);                 // la matière brute est LÀ
+        Assert.Contains(vm.FiveHour.TokensText, vm.InfobulleReleve);   // et c'est bien celle de la jauge
+        Assert.Contains("borne inférieure", vm.InfobulleReleve);       // ce que la doctrine a statué
+        Assert.DoesNotContain("%", vm.InfobulleReleve);                // JAMAIS un point de pourcentage
+    }
+
+    /// <summary>Une fenêtre que personne n'alimente ne reçoit pas un nom par défaut : l'infobulle dit
+    /// « non renseignée ». Nommer une source qu'on ignore serait exactement la panne silencieuse que ce
+    /// milestone éradique — et le relevé sans horodatage se dit, lui aussi, plutôt que de se taire.</summary>
+    [Fact]
+    public void Une_fenetre_sans_source_rend_non_renseignee_et_jamais_un_nom_par_defaut()
+    {
+        var vm = NewVm(out _, out _, out _);
+        vm.ApplySnapshot(UsageSnapshot.Empty);
+
+        Assert.Contains("non renseignée", vm.InfobulleReleve);
+        Assert.Contains("de date inconnue", vm.InfobulleReleve);
+        Assert.Contains("5 h :", vm.InfobulleReleve);      // les deux lignes existent même vides de source
+        Assert.Contains("hebdo :", vm.InfobulleReleve);
+    }
 
     // --- FEN-05 : ToggleBackground bascule l'état ET pilote le controller (arrière-plan / premier plan) ---
 

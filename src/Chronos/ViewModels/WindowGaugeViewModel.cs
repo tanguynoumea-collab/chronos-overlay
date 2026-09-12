@@ -56,6 +56,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     /// (« trop vieux ») appartient à la doctrine — jamais à ce ViewModel.</summary>
     public DateTimeOffset? InstantDuReleve { get; private set; }
 
+    /// <summary>EXA-03 — ce que la doctrine a VÉRIFIÉ sur ce chiffre ; <c>null</c> si elle ne s'est pas
+    /// prononcée. Non observable, même motif que les deux précédentes : sa mise en mots appartient à
+    /// <c>Chronos.Text.LibelleSource</c>, et <see cref="EstDate"/> en est déjà le résumé bindable.</summary>
+    public ProvenanceReleve? ProvenanceDuReleve { get; private set; }
+
     // HDR-03 — l'état déclaré par le SERVEUR pour CETTE fenêtre, en texte FR prêt à afficher.
     // Posées et testées ici pour que la phase 20 (EXA-03, distinction visuelle frais / daté /
     // indisponible) n'ait plus qu'à les binder : AUCUNE géométrie de cadran n'en dépend aujourd'hui.
@@ -103,6 +108,7 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         // EXA-06 — le COUPLE (qui, depuis quand) transporté tel quel jusqu'à l'infobulle.
         SourceDuReleve = s.Source;
         InstantDuReleve = s.CapturedAt;
+        ProvenanceDuReleve = s.Provenance;
 
         // VIS-05 + DEL-04 : le préfixe est décidé par la PROVENANCE et non par la fiabilité — « ≥ » ne
         // doit apparaître que sur un plancher, jamais sur un exact encore valide (DEL-03), qui est un
