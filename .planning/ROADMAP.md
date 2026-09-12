@@ -67,7 +67,8 @@ et la garde de composition `CompositionRootTests`.
 
 - [x] **Phase 15 : Idempotence des intégrations** - Les installateurs de hooks et de statusLine remplacent l'entrée Chronos existante au lieu de la cumuler, et purgent les entrées fantômes déjà présentes (completed 2026-09-09)
 - [x] **Phase 16 : Fondations du delta — persistance & démolition des plafonds** - Le dernier relevé exact survit au redémarrage de l'exe, les transcripts JSONL ne produisent plus qu'« activité depuis T ? » et « tokens depuis T ? », le sous-système de plafonds disparaît et les réglages existants migrent sans casse (completed 2026-09-09)
-- [x] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic (completed 2026-09-11)
+- [x] **Phase 17 : Jeton toujours vivant, panne toujours visible** - Le jeton OAuth est rafraîchi préventivement et un échec d'authentification devient visible et réparable en un clic
+ (completed 2026-09-11)
 - [ ] **Phase 18 : Source exacte par en-têtes de rate-limit** - Une requête jetable `max_tokens:1` livre l'usage exact via les en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur un 429, avec statut serveur et dépassement
 - [ ] **Phase 19 : Nouvelle doctrine du composite** - Exact frais → dernier exact encore valide → dernier exact + delta borné et marqué → indisponible, avec limite d'âge sur toute source exacte et plus jamais d'utilization dérivée d'un comptage de tokens
 - [ ] **Phase 20 : Honnêteté visible — cadran & diagnostic** - Le cadran distingue à l'œil chiffre frais / chiffre daté / indisponible, et le diagnostic nomme la source réellement affichée et son âge
@@ -179,7 +180,13 @@ déconnexion, elle retombe dans la panne silencieuse qu'on éradique).
      la normalisation se fait en un point unique (HDR-05).
   5. **Coût maîtrisé et annoncé** : la cadence d'interrogation est bornée (pas de sonde à chaque tick), et
      les réglages indiquent honnêtement que chaque appel consomme une micro-requête sur le compte (HDR-06).
-**Plans**: TBD
+**Plans**: 6 plans (5 vagues)
+- [ ] 18-01-PLAN.md — Point unique de normalisation des unités : 12 conversions rapatriées, piège de culture fr-FR gravé, garde de non-retour par balayage de source (HDR-05) (vague 1)
+- [ ] 18-02-PLAN.md — Vocabulaire ouvert du statut serveur (`NonReconnu`) + dépassement, 2 champs sur `WindowState`, canal latéral `IEtatServeur`, faux de transport porteur d'en-têtes sur 429 et 8 jeux de référence (HDR-03, HDR-04) (vague 1)
+- [ ] 18-03-PLAN.md — La sonde `RateLimitHeaderUsageProvider` : en-têtes lus AVANT l'aiguillage par code, frein 300 s, interrupteur `SondeEnTetesActivee` (HDR-01, HDR-02, HDR-06) (vague 2)
+- [ ] 18-04-PLAN.md — Statut serveur par fenêtre (3 noms candidats) et dépassement par les deux canaux, sans `elif` (HDR-03, HDR-04) (vague 3)
+- [ ] 18-05-PLAN.md — Câblage DI : la sonde en PRIMAIRE d'un nouveau composite externe, garde de position par le comportement, diagnostic qui nomme l'issue et les NOMS d'en-têtes (HDR-01, HDR-02, HDR-06) (vague 4)
+- [ ] 18-06-PLAN.md — Réglages : interrupteur + coût annoncé (≈ 288 micro-requêtes/jour), état serveur visible, et checkpoint humain du 429 RÉEL (HDR-03, HDR-04, HDR-06) (vague 5, checkpoint humain)
 
 ### Phase 19 : Nouvelle doctrine du composite
 **Goal**: Le cœur du milestone — Chronos n'affiche plus jamais qu'un chiffre exact, éventuellement corrigé
@@ -239,7 +246,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 15. Idempotence des intégrations | 3/3 | Complete   | 2026-09-09 |
 | 16. Fondations du delta — persistance & démolition des plafonds | 4/4 | Complete   | 2026-09-09 |
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
-| 18. Source exacte par en-têtes de rate-limit | 0/? | Not started | - |
+| 18. Source exacte par en-têtes de rate-limit | 0/6 | Planned | - |
 | 19. Nouvelle doctrine du composite | 0/? | Not started | - |
 | 20. Honnêteté visible — cadran & diagnostic | 0/? | Not started | - |
 

@@ -1,9 +1,9 @@
 ---
 phase: 18
 slug: source-exacte-par-en-t-tes-de-rate-limit
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: planned
 created: 2026-09-12
 ---
 
@@ -35,11 +35,40 @@ created: 2026-09-12
 
 ## Per-Task Verification Map
 
-*Rempli par le planner.*
+*Rempli par le planner le 2026-09-12. Toute tâche a une commande automatisée ; la seule vérification
+manuelle est isolée en fin de phase (plan 18-06, tâche 3).*
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| — | — | — | — | — | — | — | ⬜ pending |
+| 18-01 T1 | 18-01 | 1 | HDR-05 | unit (TDD) | `--filter "FullyQualifiedName~UsageNormalizationTests"` | ❌ créé par la tâche | ⬜ pending |
+| 18-01 T2 | 18-01 | 1 | HDR-05 | non-régression | suite complète (les 3 classes de providers vertes SANS modification) | ✅ existe | ⬜ pending |
+| 18-01 T3 | 18-01 | 1 | HDR-05 | garde de source | `--filter "FullyQualifiedName~NormalisationUniqueTests"` | ❌ créé par la tâche | ⬜ pending |
+| 18-02 T1 | 18-02 | 1 | HDR-03, HDR-04 | unit (TDD) | `--filter "FullyQualifiedName~StatutServeurTests"` et `~WindowStateTests` | ⚠ WindowStateTests à étendre | ⬜ pending |
+| 18-02 T2 | 18-02 | 1 | HDR-03, HDR-04 | unit (TDD) | `--filter "FullyQualifiedName~CompositeUsageProviderTests"` | ⚠ à étendre | ⬜ pending |
+| 18-02 T3 | 18-02 | 1 | HDR-02 (outillage) | Wave 0 de transport | `--filter "FullyQualifiedName~EnTetesDeReferenceTests"` | ❌ créé par la tâche | ⬜ pending |
+| 18-03 T1 | 18-03 | 2 | HDR-01, HDR-06 | unit | `--filter "FullyQualifiedName~RateLimitHeaderUsageProviderTests"` | ❌ créé par la tâche | ⬜ pending |
+| 18-03 T2 | 18-03 | 2 | HDR-01, HDR-02 | unit | `--filter "FullyQualifiedName~RateLimitHeaderUsageProviderTests"` | ⚠ étendu | ⬜ pending |
+| 18-03 T3 | 18-03 | 2 | HDR-06 | unit | `--filter "FullyQualifiedName~RateLimitHeaderUsageProviderTests"` | ⚠ étendu | ⬜ pending |
+| 18-04 T1 | 18-04 | 3 | HDR-03 | unit | `--filter "FullyQualifiedName~RateLimitHeaderUsageProviderTests"` | ⚠ étendu | ⬜ pending |
+| 18-04 T2 | 18-04 | 3 | HDR-04 | unit | `--filter "FullyQualifiedName~RateLimitHeaderUsageProviderTests"` | ⚠ étendu | ⬜ pending |
+| 18-05 T1 | 18-05 | 4 | HDR-01, HDR-02 | garde DI (comportement) | `--filter "FullyQualifiedName~CompositionRootTests"` | ⚠ à étendre | ⬜ pending |
+| 18-05 T2 | 18-05 | 4 | HDR-03, HDR-04, HDR-06 | unit | `--filter "FullyQualifiedName~DiagnosticServiceTests"` | ⚠ à étendre | ⬜ pending |
+| 18-06 T1 | 18-06 | 5 | HDR-03, HDR-04, HDR-06 | unit (TDD) | `--filter "FullyQualifiedName~MainViewModelTests"` et `~WindowGaugeViewModelTests` | ⚠ à étendre | ⬜ pending |
+| 18-06 T2 | 18-06 | 5 | HDR-06 | BAML (`[WpfFact]`) | `--filter "FullyQualifiedName~ReglagesBindingTests"` | ❌ créé par la tâche | ⬜ pending |
+| 18-06 T3 | 18-06 | 5 | HDR-02 (production) | **checkpoint humain** | suite complète (l'automatisation ne peut pas trancher le 429 réel) | — | ⬜ pending |
+
+Toutes les commandes se préfixent de `dotnet test Chronos.sln -v q --nologo`.
+
+### Couverture des requirements
+
+| Req | Plans | Preuve automatisée principale |
+|-----|-------|-------------------------------|
+| HDR-01 | 18-03, 18-05 | `RateLimitHeaderUsageProviderTests.Un_200_porteur_d_en_tetes_rend_deux_fenetres_exactes` |
+| HDR-02 | 18-03, 18-05 | `...Un_429_livre_quand_meme_les_chiffres` + `...Un_429_muet_n_invente_rien` (**production : checkpoint 18-06 T3**) |
+| HDR-03 | 18-02, 18-04, 18-06 | `...Le_statut_serveur_voyage_avec_la_fenetre` + `CompositeUsageProviderTests` (survie à `Best()`) |
+| HDR-04 | 18-02, 18-04, 18-06 | `...Le_depassement_seul_passe_par_le_canal_lateral` |
+| HDR-05 | 18-01 | `UsageNormalizationTests.Un_en_tete_en_point_decimal_se_lit_meme_sous_une_culture_a_virgule` + `NormalisationUniqueTests` |
+| HDR-06 | 18-03, 18-05, 18-06 | `...La_cadence_est_bornee_a_une_sonde_par_cadence_nominale` + `ReglagesBindingTests.Le_cout_de_la_sonde_est_ECRIT_dans_les_reglages` |
 
 ## Gardes permanentes
 
@@ -56,17 +85,32 @@ created: 2026-09-12
 
 L'infrastructure xUnit existe. Wave 0 pose les briques manquantes identifiées par la recherche :
 
-- [ ] Faux de transport capable de porter des **en-têtes de réponse sur un code d'erreur** (notamment 429) —
-      `FakeHttpMessageHandler` doit le permettre ; à étendre si ce n'est pas le cas.
-- [ ] Jeux d'en-têtes de référence : nominal (`allowed`), avertissement (`allowed_warning`), refus
-      (`rejected`), statut **inconnu** (→ `NonReconnu`, jamais rangé d'autorité dans « autorisé »), forme
-      **overage** alternative, en-têtes **absents**, en-têtes **illisibles**.
-- [ ] **Test de garde culture** : la conversion doit réussir sous une culture où le séparateur décimal est
-      la virgule. Vérifié empiriquement : sous fr-FR, `double.TryParse("0.63")` renvoie **false**.
-      `InvariantGlobalization` est verrouillé à `false` dans ce projet (UI fr-FR), donc le piège est réel.
-- [ ] **Test de garde d'unités** : garantir mécaniquement qu'aucun futur provider ne réintroduise une
-      conversion divergente. La recherche a recensé **5** conversions d'unité à rapatrier en un point unique,
-      pas 3.
+- [x] *(plan 18-02, tâche 3)* Faux de transport capable de porter des **en-têtes de réponse sur un code
+      d'erreur** (notamment 429). Constaté : `FakeHttpMessageHandler` ne le permet PAS aujourd'hui (ses
+      deux fabriques `Json` / `Throws` ne posent aucun en-tête) → ajout **additif** de
+      `AvecEnTetes(statut, enTetes, corps)` et `SequenceAvecEnTetes(...)`, avec
+      `Headers.TryAddWithoutValidation` (obligatoire : `Add` rejette les noms non standard).
+- [x] *(plan 18-02, tâche 3)* Jeux d'en-têtes de référence centralisés dans
+      `tests/Chronos.Tests/EnTetesDeReference.cs` : `Nominal`, `Avertissement`, `Refus`, `StatutInconnu`,
+      `DepassementSeul`, `Absents`, `Illisibles`, **plus** `NominalCasseMelangee` (la recherche insensible
+      à la casse est vérifiée, pas supposée). Valeurs reprises d'un dump réel indépendant ; épochs
+      postérieurs au plancher de sanité, sauf le jeu `Illisibles` qui porte volontairement `"9"` —
+      l'epoch 1970 RÉEL du `usage.json` de cette machine.
+- [x] *(plan 18-01, tâche 1 — écrit AVANT toute lecture d'en-tête ; rejoué de bout en bout au plan 18-03,
+      tâche 2)* Garde de culture : le test force `CultureInfo.CurrentCulture = new CultureInfo("fr-FR")`
+      (restaurée en `finally`), asserte d'abord le piège (`Assert.False(double.TryParse("0.63", out _))`)
+      puis le comportement correct (`FractionDepuisTexteFraction("0.63") == 0.63`).
+- [x] *(plan 18-01, tâches 2 et 3)* Garde d'unités : `NormalisationUniqueTests` balaie le **texte source**
+      de `src/Chronos/Services/` et `src/Chronos/Models/` (la réflexion ne peut pas voir un `/ 100`), chemin
+      **injecté par MSBuild** via `AssemblyMetadata("CheminSourcesChronos", ...)` — jamais deviné depuis
+      `AppContext.BaseDirectory`, et `Assembly.Location` est interdit par CLAUDE.md. 5 motifs interdits,
+      4 exemptions **nominatives et documentées** (`UsageNormalization.cs`, `ClaudeTokenReader.cs`,
+      `SessionMonitor.cs`, `TranscriptActivityProvider.cs`). Le test **échoue** si le chemin injecté
+      n'existe pas : une garde qui se met en sourdine ne garde rien.
+      *Note de planification :* l'inventaire réel est de **12 sites** dans **4 fichiers** (et non 5), parce
+      que rendre la garde étanche impose de rapatrier aussi les 3 conversions d'epoch en millisecondes de
+      `DiagnosticService.cs` et `ClaudeUsageObjectProvider.cs`. Les 12 sites sont listés ligne par ligne
+      dans le `<context>` du plan 18-01.
 
 ## Manual-Only Verifications
 
@@ -80,7 +124,14 @@ L'infrastructure xUnit existe. Wave 0 pose les briques manquantes identifiées p
 
 ## Validation Sign-Off
 
-- [ ] Toutes les tâches ont une commande automatisée ou une dépendance Wave 0
-- [ ] Aucune requête réseau réelle dans aucun test
-- [ ] Le cas « 429 sans en-têtes » est traité explicitement, pas supposé impossible
-- [ ] Un statut serveur inconnu n'est jamais rangé d'autorité dans « autorisé »
+- [x] Toutes les tâches ont une commande automatisée ou une dépendance Wave 0 — 16 tâches, 16 commandes.
+- [x] Aucune requête réseau réelle dans aucun test — tout par `FakeHttpMessageHandler`. Les seuls appels
+      réseau réels du dépôt restent ceux de `DiagnosticService` en production, jamais déclenchés par un
+      test (les tests existants passent par `FakeClaudeTokenReader`).
+- [x] Le cas « 429 sans en-têtes » est traité explicitement — branche `SaturationSansEnTetes` du tableau
+      d'aiguillage (plan 18-03) et test `Un_429_muet_n_invente_rien`, avec ET sans `Retry-After`.
+- [x] Un statut serveur inconnu n'est jamais rangé d'autorité dans « autorisé » — quatrième membre
+      `NonReconnu` (plan 18-02), test `Un_statut_inconnu_ne_se_devine_pas`, et distinction explicite entre
+      `null` (rien rapporté) et `NonReconnu` (rapporté mais hors de l'ensemble connu).
+- [x] La vérification manuelle du 429 réel est isolée en tâche de checkpoint bloquante (plan 18-06,
+      tâche 3), et **HDR-02 ne peut pas être coché « prouvé en production » sans elle**.
