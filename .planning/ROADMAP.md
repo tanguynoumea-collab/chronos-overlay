@@ -255,7 +255,7 @@ Plans:
 - [x] 20-01-PLAN.md — Vague 0 : les trois dettes sans dépendance — couture `IInventaireMachine`
       (la suite passe de 2 min 10 à quelques secondes), `CadranBindingTests` isolé du vrai
       `settings.json`, trou de la `UniformGrid` des réglages (vague 1)
-- [ ] 20-02-PLAN.md — Le modèle de la source : `SourceUsage` posée sur `WindowState` (0 site cassé sur
+- [x] 20-02-PLAN.md — Le modèle de la source : `SourceUsage` posée sur `WindowState` (0 site cassé sur
       48), les 5 producteurs, vocabulaire FR unique dans `Chronos.Text`, mort d'`EstimatedTokens`
       remplacée par une garde structurelle — EXA-06 (vague 2)
 - [ ] 20-03-PLAN.md — Le ViewModel : `IsEstimated` → `EstPlancher`, mort d'`IsStale` (une seule notion
@@ -283,7 +283,7 @@ Phase 20 (rendu visible de la doctrine, exige 19).
 | 17. Jeton toujours vivant, panne toujours visible | 5/5 | Complete   | 2026-09-11 |
 | 18. Source exacte par en-têtes de rate-limit | 6/6 | Complete   | 2026-09-12 |
 | 19. Nouvelle doctrine du composite | 5/5 | Complete   | 2026-09-12 |
-| 20. Honnêteté visible — cadran & diagnostic | 1/5 | In Progress|  |
+| 20. Honnêteté visible — cadran & diagnostic | 2/5 | In Progress|  |
 
 ### Couverture des exigences
 

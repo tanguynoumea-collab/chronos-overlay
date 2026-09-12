@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: — Exactitude permanente
 status: executing
-stopped_at: "Completed 20-01-PLAN.md (vague 0 : suite 2 min 12 s -> 2 s, 700 tests verts)"
-last_updated: "2026-09-12T06:27:36.995Z"
+stopped_at: Completed 20-02-PLAN.md (SourceUsage + LibelleSource + mort d'EstimatedTokens, 724 tests verts)
+last_updated: "2026-09-12T06:41:57.766Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 28
-  completed_plans: 24
+  completed_plans: 25
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ deux fenêtres — sans jamais présenter une estimation comme un chiffre exact.
 
 Milestone: v1.5 — Exactitude permanente (6 phases : 15 → 20)
 Phase: 20 (Honnetete visible - cadran et diagnostic) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-12
 
@@ -148,6 +148,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 19 P04 | 19min | 2 tasks | 7 files |
 | Phase 19 P05 | 16min | 2 tasks | 2 files |
 | Phase 20 P01 | 34min | 3 tasks | 9 files |
+| Phase 20 P02 | 10min | 3 tasks | 15 files |
 
 ### Decisions
 
@@ -286,6 +287,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 20]: [20-01] CadranBindingTests lisait les reglages REELS de la machine (MainViewModel appelle settings.Load() dans son ctor) : tout test de style des plans 03/04 y aurait ete vert PAR ACCIDENT. Piege du montage : DEUX SettingsService dans BuildWindow, le second alimentant OverlayController.
 - [Phase 20]: [20-01] Le conteneur a cellules uniformes ignore SILENCIEUSEMENT Grid.ColumnSpan : c'est le CONTENEUR qui change, pas l'enfant annote. Preuve par LARGEUR MESUREE (ActualWidth apres Measure/Arrange), falsifiabilite jouee puis revoquee. 3 colonnes exclu par la mesure (98,7 px de cellule pour 107 px de libelle).
 - [Phase 20]: [20-01] EXA-03/EXA-06 laisses Pending malgre le frontmatter du plan : cette vague ne leve que des dettes d'outillage et n'a touche ni la distinction visuelle frais/date/indisponible, ni le nom de la source. Precedents 17-01, 18-02, 19-01/19-02.
+- [Phase 20]: Le nom de la source est un axe DISTINCT de la provenance : les fusionner produirait un enum de 15 membres et rendrait le diagnostic incapable de dire lequel des deux points OAuth repond
+- [Phase 20]: EstimatedTokens supprime plutot que conserve sous garde comportementale : la garde a CHANGE DE NIVEAU (structurelle), elle n'a pas disparu
+- [Phase 20]: Aucun membre fourre-tout dans SourceUsage : l'absence de source se dit par null, jamais par une valeur d'enum qui affirmerait quelque chose
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -347,7 +351,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T06:27:36.989Z
-Stopped at: Completed 20-01-PLAN.md (vague 0 : suite 2 min 12 s -> 2 s, 700 tests verts)
+Last session: 2026-09-12T06:41:52.304Z
+Stopped at: Completed 20-02-PLAN.md (SourceUsage + LibelleSource + mort d'EstimatedTokens, 724 tests verts)
 Resume file: None
 Next: /gsd:plan-phase 20 (Honnetete visible — cadran & diagnostic, EXA-03 + EXA-06)
