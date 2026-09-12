@@ -17,4 +17,14 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Chronos\Chronos.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- HDR-05 : la garde de non-retour balaie le TEXTE source de src/Chronos. La réflexion ne peut pas
+         voir un « / 100 ». Le chemin est INJECTÉ par MSBuild et jamais deviné : CLAUDE.md interdit
+         Assembly.Location (vide en mono-fichier) et une remontée de dossiers depuis AppContext.BaseDirectory
+         casserait en silence au premier changement d'agencement de sortie. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>CheminSourcesChronos</_Parameter1>
+      <_Parameter2>$(MSBuildProjectDirectory)\..\..\src\Chronos</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>
