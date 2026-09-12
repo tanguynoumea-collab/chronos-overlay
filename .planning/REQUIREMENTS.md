@@ -60,9 +60,9 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 
 ### « Traité » (TRT)
 
-- [ ] **TRT-01**: « Traité » n'est déduit que d'une **transition observée sur la même source**. Jamais d'une
+- [x] **TRT-01**: « Traité » n'est déduit que d'une **transition observée sur la même source**. Jamais d'une
   expiration de source, jamais d'une bascule transcript ↔ hook.
-- [ ] **TRT-02**: Le « traité » **survit à un redémarrage** de l'overlay : une session traitée ne ressort pas
+- [x] **TRT-02**: Le « traité » **survit à un redémarrage** de l'overlay : une session traitée ne ressort pas
   toute seule.
 - [ ] **TRT-03**: L'utilisateur dispose d'un **geste explicite** pour marquer une session traitée — le focus
   de fenêtre ne peut pas le fournir pour une session de terminal.
@@ -112,8 +112,8 @@ qui n'a pas été observé.** Un état dont la source a expiré n'est pas « ter
 | EVT-05 | Phase 25 | Complete |
 | FUS-01 | Phase 24 | Complete |
 | FUS-02 | Phase 24 | Complete |
-| TRT-01 | Phase 26 | Pending |
-| TRT-02 | Phase 26 | Pending |
+| TRT-01 | Phase 26 | Complete |
+| TRT-02 | Phase 26 | Complete |
 | TRT-03 | Phase 26 | Pending |
 | TRT-04 | Phase 26 | Pending |
 | CYC-01 | Phase 23 | Complete |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: verifying
-stopped_at: Complete 25-04-PLAN.md — phase 25 terminee, 862 tests verts
-last_updated: "2026-09-12T20:52:56.562Z"
+status: En cours — vagues 2 à 4 à exécuter
+stopped_at: Completed 26-01-PLAN.md
+last_updated: "2026-09-12T22:28:12.145Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 87
+  total_plans: 19
+  completed_plans: 16
+  percent: 84
 ---
 
 # Project State
@@ -22,27 +22,29 @@ See: .planning/PROJECT.md (updated 2026-09-12)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** Phase 25 — Le contrat d'événements refondé
+**Current focus:** Phase 26 — « Traité » veut enfin dire quelque chose (DERNIÈRE phase de v1.6)
 
 ## Current Position
 
 Milestone: v1.6 — Observer au lieu de déduire
-Phase: 25 (Le contrat d'événements refondé) — EXECUTING
-Plan: 4 of 4 (vagues 1 et 2 livrées)
-Status: Phase complete — ready for verification
+Phase: 26 (« Traité » veut enfin dire quelque chose) — EXECUTING
+Plan: 2 of 4 (vague 1 livrée : 26-01)
+Status: En cours — vagues 2 à 4 à exécuter
 Last activity: 2026-09-12
 
-Progress: [█████████░] 87%  (4 phases sur 6 — phases 21 à 24 closes ; 14 plans sur 15 livrés)
+Progress: [████████░░] 84%  (5 phases sur 6 — phases 21 à 25 closes ; 16 plans sur 19 livrés)
 
-**SHA d'entrée de phase 25 : `ce40e99cffe605e2baa93511e2555884aa6acdb8`** — les plans 25-02 à 25-04 en ont
-besoin tel quel pour leurs critères `git diff --stat <SHA>..HEAD` (un `git diff --stat` nu est muet après
-commit).
+**SHA d'entrée de phase 26 : `07ee784`** — les plans 26-02 à 26-04 en ont besoin tel quel pour leurs
+critères `git diff --stat <SHA>..HEAD` (un `git diff --stat` nu est muet après commit).
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 14
-- Suite de tests : **837 verts / 0 échec** en ~4 s (baseline d'entrée de phase 25 : 788 ; 817 après 25-01 ;
-  +9 en 25-02 T1, +7 en T2, +4 en T3 ; attendu indicatif 833, écart de +4 justifié dans 25-02-SUMMARY.md)
+- Total plans completed (v1.6): 16
+- Suite de tests : **876 verts / 0 échec** en ~5-6 s (baseline d'entrée de phase 26 : 868 ; 869 après 26-01
+  T1 ; 876 après 26-01 T2, dont **6 rouges** mesurés et nommés ; 876 verts après 26-01 T3). Chaîne annoncée
+  869 → 876 → 876 tenue exactement, aucun écart à justifier.
+
+- Attendus indicatifs restants pour la phase 26 : **879** (26-02), **886** (26-03), **888** (26-04).
 
 ## Milestone v1.5 (clos)
 
@@ -183,6 +185,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 25 P02 | 55 min | 3 tasks | 8 files |
 | Phase 25 P03 | 50 min | 3 tasks | 9 files |
 | Phase 25 P04 | ~45 min | 2 tasks | 3 files |
+| Phase 26 P01 | 35min | 3 tasks | 7 files |
 
 ### Decisions
 
@@ -433,6 +436,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 25]: EVT-05 : docs/hooks-contract.md ecrit (9 sections, 344 lignes) — ce qui n'est PAS garanti y occupe autant de place que ce qui l'est, date 2026-09-12 dans le §5 lui-meme
 - [Phase 25]: La garde de non-derive compare le nom, le matcher ET LE ROLE de chaque ligne au cablage reel : une mutation n'alterant que la 3e colonne fait echouer 1 test, et lui seul
 - [Phase 25]: La divergence SessionTreatmentTracker.IsWaiting / WaitingDeduced est DOCUMENTEE et NON corrigee : diff du tracker VIDE sur toute la phase 25, entree de la phase 26
+- [Phase 26]: 26-01 (b bis) : la borne de TreatedStore cesse d'etre une duree de vie de 6 h et devient une RETENTION DE FICHIER de 24 h. Depuis TRT-02 la valeur memorisee est l'instant du SIGNAL ; une borne de 6 h adossee a cet instant rendait le magasin aveugle a toute session attendant depuis plus de six heures - c'est-a-dire e465420e elle-meme. La reversibilite reste portee par NET-03, jamais par une horloge.
+- [Phase 26]: 26-01 (TRT-01) : NET-01 exige desormais TROIS conditions - la MEME source aux deux cycles, une attente au precedent, un travail OBSERVE au courant. Une bascule de source ne conclut plus rien, et Unknown n'affirme plus qu'on a repondu.
+- [Phase 26]: 26-01 (TRT-02) : l'episode d'attente est date par l'instant que le SIGNAL porte, borne par l'instant courant - jamais par l'horloge du guetteur. C'est ce qui le fait survivre a un redemarrage sans purger le magasin qu'il vient de lire.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -521,7 +527,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-12T20:52:56.555Z
-Stopped at: Complete 25-04-PLAN.md — phase 25 terminee, 862 tests verts
+Last session: 2026-09-12T22:27:03.991Z
+Stopped at: Completed 26-01-PLAN.md
 Resume file: None
 Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
