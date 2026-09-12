@@ -3,7 +3,7 @@ using System.IO;
 namespace Chronos.Services;
 
 /// <summary>
-/// Implémentation RÉELLE de <see cref="IInventaireMachine"/> : le code des deux sondages chers a été
+/// Implémentation RÉELLE de <see cref="IInventaireMachine"/> : le code du sondage cher a été
 /// DÉPLACÉ TEL QUEL depuis <c>DiagnosticService</c> (phase 20, vague 0), pas réécrit. Les bornes du
 /// balayage (profondeur 3, 5 résultats, liste noire de dossiers volumineux, fichiers &gt; 2 Mo ignorés)
 /// sont le fruit d'un réglage, pas du hasard : les toucher ferait dériver le coût mesuré.
@@ -49,14 +49,5 @@ public sealed class InventaireMachine : IInventaireMachine
         }
         Scan(racine, 0);
         return results;
-    }
-
-    // Poll one-shot de la VRAIE source UIA, hors thread UI — vérité-terrain de ce que voit réellement
-    // DesktopUiaSessionSource. Sessions et santé rendues ENSEMBLE : un second appel re-paierait le poll.
-    public (IReadOnlyList<SessionSnapshot> Sessions, DesktopHealth Sante) SessionsBureau(DateTimeOffset now)
-    {
-        var desktop = new DesktopUiaSessionSource(new WindowsUiaTreeProvider());
-        desktop.Poll(now);
-        return (desktop.Read(now), desktop.Health);
     }
 }

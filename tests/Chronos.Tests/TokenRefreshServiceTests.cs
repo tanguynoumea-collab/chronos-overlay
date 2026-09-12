@@ -78,8 +78,8 @@ public class TokenRefreshServiceTests
 
     /// <summary>
     /// TOK-01 — cas RÉEL de l'utilisateur : jeton expiré depuis deux mois (2026-07-12) au démarrage de
-    /// l'exe. Le premier tick doit partir IMMÉDIATEMENT (dueTime zéro, motif
-    /// <c>DesktopUiaPollService.StartAsync:44</c>), pas au bout de 60 s.
+    /// l'exe. Le premier tick doit partir IMMÉDIATEMENT (dueTime zéro : le premier tick part à la
+    /// souscription, pas après le premier intervalle), pas au bout de 60 s.
     /// </summary>
     [Fact]
     public async Task Un_jeton_deja_expire_est_rafraichi_des_le_demarrage_sans_attendre_le_tick()
