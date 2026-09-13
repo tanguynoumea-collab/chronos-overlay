@@ -351,4 +351,46 @@ public sealed class ContratHooksDocumenteTests
         Assert.Contains("daté par l'instant que le SIGNAL porte", texte, StringComparison.Ordinal);
         Assert.Contains("InstantDuSignal", code, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (R3, cran 1). Le §5 porte désormais une règle LIVRÉE — l'écriture
+    /// d'état est monotone — et un chemin LAISSÉ OUVERT. Les deux doivent rester vrais ensemble.
+    ///
+    /// <para><b>Le piège que cette garde vise est asymétrique.</b> Qu'on retire la monotonie du code sans
+    /// toucher au document, et le §5 annoncerait une protection qui n'existe plus. Qu'on livre un jour le
+    /// second cran sans toucher au document, et le §5 réclamerait encore une observation déjà faite. Dans
+    /// les deux cas le document ferait croire qu'on sait — la faute exacte que ce fichier existe pour
+    /// empêcher.</para>
+    ///
+    /// <para>Elle ne lit que le dépôt : aucun réseau, aucun <c>%APPDATA%</c>, aucune horloge.</para>
+    /// </summary>
+    [Fact]
+    public void Le_document_dit_la_monotonie_livree_ET_le_chemin_de_R3_reste_ouvert()
+    {
+        var section = SectionNonGarantie(LireDocument());
+
+        // ANTI-MUET d'abord : une section vidée rendrait tout le reste vert faute de matière.
+        Assert.True(section.Replace("\r\n", "\n").Split('\n').Length >= 40,
+            "La section « " + TitreNonGaranti + " » est trop courte pour porter ce qu'elle annonce.");
+
+        // 1. La règle LIVRÉE — et sa contrepartie dans le code, qui est la comparaison elle-même.
+        Assert.Contains("FUS-01 vaut aussi à l'INTÉRIEUR d'une source", section, StringComparison.Ordinal);
+
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas l'écriture et ne croise donc rien.");
+
+        var fichier = Path.Combine(racineSources, "Services", "EcritureEtatSession.cs");
+        Assert.True(File.Exists(fichier), $"Écriture d'état introuvable : {fichier}");
+        var code = File.ReadAllText(fichier);
+
+        Assert.Contains("neuf < present", code, StringComparison.Ordinal);   // STRICTEMENT antérieure
+        Assert.Contains("IgnoreeCarPerimee", code, StringComparison.Ordinal); // un refus qui n'est pas un échec
+
+        // 2. Le chemin PRINCIPAL de R3 reste ouvert, et la raison de ne pas l'avoir refermé est écrite :
+        //    sans elle, un successeur livrerait le second cran en croyant combler un oubli.
+        Assert.Contains("n'est pas livré", section, StringComparison.Ordinal);
+        Assert.Contains("aucun `UserPromptSubmit` ne survient", section, StringComparison.Ordinal);
+    }
 }

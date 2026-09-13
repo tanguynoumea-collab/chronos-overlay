@@ -260,7 +260,60 @@ périodique dans le catalogue, et le seuil ne peut pas la résoudre : le baisser
 déductions, le monter rendrait le silence invisible. **Si le cas se présente souvent, c'est le choix de
 l'ÉVÉNEMENT PORTEUR qu'il faut rouvrir — pas le seuil.**
 
-### 5.5 — Ce que ce relevé n'autorise pas, en une ligne
+### 5.5 — Un outil FRÈRE peut-il se terminer pendant qu'un prompt de permission attend ? NON DOCUMENTÉ
+
+**Relevé le 2026-09-12**, même source. La référence ne dit **rien** de l'ordonnancement des hooks d'un lot
+d'appels d'outil **parallèles** vis-à-vis d'un `PermissionRequest` encore en attente de réponse. Rien n'y
+permet de trancher si le `PostToolUse` d'un outil frère peut survenir pendant que le prompt est affiché.
+C'est un trou, pas une réponse — et il compte, parce que le fichier d'état ne porte **qu'un état par
+session** : le dernier écrivain fait loi.
+
+#### Ce qui EST livré : l'écriture d'état est MONOTONE (MON-01)
+
+**La doctrine gagne un cran : FUS-01 vaut aussi à l'INTÉRIEUR d'une source.** Un signal n'en écrase un autre
+que s'il est **plus récent**, y compris entre deux hooks. Concrètement, dans `EcritureEtatSession` :
+
+- l'horodatage déjà présent est relu **sur le même descripteur**, donc sous le **même verrou** que
+  l'écriture — relire puis rouvrir ajouterait la course qu'on cherche à retirer ;
+- une écriture **strictement antérieure** à l'état présent est **écartée** ; une écriture du **même
+  instant** passe, sans quoi deux hooks du même millième de seconde se bloqueraient l'un l'autre ;
+- un fichier **illisible**, un **fragment** ou un objet **sans horodatage** restent une **ABSENCE** de
+  signal (doctrine de la phase 23) : on écrit, on ne refuse pas. Traiter une relecture ratée comme un
+  signal très récent gèlerait la cible pour de bon ;
+- un refus pour antériorité **n'est pas un échec** : l'appelant reçoit un succès nommé (`Ignoree`), donc
+  **aucun message d'erreur ne remonte à l'utilisateur** pour une écriture légitimement écartée. Le refus
+  d'écriture **réel**, lui, reste signalé sur la sortie d'erreur.
+
+**Ce que cela ferme exactement :** l'inversion d'horodatage. L'instant d'un hook est capturé à l'**entrée**
+de son processus, et l'écriture peut être différée par la reprise bornée ; un `PreToolUse` parti **avant**
+un `PermissionRequest` pouvait donc écrire **après** lui, avec un horodatage **plus ancien**. L'horodatage
+du fichier d'état **reculait** — ce que la phase 23 avait posé comme interdit et ce sur quoi la phase 24
+s'adosse. Il ne recule plus.
+
+**Ce que cela ne couvre pas, et il faut le dire :** la **suppression** (`SessionEnd`) reste
+inconditionnelle — elle ne porte pas d'état à comparer.
+
+#### Ce qui reste OUVERT : le chemin principal de R3
+
+**Un battement PLUS RÉCENT écrase toujours une attente observée.** Le second cran envisagé par l'audit —
+refuser qu'un battement écrase une attente observée du **même épisode** — **n'est pas livré**, et ce n'est
+pas un oubli : après l'octroi d'une permission, **aucun `UserPromptSubmit` ne survient**. La session
+resterait affichée « à toi » pendant qu'elle travaille. Ce serait **remplacer un mensonge par un autre**, ce
+que la doctrine de ce projet interdit.
+
+**Donc : observation in vivo d'abord, correctif ensuite.** Trois signes à guetter, dans cet ordre :
+
+1. une session affichée « en cours » alors qu'un **prompt de permission est à l'écran** ;
+2. dans `%APPDATA%/Chronos/sessions/<session_id>.json`, un `activity` qui passe de `WaitingAttention` à
+   `Working` avec un `reason` de **battement** (`PreToolUse` / `PostToolUse`) **sans qu'aucune réponse
+   n'ait été donnée** ;
+3. une entrée apparue dans `treated.json` pour une session **qui attend toujours**.
+
+Si ces signes apparaissent, ce n'est pas le seuil qu'il faudra bouger : c'est la **sortie d'attente** qu'il
+faudra régler d'abord — quel événement atteste qu'une permission a été **accordée** — faute de quoi le
+second cran figerait la session sur « à toi » indéfiniment.
+
+### 5.6 — Ce que ce relevé n'autorise pas, en une ligne
 
 Aucun **nom de champ spécifique à un événement** n'est confirmé : passer par les **valeurs de `matcher`**
 partout où c'est possible, plutôt que lire un champ dont le nom est incertain.
@@ -366,7 +419,7 @@ le câblage réel : le nom, le `matcher` **et le rôle** de chaque entrée y son
 décrit un câblage qu'il ne décrit plus est **pire** que pas de document : il fait croire qu'on sait.
 
 **Ce qu'aucune machine ne peut garantir.** **Aucun test ne peut détecter une dérive de la source EXTERNE.**
-Si Claude Code renomme un événement, change la sémantique de `Stop` ou comble l'un des trois trous du §5,
+Si Claude Code renomme un événement, change la sémantique de `Stop` ou comble l'un des trous du §5,
 tous nos tests resteront verts et ce document deviendra faux en silence. Seule une **relecture humaine** de
 la référence officielle peut le voir — et c'est exactement pour cela que la **date du relevé figure en
 tête** de ce document, et dans le §5 lui-même.
