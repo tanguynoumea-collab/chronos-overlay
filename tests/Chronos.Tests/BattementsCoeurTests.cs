@@ -248,11 +248,15 @@ public class BattementsCoeurTests
             var echecs = 0;
             var causes = new ConcurrentBag<string>();
 
+            // L'attribution des horodatages est ADVERSE À DESSEIN : le premier écrivain porte le bloc le
+            // plus RÉCENT, le dernier le plus ancien. Les quatre cents mêmes horodatages sont émis qu'avant,
+            // mais celui qui finit le plus tard n'est plus celui qui gagnerait par simple écrasement — sans
+            // quoi l'assertion de monotonie plus bas serait verte par pure chance d'ordonnancement.
             Parallel.For(0, 8, ecrivain =>
             {
                 for (var i = 1; i <= 50; i++)
                 {
-                    var r = EcritureEtatSession.Appliquer(dossier, Battement(BaseMs + ecrivain * 1000 + i));
+                    var r = EcritureEtatSession.Appliquer(dossier, Battement(BaseMs + (7 - ecrivain) * 1000 + i));
                     if (!r.Reussi) { Interlocked.Increment(ref echecs); causes.Add(r.Cause ?? "(sans cause)"); }
                 }
             });
@@ -265,6 +269,63 @@ public class BattementsCoeurTests
             Assert.Equal(Sid, doc.RootElement.GetProperty("session_id").GetString());
             Assert.Equal("Working", doc.RootElement.GetProperty("activity").GetString());
             Assert.Equal("PostToolUse", doc.RootElement.GetProperty("reason").GetString());
+
+            // R3, cran 1 — CE QUI MANQUAIT. « Aucune n'échoue » et « le fichier n'est pas un fragment » ne
+            // disent RIEN de l'état qui survit : le dernier écrivain physique gagnait, quel que soit son
+            // âge. L'état survivant doit être le PLUS RÉCENT, et il n'y a qu'un candidat : le plus grand
+            // horodatage émis par la vague.
+            var lePlusRecent = BaseMs + 7 * 1000 + 50;
+            Assert.Equal(lePlusRecent, doc.RootElement.GetProperty("updated_at").GetInt64());
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
+
+    /// <summary>
+    /// R3, cran 1 — LE SCÉNARIO REDOUTÉ, en concurrence réelle : une demande de permission au milieu d'une
+    /// vague de battements d'appels d'outil PARALLÈLES.
+    ///
+    /// <para>Le batch d'outils frères continue de battre pendant que le prompt de permission attend une
+    /// réponse, et l'instant de chaque hook est capturé à l'ENTRÉE de son processus : rien ne garantit
+    /// l'ordre d'arrivée au disque. Sans monotonie, un battement parti avant la demande écrit après elle,
+    /// « à toi » redevient « en cours », et le détecteur de traitement MASQUE la session — qui reste alors
+    /// bloquée sur un prompt que plus rien n'annonce.</para>
+    ///
+    /// <para>Ici, la demande porte l'horodatage le plus grand : quel que soit l'ordre physique, elle doit
+    /// être sur le disque à la fin.</para>
+    /// </summary>
+    [Fact]
+    public void Une_demande_de_permission_survit_a_une_vague_de_battements_paralleles_plus_anciens()
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var demandeMs = BaseMs + 10_000;   // la demande est le signal le PLUS RÉCENT de la vague
+            var demande = SessionHookProcessor.Process(
+                "PermissionRequest", "{\"session_id\":\"" + Sid + "\",\"cwd\":\"C:/dev/MonProjet\"}", demandeMs);
+
+            var echecs = 0;
+
+            // Huit écrivains : le PREMIER pose la demande — donc il a toutes les chances de finir AVANT les
+            // sept autres — et les sept suivants battent trois cent cinquante horodatages ANTÉRIEURS à elle.
+            // Aucun ordonnancement n'est imposé au-delà : c'est tout l'intérêt.
+            Parallel.For(0, 8, ecrivain =>
+            {
+                if (ecrivain == 0)
+                {
+                    if (!EcritureEtatSession.Appliquer(dossier, demande).Reussi) Interlocked.Increment(ref echecs);
+                    return;
+                }
+                for (var i = 1; i <= 50; i++)
+                    if (!EcritureEtatSession.Appliquer(dossier, Battement(BaseMs + ecrivain * 1000 + i)).Reussi)
+                        Interlocked.Increment(ref echecs);
+            });
+
+            Assert.Equal(0, echecs);
+
+            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(dossier, Sid + ".json")));
+            Assert.Equal("WaitingAttention", doc.RootElement.GetProperty("activity").GetString());
+            Assert.Equal("PermissionRequest", doc.RootElement.GetProperty("reason").GetString());
+            Assert.Equal(demandeMs, doc.RootElement.GetProperty("updated_at").GetInt64());
         }
         finally { Directory.Delete(dossier, true); }
     }

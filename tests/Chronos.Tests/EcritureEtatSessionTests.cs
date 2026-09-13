@@ -163,4 +163,92 @@ public class EcritureEtatSessionTests
         Assert.Equal(Sid, vue.SessionId);
         Assert.Equal(SessionActivity.WaitingAttention, vue.Activity);
     }
+
+    // --- MONOTONIE (R3, cran 1) : l'horodatage du fichier d'état ne RECULE jamais ---
+
+    /// <summary>Le contenu brut du fichier d'état de <see cref="Sid"/>, sans passer par le moniteur —
+    /// on veut voir ce qui est SUR LE DISQUE, pas ce qu'une relecture en déduirait.</summary>
+    private static (string Activite, long Horodatage) SurDisque(string dossier)
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(dossier, Sid + ".json")));
+        return (doc.RootElement.GetProperty("activity").GetString() ?? "",
+                doc.RootElement.GetProperty("updated_at").GetInt64());
+    }
+
+    /// <summary>
+    /// LE test de l'inversion d'horodatage (R3, variante aggravée). Aucun test du dépôt ne mêlait jusqu'ici
+    /// une demande de permission et un battement.
+    ///
+    /// <para>Le mécanisme réel : l'instant est capturé à l'ENTRÉE du processus de hook, et la reprise bornée
+    /// peut différer l'écriture de jusqu'à soixante essais. Un <c>PreToolUse</c> parti AVANT un
+    /// <c>PermissionRequest</c> peut donc écrire APRÈS lui, avec un horodatage PLUS ANCIEN — et l'horodatage
+    /// du fichier d'état recule. Le détecteur de traitement lit alors cet effacement comme une réponse, et
+    /// la session qui attend réellement une permission devient INVISIBLE : c'est la seule voie de rechute
+    /// connue vers le symptôme fondateur du milestone.</para>
+    /// </summary>
+    [Fact]
+    public void Un_battement_ANTERIEUR_n_efface_pas_une_attente_deja_ecrite()
+    {
+        var dossier = TempDossier();
+        var t = Maintenant.ToUnixTimeMilliseconds();
+
+        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PermissionRequest", Sid, t)).Reussi);
+
+        // Le battement parti AVANT, arrivé APRÈS : cinq secondes en arrière.
+        var enRetard = EcritureEtatSession.Appliquer(
+            dossier, Ordre("PreToolUse", Sid, Maintenant.AddSeconds(-5).ToUnixTimeMilliseconds()));
+
+        // Refuser une écriture périmée n'est pas un échec pour l'appelant : l'état le plus récent est déjà
+        // en place. Un message d'erreur ici s'afficherait à l'utilisateur à chaque batch d'outils.
+        Assert.True(enRetard.Reussi);
+
+        var (activite, horodatage) = SurDisque(dossier);
+        Assert.Equal("WaitingAttention", activite);
+        Assert.Equal(t, horodatage);
+    }
+
+    /// <summary>
+    /// L'ANTI-BLOCAGE, sans lequel le test précédent serait vert en refusant TOUTE écriture. Une écriture
+    /// plus récente passe — et une écriture du MÊME instant aussi : deux hooks du même millième de seconde
+    /// sont un cas ordinaire, et les bloquer figerait l'état au premier arrivé.
+    /// </summary>
+    [Fact]
+    public void Une_ecriture_plus_recente_passe_et_une_ecriture_du_meme_instant_aussi()
+    {
+        var dossier = TempDossier();
+        var t = Maintenant.ToUnixTimeMilliseconds();
+
+        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PermissionRequest", Sid, t)).Reussi);
+
+        // Même instant : admis (comparaison STRICTE).
+        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("Stop", Sid, t)).Reussi);
+        Assert.Equal(("WaitingTurn", t), SurDisque(dossier));
+
+        // Plus récent : admis, évidemment — c'est le cas nominal.
+        var plusTard = Maintenant.AddSeconds(1).ToUnixTimeMilliseconds();
+        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PreToolUse", Sid, plusTard)).Reussi);
+        Assert.Equal(("Working", plusTard), SurDisque(dossier));
+    }
+
+    /// <summary>
+    /// DOCTRINE DE LA PHASE 23, tenue à l'écriture comme elle l'est à la lecture : un fichier illisible ou
+    /// un FRAGMENT est une ABSENCE de signal. On écrit donc, on ne refuse pas.
+    ///
+    /// <para>L'erreur que ce test interdit : traiter une relecture ratée comme « un signal très récent »,
+    /// ce qui bloquerait toute écriture ultérieure et gèlerait un fichier corrompu pour de bon.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("{\"activity\":\"WaitingAttention\",\"updated_at\":99999")]   // fragment tronqué
+    [InlineData("{\"activity\":\"WaitingAttention\"}")]                       // valide, mais sans horodatage
+    [InlineData("")]                                                          // vide
+    public void Un_fichier_illisible_ou_sans_horodatage_n_empeche_pas_l_ecriture(string debris)
+    {
+        var dossier = TempDossier();
+        File.WriteAllText(Path.Combine(dossier, Sid + ".json"), debris);
+
+        var t = Maintenant.ToUnixTimeMilliseconds();
+        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PreToolUse", Sid, t)).Reussi);
+
+        Assert.Equal(("Working", t), SurDisque(dossier));
+    }
 }
