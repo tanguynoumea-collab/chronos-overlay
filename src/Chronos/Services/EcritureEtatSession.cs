@@ -7,11 +7,20 @@ namespace Chronos.Services;
 /// quelque chose sans dire quoi : la <see cref="Cause"/> est la seule chose qui distingue « rien à faire »
 /// d'« impossible » (même motif qu'au plan 17-02, où le rafraîchissement de jeton a cessé de rendre un null
 /// muet). Elle n'est jamais fabriquée : c'est le type et le message de l'exception réellement levée.
+///
+/// <para><see cref="Ignoree"/> nomme un TROISIÈME sort, apparu avec la monotonie (R3, cran 1) : l'écriture
+/// n'a pas eu lieu, et c'est très bien ainsi — un état PLUS RÉCENT occupait déjà la place. Du point de vue
+/// de l'appelant, c'est un succès : <see cref="Reussi"/> reste vrai, donc aucun message d'erreur ne remonte
+/// à l'utilisateur pour une écriture légitimement écartée. Confondre ce sort avec un échec afficherait un
+/// avertissement à chaque lot d'appels d'outil.</para>
 /// </summary>
-public sealed record ResultatEcritureEtat(bool Reussi, string? Cause)
+public sealed record ResultatEcritureEtat(bool Reussi, string? Cause, bool Ignoree = false)
 {
     public static ResultatEcritureEtat Reussie { get; } = new(true, null);
     public static ResultatEcritureEtat Echouee(string cause) => new(false, cause);
+
+    /// <summary>Écriture écartée parce qu'un état plus récent est déjà en place. Succès, pas échec.</summary>
+    public static ResultatEcritureEtat IgnoreeCarPerimee(string cause) => new(true, cause, Ignoree: true);
 }
 
 /// <summary>
@@ -56,8 +65,13 @@ public static class EcritureEtatSession
             }
             if (resultat.StateJson is null) return ResultatEcritureEtat.Reussie;
 
-            EcrireAvecReprise(fichier, new System.Text.UTF8Encoding(false).GetBytes(resultat.StateJson));
-            return ResultatEcritureEtat.Reussie;
+            var instant = InstantDeLEtat(resultat.StateJson);
+            var deja = EcrireAvecReprise(fichier, new System.Text.UTF8Encoding(false).GetBytes(resultat.StateJson), instant);
+
+            return deja is null
+                ? ResultatEcritureEtat.Reussie
+                : ResultatEcritureEtat.IgnoreeCarPerimee(
+                      $"état antérieur à celui déjà présent ({instant} contre {deja}) : écriture écartée");
         }
         catch (System.Exception ex)
         {
@@ -71,6 +85,11 @@ public static class EcritureEtatSession
     /// BLOQUANT dont le délai de grâce est de trois secondes. Un budget non borné transformerait une
     /// contention en gel de l'appel d'outil — exactement ce que le délai court cherche à éviter.</summary>
     private const int EssaisMax = 60;
+
+    /// <summary>Taille au-delà de laquelle on ne relit plus la cible avant d'écrire : un fichier d'état
+    /// pèse quelques centaines d'octets, et rien ne justifie de charger davantage pour y chercher un
+    /// champ. Au-delà, la cible est traitée comme illisible — donc comme une absence de signal.</summary>
+    private const int TailleRelueMax = 65_536;
 
     /// <summary>
     /// EVT-03 — LA PARADE AUX ÉCRIVAINS CONCURRENTS, et la raison pour laquelle elle existe.
@@ -94,17 +113,42 @@ public static class EcritureEtatSession
     ///
     /// <para><b>Et surtout pas un fichier temporaire déplacé par-dessus la cible</b> : c'est la mécanique
     /// que la phase 23 a retirée après avoir mesuré 290 pertes sur 500. Elle ne revient pas.</para>
+    ///
+    /// <para><b>MON-01 — L'ÉCRITURE EST MONOTONE (R3, cran 1).</b> Sérialiser les écrivains ne suffit pas :
+    /// il fallait encore décider LEQUEL gagne. L'instant d'un hook est capturé à l'ENTRÉE de son processus,
+    /// et la reprise bornée ci-dessous peut différer l'écriture de jusqu'à soixante essais — un
+    /// <c>PreToolUse</c> parti AVANT un <c>PermissionRequest</c> pouvait donc écrire APRÈS lui, avec un
+    /// horodatage plus ancien. L'horodatage du fichier d'état RECULAIT, « à toi » redevenait « en cours »,
+    /// et le détecteur de traitement lisait cet effacement comme une réponse : la session qui attendait
+    /// réellement une permission devenait invisible. La doctrine est donc étendue d'un cran —
+    /// <b>FUS-01 vaut aussi à l'INTÉRIEUR d'une source</b> : un signal n'en écrase un autre que s'il est
+    /// plus récent. Une écriture STRICTEMENT antérieure à l'état présent est écartée ; une écriture du même
+    /// instant passe, sans quoi deux hooks du même millième de seconde se bloqueraient l'un l'autre.</para>
+    ///
+    /// <para>La relecture se fait sur le MÊME descripteur, donc sous le MÊME verrou que l'écriture :
+    /// relire puis rouvrir ajouterait la course qu'on cherche à retirer. Et ce qui n'est PAS couvert doit
+    /// être dit : la <b>suppression</b> (<c>SessionEnd</c>) reste inconditionnelle — elle ne porte pas
+    /// d'état à comparer.</para>
     /// </summary>
-    private static void EcrireAvecReprise(string fichier, byte[] octets)
+    /// <param name="instant">Horodatage porté par l'état à écrire, ou <c>null</c> s'il est illisible.</param>
+    /// <returns><c>null</c> si l'écriture a eu lieu ; sinon l'horodatage de l'état déjà présent qui l'a
+    /// emporté.</returns>
+    private static long? EcrireAvecReprise(string fichier, byte[] octets, long? instant)
     {
         for (var essai = 1; ; essai++)
         {
             try
             {
-                using var flux = new FileStream(fichier, FileMode.Create, FileAccess.Write, FileShare.Read);
+                using var flux = new FileStream(fichier, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+
+                if (instant is long neuf && InstantDejaSurDisque(flux) is long present && neuf < present)
+                    return present;
+
+                flux.Position = 0;
                 flux.Write(octets, 0, octets.Length);
+                flux.SetLength(octets.Length);   // la cible pouvait être plus longue : pas de queue orpheline
                 flux.Flush();
-                return;
+                return null;
             }
             catch (IOException) when (essai < EssaisMax)
             {
@@ -116,4 +160,57 @@ public static class EcritureEtatSession
             }
         }
     }
+
+    /// <summary>
+    /// L'horodatage porté par un contenu d'état, ou <c>null</c> s'il n'y en a pas de lisible.
+    ///
+    /// <para><b>Le null est la pièce maîtresse de la doctrine de la phase 23</b>, tenue ici à l'écriture
+    /// comme elle l'est à la lecture : un fichier illisible, un fragment, un objet sans ce champ sont une
+    /// ABSENCE de signal — pas un signal très ancien, et surtout pas un signal très récent. Rendre autre
+    /// chose que <c>null</c> pour une relecture ratée gèlerait la cible : plus aucune écriture ne
+    /// passerait, et un fichier corrompu le resterait pour de bon.</para>
+    /// </summary>
+    private static long? InstantDeLEtat(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return Champ(doc.RootElement);
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Même lecture, mais sur le descripteur DÉJÀ OUVERT en écriture — c'est ce qui met la
+    /// comparaison et l'écriture sous un seul et même verrou.</summary>
+    private static long? InstantDejaSurDisque(FileStream flux)
+    {
+        try
+        {
+            var taille = flux.Length;
+            if (taille <= 0 || taille > TailleRelueMax) return null;   // vide ou aberrant = absence
+
+            var tampon = new byte[(int)taille];
+            flux.Position = 0;
+            var lus = 0;
+            while (lus < tampon.Length)
+            {
+                var n = flux.Read(tampon, lus, tampon.Length - lus);
+                if (n <= 0) break;
+                lus += n;
+            }
+
+            using var doc = System.Text.Json.JsonDocument.Parse(new System.ReadOnlyMemory<byte>(tampon, 0, lus));
+            return Champ(doc.RootElement);
+        }
+        catch { return null; }   // fragment, contenu étranger, lecture refusée : absence de signal
+    }
+
+    /// <summary>Le champ d'horodatage du schéma d'état, lu tel quel : aucune conversion d'unité ici, on
+    /// compare des entiers de même nature entre eux (HDR-05 vaut aussi pour ce qu'on NE fait pas).</summary>
+    private static long? Champ(System.Text.Json.JsonElement racine)
+        => racine.ValueKind == System.Text.Json.JsonValueKind.Object
+           && racine.TryGetProperty("updated_at", out var v)
+           && v.TryGetInt64(out var ms)
+            ? ms
+            : null;
 }

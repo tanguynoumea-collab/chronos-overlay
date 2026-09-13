@@ -98,6 +98,9 @@ public class EcritureEtatSessionTests
         Assert.False(string.IsNullOrWhiteSpace(res.Cause));
         // La cause n'est pas fabriquée : c'est le TYPE réellement levé qui la porte.
         Assert.Contains("Exception", res.Cause!, StringComparison.Ordinal);
+        // Un vrai refus d'écriture n'est PAS une écriture écartée pour antériorité (MON-01) : les deux
+        // portent une cause, et un seul des deux doit remonter à l'utilisateur.
+        Assert.False(res.Ignoree);
     }
 
     [Fact]
@@ -199,8 +202,12 @@ public class EcritureEtatSessionTests
             dossier, Ordre("PreToolUse", Sid, Maintenant.AddSeconds(-5).ToUnixTimeMilliseconds()));
 
         // Refuser une écriture périmée n'est pas un échec pour l'appelant : l'état le plus récent est déjà
-        // en place. Un message d'erreur ici s'afficherait à l'utilisateur à chaque batch d'outils.
+        // en place. Un message d'erreur ici s'afficherait à l'utilisateur à chaque batch d'outils —
+        // App.xaml.cs ne signale sur la sortie d'erreur QUE ce qui n'est pas réussi.
         Assert.True(enRetard.Reussi);
+        // …et ce n'est pas non plus un silence : le sort est NOMMÉ, et distinct du refus d'écriture réel.
+        Assert.True(enRetard.Ignoree);
+        Assert.False(string.IsNullOrWhiteSpace(enRetard.Cause));
 
         var (activite, horodatage) = SurDisque(dossier);
         Assert.Equal("WaitingAttention", activite);
@@ -221,12 +228,16 @@ public class EcritureEtatSessionTests
         Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PermissionRequest", Sid, t)).Reussi);
 
         // Même instant : admis (comparaison STRICTE).
-        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("Stop", Sid, t)).Reussi);
+        var memeInstant = EcritureEtatSession.Appliquer(dossier, Ordre("Stop", Sid, t));
+        Assert.True(memeInstant.Reussi);
+        Assert.False(memeInstant.Ignoree);
         Assert.Equal(("WaitingTurn", t), SurDisque(dossier));
 
         // Plus récent : admis, évidemment — c'est le cas nominal.
         var plusTard = Maintenant.AddSeconds(1).ToUnixTimeMilliseconds();
-        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PreToolUse", Sid, plusTard)).Reussi);
+        var nominal = EcritureEtatSession.Appliquer(dossier, Ordre("PreToolUse", Sid, plusTard));
+        Assert.True(nominal.Reussi);
+        Assert.False(nominal.Ignoree);
         Assert.Equal(("Working", plusTard), SurDisque(dossier));
     }
 
@@ -247,8 +258,10 @@ public class EcritureEtatSessionTests
         File.WriteAllText(Path.Combine(dossier, Sid + ".json"), debris);
 
         var t = Maintenant.ToUnixTimeMilliseconds();
-        Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PreToolUse", Sid, t)).Reussi);
+        var res = EcritureEtatSession.Appliquer(dossier, Ordre("PreToolUse", Sid, t));
 
+        Assert.True(res.Reussi);
+        Assert.False(res.Ignoree);   // l'absence de signal n'est JAMAIS lue comme « un signal très récent »
         Assert.Equal(("Working", t), SurDisque(dossier));
     }
 }
