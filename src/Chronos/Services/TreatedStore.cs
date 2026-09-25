@@ -27,22 +27,20 @@ namespace Chronos.Services;
 /// rend ses tests verts le jour où on les écrit et rouges six heures plus tard, sans qu'une ligne de
 /// code ait bougé. Trois plans de la phase 22 sont tombés dans ce piège ; il ne se reproduit pas ici.
 ///
-/// <para><see cref="RetentionMax"/> est une RÉTENTION DE FICHIER, jamais un délai d'affichage. Depuis
+/// <para><see cref="HorizonsSessions.RetentionTraitees"/> est une RÉTENTION DE FICHIER, jamais un délai d'affichage. Depuis
 /// TRT-02, la valeur mémorisée est l'instant que le SIGNAL porte, pas celui du guetteur : une borne de
 /// six heures adossée à cet instant rendait le magasin AVEUGLE à toute session attendant depuis plus de
 /// six heures — c'est-à-dire précisément celle dont ce milestone est parti, et deux heures pleines
 /// pendant lesquelles « marquer traitée » était un no-op silencieux. La borne doit donc être
-/// strictement supérieure au seuil au-delà duquel le moniteur cesse de lire une session (huit heures),
-/// puisqu'au-delà la session n'est de toute façon plus affichée. La réversibilité, elle, reste portée
+/// strictement supérieure au seuil au-delà duquel le moniteur cesse de lire une session (huit heures,
+/// <see cref="HorizonsSessions.Abandon"/>), puisqu'au-delà la session n'est de toute façon plus affichée.
+/// Les deux vivent dans <see cref="HorizonsSessions"/>, où une garde tient la chaîne. La réversibilité, elle, reste portée
 /// par NET-03 — jamais par une horloge.</para>
 ///
 /// Tolérance totale : fichier absent/corrompu → map vide, jamais d'exception. Aucun type WPF (couche neutre).
 /// </summary>
 public sealed class TreatedStore
 {
-    // Borne de croissance du FICHIER, strictement supérieure au seuil d'abandon de lecture du moniteur.
-    private static readonly System.TimeSpan RetentionMax = System.TimeSpan.FromHours(24);
-
     private readonly string _path;
     private readonly IClock _horloge;
 
@@ -64,7 +62,7 @@ public sealed class TreatedStore
             using var doc = JsonDocument.Parse(File.ReadAllText(_path));
             if (doc.RootElement.ValueKind != JsonValueKind.Object) return map;
             foreach (var p in doc.RootElement.EnumerateObject())
-                if (p.Value.TryGetInt64(out var ts) && now - ts < RetentionMax.TotalMilliseconds)
+                if (p.Value.TryGetInt64(out var ts) && now - ts < HorizonsSessions.RetentionTraitees.TotalMilliseconds)
                     map[p.Name] = ts;
         }
         catch { }
@@ -109,7 +107,7 @@ public sealed class TreatedStore
                 using var doc = JsonDocument.Parse(File.ReadAllText(_path));
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                     foreach (var p in doc.RootElement.EnumerateObject())
-                        if (p.Value.TryGetInt64(out var ts) && now - ts < RetentionMax.TotalMilliseconds)
+                        if (p.Value.TryGetInt64(out var ts) && now - ts < HorizonsSessions.RetentionTraitees.TotalMilliseconds)
                             map[p.Name] = ts;
             }
         }

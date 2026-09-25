@@ -8,7 +8,8 @@ namespace Chronos.Services;
 /// <summary>
 /// Détecte l'état des sessions Claude Code EN LISANT LEURS TRANSCRIPTS (~/.claude/projects/**/*.jsonl).
 /// Ne dépend d'AUCUN hook : c'est la source de base du widget, et elle ne parle QUE de Claude Code.
-/// Ne montre que les sessions récemment actives (fenêtre <see cref="ActiveWindow"/>).
+/// Ne montre que les sessions dont le dernier message a moins de <see cref="HorizonsSessions.Abandon"/> ; la règle
+/// de silence n'est PAS ici, elle est dans le moniteur (SIL-01 : une seule règle, appliquée à tous les signaux).
 ///
 /// Règle d'état (dernier message significatif, sous-agents ignorés) — TROIS issues :
 ///   • dernier = user (invite ou tool_result), ou assistant dont le dernier tool_use est un autre outil → Working
@@ -47,7 +48,6 @@ namespace Chronos.Services;
 // un SessionMonitor qui dépendrait du TYPE CONCRET de sa source de base, donc intestable par substitution.
 public sealed class TranscriptSessionSource : ISessionSource
 {
-    private static readonly System.TimeSpan ActiveWindow = System.TimeSpan.FromMinutes(15);
     private const int MaxSessions = 12;
     private const int TailBytes = 64 * 1024;
 
@@ -69,7 +69,7 @@ public sealed class TranscriptSessionSource : ISessionSource
                 .Where(f => !EstSousAgent(f))
                 // PRÉ-FILTRE d'économie, jamais l'autorité : l'horodatage d'un message ne dépasse pas l'écriture
                 // du fichier, donc un fichier écrit hors fenêtre ne peut contenir aucun signal dans la fenêtre.
-                .Where(f => now - new System.DateTimeOffset(f.LastWriteTimeUtc, System.TimeSpan.Zero) < ActiveWindow)
+                .Where(f => now - new System.DateTimeOffset(f.LastWriteTimeUtc, System.TimeSpan.Zero) <= HorizonsSessions.Abandon)
                 .ToList();   // MATÉRIALISÉ dans le try : l'énumération paresseuse levait hors du catch (phase 21)
         }
         catch { return new List<SessionSnapshot>(); }
@@ -79,7 +79,7 @@ public sealed class TranscriptSessionSource : ISessionSource
         // Un fichier sans rien d'exploitable (Classify → null) ne consomme AUCUN emplacement.
         return candidats
             .Select(fi => Classify(fi, now))
-            .Where(s => s is not null && now - s.UpdatedAt < ActiveWindow)
+            .Where(s => s is not null && now - s.UpdatedAt <= HorizonsSessions.Abandon)   // même borne que le moniteur : n'écarte qu'au-delà
             .Select(s => s!)
             .OrderByDescending(s => s.UpdatedAt)
             .ThenBy(s => s.SessionId, System.StringComparer.Ordinal)   // départage déterministe

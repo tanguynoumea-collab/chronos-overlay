@@ -6,29 +6,22 @@ namespace Chronos.Services;
 
 /// <summary>
 /// Lit les fichiers d'état de session (%APPDATA%\Chronos\sessions\*.json) écrits par les hooks
-/// (<see cref="SessionHookProcessor"/>) et en produit des <see cref="SessionSnapshot"/>, en appliquant
-/// une politique d'HONNÊTETÉ sur la fraîcheur :
-///   • Working dont le dernier BATTEMENT date de plus de <see cref="SilenceDesBattements"/> →
-///     <see cref="SessionActivity.WaitingDeduced"/> : on ne prétend pas « en travail » quand plus rien
-///     n'arrive, et on ne prétend pas davantage que le tour s'est terminé — personne ne l'a vu. C'est ICI,
-///     et nulle part ailleurs, que l'attente déduite est produite : elle est dérivée à la LECTURE, jamais
-///     écrite dans un fichier d'état (EVT-04).
+/// (<see cref="SessionHookProcessor"/>) et les transcripts (<see cref="ISessionSource"/>), et en produit des
+/// <see cref="SessionSnapshot"/>, en appliquant une politique d'HONNÊTETÉ sur la fraîcheur — la MÊME pour
+/// toutes les sources (SIL-01), avec les seuils de <see cref="HorizonsSessions"/> :
+///   • Working dont le dernier signal — battement de hook ou dernier message de transcript — date de plus
+///     de <see cref="HorizonsSessions.Silence"/> → <see cref="SessionActivity.WaitingDeduced"/> : on ne
+///     prétend pas « en travail » quand plus rien n'arrive, et on ne prétend pas davantage que le tour s'est
+///     terminé — personne ne l'a vu. C'est ICI (<see cref="AppliquerSilence"/>), et nulle part ailleurs, que
+///     l'attente déduite est produite, appliquée à tous les signaux avant l'arbitrage : elle est dérivée à la
+///     LECTURE, jamais écrite dans un fichier d'état (EVT-04), et la source transcripts ne déduit rien.
 ///   • Les états d'attente PERSISTENT (le fichier ne bouge pas TANT QU'on n'a pas agi — c'est justement
-///     le signal). Ils ne deviennent « périmés » qu'au-delà de <see cref="DropAfter"/> (session morte,
-///     SessionEnd manqué) → ignorés.
+///     le signal). Ils ne deviennent « périmés » qu'au-delà de <see cref="HorizonsSessions.Abandon"/>
+///     (session morte, SessionEnd manqué) → ignorés, fichier de hook comme transcript.
 /// Lecture TOLÉRANTE : fichier absent/corrompu → ignoré. Aucun type WPF (couche neutre).
 /// </summary>
 public sealed class SessionMonitor
 {
-    /// <summary>Depuis EVT-03, ce seuil ne devine plus combien de temps un travail peut durer : il mesure
-    /// le SILENCE. Une session qui travaille est réaffirmée à chaque appel d'outil ; passé ce délai sans
-    /// le moindre battement, on ne sait tout simplement plus — et on le dit. Sa valeur n'a pas bougé, et
-    /// ce n'est pas un oubli : entre le signal d'entrée et le signal de sortie d'un outil long, il ne se
-    /// passe rien, donc le seuil doit rester large. La contrepartie — la latence avant que le silence se
-    /// voie — est écrite dans le contrat des hooks (EVT-05), pas tue.</summary>
-    private static readonly System.TimeSpan SilenceDesBattements = System.TimeSpan.FromMinutes(20);
-    private static readonly System.TimeSpan DropAfter = System.TimeSpan.FromHours(8);
-
     private readonly string _dir;
     private readonly ISessionSource _transcripts;
     private readonly ArchiveStore _archive;
@@ -84,10 +77,12 @@ public sealed class SessionMonitor
         //        FRAÎCHEUR. Avant ce plan, chaque source réécrivait une entrée indexée par identifiant — le
         //        dernier passage gagnait, donc l'ordre du code faisait loi, et un signal de 7 heures battait
         //        un signal de 10 secondes.
+        //        Chaque signal passe par la règle de silence AVANT d'être déposé (SIL-01) : même position
+        //        qu'avant la phase 28 pour les hooks, et désormais la même pour les transcripts.
         var signaux = new List<SignalSession>();
 
         foreach (var t in _transcripts.Read(now))
-            signaux.Add(new SignalSession(SourceSession.Transcript, t));
+            signaux.Add(new SignalSession(SourceSession.Transcript, AppliquerSilence(t, now)));
 
         string[] files;
         try { files = System.IO.Directory.Exists(_dir) ? System.IO.Directory.GetFiles(_dir, "*.json") : System.Array.Empty<string>(); }
@@ -107,7 +102,7 @@ public sealed class SessionMonitor
             // se traite comme telle : le fragment n'est pas déposé. Le compter comme un signal sans date en
             // ferait un « très vieux signal » perdant contre n'importe quoi — une fausse déposition, là où
             // il n'y a rien à déposer.
-            if (snap is not null) signaux.Add(new SignalSession(SourceSession.Hook, snap));
+            if (snap is not null) signaux.Add(new SignalSession(SourceSession.Hook, AppliquerSilence(snap, now)));
         }
 
         var arbitrage = ArbitrageSessions.Trancher(signaux);
@@ -143,6 +138,24 @@ public sealed class SessionMonitor
         return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords);
     }
 
+    /// <summary>LA RÈGLE DE SILENCE, en un seul point (SIL-01) : un TRAVAIL dont le signal — battement de hook ou dernier
+    /// message de transcript — est plus vieux que <see cref="HorizonsSessions.Silence"/> devient une attente DÉDUITE.
+    /// On ne sait plus ; la déduction que l'inférence AUTORISE est « quelque chose m'attend » (l'interruption au clavier
+    /// est le cas le plus fréquent, et aucun événement ne l'émet). Un terminal tué ou une mise en veille produisent le
+    /// même silence : on ne nomme pas la cause, et le mot porte son point d'interrogation. WaitingTurn est interdit ici —
+    /// « le tour s'est terminé » est une observation, et personne ne l'a faite. Les attentes OBSERVÉES persistent, un état
+    /// illisible reste indéterminé. Appliquée AVANT l'arbitrage, à toutes les sources : la source transcripts ne déduit
+    /// rien elle-même (une garde le vérifie).
+    /// <para>Depuis EVT-03, ce seuil ne devine plus combien de temps un travail peut durer : il mesure le SILENCE. Une
+    /// session qui travaille est réaffirmée à chaque appel d'outil ; entre le signal d'entrée et le signal de sortie d'un
+    /// outil long, il ne se passe rien, donc le seuil doit rester large. La contrepartie — la latence avant que le
+    /// silence se voie — est écrite dans le contrat des hooks (EVT-05), pas tue. L'instant du signal n'est pas réécrit :
+    /// seule l'activité change.</para></summary>
+    private static SessionSnapshot AppliquerSilence(SessionSnapshot s, System.DateTimeOffset now)
+        => s.Activity == SessionActivity.Working && now - s.UpdatedAt > HorizonsSessions.Silence
+            ? s with { Activity = SessionActivity.WaitingDeduced }
+            : s;
+
     // <paramref name="perimee"/> distingue « lu, mais trop vieux pour valoir quelque chose » de
     // « illisible » : les deux rendent null, et les confondre effacerait l'information qui explique
     // l'essentiel de l'écart entre le disque et l'écran.
@@ -170,20 +183,9 @@ public sealed class SessionMonitor
                 activity = SessionActivity.Unknown;
 
             var age = now - updatedAt;
-            if (age > DropAfter) { perimee = true; return null; } // session morte (SessionEnd manqué) → on ne l'affiche plus
+            if (age > HorizonsSessions.Abandon) { perimee = true; return null; } // session morte (SessionEnd manqué) → on ne l'affiche plus
 
-            // Travail sans battement depuis SilenceDesBattements : on ne sait plus. La déduction que
-            // l'inférence AUTORISE est « quelque chose m'attend » — l'interruption au clavier est le cas le
-            // plus fréquent, et aucun événement du catalogue ne l'émet. Mais un terminal tué et une mise en
-            // veille produisent exactement le même silence : on ne nomme donc pas la cause, on annonce une
-            // attente DÉDUITE, et le libellé le dit. Ce qui est interdit ici, c'est WaitingTurn — « le tour
-            // s'est terminé » est une observation, et personne ne l'a faite.
-            //
-            // Les attentes OBSERVÉES persistent telles quelles, et un état illisible reste inconnu : le
-            // silence ne concerne que le travail, et une déduction se tire d'un fait, pas d'une absence.
-            if (activity == SessionActivity.Working && age > SilenceDesBattements)
-                activity = SessionActivity.WaitingDeduced;
-
+            // Le silence n'est plus appliqué ici : il l'est dans Inspecter, par AppliquerSilence, à TOUS les signaux.
             return new SessionSnapshot(sid, project, activity, reason, updatedAt);
         }
         catch { return null; }

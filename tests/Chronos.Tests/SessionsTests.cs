@@ -559,7 +559,7 @@ public class SessionsTests
         var root = TempDir();
         try
         {
-            WriteTranscript(root, "s-old", new[] { CwdLine, AssistantEndTurn }, TimeSpan.FromMinutes(30)); // > 15 min
+            WriteTranscript(root, "s-old", new[] { CwdLine, AssistantEndTurn }, TimeSpan.FromHours(8) + TimeSpan.FromMinutes(1)); // > 8 h (HorizonsSessions.Abandon)
             Assert.Empty(new TranscriptSessionSource(root).Read(DateTimeOffset.UtcNow));
         }
         finally { Directory.Delete(root, true); }

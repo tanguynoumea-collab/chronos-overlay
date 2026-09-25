@@ -331,7 +331,8 @@ public class TreatedSessionsTests
     ///   • le fichier de hook porte updated_at = 1789181509266 (« une permission est demandée ») ;
     ///   • l'overlay redémarre 478 minutes plus tard — un tracker NEUF ouvre donc un épisode d'attente ;
     ///     c'est l'instant 1789210240523 relevé dans treated.json, à 69 s du seuil de huit heures ;
-    ///   • deux minutes après, le fichier de hook franchit DropAfter et cesse d'être lu, tandis que le
+    ///   • deux minutes après, le fichier de hook franchit le seuil d'abandon (HorizonsSessions.Abandon,
+    ///     alors nommé DropAfter) et cesse d'être lu, tandis que le
     ///     transcript (Working) reprend la main. Le détecteur voit « attente → travail » et conclut.
     ///
     /// Ce n'est pas une réponse de l'utilisateur : c'est une source qui se tait pendant qu'une autre parle.

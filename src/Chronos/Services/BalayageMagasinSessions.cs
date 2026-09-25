@@ -43,8 +43,10 @@ public sealed record BilanBalayage(int EtatsRetires, int TemporairesRetires, int
 /// </summary>
 public sealed class BalayageMagasinSessions
 {
-    /// <summary>Au-delà, un état sans attestation de vie est balayé. Neuf fois le seuil d'affichage du moniteur.</summary>
-    public static readonly System.TimeSpan ExpirationEtat = System.TimeSpan.FromHours(72);
+    /// <summary>Au-delà, un état sans attestation de vie est balayé. Neuf fois le seuil d'affichage du moniteur.
+    /// ALIAS de <see cref="HorizonsSessions.ExpirationEtat"/>, où vit la chaîne des horizons (SIL-01) : le membre
+    /// public reste, pour ses lecteurs, et une garde tient l'égalité.</summary>
+    public static readonly System.TimeSpan ExpirationEtat = HorizonsSessions.ExpirationEtat;
 
     /// <summary>En deçà, un fichier temporaire est épargné : un hook est peut-être en train d'écrire
     /// (latence mesurée d'un hook : 584-611 ms, soit six mille fois moins).</summary>
