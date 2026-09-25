@@ -516,4 +516,35 @@ public sealed class ContratHooksDocumenteTests
         Assert.Contains("private static SessionSnapshot AppliquerSilence(", File.ReadAllText(moniteur),
             StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (APP-06, phase 29). Le §3 dit OÙ les hooks écrivent vraiment : lancés sous
+    /// l'app bureau (paquet MSIX), ils écrivent dans la vue VIRTUALISÉE du paquet, que l'overlay ne voit pas —
+    /// d'où deux vues d'AppData, lues toutes les deux, résolues par <c>RacinesEtat</c>. Un contrat qui ne le
+    /// dirait pas renverrait le lecteur vers « %APPDATA%\Chronos\sessions » seul, c'est-à-dire vers le dossier que
+    /// l'overlay lisait, vide, pendant que les fichiers vivaient ailleurs.
+    ///
+    /// <para>Chaque fragment cherché tient sur UNE ligne du document, sans mise en forme au milieu : la garde lit
+    /// le texte brut. Et le résolveur nommé doit exister dans le code, et y construire ce chemin-là — sinon le
+    /// document décrirait un siège vide.</para>
+    /// </summary>
+    [Fact]
+    public void Le_paragraphe_3_dit_les_deux_vues_d_AppData_et_le_code_les_resout()
+    {
+        var section = SectionDe(LireDocument(), "## 3.");
+
+        Assert.Contains("Deux vues d'AppData", section, StringComparison.Ordinal);
+        Assert.Contains("`RacinesEtat`", section, StringComparison.Ordinal);
+        Assert.Contains(@"LocalCache\Roaming\Chronos\sessions", section, StringComparison.Ordinal);
+
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas le résolveur et ne croise donc rien.");
+
+        var fichier = Path.Combine(racineSources, "Services", "RacinesEtat.cs");
+        Assert.True(File.Exists(fichier), $"Résolveur introuvable : {fichier}");
+        Assert.Contains("\"LocalCache\", \"Roaming\", \"Chronos\", \"sessions\"", File.ReadAllText(fichier),
+            StringComparison.Ordinal);
+    }
 }

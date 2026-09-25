@@ -134,6 +134,14 @@ Cinq valeurs de `SessionActivity`, **trois mots à l'écran**. Le fichier d'éta
 `updated_at`. Les libellés viennent d'un producteur unique, `AffichageSessions.Etat`, partagé par le widget et le
 rapport de diagnostic (LIB-03) ; la table ci-dessous est comparée à ce producteur par `ContratHooksDocumenteTests`.
 
+**Deux vues d'AppData, lues toutes les deux (APP-06, 2026-09-25).** Un hook lancé par l'app bureau Claude
+(paquet MSIX) écrit `%APPDATA%\Chronos\sessions` dans la vue VIRTUALISÉE du paquet, c'est-à-dire physiquement
+sous `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Chronos\sessions`. L'overlay, lancé hors de l'arbre
+de l'app, ne voit pas cette vue : pour lui `%APPDATA%\Chronos\sessions` est le dossier RÉEL, vide des
+sessions de l'app. Le moniteur lit donc toutes les racines résolues par candidats (`RacinesEtat`, le paquet
+d'abord), fusionne par `session_id` par l'arbitrage ordinaire, et le balayage comme le diagnostic passent sur
+chacune. Un constat fait depuis une session Claude Code voit la vue virtualisée : il ne vaut pas pour l'overlay.
+
 <!-- ETATS-AFFICHES:debut -->
 
 | `activity` | Libellé affiché | Ce que l'état AFFIRME | Observé ou déduit ? |
