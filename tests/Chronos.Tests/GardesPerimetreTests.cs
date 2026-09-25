@@ -231,6 +231,69 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
+    /// GARDE DE CÂBLAGE (APP-01, APP-03, phase 29 — Piège 9 de la recherche). Le paramètre <c>appBureau</c> du moniteur
+    /// est optionnel et nul par défaut : c'est ce qui garde les dizaines de tests existants en v1.6 exacte, et c'est
+    /// aussi ce qui laisserait la PRODUCTION en v1.6 sans rien dire — aucune question de l'app, aucun titre, et aucun
+    /// build ni démarrage en échec. Contrôle de SOURCE (<c>OnStartup</c> n'est pas instanciable sous test) : le lecteur
+    /// est construit UNE fois sur les racines candidates de l'app bureau, et le moniteur du widget le reçoit par
+    /// argument NOMMÉ. Le fragment lu est l'enregistrement du moniteur (même motif que la garde précédente).
+    /// </summary>
+    [Fact]
+    public void Le_moniteur_de_production_recoit_le_lecteur_de_l_app_bureau()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        Assert.Contains("new LecteurAppBureau(sp.GetRequiredService<RacinesCandidates>().SessionsAppBureau)", texte,
+                        StringComparison.Ordinal);
+
+        var debut = texte.IndexOf("new SessionMonitor(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "Enregistrement du SessionMonitor introuvable dans App.xaml.cs");
+        var fin = texte.IndexOf("));", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin de l'enregistrement du SessionMonitor introuvable");
+
+        Assert.Contains("appBureau: sp.GetRequiredService<LecteurAppBureau>()", texte[debut..fin], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE DE SOURCE (APP-02, phase 29). Le titre de l'app n'est pas un signal : posé AVANT l'arbitrage, il
+    /// deviendrait un critère de départage caché (l'égalité de record l'inclut) ; posé par une source d'activité, il
+    /// ferait de l'app une source de lignes. Il n'a donc qu'un siège : le moniteur, sur les RETENUS, après
+    /// <c>ArbitrageSessions.Trancher</c>. Parmi tous les fichiers de <c>Services/</c>, seul <c>SessionMonitor.cs</c>
+    /// écrit <c>with { Titre</c>, une fois, et son enrichissement vient après l'arbitrage dans le texte.
+    /// </summary>
+    [Fact]
+    public void Le_titre_est_pose_apres_l_arbitrage_et_nulle_part_ailleurs()
+    {
+        var services = Path.Combine(CheminSources(), "Services");
+        var fichiers = Directory.GetFiles(services, "*.cs", SearchOption.TopDirectoryOnly);
+        Assert.True(fichiers.Length >= 40,
+            $"Seulement {fichiers.Length} fichiers dans {services} : la garde lirait le mauvais dossier et serait muette.");
+
+        const string pose = "with { Titre";
+        var porteurs = fichiers
+            .Where(f => File.ReadAllText(f).Contains(pose, StringComparison.Ordinal))
+            .Select(f => Path.GetFileName(f)!)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(new[] { "SessionMonitor.cs" }, porteurs);
+
+        var moniteur = File.ReadAllText(Path.Combine(services, "SessionMonitor.cs"));
+        var occurrences = 0;
+        for (var i = moniteur.IndexOf(pose, StringComparison.Ordinal); i >= 0; i = moniteur.IndexOf(pose, i + 1, StringComparison.Ordinal))
+            occurrences++;
+        Assert.Equal(1, occurrences);
+
+        var trancher = moniteur.IndexOf("ArbitrageSessions.Trancher(", StringComparison.Ordinal);
+        var enrichir = moniteur.IndexOf("Enrichir(", StringComparison.Ordinal);
+        Assert.True(trancher >= 0, "ArbitrageSessions.Trancher( introuvable dans SessionMonitor.cs : la garde serait muette.");
+        Assert.True(enrichir > trancher,
+            $"Le titre est posé AVANT l'arbitrage (Enrichir( à {enrichir}, ArbitrageSessions.Trancher( à {trancher}).");
+    }
+
+    /// <summary>
     /// GARDE DE NON-RETOUR (FUS-01, phase 24) — le moniteur ne fusionne plus en réaffectant une entrée
     /// indexée par identifiant, source après source.
     ///

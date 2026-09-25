@@ -173,10 +173,16 @@ public class CompositionRootTests
         var racines = RacinesEtat.Candidats(tmpLocal, tmpRoaming);
         services.AddSingleton(_ => racines);
 
+        // APP-01 (phase 29) : le lecteur de l'app bureau, singleton construit sur les racines candidates, passé au
+        // moniteur par argument NOMMÉ — exactement comme la production. Ce test n'appelle JAMAIS Inspecter : ce
+        // moniteur miroir a la source de transcripts par défaut, qui lirait le vrai ~/.claude/projects.
+        services.AddSingleton(sp => new LecteurAppBureau(sp.GetRequiredService<RacinesCandidates>().SessionsAppBureau));
+
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
             sp.GetRequiredService<SessionTreatmentTracker>(),
-            dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks));
+            dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks,
+            appBureau: sp.GetRequiredService<LecteurAppBureau>()));
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton(sp => new BalayageMagasinSessions(
@@ -197,6 +203,14 @@ public class CompositionRootTests
         Assert.Equal(moniteur.Dossiers, balayeur.Dossiers);   // les racines balayées sont celles du moniteur
         Assert.All(balayeur.Dossiers, d => Assert.StartsWith(System.IO.Path.GetTempPath(), d));   // garde anti-accident
         Assert.All(balayeur.Dossiers, d => Assert.DoesNotContain("claude-code-sessions", d));
+
+        // APP-01 — UN lecteur de l'app bureau (un cache, une mémoire d'épisodes), sur des racines temporaires, et c'est
+        // CELUI-LÀ que le moniteur du widget a reçu : le rapport, qui lit le moniteur, lit donc la même instance (OBS-01).
+        var lecteur = provider.GetRequiredService<LecteurAppBureau>();
+        Assert.Same(lecteur, provider.GetRequiredService<LecteurAppBureau>());
+        Assert.NotEmpty(lecteur.Candidats);   // garde anti-muette
+        Assert.All(lecteur.Candidats, c => Assert.StartsWith(System.IO.Path.GetTempPath(), c));
+        Assert.Same(lecteur, moniteur.Lecteur);
 
         // OBS-01 — le partage d'instance repose entièrement sur la portée : passer ce moniteur en transient
         // donnerait au diagnostic un exemplaire distinct de celui du widget, avec ses propres magasins
