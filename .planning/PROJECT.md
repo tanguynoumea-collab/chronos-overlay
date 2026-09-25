@@ -42,22 +42,26 @@ chiffre exact.
 - ✓ Source exacte par en-têtes `anthropic-ratelimit-unified-*`, exploitables même sur 429 (HDR-01..06) — Phase 18
 - ✓ Doctrine « exact ou rien » : exact frais → encore exact → plancher « ≥ N % » → indisponible (EXA-02/04/05, DEL-03/04) — Phase 19
 - ✓ Quatre états lisibles à l'œil + diagnostic nommant la source et son âge (EXA-03, EXA-06) — Phase 20
+- ✓ Widget limité à Claude Code, source UI Automation retirée, transcripts robustes aux vagues de sous-agents (SRC-01..03) — Phase 21
+- ✓ Diagnostic = même moniteur et mêmes filtres que le widget, sessions pertinentes d'abord (OBS-01, OBS-02) — Phase 22
+- ✓ Écriture d'état sans perte silencieuse + balayage du magasin au démarrage (CYC-01, CYC-02) — Phase 23
+- ✓ Arbitrage des sources par FRAÎCHEUR, désaccords tracés dans le diagnostic (FUS-01, FUS-02) — Phase 24
+- ✓ Contrat d'événements : `PermissionRequest`, veto `Notification`, battements de cœur, attente déduite, `docs/hooks-contract.md` (EVT-01..05) — Phase 25
+- ✓ « Traité » = transition observée sur la même source, persistant, geste explicite, archivage permanent (TRT-01..04) — Phase 26
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-Milestone v1.6 — Observer au lieu de déduire : le widget de sessions.
-- **Périmètre (SRC)** : le widget ne couvre plus que les sessions **Claude Code** ; la source app-bureau
-  (UI Automation) est retirée, et la source transcripts cesse de s'aveugler pendant les vagues de sous-agents.
-- **Contrat d'événements (EVT)** : `PermissionRequest` au lieu du proxy `Notification`, battements de cœur
-  qui font **observer** « réfléchit » au lieu de le déduire par expiration, cas de l'interruption utilisateur
-  couvert, et contrat des hooks enfin documenté.
-- **Fusion (FUS)** : arbitrage par **fraîcheur**, jamais par ordre d'insertion ; désaccords traçables.
-- **« Traité » (TRT)** : déduit d'une transition observée sur la MÊME source, jamais d'une expiration ;
-  survit au redémarrage ; geste explicite pour l'utilisateur ; contrat d'archivage unique.
-- **Cycle de vie (CYC)** : balayage des états expirés et des `.tmp` orphelins ; plus d'écriture perdue en silence.
-- **Observabilité (OBS)** : le diagnostic dit **exactement** ce que le widget affiche.
+Milestone v1.7 — « Lue ou non lue » : le widget de sessions ne montre que ce qui mérite un regard.
+- **Source app-bureau par fichiers (APP)** : lire les métadonnées par session que l'app bureau Claude écrit
+  (`%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_*.json` : `cliSessionId`, `title`,
+  `lastFocusedAt`, `postTurnSummary`), joindre par UUID, dégrader vers le comportement v1.6 si absentes.
+- **« Lue » (LUE)** : une session en attente dont la fin de tour est antérieure au dernier focus disparaît ;
+  la session sélectionnée pendant que la fenêtre Claude est au premier plan compte comme lue.
+- **Deux libellés (LIB)** : « Réflexion » et « En attente » (+ « En attente ? » pour la déduction) ; le titre de
+  session remplace le nom de dossier ; une question `AskUserQuestion` en suspens est une attente, pas un travail.
+- **Trou §9.1 (SIL)** : une session sans fichier de hook ne disparaît plus à 15 min sans un mot.
 
 ### Out of Scope
 
@@ -76,50 +80,46 @@ Milestone v1.6 — Observer au lieu de déduire : le widget de sessions.
 - **Source app-bureau via UI Automation pour le widget de sessions** — retirée en v1.6 : le widget ne couvre que Claude Code. Ses entrées `desktop:foreground:*` ne vieillissaient jamais et ne pouvaient donc jamais expirer ; l'utilisateur a dû les archiver à la main.
 - **Hystérésis « traité » par focus de fenêtre** — supprimée avec l'UIA : elle exigeait `Origin == Desktop` et n'atteignait donc JAMAIS une session Claude Code. Remplacée par une transition observée et un geste explicite.
 
-## Current State (entrée en v1.6 — 2026-09-12)
+## Current State (entrée en v1.7 — 2026-09-25)
 
-**Le cadran est réglé.** Le milestone v1.5 « Exactitude permanente » est livré : 6 phases, 24 exigences,
-328 → 752 tests verts. L'estimation absolue `tokens / plafond` est supprimée et gardée morte ; le dernier
-relevé exact est persisté ; une sonde d'en-têtes `anthropic-ratelimit-unified-*` alimente le cadran et répond
-même en saturation ; le jeton est rafraîchi préventivement et sa panne est visible. Constaté en production le
-2026-09-12 après reconnexion : `5 h : EXACT — 23 % · source : sonde d'en-têtes · frais · serveur : AUTORISÉ`.
-Exe publié en **3.0.2**.
+**Le cadran est réglé, et le widget observe.** v1.6 « Observer au lieu de déduire » est livré (exe **3.1.0**,
+6 phases, 18 exigences, 752 → 889 tests) et **vérifié en production le 2026-09-25** : les 8 groupes de hooks
+3.1.0 sont installés et se déclenchent depuis l'app bureau (fichier d'état écrit moins d'une seconde après un
+appel d'outil), l'arbitrage par fraîcheur et le geste explicite sont en place.
 
-**Le widget de sessions, lui, ne l'est pas.** Investigation menée le même jour
-(`.planning/debug/widget-sessions-statuts.md`) : trois causes racines distinctes, prouvées contre les classes
-réelles et contre la documentation officielle des hooks. Le widget **déduit** des états au lieu de les
-**observer** — exactement le défaut que v1.5 vient de corriger sur le cadran. « Réfléchit » est deviné par
-expiration et se fait écraser par des signaux de 7 h ; « attend » repose sur une sémantique d'événements qui a
-dérivé (`Stop` ne se déclenche pas sur interruption, `Notification` est une alerte d'absence) ; « traité » ne
-peut structurellement pas fonctionner pour une session de terminal. Et l'instrument de mesure lui-même était
-faussé : le diagnostic construisait son propre moniteur nu, sans les filtres du widget — ce qui explique
-probablement pourquoi le problème n'a jamais été élucidé.
+**Mais le widget n'aide toujours pas**, et l'utilisateur le dit : « les widgets de sessions ne servent au final à
+rien ». Relevé du 2026-09-25 à 16 h 08 : 4 sessions actives, 2 en cours, 2 « tour fini » en orange — les deux
+avaient déjà été ouvertes et lues par l'utilisateur à 16 h 00 et 16 h 01. **Rien ne sait si une session a été
+LUE** : toute session terminée reste en attente jusqu'au prochain prompt, à un clic droit, ou à 8 h.
 
-## Current Milestone: v1.6 — Observer au lieu de déduire
+**La source qui manquait existe.** L'app bureau Claude (paquet MSIX `Claude_pzs8sxrjxfjjc`) écrit un fichier
+JSON par session sous `%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_<id>.json` (142 fichiers,
+~275 Ko, réécrits au changement de session et en fin de tour). `%APPDATA%\Claude` est une jonction vers le
+cache du paquet, lisible par un processus non packagé (vérifié). Champs utiles : `cliSessionId` (= l'UUID des
+hooks et des transcripts), `title`, `lastFocusedAt`, `lastActivityAt`, `latestUserFrameAt`, `completedTurns`,
+`postTurnSummary { status_category ∈ completed | blocked | review_ready, needs_action, status_detail }`.
+Le titre `ai-title` des transcripts CLI n'existe pas dans ceux de l'app bureau (vérifié sur 4 sessions).
+Format interne NON documenté : lecture tolérante, dégradation, jamais d'invention.
 
-**Goal :** Le widget de sessions répond enfin, de façon fiable, à « quelle session m'attend ? » — en
-**observant** les trois états au lieu de les déduire, et sur le seul périmètre des sessions Claude Code.
+## Current Milestone: v1.7 — Lue ou non lue
+
+**Goal :** le widget ne montre que les sessions qui méritent un regard — « Réflexion » ou « En attente » — et
+une session lue disparaît d'elle-même, sans clic.
 
 **Target features :**
-- **Périmètre réduit à Claude Code** — retrait de la source app-bureau (UI Automation, ~690 lignes) et de
-  l'hystérésis par focus qui en dépendait. Les entrées fantômes `desktop:foreground:*`, qui ne vieillissaient
-  jamais, disparaissent avec elle.
-- **Un contrat d'événements refondé** — `PermissionRequest` (signal exact, aujourd'hui inutilisé) au lieu du
-  proxy `Notification` ; des battements de cœur pour que « réfléchit » soit **observé** ; le cas de
-  l'interruption utilisateur enfin couvert ; le contrat documenté dans `docs/`, comme les autres sources.
-- **Une fusion qui arbitre par fraîcheur** — aujourd'hui un hook de 7 h écrase un transcript de 10 secondes,
-  par simple ordre d'insertion dans un dictionnaire.
-- **Un « traité » qui veut dire quelque chose** — déduit d'une transition **observée sur la même source**,
-  jamais d'une expiration de source ; persistant au redémarrage ; et assorti d'un geste explicite, puisque le
-  focus ne peut pas le fournir en terminal.
-- **Un magasin qui ne croît plus indéfiniment** — balayage des états expirés et des `.tmp` orphelins, puisque
-  `SessionEnd` ne couvre ni terminal tué, ni crash, ni redémarrage machine.
-- **Un instrument de mesure honnête** — le diagnostic dit exactement ce que le widget affiche.
+- **Source app-bureau par fichiers** — un `ISessionSource` qui lit les métadonnées par session, joint par
+  `cliSessionId`, expose titre, dernier focus et classification de fin de tour ; tolérant et dégradable.
+- **Règle « lue »** — attente antérieure au dernier focus ⇒ traitée (via le magasin réversible existant) ;
+  session sélectionnée + fenêtre Claude au premier plan ⇒ lue. Deux points à valider in vivo : le retour
+  alt-tab sur la même session met-il `lastFocusedAt` à jour ? et le tour qui finit pendant qu'on regarde.
+- **Deux libellés et le titre** — « Réflexion » / « En attente » (+ « En attente ? » pour la déduction),
+  titre de session à la place du dossier, `AskUserQuestion` en suspens classée attente, `blocked` de l'app
+  reconnu comme question posée.
+- **Trou §9.1 refermé** — une session sans fichier de hook ne disparaît plus en silence à 15 min.
 
-**Doctrine héritée de v1.5, appliquée au widget :** ne jamais présenter comme un fait ce qui n'a pas été
-observé. Un état dont la source a expiré n'est pas « terminé » : il est **inconnu**.
+**Doctrine inchangée :** observé, jamais déduit ; une déduction porte son point d'interrogation.
 
-## Next Milestone Goals (après v1.6)
+## Next Milestone Goals (après v1.7)
 
 Sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray, taille réglable, préavis avant saturation du quota et
 notification au reset. Piste d'économie à trancher : si `/api/oauth/usage` sert un jour la famille
@@ -167,13 +167,15 @@ notification au reset. Piste d'économie à trancher : si `/api/oauth/usage` ser
 | Rendu des arcs en XAML pur | Éviter dépendance native, simplifier le packaging mono-fichier | ✓ Good — Phase 5 |
 | Pas de source Cowork séparée | Pool partagé compte : Cowork déjà inclus dans l'usage de Code | ✓ Good |
 | Reset hebdo traité comme best-effort recalibrable | Le reset 7 jours dérive (~72 h, ancrage non documenté) | ✓ Good — recalibrage livré Phase 6 |
-| Suppression de l'estimation absolue par tokens/plafond (v1.5) | Les limites Anthropic pondèrent par modèle : `tokens / plafond` reste faux même avec le bon plafond, et les plafonds sont propres au forfait | À valider — remplacée par la correction par delta |
-| Doctrine « exact ou rien » : dernier exact persisté + delta borné, jamais d'estimation absolue | Un chiffre exact vieux de 3 min vaut infiniment mieux qu'une estimation fausse de 400 % | À valider — refonte du composite en v1.5 |
-| Les transcripts JSONL deviennent un correcteur de delta, plus une source concurrente | Ils savent dire *si* et *combien* depuis un instant T ; ils ne savent pas dire un pourcentage absolu | À valider — v1.5 |
-| Source exacte supplémentaire par en-têtes `anthropic-ratelimit-unified-*` | Seule voie qui répond encore quand l'API renvoie 429, et qui expose statut serveur et dépassement | À valider — reprise de claude-session-browser, v1.5 |
-| Le widget de sessions se limite aux sessions Claude Code (v1.6) | La source app-bureau produisait des entrées qui ne vieillissaient jamais, et l'hystérésis par focus qu'elle imposait n'atteignait structurellement jamais une session de terminal | À valider — retrait de ~690 lignes |
-| Les états de session sont OBSERVÉS, jamais déduits par expiration (v1.6) | Un état dont la source a expiré n'est pas « terminé », il est INCONNU. Même doctrine que « exact ou rien » appliquée au cadran en v1.5 | À valider |
-| La fusion des sources arbitre par FRAÎCHEUR (v1.6) | L'ordre d'insertion laissait un signal de 7 h écraser un signal de 10 s — mesuré contre les classes réelles | À valider |
+| Suppression de l'estimation absolue par tokens/plafond (v1.5) | Les limites Anthropic pondèrent par modèle : `tokens / plafond` reste faux même avec le bon plafond, et les plafonds sont propres au forfait | ✓ Good — v1.5 livré ; constaté en production le 2026-09-12 (5 h EXACT 23 %, sonde d'en-têtes) |
+| Doctrine « exact ou rien » : dernier exact persisté + delta borné, jamais d'estimation absolue | Un chiffre exact vieux de 3 min vaut infiniment mieux qu'une estimation fausse de 400 % | ✓ Good — v1.5, 752 tests ; quatre états lisibles |
+| Les transcripts JSONL deviennent un correcteur de delta, plus une source concurrente | Ils savent dire *si* et *combien* depuis un instant T ; ils ne savent pas dire un pourcentage absolu | ✓ Good — v1.5 |
+| Source exacte supplémentaire par en-têtes `anthropic-ratelimit-unified-*` | Seule voie qui répond encore quand l'API renvoie 429, et qui expose statut serveur et dépassement | ✓ Good — v1.5 ; HDR-02 (429 réel) reste à constater |
+| Le widget de sessions se limite aux sessions Claude Code (v1.6) | La source app-bureau produisait des entrées qui ne vieillissaient jamais, et l'hystérésis par focus qu'elle imposait n'atteignait structurellement jamais une session de terminal | ✓ Good — 1 294 lignes retirées, gardes anti-retour ; **v1.7 relit l'app bureau par FICHIERS, pas par UIA** |
+| Les états de session sont OBSERVÉS, jamais déduits par expiration (v1.6) | Un état dont la source a expiré n'est pas « terminé », il est INCONNU. Même doctrine que « exact ou rien » appliquée au cadran en v1.5 | ✓ Good — v1.6, 889 tests, hooks vérifiés actifs en app bureau le 2026-09-25 |
+| La fusion des sources arbitre par FRAÎCHEUR (v1.6) | L'ordre d'insertion laissait un signal de 7 h écraser un signal de 10 s — mesuré contre les classes réelles | ✓ Good — v1.6 |
+| « Traité » = transition observée sur la MÊME source + geste explicite (v1.6) | Une expiration de source n'est pas une réponse ; le focus n'existe pas en terminal | ⚠️ Revisit — insuffisant seul : rien ne dit si l'utilisateur a LU (v1.7) |
+| « Lue » lu dans les métadonnées par session de l'app bureau (v1.7) | `lastFocusedAt` est le seul signal de lecture qui existe ; format interne non documenté → tolérance + dégradation | — Pending |
 
 ## Evolution
 
@@ -193,4 +195,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-12 — démarrage du milestone v1.6 « Observer au lieu de déduire »*
+*Last updated: 2026-09-25 — clôture du milestone v1.6, entrée en v1.7 « Lue ou non lue »*

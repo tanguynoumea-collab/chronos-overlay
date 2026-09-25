@@ -1,83 +1,93 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: — Observer au lieu de déduire (widget de sessions)
-status: verifying
-stopped_at: Completed 26-04-PLAN.md
-last_updated: "2026-09-12T23:11:55.640Z"
-last_activity: 2026-09-12
+milestone: v1.7
+milestone_name: — Lue ou non lue (widget de sessions)
+status: defining_requirements
+stopped_at: Milestone v1.6 archivé le 2026-09-25 ; v1.7 à définir (/gsd:new-milestone)
+last_updated: "2026-09-25T14:30:00.000Z"
+last_activity: 2026-09-25
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 19
-  completed_plans: 19
-  percent: 84
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-12)
+See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
-jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m''attend.
-**Current focus:** Phase 26 — « Traité » veut enfin dire quelque chose (DERNIÈRE phase de v1.6)
+jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend.
+**Current focus:** Milestone v1.7 « Lue ou non lue » — définir les exigences puis la roadmap.
 
 ## Current Position
 
-Milestone: v1.6 — Observer au lieu de déduire
-Phase: 26 (« Traité » veut enfin dire quelque chose) — EXECUTING
-Plan: 4 of 4 (vague 1 livrée : 26-01)
-Status: Phase complete — ready for verification
-Last activity: 2026-09-12
+Milestone: v1.7 — Lue ou non lue (pas encore défini)
+Phase: — (la numérotation continue : la prochaine phase est la 27)
+Status: v1.6 clos et archivé le 2026-09-25 (livré le 2026-09-13, exe 3.1.0, vérifié en production)
+Last activity: 2026-09-25
 
-Progress: [████████░░] 84%  (5 phases sur 6 — phases 21 à 25 closes ; 16 plans sur 19 livrés)
-
-**SHA d'entrée de phase 26 : `07ee784`** — les plans 26-02 à 26-04 en ont besoin tel quel pour leurs
-critères `git diff --stat <SHA>..HEAD` (un `git diff --stat` nu est muet après commit).
+Progress: [░░░░░░░░░░] 0 %
 
 ## Performance Metrics
 
-- Total plans completed (v1.6): 16
-- Suite de tests : **876 verts / 0 échec** en ~5-6 s (baseline d'entrée de phase 26 : 868 ; 869 après 26-01
-  T1 ; 876 après 26-01 T2, dont **6 rouges** mesurés et nommés ; 876 verts après 26-01 T3). Chaîne annoncée
-  869 → 876 → 876 tenue exactement, aucun écart à justifier.
+- Suite de tests à la clôture de v1.6 : **889 verts / 0 échec** en ~6 s.
+- v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
-- Attendus indicatifs restants pour la phase 26 : **879** (26-02), **886** (26-03), **888** (26-04).
+## Milestone v1.6 (clos)
 
-## Milestone v1.5 (clos)
+Livré le 2026-09-13 : 6 phases (21-26), 18 exigences, 752 → 889 tests. Exe **3.1.0** publié et en production
+depuis le 2026-09-23 ; les 8 groupes de hooks 3.1.0 sont installés et **se déclenchent depuis l'app bureau**
+(vérifié le 2026-09-25 : fichier d'état écrit < 1 s après un appel d'outil). Détail dans
+.planning/v1.6-MILESTONE-AUDIT.md, .planning/MILESTONES.md et .planning/RETROSPECTIVE.md.
+Enquête d'origine : .planning/debug/widget-sessions-statuts.md (close).
 
-Livré le 2026-09-12 : 6 phases (15-20), 24 exigences, 328 → 752 tests verts. Exe 3.0.2 publié et vérifié en
-production. Détail dans .planning/v1.5-MILESTONE-AUDIT.md.
+## Contexte technique v1.7 (relevé DÉJÀ FAIT le 2026-09-25 — ne pas re-enquêter)
 
-## Contexte technique v1.6 (investigation DÉJÀ FAITE — ne pas re-enquêter)
+**Le problème restant, dit par l'utilisateur :** « les widgets de sessions ne servent au final à rien ». Relevé à
+16 h 08 : 4 sessions actives, 2 « en cours », 2 « tour fini » en orange (JARVIS fini 15:59, ADVANCED SHEET fini
+15:56) — les deux avaient été ouvertes par l'utilisateur à 16:00:39 et 16:00:59. **Rien ne sait si une session a
+été LUE.** Les trois seuls chemins de disparition : nouveau prompt (NET-01), clic droit, ou 8 h.
 
-Rapport complet : **.planning/debug/widget-sessions-statuts.md**. Trois causes racines distinctes, prouvées
-contre les classes réelles et contre la doc officielle des hooks Claude Code.
+**La source qui manquait — métadonnées par session de l'app bureau Claude :**
+- Chemin : `%APPDATA%\Claude\claude-code-sessions\<orgId>\<userId>\local_<id>.json` — 142 fichiers,
+  ~275 Ko chacun, réécrits EN ENTIER au changement de session et en fin de tour (mtime suit).
+- `%APPDATA%\Claude` est une **jonction** vers `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude`
+  (app MSIX). Lisible par un processus non packagé : vérifié en PowerShell par les deux chemins (142 fichiers).
+  Piège : un chemin à séparateurs mixtes `/` et `\` a échoué en Python via la jonction — construire le chemin
+  proprement (`Path.Combine`).
+- Champs : `cliSessionId` (= l'UUID de session des hooks/transcripts, présent 115/138), `title` (titre lisible,
+  `titleSource: auto`), `lastFocusedAt` (ms, dernier instant où la session a été SÉLECTIONNÉE dans l'app ;
+  72/75 fichiers refocalisés bien après création), `lastActivityAt`, `latestUserFrameAt` (dernier message
+  utilisateur), `completedTurns`, `lastAssistantUuid`, `isArchived`, `cwd`, `createdAt`,
+  `postTurnSummary { status_category ∈ completed | blocked | review_ready, needs_action (texte : ce que
+  l'utilisateur doit faire), status_detail, summarizes_uuid }` (classification de fin de tour faite par l'app,
+  `classifierSummaryEnabled`). `blocked` = question posée à l'utilisateur.
+- Le titre `ai-title` des transcripts CLI **n'existe pas** dans les transcripts de l'app bureau (0 ligne sur 4).
+- Titre de la fenêtre de l'app bureau = « Claude » (pas de nom de session) : la technique « spinner dans le
+  titre » de claude-session-browser ne s'applique pas.
 
-1. **« Réfléchit » déduit par expiration, jamais observé.** Working n''est écrit que par UserPromptSubmit et
-   SessionStart ; rien ne confirme que le travail continue. Et SessionMonitor.Read arbitre par ORDRE
-   D''INSERTION : un hook de 7 h écrase un transcript de 10 s (mesuré).
+**Règle « lue » proposée :** attente (instant du Stop / fin de tour) antérieure à `lastFocusedAt` ⇒ traitée,
+via `TreatedStore` (réversible : un nouvel épisode la ramène, NET-03). **Deux points à valider in vivo AVANT
+de figer** : (1) `lastFocusedAt` bouge-t-il au simple retour alt-tab sur la MÊME session ? sinon ajouter
+« fenêtre Claude au premier plan + session sélectionnée » comme signal ; (2) tour qui se termine pendant que
+l'utilisateur regarde (lastFocusedAt < fin de tour) ⇒ la session SÉLECTIONNÉE avec la fenêtre au premier plan
+compte comme lue.
 
-2. **« Attend » : sémantique fausse à la source.** Stop ne se déclenche PAS sur interruption utilisateur.
-   Notification est une alerte « tu sembles absent », couvrant permission ET inactivité ET fin de tâche.
-   Un événement PermissionRequest DÉDIÉ existe et n''est pas utilisé (~30 événements au catalogue, 5 utilisés).
+**Cas mal classé aujourd'hui :** une question `AskUserQuestion` en suspens = tool_use sans tool_result ⇒
+`TranscriptSessionSource` dit Working. À classer attente.
 
-3. **« Traité » impossible en terminal.** SessionTreatmentTracker exige Origin == Desktop et un id
-   desktop:foreground:* ; une session Claude Code a Origin = Cli et un UUID. Et NET-01 confond « l''utilisateur
-   a répondu » avec « ma source a expiré » : preuve arithmétique, 478 min vs DropAfter 480 min → une session
-   réellement en attente masquée 6 h. Le tracker est en mémoire : le traité ne survit pas au redémarrage.
+**claude-session-browser (juppeee), lu le 2026-09-25 :** un seul transcript (le plus récent), 8 Ko de queue,
+spinner du titre de terminal, un hook Notification optionnel, seuils 3/5/15 min. Rien sur « lue ». Rien à
+reprendre au-delà de ce que Chronos fait déjà.
 
-**Amplificateurs prouvés :** DiagnosticService construit son propre SessionMonitor NU (sans filtre traité,
-sans source bureau) et liste files.Take(8) par ordre alphabétique — l''instrument de mesure était faussé, ce
-qui explique probablement que le problème n''ait jamais été élucidé. Take(12) est appliqué AVANT le filtre
-isSidechain alors que 94 % des transcripts sont des agent-*.jsonl. Aucun balayage d''expiration nulle part :
-54 fichiers d''état dont 48 de plus de 7 jours, + 12 .tmp orphelins. ArchiveStore applique un TTL de 6 h
-alors que son contrat annoncé est « permanent ».
-
-**Ce qui N''EST PAS la cause :** le fan-out des 25 hooks concurrents (corrigé en phase 15) n''a produit que
-des débris, pas de corruption — poids mesuré ~0,7 événement perdu sur 5 000.
+**Doctrine :** format interne non documenté → lecture tolérante, `FileShare.ReadWrite`, ne lire que les
+fichiers modifiés < 24 h, dégrader vers le comportement v1.6 si dossier/champs absents, jamais d'invention.
+**Ne PAS réintroduire l'UIA** (retirée en v1.6 phase 21, gardes anti-retour dans les tests).
 
 ## Accumulated Context
 
@@ -483,59 +493,27 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- **Prochaine action v1.6 : `/gsd:plan-phase 22`** (OBS — l'instrument de mesure : le diagnostic partage
-  l'instance du moniteur du widget au lieu d'en reconstruire un nu).
-
-- ~~Prochaine action v1.6 : `/gsd:plan-phase 21`~~ (fait, phase 21 close : SRC-01, SRC-02, SRC-03).
-- **A faire par l'utilisateur, hors GSD — NOUVEAU (phase 21)** : au prochain lancement VOLONTAIRE de
-  l'overlay, constater que `%APPDATA%\Chronos\archived.json` passe de **84 octets** a `{}` (2 octets).
-  C'est la preuve in vivo de SRC-02, non substituable. Plus deux points visuels (galerie `--sessions` :
-  8 styles x 9 themes, style Pastilles sans separateur orphelin ; et apres quelques heures d'usage, plus
-  aucune ligne prefixee `desktop:`). Protocole complet sous « A VERIFIER PAR L'UTILISATEUR » dans
-  `21-04-SUMMARY.md` et `21-VALIDATION.md`. Ne bloque pas la phase 22.
-
-- ~~Prochaine action v1.5 : `/gsd:plan-phase 20`~~ (fait, milestone v1.5 clos).
-- **A faire par l'utilisateur, hors GSD — NOUVEAU** : constater la bascule « 10 % » -> « indisponible +
-  invitation » en lancant la version du DEPOT. Protocole complet sous « A VERIFIER PAR L'UTILISATEUR »
-  dans `19-05-SUMMARY.md`. **Attention** : lancer l'overlay purge les 25 groupes de hooks de
-  `~/.claude/settings.json` (reconciliation de la phase 15) — c'est voulu, mais a faire en connaissance
-  de cause. Ne bloque pas la phase 20.
-
-- **À faire par l'utilisateur, hors GSD** : les deux vérifications manuelles de la phase 17, listées sous
-  « À VÉRIFIER PAR L'UTILISATEUR » dans `17-05-SUMMARY.md` — (1) lisibilité de la pastille de
-  déconnexion dans les 3 thèmes × 5 styles × 2 modes, (2) parcours de reconnexion en un clic de bout en
-  bout (login navigateur réel). Ne bloquent aucune phase suivante, **mais** sans reconnexion réelle, ni
-  `/api/oauth/usage` ni la sonde d'en-têtes de la phase 18 ne répondront sur cette machine.
-
-- ~~Prochaine action v1.5 : `/gsd:plan-phase 15`~~ (fait, phases 15/16/17 closes).
-- ~~Phase 13 (tout début) : capturer le snapshot UIA en état **repos**~~ (fait, v1.4 clos).
+- **Prochaine action : `/gsd:new-milestone`** → exigences v1.7 (APP, LUE, LIB, SIL) → roadmap (phases 27+) →
+  `/gsd:autonomous`.
+- **À vérifier in vivo par l'utilisateur, hors GSD** (phase de validation à PLANIFIER, leçon de v1.6) :
+  (1) `lastFocusedAt` au retour alt-tab sur la même session ; (2) le tour qui finit pendant qu'on regarde.
+- **Reste de v1.5 non refermable par un agent** : HDR-02 (un 429 RÉEL porte-t-il bien les en-têtes
+  `anthropic-ratelimit-unified-*` ?) et le parcours de reconnexion de bout en bout.
 
 ### Blockers/Concerns
 
-- **NEUF constats humains en attente, seul reste du milestone v1.5.** Protocole consolide (phases 17 a 20)
-  dans `20-05-SUMMARY.md`. Deux d'entre eux ne peuvent PAS etre refermes par un agent :
-  **HDR-02** (un 429 REEL porte-t-il bien les en-tetes `anthropic-ratelimit-unified-*` ?) et le **parcours
-  de reconnexion** de bout en bout. Ne pas les cocher sur la foi d'un test a reponse fabriquee.
-
-- **L'exe deploye (`~/Downloads/Chronos-v2.8.1.exe`) est anterieur a TOUT le milestone v1.5** : tant qu'il
-  n'est pas republie, rien des phases 15 a 20 n'est visible. La version du `.csproj` est encore 2.8.1 —
-  une release v1.5 doit la monter.
-
-- **Le premier lancement purgera les 25 groupes de hooks** de `~/.claude/settings.json` (attendu, PUR-01 /
-  PUR-03, avec sauvegarde horodatee). L'agent ne l'a pas declenche : le fichier est intact
-  (6872 o, mtime 1785403369).
-
-- **Economie possible, a trancher apres constat** : si `/api/oauth/usage` sert deja la famille
-  `anthropic-ratelimit-unified-*`, les ~288 micro-requetes/jour de la sonde deviennent redondantes.
-
-- Le mapping d'états UIA dépend de Names **localisés** ; prévoir la table fr/en (ROB-06) dès la Phase 13
-  pour ne pas coder en dur des libellés qui changent à une MAJ de l'app.
-
-- Débounce du focus (NET-02, Phase 14) : caler ~2-3 s pour distinguer un vrai acquittement d'un survol.
+- **Format interne de l'app bureau** : les fichiers `local_*.json` peuvent changer à toute mise à jour de
+  l'app (v1.20186+). Risque n° 1 du milestone → test de santé au démarrage, dégradation vers v1.6, diagnostic
+  qui dit « source app-bureau : absente / illisible / N fichiers ».
+- **R3 (v1.6, cran 1 livré)** : un battement pouvait écraser un « à toi » observé ; l'écriture est désormais
+  monotone (MON-01), la suite du chemin est ouverte. À ne pas rouvrir sans nécessité.
+- **Trou §9.1 (audit v1.6)** : une session sans fichier de hook disparaît à 15 min sans devenir « à toi ? déduit ».
+- **Économie possible, à trancher après constat** : si `/api/oauth/usage` sert déjà la famille
+  `anthropic-ratelimit-unified-*`, les ~288 micro-requêtes/jour de la sonde deviennent redondantes.
 
 ## Session Continuity
 
-Last session: 2026-09-12T23:11:55.634Z
-Stopped at: Completed 26-04-PLAN.md
-Resume file: None
-Next: /gsd:verify-phase 21, puis /gsd:plan-phase 22 — OBS : l'instrument de mesure (OBS-01, OBS-02)
+Last session: 2026-09-25T14:30:00.000Z
+Stopped at: Milestone v1.6 archivé (complete-milestone) ; v1.7 à définir
+Resume file: .planning/RESUME-HERE.md
+Next: /gsd:new-milestone — v1.7 « Lue ou non lue »
