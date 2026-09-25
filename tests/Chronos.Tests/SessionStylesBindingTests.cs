@@ -241,10 +241,13 @@ public class SessionStylesBindingTests
     /// identiques à un nom près : s2 porte le plus long dossier réel de la mesure de la recherche (29-RESEARCH Q4.d,
     /// 161 DIP en Segoe UI SemiBold 12,5 : « PROJET OLYMPE DATAMIND », 161,3 DIP — « PROJET ADVANCED SHEET » n'en fait
     /// que 151,4, c'est la MÉDIANE), sans titre dans l'un, avec un titre de 51 caractères dans l'autre (au-delà du plus
-    /// long titre réel, 43). Le titre ne
-    /// doit pas élargir le widget de plus d'un DIP ; sur Pastilles et Marge, les deux gabarits qui ÉCRIVENT le nom, il
-    /// est coupé par l'ellipse à 160 DIP au plus. Les quatre gabarits sans nom écrit et les deux déjà bornés (Jetons 50,
-    /// Annonciateur 130) sont mesurés aussi : un élargissement venu d'ailleurs rougirait ici.
+    /// long titre réel, 43).
+    /// <para>Tout gabarit qui ÉCRIT le nom (Pastilles, Marge, Jetons, Annonciateur) le borne, à 160 DIP au plus ; les
+    /// quatre autres ne l'écrivent pas. Le titre n'élargit le widget, à un DIP près, que de la LATITUDE que la borne
+    /// laisse au dossier : une ellipse ne coupe qu'entre deux caractères, et deux textes coupés à la même borne n'ont pas
+    /// la même largeur au DIP près (mesuré : Pastilles, dossier coupé 152,9 DIP, titre coupé 155,4 ; Annonciateur, déjà borné à
+    /// 130, 161,2 contre 167,6). Autrement dit : jamais plus large qu'un nom qui remplirait la borne.
+    /// Sur Pastilles et Marge, le titre est coupé par l'ellipse, borne 160, 160,5 DIP occupés au plus.</para>
     /// </summary>
     [WpfFact]
     public void Un_titre_long_est_coupe_sans_elargir_le_widget_sur_les_8_styles_et_les_9_themes()
@@ -260,6 +263,7 @@ public class SessionStylesBindingTests
         var grand = new Size(2000, 2000);
 
         var combinaisons = 0;
+        var nomsEcrits = 0;
         foreach (var theme in themes)
         foreach (var style in styles)
         {
@@ -278,23 +282,39 @@ public class SessionStylesBindingTests
             var (_, racineDossier) = Monter(sansTitre, theme, grand);
             var (_, racineTitre) = Monter(avecTitre, theme, grand);
 
-            Assert.True(racineTitre.DesiredSize.Width <= racineDossier.DesiredSize.Width + 1.0,
+            // Le nom de s2, s'il est ÉCRIT par le gabarit ; sinon il n'est qu'en info-bulle.
+            var nomDossier = TextesVisibles(racineDossier).Where(tb => tb.Text == dossier).ToList();
+            var nomTitre = TextesVisibles(racineTitre).Where(tb => tb.Text == titre).ToList();
+            Assert.True(nomDossier.Count == nomTitre.Count && nomTitre.Count <= 1,
+                $"{contexte} : {nomDossier.Count} nom(s) écrit(s) avec le dossier, {nomTitre.Count} avec le titre");
+
+            var latitude = 0.0;
+            if (nomTitre.Count == 1)
+            {
+                nomsEcrits++;
+                Assert.True(nomTitre[0].MaxWidth <= 160.0,
+                    $"{contexte} : le nom est écrit sans borne (MaxWidth {nomTitre[0].MaxWidth}) — un titre long "
+                    + "élargirait la fenêtre (SizeToContent)");
+                var d = nomDossier[0];
+                latitude = Math.Max(0.0, d.MaxWidth - (d.DesiredSize.Width - d.Margin.Left - d.Margin.Right));
+            }
+            Assert.True(racineTitre.DesiredSize.Width <= racineDossier.DesiredSize.Width + latitude + 1.0,
                 $"{contexte} : le titre long élargit le widget ({racineTitre.DesiredSize.Width:0.#} DIP contre "
-                + $"{racineDossier.DesiredSize.Width:0.#} DIP avec le plus long dossier)");
+                + $"{racineDossier.DesiredSize.Width:0.#} DIP avec le plus long dossier, latitude de la borne {latitude:0.#} DIP)");
 
             if (style is SessionStyle.Pastilles or SessionStyle.Marge)
             {
-                var nom = TextesVisibles(racineTitre).Where(tb => tb.Text == titre).ToList();
-                Assert.True(nom.Count == 1, $"{contexte} : {nom.Count} TextBlock visibles portent le titre au lieu d'un");
-                Assert.Equal(TextTrimming.CharacterEllipsis, nom[0].TextTrimming);
-                Assert.Equal(160.0, nom[0].MaxWidth);
-                Assert.True(nom[0].ActualWidth <= 160.5,
-                    $"{contexte} : le nom occupe {nom[0].ActualWidth:0.#} DIP, 160 au plus");
+                Assert.True(nomTitre.Count == 1, $"{contexte} : {nomTitre.Count} TextBlock visibles portent le titre au lieu d'un");
+                Assert.Equal(TextTrimming.CharacterEllipsis, nomTitre[0].TextTrimming);
+                Assert.Equal(160.0, nomTitre[0].MaxWidth);
+                Assert.True(nomTitre[0].ActualWidth <= 160.5,
+                    $"{contexte} : le nom occupe {nomTitre[0].ActualWidth:0.#} DIP, 160 au plus");
             }
             combinaisons++;
         }
 
-        Assert.Equal(72, combinaisons);   // la matrice n'a pas été traversée à vide
+        Assert.Equal(72, combinaisons);        // la matrice n'a pas été traversée à vide
+        Assert.Equal(4 * 9, nomsEcrits);       // Pastilles, Marge, Jetons, Annonciateur écrivent le nom, sur les 9 thèmes
     }
 
     /// <summary>Le compteur de l'Annonciateur n'a plus de littéral : il lit <c>LibelleCompteur</c>, qui vient

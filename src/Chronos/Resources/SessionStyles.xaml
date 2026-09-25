@@ -25,9 +25,9 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Bulle de survol (style implicite) : petite étiquette sombre arrondie avec le projet ET le mot d'état.
-         Couleurs fixes (les popups résolvent mal les DynamicResource du thème). S'applique aux huit
-         info-bulles des sessions, liées à Infobulle (projet — mot d'état). -->
+    <!-- Bulle de survol : titre — dossier — mot d'état, puis, pour une attente, son motif sur une seconde
+         ligne. S'applique aux huit info-bulles des sessions, liées à Infobulle. Petite étiquette sombre
+         arrondie, couleurs fixes (les popups résolvent mal les DynamicResource du thème). -->
     <Style TargetType="ToolTip">
         <Setter Property="Foreground" Value="#F4F2EC"/>
         <Setter Property="FontSize" Value="11.5"/>
@@ -66,8 +66,10 @@
                                      HorizontalAlignment="Left" VerticalAlignment="Center"
                                      Style="{StaticResource PulseAttention}"/>
                             <StackPanel Margin="20,0,0,0">
+                                <!-- Le nom (titre, sinon dossier) est borné à la largeur du plus long dossier réel : un
+                                     titre long est coupé par l'ellipse, il n'élargit pas la fenêtre (SizeToContent). -->
                                 <TextBlock Text="{Binding Project}" Foreground="{DynamicResource SessInk}" FontSize="12.5"
-                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
                                     <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10.5" FontWeight="SemiBold"/>
                                     <TextBlock Text="  ·  " Foreground="{DynamicResource SessMuted}" FontSize="10.5"/>
@@ -104,8 +106,10 @@
                             <Rectangle Grid.Column="0" Width="3.5" RadiusX="2" RadiusY="2" Margin="0,5"
                                        Fill="{Binding StateBrush}" Style="{StaticResource PulseAttention}"/>
                             <StackPanel Grid.Column="1" Margin="9,5,0,5">
+                                <!-- Le nom (titre, sinon dossier) est borné à la largeur du plus long dossier réel : un
+                                     titre long est coupé par l'ellipse, il n'élargit pas la fenêtre (SizeToContent). -->
                                 <TextBlock Text="{Binding Project}" Foreground="{DynamicResource SessInk}" FontSize="12.5"
-                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="10" FontWeight="SemiBold"/>
                                     <TextBlock Text="  ·  " Foreground="{DynamicResource SessMuted}" FontSize="10"/>
