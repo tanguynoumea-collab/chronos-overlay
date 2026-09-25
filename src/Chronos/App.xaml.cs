@@ -258,10 +258,15 @@ public partial class App : Application
         // l'app écrivent : sans ces racines, le widget n'a jamais lu un fichier de hook d'une session de l'app.
         services.AddSingleton(_ => RacinesEtat.ParDefaut());
 
+        // APP-01 — métadonnées par session de l'app bureau : LECTURE SEULE, singleton (son cache vit avec l'app, et le rapport
+        // lit la MÊME instance que le widget, par le moniteur — OBS-01).
+        services.AddSingleton(sp => new LecteurAppBureau(sp.GetRequiredService<RacinesCandidates>().SessionsAppBureau));
+
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
             sp.GetRequiredService<SessionTreatmentTracker>(),
-            dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks));
+            dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks,
+            appBureau: sp.GetRequiredService<LecteurAppBureau>()));
 
         // CYC-01 — balayage du magasin d'états au démarrage. Les racines balayées sont celles DU MONITEUR du
         // widget, toutes (vue du paquet de l'app bureau ET vue réelle), jamais un second chemin déduit : deux
