@@ -23,7 +23,11 @@ public enum SessionActivity
 /// <para>Phase 21 (SRC-01) : le record est revenu à cinq champs. Les deux champs de typologie ajoutés en
 /// phase 13 (quel mode de l'app bureau héberge la session, de quelle surface elle vient) n'avaient de
 /// producteur que la source app-bureau ; sans elle, ils ne pouvaient plus valoir que leur défaut. Un champ
-/// qui ne peut plus varier est un champ qui ment par omission.</para></summary>
+/// qui ne peut plus varier est un champ qui ment par omission.</para>
+/// <para>Phase 29 (APP-02) : six champs. <see cref="Titre"/> a un producteur — la jointure app bureau, par
+/// <c>cliSessionId</c> — et il est posé par le moniteur APRÈS l'arbitrage : il ne départage rien. Aucune source
+/// d'activité ne le porte ; nul tant que l'app ne connaît pas la session (ou ne lui a pas donné de titre).
+/// Dernier paramètre, optionnel : aucun site de construction n'a eu à changer.</para></summary>
 public sealed record SessionSnapshot(
     string SessionId,
     string Project,

@@ -83,8 +83,10 @@ public static class AffichageSessions
          + $"  « {EnAttenteDeduite} » — elle travaillait et plus rien n'arrive : Chronos le déduit, il ne l'a pas vu.\n\n"
          + "Clic droit sur une session : la marquer traitée (elle revient si elle te redemande quelque chose) ou l'archiver.";
 
-    // SQUELETTE (RED) : le nom affiché n'est pas encore produit.
-    public static string Nom(SessionSnapshot s) => throw new System.NotImplementedException();
+    /// <summary>Le nom que le widget ET le rapport affichent (APP-02) : le titre de l'app s'il est connu, sinon le
+    /// dossier — un producteur, deux consommateurs. Un titre vide ou blanc n'est pas un titre : la ligne garde son
+    /// dossier, jamais un nom vide.</summary>
+    public static string Nom(SessionSnapshot s) => string.IsNullOrWhiteSpace(s.Titre) ? s.Project : s.Titre!;
 
     /// <summary>Ancienneté d'une session, telle qu'affichée par le widget.</summary>
     public static string Age(System.TimeSpan d)

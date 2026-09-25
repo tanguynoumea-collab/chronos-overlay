@@ -44,6 +44,10 @@ public sealed record SessionMasquee(SessionSnapshot Session, MotifMasquage Motif
 /// comme tel : la session concernée est AFFICHÉE. Ce qui a été écarté, c'est l'un de ses signaux. Le relevé
 /// du 2026-09-12 est le cas d'école : un fichier de hook figé depuis 7 h annonçait « à toi » pendant qu'un
 /// transcript de 10 s prouvait le contraire — le désaccord gagnait, et rien ne le disait.</para>
+///
+/// <para><see cref="AppBureau"/> (APP-01, phase 29) est la lecture de l'app bureau de CE cycle, la MÊME que celle
+/// qui a qualifié les lignes (OBS-01) : le rapport de diagnostic la lit ici, jamais par un second appel. Nul = moniteur
+/// sans lecteur (comportement v1.6, « NON BRANCHÉE » au rapport).</para>
 /// </summary>
 public sealed record LectureSessions(
     IReadOnlyList<SessionSnapshot> Visibles,

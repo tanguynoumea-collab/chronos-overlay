@@ -7,7 +7,9 @@ namespace Chronos.Services;
 /// <summary>
 /// Lit les fichiers d'état de session (*.json) écrits par les hooks (<see cref="SessionHookProcessor"/>) — dans
 /// TOUTES les racines d'état : la vue réelle (%APPDATA%\Chronos\sessions) ET la vue du paquet de l'app bureau,
-/// résolues par <see cref="RacinesEtat"/> (APP-06) — et les transcripts (<see cref="ISessionSource"/>), et en produit des
+/// résolues par <see cref="RacinesEtat"/> (APP-06) — et les transcripts (<see cref="ISessionSource"/>), les qualifie
+/// par les métadonnées de l'app bureau (<see cref="LecteurAppBureau"/>, APP-03 : la question posée à la fin d'un tour ;
+/// APP-02 : le titre), et en produit des
 /// <see cref="SessionSnapshot"/>, en appliquant une politique d'HONNÊTETÉ sur la fraîcheur — la MÊME pour
 /// toutes les sources (SIL-01), avec les seuils de <see cref="HorizonsSessions"/> :
 ///   • Working dont le dernier signal — battement de hook ou dernier message de transcript — date de plus
@@ -33,7 +35,8 @@ public sealed class SessionMonitor
     private readonly TreatedStore? _treated;
     private readonly SessionTreatmentTracker? _tracker;
 
-    // SQUELETTE (RED) : le lecteur de l'app bureau est reçu, mais ignoré par Inspecter.
+    // Métadonnées par session de l'app bureau (APP-01) : nul par défaut = comportement v1.6 EXACT. La production le
+    // donne par argument nommé, et une garde de source le vérifie (Piège 9 : un défaut nul rend l'oubli silencieux).
     private readonly LecteurAppBureau? _appBureau;
 
     /// <param name="sessionsDir">UNE racine d'état : le raccourci des tests, qui n'en ont qu'une.</param>
@@ -42,6 +45,8 @@ public sealed class SessionMonitor
     /// ensuite. Donner les deux paramètres lève <see cref="System.ArgumentException"/> : deux façons de dire la
     /// même chose sont une ambiguïté, et le moniteur ne choisit pas en silence. N'en donner aucun revient aux
     /// candidats de la machine.</param>
+    /// <param name="appBureau">Le lecteur des métadonnées par session de l'app bureau (APP-01), en LECTURE SEULE. Nul :
+    /// la lecture est exactement celle de la v1.6 — aucune question, aucun titre.</param>
     public SessionMonitor(string? sessionsDir = null, ISessionSource? transcripts = null,
         ArchiveStore? archive = null,
         TreatedStore? treated = null, SessionTreatmentTracker? tracker = null,
@@ -60,6 +65,8 @@ public sealed class SessionMonitor
         _appBureau = appBureau;
     }
 
+    /// <summary>Le lecteur de l'app bureau reçu à la construction — celui du conteneur en production, que le rapport
+    /// lit par <see cref="LectureSessions.AppBureau"/> (une seule instance, un seul cache : OBS-01).</summary>
     internal LecteurAppBureau? Lecteur => _appBureau;
 
     /// <summary>Les racines d'état lues à chaque cycle, dans l'ordre. Une propriété SINGULIÈRE mentirait : le
@@ -84,13 +91,18 @@ public sealed class SessionMonitor
 
     /// <summary>
     /// OBS-01 — la MÊME lecture que <see cref="Read"/>, doublée de ce qu'elle a écarté et pourquoi.
-    /// FUSIONNE deux sources par session_id :
+    /// FUSIONNE trois sources par session_id :
     ///   • transcripts (~/.claude/projects) — la base, universelle ;
     ///   • fichiers d'état des HOOKS — plus précis (permission), mais JAMAIS prioritaires du seul fait d'être
     ///     des hooks : c'est le signal le plus RÉCENT qui gagne (FUS-01). Ils sont lus dans TOUTES les racines
     ///     d'état (<see cref="Dossiers"/> : vue réelle ET vue du paquet de l'app bureau, résolues par
     ///     <see cref="RacinesEtat"/> — APP-06). Une même session vue dans deux racines est tranchée par
-    ///     l'arbitrage, comme deux sources : jamais deux lignes, et un désaccord entre les deux est DIT.
+    ///     l'arbitrage, comme deux sources : jamais deux lignes, et un désaccord entre les deux est DIT ;
+    ///   • questions de l'APP BUREAU (APP-03) — une fin de tour classée <c>blocked</c> avec un motif. L'app QUALIFIE
+    ///     une ligne, elle n'en crée pas : sa question n'est déposée que pour une session déjà déposée CE cycle par un
+    ///     transcript ou un hook, sous l'horizon d'abandon, non archivée dans l'app, datée par son épisode.
+    /// Le TITRE de l'app n'est pas un signal : il est posé sur les retenus, APRÈS l'arbitrage, avant les filtres
+    /// (les masquées le portent aussi) ; il ne départage rien (APP-02).
     /// Puis applique les filtres, EN RENDANT COMPTE de chacun au lieu de jeter en silence.
     /// </summary>
     public LectureSessions Inspecter(System.DateTimeOffset now)
@@ -137,13 +149,41 @@ public sealed class SessionMonitor
             }
         }
 
+        // 2.c) L'APP BUREAU (APP-03) QUALIFIE une ligne, elle n'en crée pas : seules les sessions déjà déposées CE cycle par
+        //      un transcript ou un hook peuvent recevoir une question — périmètre SRC-01 et MaxSessions intacts, et
+        //      dégradation v1.6 exacte par construction. Best-effort : une lecture ratée ne casse jamais le pipeline.
+        //      La question porte l'identifiant et le DOSSIER de la source qui connaît la session (le plus récent de ses
+        //      signaux ; à instant égal, le premier en ordre ordinal : l'ordre de collecte ne décide rien) — jamais le
+        //      dossier de l'app : la ligne garde le nom que les sources d'activité lui donnent.
+        LectureAppBureau? appBureau = null;
+        if (_appBureau is not null) { try { appBureau = _appBureau.Lire(now); } catch { appBureau = null; } }
+        if (appBureau is { DossierTrouve: true })
+        {
+            var projetConnu = new Dictionary<string, (string Projet, System.DateTimeOffset Instant)>(System.StringComparer.Ordinal);
+            foreach (var s in signaux)
+                if (!projetConnu.TryGetValue(s.Session.SessionId, out var deja)
+                    || s.Session.UpdatedAt > deja.Instant
+                    || (s.Session.UpdatedAt == deja.Instant && string.CompareOrdinal(s.Session.Project, deja.Projet) < 0))
+                    projetConnu[s.Session.SessionId] = (s.Session.Project, s.Session.UpdatedAt);
+            foreach (var (id, connu) in projetConnu)
+                if (appBureau.ParSession.TryGetValue(id, out var m) && QuestionPosee(m, id, connu.Projet, now) is { } q)
+                    signaux.Add(new SignalSession(SourceSession.AppBureau, AppliquerSilence(q, now)));
+        }
+
         var arbitrage = ArbitrageSessions.Trancher(signaux);
 
         // 2.b) Le détecteur de traitement observe les snapshots RETENUS (+ horloge) et met à jour
         //      TreatedStore (ajout NET-01, purge NET-03). Best-effort : ne casse JAMAIS le pipeline. Sa
-        //      logique n'est pas touchée ici ; il observe simplement, désormais, un état arbitré.
-        var raw = arbitrage.Retenus;
+        //      logique n'est pas touchée ici ; il observe simplement, désormais, un état arbitré — les
+        //      VAINQUEURS, sans titre : le titre n'est pas une information d'état.
         try { _tracker?.Observe(arbitrage.Vainqueurs, now); } catch { }
+
+        // 2.d) Le TITRE de l'app (APP-02) n'est pas un signal : posé sur les RETENUS, après l'arbitrage et avant les
+        //      filtres — les masquées le portent aussi, le rapport les liste. Sans métadonnées, la liste est celle
+        //      de l'arbitrage, inchangée.
+        IReadOnlyList<SessionSnapshot> raw = appBureau is { DossierTrouve: true }
+            ? arbitrage.Retenus.Select(s => Enrichir(s, appBureau)).ToList()
+            : arbitrage.Retenus;
 
         // 3) Filtres : archivées (permanent, NET-04) PUIS traitées (réversible). Le détecteur possède l'ajout ET
         //    la purge des entrées treated ; ici on MASQUE simplement toute session encore présente dans le magasin.
@@ -167,8 +207,31 @@ public sealed class SessionMonitor
             if (!AffichageSessions.AUneLigne(s.Activity)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Indeterminee)); continue; }
             visibles.Add(s);
         }
-        return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords);
+        return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords, appBureau);
     }
+
+    /// <summary>La question posée par l'app, ou rien (APP-03). Toutes les conditions sont nécessaires (29-CONTEXT,
+    /// verrouillé) : une fin de tour classée <c>blocked</c> ; un motif (<c>needs_action</c>) non blanc ; une session
+    /// NON archivée dans l'app (l'app elle-même tait ses notifications pour elle) ; un instant connu et âgé d'au plus
+    /// <see cref="HorizonsSessions.Abandon"/> — la MÊME borne incluse que les hooks et les transcripts.
+    /// <para>L'instant est celui de l'ÉPISODE (<see cref="MetadonneesAppBureau.InstantClassification"/>, figé par le
+    /// lecteur à la première apparition du résumé), jamais la dernière activité COURANTE : l'activité de fond qui
+    /// continue après la fin du tour rajeunirait la question, et une session marquée traitée reviendrait sans avoir
+    /// rien redemandé (TRT-02, NET-03). <c>completed</c>, <c>review_ready</c> et toute catégorie inconnue ne déposent
+    /// rien.</para></summary>
+    private static SessionSnapshot? QuestionPosee(MetadonneesAppBureau m, string id, string projet, System.DateTimeOffset now)
+        => m.ClassificationFinDeTour == ClassificationFinDeTour.Bloquee
+           && !string.IsNullOrWhiteSpace(m.MotifBlocage)
+           && !m.Archivee
+           && m.InstantClassification is { } t
+           && now - t <= HorizonsSessions.Abandon
+            ? new SessionSnapshot(id, projet, SessionActivity.WaitingAttention, m.MotifBlocage, t)
+            : null;
+
+    /// <summary>Le titre n'est pas un signal : posé sur un RETENU, après l'arbitrage, il ne départage rien (APP-02).
+    /// Un titre blanc n'est pas un titre.</summary>
+    private static SessionSnapshot Enrichir(SessionSnapshot s, LectureAppBureau l)
+        => l.ParSession.TryGetValue(s.SessionId, out var m) && !string.IsNullOrWhiteSpace(m.Titre) ? s with { Titre = m.Titre } : s;
 
     /// <summary>LA RÈGLE DE SILENCE, en un seul point (SIL-01) : un TRAVAIL dont le signal — battement de hook ou dernier
     /// message de transcript — est plus vieux que <see cref="HorizonsSessions.Silence"/> devient une attente DÉDUITE.
