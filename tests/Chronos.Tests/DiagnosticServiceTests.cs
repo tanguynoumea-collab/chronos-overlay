@@ -857,4 +857,22 @@ public class DiagnosticServiceTests
         Assert.Contains($"Fichiers d'état ({reel}) : 1", report);
         Assert.Contains(LignesApresLaDerniereRacine(report), l => l.Contains("REEL-SEUL"));
     }
+
+    /// <summary>APP-03 (phase 29) — une troisième source entre dans l'arbitrage. Sans libellé, le repli
+    /// « une source non nommée » masquerait l'oubli : un désaccord écrit avec une source anonyme ne se diagnostique
+    /// pas seul. Chaque valeur de <see cref="SourceSession"/> a donc un libellé NOMMÉ, et aucun n'en double un autre.</summary>
+    [Fact]
+    public void Chaque_source_de_session_a_un_libelle_nomme()
+    {
+        var sources = System.Enum.GetValues<SourceSession>();
+        Assert.Equal(3, sources.Length);   // garde anti-muette : hook, app bureau, transcript
+
+        var libelles = sources.Select(DiagnosticService.LibelleSourceSession).ToList();
+        Assert.All(libelles, l =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(l));
+            Assert.NotEqual("une source non nommée", l);
+        });
+        Assert.Equal(libelles.Count, libelles.Distinct(System.StringComparer.Ordinal).Count());
+    }
 }

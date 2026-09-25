@@ -630,7 +630,7 @@ public sealed class DiagnosticService
     // projet, la source d'un RELEVÉ D'USAGE (voir Describe plus bas). Ce sont deux notions étrangères —
     // qui alimente un quota, contre qui dépose un signal de session — et les confondre sous un même nom
     // masquerait le type partagé dans cette classe.
-    private static string LibelleSourceSession(SourceSession s) => s switch
+    internal static string LibelleSourceSession(SourceSession s) => s switch
     {
         SourceSession.Hook       => @"fichier de hook (%APPDATA%\Chronos\sessions)",
         SourceSession.Transcript => "transcript (~/.claude/projects)",

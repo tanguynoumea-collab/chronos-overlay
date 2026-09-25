@@ -27,6 +27,15 @@ public class ArbitrageSessionsTests
     private static SignalSession Transcript(string id, SessionActivity a, DateTimeOffset maj)
         => new(SourceSession.Transcript, new SessionSnapshot(id, "Proj-" + id, a, null, maj));
 
+    /// <summary>La troisième source (APP-03, phase 29) : la question que l'app bureau a vue à la fin d'un tour.
+    /// Elle ne dépose qu'une attente, avec son motif (le <c>needs_action</c> de l'app).</summary>
+    private static SignalSession AppBureau(string id, SessionActivity a, DateTimeOffset maj, string? motif = null)
+        => new(SourceSession.AppBureau, new SessionSnapshot(id, "Proj-" + id, a, motif, maj));
+
+    /// <summary>L'écart mesuré entre la fin du tour (<c>end_turn</c> du transcript) et l'instant du résumé
+    /// <c>blocked</c> de l'app, sur la fixture réelle (29-RESEARCH Q3.c) : 1,561 s.</summary>
+    private static readonly TimeSpan ResumeApresFinDeTour = TimeSpan.FromMilliseconds(1561);
+
     // Le corpus de PERMUTATION : 6 signaux, 4 sessions. Chaque session y illustre un cas de départage
     // différent, sinon la permutation ne prouverait qu'une seule règle.
     private static SignalSession[] Corpus() => new[]
@@ -289,5 +298,161 @@ public class ArbitrageSessionsTests
         Assert.NotNull(r.Desaccords);
         Assert.Empty(r.Retenus);
         Assert.Empty(r.Desaccords);
+    }
+
+    // ── APP-03 (phase 29) : trois sources, un arbitrage ─────────────────────────────────────────────────────
+    // L'app bureau entre dans FUS-01 comme TROISIÈME source datée, rangée à âge égal ENTRE le hook (lui seul dit
+    // « permission ») et le transcript (qui ne voit pas une question posée en prose). La fraîcheur prime toujours :
+    // le rang ne sert qu'à âge égal. Les cas portent les numéros du tableau de 29-RESEARCH Q3.d.
+
+    /// <summary>L'ordre de déclaration EST le rang à âge égal : le tenir par un test, c'est tenir la règle.</summary>
+    [Fact]
+    public void L_ordre_des_sources_est_hook_puis_app_bureau_puis_transcript()
+    {
+        Assert.Equal(new[] { SourceSession.Hook, SourceSession.AppBureau, SourceSession.Transcript },
+                     Enum.GetValues<SourceSession>());
+    }
+
+    /// <summary>C4 — même milliseconde : l'app bat le transcript, dans les deux ordres d'entrée.</summary>
+    [Fact]
+    public void A_age_egal_l_app_bureau_bat_le_transcript_dans_les_deux_ordres()
+    {
+        var direct = new[]
+        {
+            AppBureau("s", SessionActivity.WaitingAttention, T, "réponse attendue"),
+            Transcript("s", SessionActivity.WaitingTurn, T),
+        };
+
+        var r = ArbitrageSessions.Trancher(direct);
+        Assert.Equal(SessionActivity.WaitingAttention, Assert.Single(r.Retenus).Activity);
+        var d = Assert.Single(r.Desaccords);
+        Assert.Equal(SourceSession.AppBureau, d.SourceRetenue);
+        Assert.Equal(SourceSession.Transcript, d.SourceEcartee);
+        Assert.Equal(TimeSpan.Zero, d.EcartAge);
+
+        var inverse = ArbitrageSessions.Trancher(Enumerable.Reverse(direct).ToArray());
+        Assert.Equal(Canonique(r), Canonique(inverse));
+    }
+
+    /// <summary>C5 — même milliseconde : le hook bat l'app, dans les deux ordres d'entrée.</summary>
+    [Fact]
+    public void A_age_egal_le_hook_bat_l_app_bureau_dans_les_deux_ordres()
+    {
+        var direct = new[]
+        {
+            Hook("s", SessionActivity.WaitingTurn, T),
+            AppBureau("s", SessionActivity.WaitingAttention, T, "réponse attendue"),
+        };
+
+        var r = ArbitrageSessions.Trancher(direct);
+        Assert.Equal(SessionActivity.WaitingTurn, Assert.Single(r.Retenus).Activity);
+        var d = Assert.Single(r.Desaccords);
+        Assert.Equal(SourceSession.Hook, d.SourceRetenue);
+        Assert.Equal(SourceSession.AppBureau, d.SourceEcartee);
+        Assert.Equal(TimeSpan.Zero, d.EcartAge);
+
+        var inverse = ArbitrageSessions.Trancher(Enumerable.Reverse(direct).ToArray());
+        Assert.Equal(Canonique(r), Canonique(inverse));
+    }
+
+    /// <summary>C1 — le cas nominal : le résumé <c>blocked</c> est écrit 1,561 s après la fin du tour. L'app gagne
+    /// par FRAÎCHEUR, pas par rang ; le désaccord (question contre tour fini) est consigné et nommé par ses sources
+    /// (Piège 8, accepté).</summary>
+    [Fact]
+    public void Une_question_de_l_app_plus_recente_bat_le_tour_fini_du_transcript()
+    {
+        var r = ArbitrageSessions.Trancher(new[]
+        {
+            AppBureau("s", SessionActivity.WaitingAttention, T + ResumeApresFinDeTour, "réponse attendue"),
+            Transcript("s", SessionActivity.WaitingTurn, T),
+        });
+
+        var retenu = Assert.Single(r.Retenus);
+        Assert.Equal(SessionActivity.WaitingAttention, retenu.Activity);
+        Assert.Equal("réponse attendue", retenu.Reason);
+
+        var d = Assert.Single(r.Desaccords);
+        Assert.Equal(SourceSession.AppBureau, d.SourceRetenue);
+        Assert.Equal(SessionActivity.WaitingAttention, d.EtatRetenu);
+        Assert.Equal(SourceSession.Transcript, d.SourceEcartee);
+        Assert.Equal(SessionActivity.WaitingTurn, d.EtatEcarte);
+        Assert.Equal(ResumeApresFinDeTour, d.EcartAge);
+    }
+
+    /// <summary>C2 — l'utilisateur répond : le transcript, plus récent, l'emporte même si le lecteur n'a pas encore
+    /// vu l'app effacer son résumé.</summary>
+    [Fact]
+    public void Une_reponse_plus_recente_bat_la_question_de_l_app()
+    {
+        var r = ArbitrageSessions.Trancher(new[]
+        {
+            AppBureau("s", SessionActivity.WaitingAttention, T + ResumeApresFinDeTour, "réponse attendue"),
+            Transcript("s", SessionActivity.Working, T.AddSeconds(30)),
+        });
+
+        Assert.Equal(SessionActivity.Working, Assert.Single(r.Retenus).Activity);
+        Assert.Equal(SourceSession.Transcript, Assert.Single(r.Desaccords).SourceRetenue);
+    }
+
+    /// <summary>C6 — le rang du hook ne sert qu'à âge égal : un Stop plus ancien de 1,261 s cède à la question.</summary>
+    [Fact]
+    public void Un_stop_de_hook_plus_ancien_perd_contre_la_question_de_l_app()
+    {
+        var r = ArbitrageSessions.Trancher(new[]
+        {
+            Hook("s", SessionActivity.WaitingTurn, T.AddMilliseconds(300)),
+            AppBureau("s", SessionActivity.WaitingAttention, T + ResumeApresFinDeTour, "réponse attendue"),
+        });
+
+        Assert.Equal(SessionActivity.WaitingAttention, Assert.Single(r.Retenus).Activity);
+        var d = Assert.Single(r.Desaccords);
+        Assert.Equal(SourceSession.AppBureau, d.SourceRetenue);
+        Assert.Equal(SourceSession.Hook, d.SourceEcartee);
+    }
+
+    // Le corpus à TROIS sources : trois sessions, chacune tranchée par une règle différente — la fraîcheur (a1),
+    // le rang où l'app gagne (a4, contre le transcript), le rang où l'app perd (a5, contre le hook).
+    private static SignalSession[] CorpusTroisSources() => new[]
+    {
+        AppBureau("a1", SessionActivity.WaitingAttention, T + ResumeApresFinDeTour, "réponse attendue"),
+        Transcript("a1", SessionActivity.WaitingTurn, T),                                  // la fraîcheur tranche
+        AppBureau("a4", SessionActivity.WaitingAttention, T.AddMinutes(-1), "réponse attendue"),
+        Transcript("a4", SessionActivity.WaitingTurn, T.AddMinutes(-1)),                   // rang : l'app gagne
+        Hook("a5", SessionActivity.WaitingTurn, T.AddMinutes(-2)),
+        AppBureau("a5", SessionActivity.WaitingAttention, T.AddMinutes(-2), "réponse attendue"), // rang : l'app perd
+    };
+
+    /// <summary>720 ordres d'arrivée d'un corpus qui DESCEND au rang de source donnent un seul résultat.
+    /// <para>NON-VACUITÉ d'abord : a4 et a5 opposent deux signaux du MÊME instant et de sources DIFFÉRENTES — seul
+    /// le rang de source peut les trancher ; sans cela, le test serait vert que l'app soit rangée au milieu ou non.
+    /// Mutation (d) jouée : déclarer <c>AppBureau</c> après <c>Transcript</c> fait rougir ce test sur
+    /// <c>a4=WaitingAttention@</c>.</para></summary>
+    [Fact]
+    public void Permuter_trois_sources_ne_change_pas_un_seul_etat_ni_un_seul_desaccord()
+    {
+        var corpus = CorpusTroisSources();
+        foreach (var id in new[] { "a4", "a5" })
+        {
+            var paire = corpus.Where(s => s.Session.SessionId == id).ToArray();
+            Assert.Equal(2, paire.Length);
+            Assert.Equal(paire[0].Session.UpdatedAt, paire[1].Session.UpdatedAt);
+            Assert.NotEqual(paire[0].Source, paire[1].Source);
+            Assert.Contains(paire, s => s.Source == SourceSession.AppBureau);
+        }
+
+        var distincts = new HashSet<string>(StringComparer.Ordinal);
+        var vues = 0;
+        foreach (var permutation in Permutations(corpus))
+        {
+            distincts.Add(Canonique(ArbitrageSessions.Trancher(permutation)));
+            vues++;
+        }
+
+        Assert.Equal(720, vues);          // 6! — une garde qui n'énumérerait rien serait muette
+        var resultat = Assert.Single(distincts);
+        Assert.Contains("a1=WaitingAttention@", resultat);
+        Assert.Contains("a4=WaitingAttention@", resultat);
+        Assert.Contains("a5=WaitingTurn@", resultat);
+        Assert.Equal(3, ArbitrageSessions.Trancher(corpus).Desaccords.Count);
     }
 }

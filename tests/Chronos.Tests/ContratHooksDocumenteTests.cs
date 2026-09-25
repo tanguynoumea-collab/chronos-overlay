@@ -547,4 +547,27 @@ public sealed class ContratHooksDocumenteTests
         Assert.Contains("\"LocalCache\", \"Roaming\", \"Chronos\", \"sessions\"", File.ReadAllText(fichier),
             StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (APP-03, phase 29). L'arbitrage FUS-01 connaît désormais TROIS sources : la
+    /// classification de fin de tour de l'app bureau y entre, rangée à âge égal entre le hook et le transcript. Le §3
+    /// doit le dire, dire la règle verrouillée — l'app qualifie une ligne, elle n'en crée pas — et dire par quoi la
+    /// question est datée (la clé d'épisode <c>postTurnSummaryFor</c>) : sans cela, le lecteur du contrat croirait
+    /// encore à deux sources et ne comprendrait pas pourquoi une question marquée traitée ne revient pas.
+    ///
+    /// <para>Chaque fragment cherché tient sur UNE ligne du document. Et l'ordre que le document décrit doit être
+    /// celui du code — l'ordre de déclaration de <see cref="SourceSession"/> EST le rang à âge égal.</para>
+    /// </summary>
+    [Fact]
+    public void Le_paragraphe_3_dit_les_trois_sources_et_que_l_app_qualifie_sans_creer()
+    {
+        var section = SectionDe(LireDocument(), "## 3.");
+
+        Assert.Contains("`SourceSession.AppBureau`", section, StringComparison.Ordinal);
+        Assert.Contains("L'app qualifie une ligne, elle n'en crée pas", section, StringComparison.Ordinal);
+        Assert.Contains("`postTurnSummaryFor`", section, StringComparison.Ordinal);
+
+        Assert.Equal(new[] { SourceSession.Hook, SourceSession.AppBureau, SourceSession.Transcript },
+                     Enum.GetValues<SourceSession>());
+    }
 }

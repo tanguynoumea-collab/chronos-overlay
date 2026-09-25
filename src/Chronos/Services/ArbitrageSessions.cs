@@ -14,6 +14,9 @@ public enum SourceSession
 
     /// <summary>Transcript JSONL. Universel et continu, mais muet sur la permission.</summary>
     Transcript,
+
+    // SQUELETTE (RED) : déclarée en FIN pour compiler ; le rang à âge égal est encore faux.
+    AppBureau,
 }
 
 /// <summary>Ce qu'UNE source dit d'UNE session, à un instant qu'elle porte elle-même
