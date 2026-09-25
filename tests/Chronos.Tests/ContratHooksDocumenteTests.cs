@@ -122,12 +122,16 @@ public sealed class ContratHooksDocumenteTests
 
     /// <summary>Le texte de la seule section §5 (« ce qui n'est pas garanti »), de son titre au titre de
     /// niveau deux suivant.</summary>
-    private static string SectionNonGarantie(string texte)
+    private static string SectionNonGarantie(string texte) => SectionDe(texte, TitreNonGaranti);
+
+    /// <summary>Le texte d'UNE section de niveau deux, de son titre (repéré par son préfixe, p. ex.
+    /// « ## 3. ») au titre de niveau deux suivant.</summary>
+    private static string SectionDe(string texte, string titre)
     {
         var lignes = texte.Replace("\r\n", "\n").Split('\n');
 
-        var debut = Array.FindIndex(lignes, l => l.StartsWith(TitreNonGaranti, StringComparison.Ordinal));
-        Assert.True(debut >= 0, $"Section « {TitreNonGaranti} » introuvable dans le document.");
+        var debut = Array.FindIndex(lignes, l => l.StartsWith(titre, StringComparison.Ordinal));
+        Assert.True(debut >= 0, $"Section « {titre} » introuvable dans le document.");
 
         var fin = Array.FindIndex(lignes, debut + 1, l => l.StartsWith("## ", StringComparison.Ordinal));
         if (fin < 0) fin = lignes.Length;
@@ -392,5 +396,38 @@ public sealed class ContratHooksDocumenteTests
         //    sans elle, un successeur livrerait le second cran en croyant combler un oubli.
         Assert.Contains("n'est pas livré", section, StringComparison.Ordinal);
         Assert.Contains("aucun `UserPromptSubmit` ne survient", section, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (LIB-04, réserve R4 de l'audit v1.6). Depuis la phase 28 il y a DEUX
+    /// ordres : l'ordre d'écran, où une attente déduite passe devant un travail, et le rang d'arbitrage, figé
+    /// aux valeurs de la phase 24, où une déduction ne bat jamais une observation. Le §3 doit dire les deux ;
+    /// l'ancienne phrase (« derrière `Working` (2) ») disait un seul ordre pour deux usages, et elle serait
+    /// désormais FAUSSE pour l'écran.
+    ///
+    /// <para>Les trois fragments cherchés tiennent chacun sur une seule ligne du document, sans mise en forme
+    /// au milieu : la garde lit le texte brut. Et le rang d'arbitrage doit exister dans le code sous le nom
+    /// que le document lui donne — sinon le document décrirait un siège vide.</para>
+    /// </summary>
+    [Fact]
+    public void Le_paragraphe_3_dit_l_ordre_d_ecran_et_le_rang_d_arbitrage_fige()
+    {
+        var texte = LireDocument();
+        var section = SectionDe(texte, "## 3.");
+
+        Assert.Contains("`RangArbitrage`", section, StringComparison.Ordinal);
+        Assert.Contains("ordre d'écran", section, StringComparison.Ordinal);
+        Assert.Contains("une déduction ne bat jamais une observation", section, StringComparison.Ordinal);
+        Assert.DoesNotContain("derrière `Working` (2)", texte, StringComparison.Ordinal);
+
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas l'arbitrage et ne croise donc rien.");
+
+        var fichier = Path.Combine(racineSources, "Services", "ArbitrageSessions.cs");
+        Assert.True(File.Exists(fichier), $"Arbitrage introuvable : {fichier}");
+        Assert.Contains("private static int RangArbitrage(SessionActivity", File.ReadAllText(fichier),
+            StringComparison.Ordinal);
     }
 }

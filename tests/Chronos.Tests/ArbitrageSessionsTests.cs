@@ -39,6 +39,21 @@ public class ArbitrageSessionsTests
         Hook("s4", SessionActivity.Working, T.AddMinutes(-2)),          // seule : aucun désaccord
     };
 
+    // Le corpus de la RÉSERVE R4 (audit v1.6). Le corpus ci-dessus ne descend JAMAIS au rang 3 de l'arbitrage :
+    // s1 est tranché par la fraîcheur, s2 par la source, s3 et s4 sont seules. Le rejouer après avoir changé
+    // l'ordre d'écran serait vert, que l'arbitrage lise cet ordre ou non — un test muet. Ici, chaque session
+    // oppose deux signaux de MÊME instant et de MÊME source : seul le rang d'état peut trancher. Et r1 porte le
+    // seul couple dont l'ordre relatif a changé en phase 28 : (WaitingDeduced, Working).
+    private static SignalSession[] CorpusRang3() => new[]
+    {
+        Hook("r1", SessionActivity.WaitingDeduced, T),                          // l'écran la place DEVANT…
+        Hook("r1", SessionActivity.Working, T),                                 // …l'arbitrage retient celui-ci
+        Transcript("r2", SessionActivity.WaitingAttention, T.AddMinutes(-1)),   // une question (LIB-02)
+        Transcript("r2", SessionActivity.Working, T.AddMinutes(-1)),
+        Hook("r3", SessionActivity.Unknown, T.AddMinutes(-2)),
+        Hook("r3", SessionActivity.WaitingTurn, T.AddMinutes(-2)),
+    };
+
     /// <summary>Toutes les permutations de l'entrée — 6 signaux, donc 720 ordres d'arrivée possibles.</summary>
     private static IEnumerable<T[]> Permutations<T>(T[] source)
     {
@@ -147,6 +162,61 @@ public class ArbitrageSessionsTests
         // …et le résultat n'est pas n'importe lequel : la fraîcheur a bien tranché s1.
         Assert.Contains("s1=Working", attendu);
         Assert.Contains("s2=WaitingAttention", attendu);
+    }
+
+    /// <summary>
+    /// RÉSERVE R4 de l'audit v1.6, fermée en phase 28 (LIB-04). L'écran place désormais une attente déduite
+    /// DEVANT un travail ; l'arbitrage entre sources, lui, ne doit rien en savoir : pour deux signaux d'une
+    /// même session, du même instant et de la même source, il retient toujours le travail. Dans l'arbitrage,
+    /// une déduction ne bat jamais une observation — c'est FUS-01, et un classement d'affichage ne peut pas
+    /// la réécrire en silence.
+    ///
+    /// <para>La NON-VACUITÉ vient d'abord : si l'écran ne plaçait pas la déduction devant le travail, les deux
+    /// ordres coïncideraient sur ce couple et le test serait vert couplé ou non. Contrôle de mutation joué en
+    /// phase 28 : faire lire l'ordre d'écran à l'arbitrage fait rougir ce test sur <c>r1=Working@</c>.</para>
+    /// </summary>
+    [Fact]
+    public void Remonter_la_deduction_a_l_ecran_ne_change_aucun_arbitrage()
+    {
+        // NON-VACUITÉ : l'écran place bien la déduction devant le travail…
+        Assert.True(AffichageSessions.Urgence(SessionActivity.WaitingDeduced)
+                  < AffichageSessions.Urgence(SessionActivity.Working),
+            "L'ordre d'écran ne place plus la déduction devant le travail : ce test ne prouverait plus rien.");
+
+        // …et 720 ordres d'arrivée donnent UN résultat, où l'arbitrage retient le travail.
+        var distincts = new HashSet<string>(StringComparer.Ordinal);
+        var vues = 0;
+        foreach (var permutation in Permutations(CorpusRang3()))
+        {
+            distincts.Add(Canonique(ArbitrageSessions.Trancher(permutation)));
+            vues++;
+        }
+
+        Assert.Equal(720, vues);          // 6! — une garde qui n'énumérerait rien serait muette
+        var resultat = Assert.Single(distincts);
+        Assert.Contains("r1=Working@", resultat);
+        Assert.Contains("r2=WaitingAttention@", resultat);
+        Assert.Contains("r3=WaitingTurn@", resultat);
+    }
+
+    /// <summary>
+    /// Le rang d'état PROPRE à l'arbitrage, FIGÉ aux valeurs de la phase 24 : attention, tour fini, travail,
+    /// puis déduit et indéterminé ex aequo. Deux signaux identiques en tout sauf l'état (même source, même
+    /// instant, même motif, même projet), dans LES DEUX ordres d'entrée : le gagnant ne dépend que du rang.
+    /// La ligne (Working, WaitingDeduced) est celle que l'ordre d'écran de la phase 28 aurait retournée.
+    /// </summary>
+    [Theory]
+    [InlineData(SessionActivity.WaitingAttention, SessionActivity.WaitingTurn, SessionActivity.WaitingAttention)]
+    [InlineData(SessionActivity.WaitingTurn, SessionActivity.Working, SessionActivity.WaitingTurn)]
+    [InlineData(SessionActivity.Working, SessionActivity.WaitingDeduced, SessionActivity.Working)]
+    [InlineData(SessionActivity.Working, SessionActivity.Unknown, SessionActivity.Working)]
+    public void Le_rang_d_arbitrage_reste_celui_de_la_phase_24(SessionActivity a, SessionActivity b, SessionActivity gagnant)
+    {
+        var direct = ArbitrageSessions.Trancher(new[] { Hook("s", a, T), Hook("s", b, T) });
+        var inverse = ArbitrageSessions.Trancher(new[] { Hook("s", b, T), Hook("s", a, T) });
+
+        Assert.Equal(gagnant, Assert.Single(direct.Retenus).Activity);
+        Assert.Equal(gagnant, Assert.Single(inverse.Retenus).Activity);
     }
 
     [Fact]

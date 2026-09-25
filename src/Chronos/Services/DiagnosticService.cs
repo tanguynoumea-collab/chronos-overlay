@@ -471,6 +471,7 @@ public sealed class DiagnosticService
             // Lire les 54 fichiers coûte 15,15 ms (mesure du 2026-09-12) : négligeable sur un rapport qui
             // dure des secondes, et c'est le prix d'un choix motivé plutôt que d'un tirage alphabétique.
             var lus = new List<(string Projet, string Activite, System.DateTimeOffset? Maj, int Urgence)>();
+            var dernierRang = AffichageSessions.Urgence(SessionActivity.Unknown);   // repli : dernier rang de l'ordre d'écran, jamais deviné
             foreach (var f in files)
             {
                 try
@@ -486,8 +487,8 @@ public sealed class DiagnosticService
                     // Le rang d'urgence vient de la couche partagée avec le widget : une activité que le
                     // moniteur ne saurait pas relire est reléguée au dernier rang plutôt que devinée.
                     var urgence = System.Enum.TryParse<SessionActivity>(activite, ignoreCase: true, out var a)
-                        ? AffichageSessions.Urgence(a) : 3;
-                    lus.Add((P("project"), activite, maj, maj is null ? 3 : urgence));
+                        ? AffichageSessions.Urgence(a) : dernierRang;
+                    lus.Add((P("project"), activite, maj, maj is null ? dernierRang : urgence));
                 }
                 catch { }   // fichier illisible : ignoré, jamais fatal au rapport
             }

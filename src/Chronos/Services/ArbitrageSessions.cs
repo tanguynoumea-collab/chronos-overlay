@@ -62,13 +62,22 @@ public sealed record ResultatArbitrage(
 /// <list type="number">
 ///   <item>l'instant du signal, décroissant — LA FRAÎCHEUR ;</item>
 ///   <item>à âge égal, le rang de la source (la plus spécifique d'abord) ;</item>
-///   <item>puis le rang d'urgence de l'état, par <see cref="AffichageSessions.Urgence"/> — appelé, jamais recopié ;</item>
+///   <item>puis le rang d'état PROPRE à l'arbitrage (<c>RangArbitrage</c>, figé aux valeurs de la phase 24) —
+///   il ne lit PAS l'ordre d'écran (<see cref="AffichageSessions.Urgence"/>), qui a changé en phase 28 ;</item>
 ///   <item>puis le motif, puis le projet, en comparaison ordinale.</item>
 /// </list>
 /// Ces critères épuisent tous les champs de <see cref="SessionSnapshot"/> hors l'identifiant, qui est la
 /// clé de regroupement. Deux signaux encore ex aequo sont donc identiques champ pour champ : le choix ne
 /// PEUT plus dépendre de l'ordre d'entrée. C'est ce qui rend le test de permutation vrai par construction
 /// et non par chance.</para>
+///
+/// <para>UNE EXCEPTION, héritée de la phase 24 et écrite plutôt que tue : <c>WaitingDeduced</c> et
+/// <c>Unknown</c> partagent le rang 3 de <c>RangArbitrage</c>. Deux tels signaux de même source, même
+/// instant, même motif et même projet restent donc départagés par l'ordre d'entrée. Le cas est
+/// pratiquement inatteignable (deux fichiers d'une même source, pour une même session, à la même
+/// milliseconde, dont l'un d'activité illisible) et il n'est PAS corrigé ici : le corriger changerait un
+/// départage, ce que la phase 28 s'interdit — son seul geste sur l'arbitrage est de le DÉCOUPLER de
+/// l'écran.</para>
 ///
 /// PUR : aucune E/S, aucune horloge, aucun type WPF. Les instants comparés sont ceux que les signaux
 /// portent — on ne demande jamais l'heure à qui que ce soit.
@@ -113,7 +122,8 @@ public static class ArbitrageSessions
         Comparer<SignalSession>.Create(Departager);
 
     // Ordre TOTAL sur le contenu. Le rang 1 est la phase entière ; les rangs 2 à 5 n'existent que pour
-    // qu'aucun ex aequo ne soit laissé à la position dans la collection.
+    // qu'aucun ex aequo ne soit laissé à la position dans la collection (une exception héritée de la phase
+    // 24, déduit contre indéterminé, est écrite dans la documentation du type).
     private static int Departager(SignalSession a, SignalSession b)
     {
         var c = b.Session.UpdatedAt.CompareTo(a.Session.UpdatedAt);   // 1. LA FRAÎCHEUR
@@ -122,8 +132,8 @@ public static class ArbitrageSessions
         c = ((int)a.Source).CompareTo((int)b.Source);                 // 2. à âge ÉGAL : la plus spécifique
         if (c != 0) return c;
 
-        c = AffichageSessions.Urgence(a.Session.Activity)             // 3. ce qui réclame une intervention
-                             .CompareTo(AffichageSessions.Urgence(b.Session.Activity));
+        c = RangArbitrage(a.Session.Activity)                         // 3. l'état — rang PROPRE, figé
+                .CompareTo(RangArbitrage(b.Session.Activity));
         if (c != 0) return c;
 
         c = System.StringComparer.Ordinal.Compare(a.Session.Reason ?? "", b.Session.Reason ?? "");
@@ -131,4 +141,16 @@ public static class ArbitrageSessions
 
         return System.StringComparer.Ordinal.Compare(a.Session.Project, b.Session.Project);  // 5. le projet
     }
+
+    /// <summary>Rang d'état PROPRE à l'arbitrage, FIGÉ aux valeurs de la phase 24. Il ne suit PAS l'ordre d'écran
+    /// (AffichageSessions.Urgence), qui a changé en phase 28 : un classement d'affichage ne doit pas pouvoir modifier
+    /// la règle de FUS-01 (réserve R4 de l'audit v1.6). Dans l'arbitrage, une déduction ne bat jamais une
+    /// observation. Le changer, c'est changer FUS-01 — un test sur 720 ordres d'arrivée le tient.</summary>
+    private static int RangArbitrage(SessionActivity a) => a switch
+    {
+        SessionActivity.WaitingAttention => 0,
+        SessionActivity.WaitingTurn => 1,
+        SessionActivity.Working => 2,
+        _ => 3,   // WaitingDeduced ET Unknown, ex aequo — exactement comme en phase 24
+    };
 }

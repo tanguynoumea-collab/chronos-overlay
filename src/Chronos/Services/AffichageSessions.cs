@@ -22,21 +22,21 @@ namespace Chronos.Services;
 /// </summary>
 public static class AffichageSessions
 {
-    /// <summary>Ordre du widget : ce qui réclame une intervention d'abord, puis le plus récent.</summary>
+    /// <summary>Ordre du widget et du rapport : ce qui réclame une intervention d'abord, déduction comprise,
+    /// puis le plus récent (LIB-04).</summary>
     public static IReadOnlyList<SessionSnapshot> Ordonner(IEnumerable<SessionSnapshot> sessions)
         => sessions.OrderBy(s => Urgence(s.Activity)).ThenByDescending(s => s.UpdatedAt).ToList();
 
-    /// <summary>Rang de tri d'un état : 0 = réclame une intervention maintenant.</summary>
+    /// <summary>ORDRE D'ÉCRAN, et seulement lui (LIB-04) : widget et rapport de diagnostic le lisent. Une attente,
+    /// même déduite, passe devant un travail — c'est ce qui la rend visible. L'arbitrage entre sources NE le lit
+    /// PAS : il a son propre rang, figé (ArbitrageSessions.RangArbitrage, réserve R4 de l'audit v1.6).</summary>
     public static int Urgence(SessionActivity a) => a switch
     {
-        SessionActivity.WaitingAttention => 0,
+        SessionActivity.WaitingAttention => 0,   // permission, demande du bus, question posée
         SessionActivity.WaitingTurn => 1,
-        SessionActivity.Working => 2,
-        // Une déduction ne passe jamais devant une observation. Elle partage le dernier rang avec
-        // l'inconnu, et Ordonner les départage ensuite par fraîcheur. Ce cas est volontairement
-        // REDONDANT avec le défaut : il est là pour ÉCRIRE l'intention, pas pour changer un résultat.
-        SessionActivity.WaitingDeduced => 3,
-        _ => 3,
+        SessionActivity.WaitingDeduced => 2,     // passe DEVANT le travail (LIB-04)
+        SessionActivity.Working => 3,
+        _ => 4,                                  // Unknown : aucune ligne à l'écran ; dernier au diagnostic
     };
 
     /// <summary>Libellé d'état, tel qu'affiché par le widget. « à toi » et « tour fini » sont les deux

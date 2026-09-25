@@ -256,6 +256,31 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
+    /// GARDE DE DÉCOUPLAGE (LIB-04, réserve R4 de l'audit v1.6). L'ordre d'écran a changé en phase 28 : une
+    /// attente déduite y passe devant un travail. Si l'arbitrage lisait encore cet ordre, ce changement
+    /// d'affichage réécrirait EN SILENCE la règle de FUS-01. L'arbitrage a donc son propre rang, privé et
+    /// figé ; cette garde lit le SOURCE, parce que la réflexion ne voit pas un appel de méthode.
+    ///
+    /// <para>Un <c>&lt;see cref="AffichageSessions.Urgence"/&gt;</c> sans parenthèse reste permis : un
+    /// commentaire qui NOMME l'ordre d'écran pour dire qu'on ne le lit pas ne câble rien.</para>
+    /// </summary>
+    [Fact]
+    public void L_arbitrage_ne_lit_pas_l_ordre_d_ecran()
+    {
+        var racine = CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racine),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : cette garde ne lirait rien.");
+
+        var fichier = Path.Combine(racine, "Services", "ArbitrageSessions.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+        var texte = File.ReadAllText(fichier);
+
+        // Anti-muet : le rang propre existe bien, sinon l'absence d'appel ci-dessous ne prouverait rien.
+        Assert.Contains("private static int RangArbitrage(SessionActivity", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("AffichageSessions.Urgence(", texte, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// GARDE DE CÂBLAGE (TRT-03, phase 26). Le geste explicite n'existe pour l'utilisateur que s'il est
     /// LIÉ : une commande peut être parfaitement testée et n'être offerte nulle part, et le défaut ne se
     /// verrait alors que chez lui, en silence — c'est le motif exact des gardes de câblage des phases 21

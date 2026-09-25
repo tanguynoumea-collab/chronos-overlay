@@ -48,21 +48,26 @@ public class AffichageSessionsTests
         }
     }
 
-    /// <summary>Les cinq rangs, FIGÉS. Une déduction partage le dernier rang avec l'inconnu ; les quatre
-    /// rangs hérités ne bougent pas d'un cran.</summary>
+    /// <summary>Les cinq rangs de l'ORDRE D'ÉCRAN, et de lui seul (LIB-04) : le widget et le rapport de
+    /// diagnostic le lisent, l'arbitrage entre sources NE le lit PAS (il a son propre rang, figé — réserve R4
+    /// de l'audit v1.6, tenue par <c>ArbitrageSessionsTests</c>). Une attente, même déduite, passe devant un
+    /// travail ; l'indéterminé ferme la marche.</summary>
     [Theory]
     [InlineData(SessionActivity.WaitingAttention, 0)]
     [InlineData(SessionActivity.WaitingTurn, 1)]
-    [InlineData(SessionActivity.Working, 2)]
-    [InlineData(SessionActivity.Unknown, 3)]
-    [InlineData(SessionActivity.WaitingDeduced, 3)]
+    [InlineData(SessionActivity.WaitingDeduced, 2)]
+    [InlineData(SessionActivity.Working, 3)]
+    [InlineData(SessionActivity.Unknown, 4)]
     public void Chaque_etat_a_son_rang_d_urgence(SessionActivity a, int attendu)
         => Assert.Equal(attendu, AffichageSessions.Urgence(a));
 
-    /// <summary>EVT-04, la contrainte de conception : une DÉDUCTION ne devance jamais une OBSERVATION.
-    /// Le même instant pour les trois, pour que seul le rang d'urgence puisse trancher.</summary>
+    /// <summary>LIB-04, versant ÉCRAN : une attente déduite passe DEVANT la réflexion — c'est ce qui la rend
+    /// visible. Le même instant pour les trois, pour que seul le rang d'urgence puisse trancher.
+    /// <para>La règle d'origine, « une déduction ne bat jamais une observation », n'a pas disparu : elle vaut
+    /// désormais pour l'ARBITRAGE entre sources, et c'est le test R4
+    /// (<c>ArbitrageSessionsTests.Remonter_la_deduction_a_l_ecran_ne_change_aucun_arbitrage</c>) qui la porte.</para></summary>
     [Fact]
-    public void Une_deduction_ne_passe_jamais_devant_une_observation()
+    public void A_l_ecran_une_attente_deduite_passe_devant_la_reflexion()
     {
         var ordre = AffichageSessions.Ordonner(new[]
         {
@@ -71,7 +76,27 @@ public class AffichageSessionsTests
             new SessionSnapshot("attention", "p", SessionActivity.WaitingAttention, null, Maintenant),
         }).Select(s => s.SessionId).ToArray();
 
-        Assert.Equal(new[] { "attention", "travail", "deduit" }, ordre);
+        Assert.Equal(new[] { "attention", "deduit", "travail" }, ordre);
+    }
+
+    /// <summary>LIB-04 en entier : l'urgence d'abord (question, tour fini, attente déduite, réflexion), la
+    /// fraîcheur ensuite, à l'intérieur de chaque rang. Les âges sont choisis pour que la fraîcheur SEULE
+    /// donne un autre ordre : une question de trois heures reste en tête, un travail frais reste derrière
+    /// une déduction de vingt-cinq minutes.</summary>
+    [Fact]
+    public void L_ordre_d_ecran_dit_l_urgence_puis_la_fraicheur()
+    {
+        var ordre = AffichageSessions.Ordonner(new[]
+        {
+            new SessionSnapshot("travail-vieux", "p", SessionActivity.Working, null, Maintenant.AddMinutes(-30)),
+            new SessionSnapshot("tour-vieux",    "p", SessionActivity.WaitingTurn, null, Maintenant.AddHours(-2)),
+            new SessionSnapshot("deduit",        "p", SessionActivity.WaitingDeduced, null, Maintenant.AddMinutes(-25)),
+            new SessionSnapshot("travail-frais", "p", SessionActivity.Working, null, Maintenant),
+            new SessionSnapshot("question",      "p", SessionActivity.WaitingAttention, null, Maintenant.AddHours(-3)),
+            new SessionSnapshot("tour-frais",    "p", SessionActivity.WaitingTurn, null, Maintenant.AddMinutes(-1)),
+        }).Select(s => s.SessionId).ToArray();
+
+        Assert.Equal(new[] { "question", "tour-frais", "tour-vieux", "deduit", "travail-frais", "travail-vieux" }, ordre);
     }
 
     [Theory]

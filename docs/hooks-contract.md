@@ -147,8 +147,16 @@ du tout. L'interrogation et le mot « déduit » sont dans le **libellé** — p
 une documentation : dans les mots que l'utilisateur lit. C'est la doctrine du milestone, appliquée à
 l'endroit où elle se vérifie.
 
-Son rang d'urgence est **3**, derrière `Working` (2) : **une déduction ne passe jamais devant une
-observation.**
+**Deux ordres, et non un (LIB-04 ; réserve R4 de l'audit v1.6).** L'ordre d'écran
+(`AffichageSessions.Urgence`, partagé par le widget et le rapport) range les sessions par urgence puis par
+fraîcheur : permission ou question, puis tour fini, puis attente déduite, puis travail. Une attente, même
+déduite, passe donc devant un travail — c'est ce qui la rend visible. Le **rang d'arbitrage**, lui, n'a pas
+bougé : quand deux signaux d'une même session ont le même âge et la même source, `ArbitrageSessions` les
+départage par un rang PRIVÉ, figé aux valeurs de la phase 24 (`RangArbitrage` : attention, tour fini,
+travail, puis déduit et indéterminé ex aequo).
+Dans l'arbitrage, une déduction ne bat jamais une observation.
+Les deux ordres sont découplés : changer l'un ne change pas l'autre, et un test le prouve sur 720 ordres
+d'arrivée.
 
 ### Ce que « traité » veut dire (phase 26 — TRT-01, TRT-02)
 
