@@ -1,0 +1,83 @@
+29-SONDE-APP06 — constat d'APP-06 HORS de l'arbre de l'app, avec le code livré (plan 29-05, tâche 3)
+
+date            : 2026-09-25, sonde à 21:57:37Z (relevés : avant 21:57:29Z, après 21:57:57Z)
+code            : Chronos.dll compilée en Release depuis « git archive dd974f17cbc996ebe82fab023ff9bcb399d2c1e3 src/Chronos » (HEAD au moment de la sonde),
+                  extraite et compilée à part dans le bloc-notes de session ; console jetable SondeApp06 qui la référence
+                  (dossier supprimé après la sonde)
+lancement       : processus créé par WMI (Win32_Process.Create) — hors de l'arbre de l'app, comme l'overlay lancé par
+                  explorer ; parent WmiPrvSE (voir la ligne « processus » ci-dessous)
+                  WMI Win32_Process.Create ReturnValue=0 ProcessId=132152
+                  processus termine
+                  sortie presente : 3578 octets
+règles          : LECTURE SEULE. Overlay 3.1.0 en marche (PID 40772) ni lancé ni arrêté ; aucun Balayer, aucun
+                  TreatedStore, aucun détecteur ; ArchiveStore() par défaut ne fait que LIRE archived.json ; aucun
+                  titre ni motif écrit (seulement leur présence et leur longueur) ; profil utilisateur masqué
+                  (%USERPROFILE%). Seule écriture de la sonde : ce fichier.
+
+relevés avant / après — dates d'écriture UTC de %APPDATA%\Chronos\{archived,treated,settings}.json :
+  · « vue de ce shell » = processus de Claude Code, DANS l'arbre de l'app : vue virtualisée (le cache du paquet) ;
+  · « vue Python » = Python lancé par l'alias MSIX, HORS de l'arbre : la vue réelle, celle de l'overlay ;
+  · la section « Écritures » en fin de sortie : la vue de la sonde elle-même, au début et à la fin de son exécution.
+  relevé avant : 2026-09-25T21:57:29Z
+  [avant] vue de ce shell (virtualisée) : archived.json : 2026-09-13T05:36:58.709184300Z (2 octets)
+  [avant] vue de ce shell (virtualisée) : treated.json : 2026-09-13T10:25:31.951709100Z (2 octets)
+  [avant] vue de ce shell (virtualisée) : settings.json : 2026-09-13T05:36:58.682095100Z (560 octets)
+  [avant] vue Python : 'Claude' dans os.listdir(APPDATA) = False
+  [avant]   archived.json : 2026-07-13T06:30:48.417798Z (54 octets)
+  [avant]   treated.json : 2026-09-25T21:46:49.957178Z (54 octets)
+  [avant]   settings.json : 2026-09-25T20:41:06.806195Z (577 octets)
+  relevé après : 2026-09-25T21:57:57Z
+  [après] vue de ce shell (virtualisée) : archived.json : 2026-09-13T05:36:58.709184300Z (2 octets)
+  [après] vue de ce shell (virtualisée) : treated.json : 2026-09-13T10:25:31.951709100Z (2 octets)
+  [après] vue de ce shell (virtualisée) : settings.json : 2026-09-13T05:36:58.682095100Z (560 octets)
+  [après] vue Python : 'Claude' dans os.listdir(APPDATA) = False
+  [après]   archived.json : 2026-07-13T06:30:48.417798Z (54 octets)
+  [après]   treated.json : 2026-09-25T21:46:49.957178Z (54 octets)
+  [après]   settings.json : 2026-09-25T20:41:06.806195Z (577 octets)
+  ⇒ identiques avant et après, dans les trois vues. Le treated.json réel porte 21:46:49Z : écrit par l'overlay en
+    marche AVANT la sonde, inchangé pendant.
+
+──────────────────────────── sortie de la sonde, telle quelle ────────────────────────────
+heure UTC : 2026-09-25T21:57:37.759Z
+processus : SondeApp06 (PID 132152) · parent : WmiPrvSE (PID 93276)
+%APPDATA%\Claude existe : False
+%APPDATA%\Chronos\sessions existe : False
+
+=== RacinesEtat.ParDefaut() — racines d'état des hooks (toutes lues) ===
+  %USERPROFILE%\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Chronos\sessions : présent, 5 fichier(s) *.json
+  %USERPROFILE%\AppData\Roaming\Chronos\sessions : absent
+=== RacinesEtat.ParDefaut() — racines de l'app bureau (la première qui existe est lue) ===
+  %USERPROFILE%\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code-sessions : présent
+  %USERPROFILE%\AppData\Roaming\Claude\claude-code-sessions : absent
+PremiereExistante(SessionsAppBureau) : %USERPROFILE%\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code-sessions
+
+=== LecteurAppBureau.Lire ===
+Lire froid : 345,81 ms
+DossierTrouve : True
+Racine : %USERPROFILE%\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code-sessions
+Enumeres 138 · Recents 18 · Valides 18 · RelusSurDisque 18 · Illisibles 0 · SansCliSessionId 0 · Doublons 0
+ChampsAbsents : latestUserFrameAt 5
+ParSession : 18 session(s) · avec titre 18 · avec dernier focus 18 · archivées 0
+Classifications : Inconnue 6 · Terminee 6 · Bloquee 4 · PreteARevue 2 · Bloquee avec motif présent 4 · catégories brutes non interprétées 0
+30e lecture chaude : RelusSurDisque 0 · Valides 18
+Lire chaud ×30 : médiane 0,502 ms · p90 0,559 ms · max 0,720 ms
+
+=== SessionMonitor.Inspecter (dossiersEtat: EtatsHooks, appBureau: le lecteur ; ni TreatedStore ni détecteur) ===
+Inspecter (1er appel) : 271,60 ms
+Visibles 4 · Masquées 0 · Désaccords 2 · Fichiers de hook écartés (trop anciens) 1
+lecture.AppBureau : DossierTrouve True · ParSession 18
+Sessions visibles jointes à un titre : 4 sur 4
+Sessions visibles avec métadonnées de l'app : 4 sur 4
+  · c17a1b03 PROJET JARVIS — WaitingAttention (En attente) — titre joint (29 car.) — métadonnées : Bloquee, focus il y a 76 min, motif présent — source probable : app bureau (question posée, motif présent)
+  · 88677186 PROJET ADVANCED SHEET — WaitingTurn (En attente) — titre joint (43 car.) — métadonnées : PreteARevue, focus il y a 142 min — source probable : fichier de hook présent
+  · 11456cab PROJET OVERLAY — WaitingTurn (En attente) — titre joint (29 car.) — métadonnées : PreteARevue, focus il y a 142 min — source probable : fichier de hook présent
+  · dae57d29 PROJET OLYMPE DATAMIND — Working (Réflexion) — titre joint (27 car.) — métadonnées : Inconnue, focus il y a 142 min — source probable : fichier de hook présent
+  désaccord · c17a1b03 — retenu AppBureau WaitingAttention ; écarté Hook WaitingTurn ; écart 00:00:00.0400000
+  désaccord · c17a1b03 — retenu AppBureau WaitingAttention ; écarté Transcript WaitingTurn ; écart 00:00:02.3610000
+Inspecter chaud ×30 : médiane 29,31 ms · p90 33,26 ms · max 38,45 ms
+durée totale de la sonde : 1594 ms
+
+=== Écritures : dates d'écriture UTC de %APPDATA%\Chronos vues PAR LA SONDE, au début et à la fin ===
+  archived.json : avant 2026-07-13T06:30:48.4177976Z · après 2026-07-13T06:30:48.4177976Z · identique : True
+  treated.json : avant 2026-09-25T21:46:49.9571784Z · après 2026-09-25T21:46:49.9571784Z · identique : True
+  settings.json : avant 2026-09-25T20:41:06.8061945Z · après 2026-09-25T20:41:06.8061945Z · identique : True
