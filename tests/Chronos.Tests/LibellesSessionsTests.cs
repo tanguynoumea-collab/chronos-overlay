@@ -225,4 +225,35 @@ public sealed class LibellesSessionsTests
         Assert.True(mots.SetEquals(new[] { AffichageSessions.Reflexion, AffichageSessions.EnAttente, AffichageSessions.EnAttenteDeduite }),
             "Les échantillons de la galerie doivent dire exactement les trois mots : " + string.Join(" | ", mots));
     }
+
+    /// <summary>
+    /// APP-02, versant GALERIE (Piège 7 de la phase 28) : la galerie partage les gabarits de l'écran, elle pose donc ses
+    /// info-bulles par le MÊME producteur — sinon elles seraient vides, sans erreur. Elle échantillonne un titre LONG
+    /// (au moins 43 caractères, le plus long titre réel mesuré) pour juger la coupe à l'œil, et une attente observée
+    /// avec son motif. Cinq échantillons aux mêmes états qu'avant : le sous-titre de la galerie reste vrai.
+    /// </summary>
+    [Fact]
+    public void La_galerie_pose_ses_infobulles_par_le_producteur_et_montre_un_titre_long()
+    {
+        var galerie = new SessionsPreviewViewModel();
+        Assert.Equal(5, galerie.Items.Count);
+
+        foreach (var it in galerie.Items)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(it.Infobulle), $"{it.SessionId} : info-bulle vide (Piège 7)");
+            var premiere = it.Infobulle.Split('\n')[0];
+            Assert.True(premiere.EndsWith(" — " + it.StateText, StringComparison.Ordinal),
+                $"{it.SessionId} : la première ligne « {premiere} » ne finit pas par le mot « {it.StateText} »");
+        }
+
+        var titreLong = Assert.Single(galerie.Items, it => it.Project.Length >= 43);
+        Assert.Contains(" — api-migration — ", titreLong.Infobulle, StringComparison.Ordinal);   // le dossier reste lisible
+        Assert.Contains(galerie.Items, it => it.Infobulle.Split('\n') is [_, "permission demandée"]);
+
+        // Le sous-titre de la galerie dit « 2 « En attente », 1 « En attente ? », 2 « Réflexion » » : il reste vrai.
+        int Compte(string mot) => galerie.Items.Count(it => it.StateText == mot);
+        Assert.Equal(2, Compte(AffichageSessions.EnAttente));
+        Assert.Equal(1, Compte(AffichageSessions.EnAttenteDeduite));
+        Assert.Equal(2, Compte(AffichageSessions.Reflexion));
+    }
 }

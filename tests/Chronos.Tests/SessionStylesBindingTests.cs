@@ -160,8 +160,10 @@ public class SessionStylesBindingTests
 
     /// <summary>
     /// LIB-01 et LIB-03, versant ÉCRAN, sur les 72 combinaisons : aucun ancien libellé n'est rendu ; les
-    /// info-bulles des huit gabarits disent « projet — mot » et, ensemble, les trois mots ; sur Pastilles et
-    /// Marge, les deux gabarits qui affichent le mot en texte, il se lit en entier — ni rogné, ni tronqué.
+    /// info-bulles des huit gabarits disent « projet — mot » sur leur PREMIÈRE ligne et, ensemble, les trois mots ;
+    /// l'attente observée qui a un motif (s1, « permission_prompt ») le dit en mots sur une seconde ligne (APP-02,
+    /// phase 29) ; sur Pastilles et Marge, les deux gabarits qui affichent le mot en texte, il se lit en entier —
+    /// ni rogné, ni tronqué.
     /// </summary>
     [WpfFact]
     public void Les_trois_mots_se_lisent_sur_les_8_styles_et_les_9_themes()
@@ -191,15 +193,22 @@ public class SessionStylesBindingTests
             var motsDesBulles = new HashSet<string>(StringComparer.Ordinal);
             foreach (var bulle in bulles)
             {
-                var i = bulle.LastIndexOf(" — ", StringComparison.Ordinal);
+                // La seconde ligne, quand il y en a une, est le MOTIF d'une attente : le mot se lit sur la première.
+                var ligne1 = bulle.Split('\n')[0];
+                var i = ligne1.LastIndexOf(" — ", StringComparison.Ordinal);
                 Assert.True(i > 0, $"{contexte} : l'info-bulle « {bulle} » ne dit pas « projet — mot »");
-                var mot = bulle.Substring(i + 3);
+                var mot = ligne1.Substring(i + 3);
                 Assert.True(TroisMots.Contains(mot, StringComparer.Ordinal),
                     $"{contexte} : l'info-bulle « {bulle} » ne se termine pas par l'un des trois mots");
                 motsDesBulles.Add(mot);
             }
             Assert.True(motsDesBulles.SetEquals(TroisMots),
                 $"{contexte} : les info-bulles ne disent pas, ensemble, les trois mots");
+
+            // s1 est une attente OBSERVÉE avec un motif (« permission_prompt ») : deux lignes, la seconde en mots.
+            var bulleS1 = bulles.Where(b => b.StartsWith("overlay — ", StringComparison.Ordinal)).ToList();
+            Assert.True(bulleS1.Count == 1, $"{contexte} : {bulleS1.Count} info-bulles pour s1 (overlay) au lieu d'une");
+            Assert.Equal(new[] { "overlay — En attente", "permission demandée" }, bulleS1[0].Split('\n'));
 
             if (style is SessionStyle.Pastilles or SessionStyle.Marge)
             {

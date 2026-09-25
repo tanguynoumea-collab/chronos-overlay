@@ -88,6 +88,10 @@ public static class AffichageSessions
     /// dossier, jamais un nom vide.</summary>
     public static string Nom(SessionSnapshot s) => string.IsNullOrWhiteSpace(s.Titre) ? s.Project : s.Titre!;
 
+    // SQUELETTE (RED 29-04) : remplacé par le GREEN de la tâche 1.
+    public static string? MotifLisible(SessionSnapshot s) => throw new System.NotImplementedException();
+    public static string Infobulle(SessionSnapshot s) => throw new System.NotImplementedException();
+
     /// <summary>Ancienneté d'une session, telle qu'affichée par le widget.</summary>
     public static string Age(System.TimeSpan d)
     {

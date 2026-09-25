@@ -372,6 +372,65 @@ public class AffichageSessionsTests
         => Assert.Equal("Projet-A", AffichageSessions.Nom(
                new SessionSnapshot("s", "Projet-A", SessionActivity.WaitingTurn, null, Maintenant, titre)));
 
+    /// <summary>APP-02 — l'info-bulle des huit gabarits : « titre — dossier — mot », ou « dossier — mot » sans titre (la
+    /// forme de la phase 28, inchangée). Puis, pour une attente OBSERVÉE qui en a un, le motif EN MOTS sur une seconde
+    /// ligne : les codes techniques connus sont traduits, le texte de l'app bureau (needs_action) passe tel quel. Un
+    /// travail ne dit jamais de motif, même quand son signal en porte un (« PreToolUse » est un battement).</summary>
+    [Theory]
+    [InlineData(null, SessionActivity.Working, null, "p — Réflexion")]
+    [InlineData("Mon titre", SessionActivity.Working, "PreToolUse", "Mon titre — p — Réflexion")]
+    [InlineData(null, SessionActivity.WaitingAttention, "permission_prompt", "p — En attente\npermission demandée")]
+    [InlineData(null, SessionActivity.WaitingAttention, "PermissionRequest", "p — En attente\npermission demandée")]
+    [InlineData("Mon titre", SessionActivity.WaitingAttention, "AskUserQuestion", "Mon titre — p — En attente\nquestion posée")]
+    [InlineData("Session E", SessionActivity.WaitingAttention, "(anonymisé) réponse attendue",
+                "Session E — p — En attente\n(anonymisé) réponse attendue")]
+    public void L_infobulle_dit_titre_dossier_mot_puis_le_motif_d_une_attente(
+        string? titre, SessionActivity activite, string? motif, string attendu)
+        => Assert.Equal(attendu, AffichageSessions.Infobulle(new SessionSnapshot("s", "p", activite, motif, Maintenant, titre)));
+
+    /// <summary>APP-03, versant lisible : une attente DÉDUITE garde le motif de son dernier TRAVAIL — la règle de silence
+    /// ne change que l'activité. Le recopier ferait lire « PreToolUse » comme une raison d'attendre : une seule ligne.</summary>
+    [Fact]
+    public void Une_attente_deduite_ne_recopie_pas_le_motif_du_dernier_travail()
+    {
+        var s = new SessionSnapshot("s", "p", SessionActivity.WaitingDeduced, "PreToolUse", Maintenant);
+        Assert.Equal("p — En attente ?", AffichageSessions.Infobulle(s));
+        Assert.Null(AffichageSessions.MotifLisible(s));
+    }
+
+    /// <summary>« UI en français » (CLAUDE.md), tenu contre le CÂBLAGE réel : chaque motif qu'une attente observée peut
+    /// porter parce que Chronos l'a câblé — la permission dédiée, les types du bus retenus par le matcher de
+    /// <c>Notification</c>, la question lue dans un transcript — se lit en mots, jamais sous son code. Un type ajouté au
+    /// matcher sans traduction rougit ici, pas dans l'info-bulle de l'utilisateur.</summary>
+    [Fact]
+    public void Chaque_motif_d_attente_que_Chronos_cable_se_lit_en_francais()
+    {
+        var bus = SessionHookInstaller.Cablage.Single(c => c.Evenement == "Notification").Matcher;
+        Assert.False(string.IsNullOrWhiteSpace(bus), "Le matcher de Notification a disparu : la garde ne lirait rien.");
+        var codes = bus!.Split('|').Append("PermissionRequest").Append("AskUserQuestion").ToList();
+        Assert.True(codes.Count >= 5, $"Seulement {codes.Count} motifs câblés lus : la garde ne lit pas le câblage.");
+
+        var enMots = new[] { "permission demandée", "question posée", "réponse demandée" };
+        foreach (var code in codes)
+        {
+            var lu = AffichageSessions.MotifLisible(new SessionSnapshot("s", "p", SessionActivity.WaitingAttention, code, Maintenant));
+            Assert.True(lu is not null && enMots.Contains(lu, StringComparer.Ordinal),
+                $"Le motif câblé « {code} » se lit « {lu} » : un code technique ne s'affiche pas dans l'info-bulle.");
+        }
+    }
+
+    /// <summary>APP-02, versant ViewModel : le widget montre le TITRE, et son info-bulle est celle du producteur — titre,
+    /// dossier, mot, motif — jamais recomposée dans le ViewModel. Le mot d'état, lui, ne change pas.</summary>
+    [Fact]
+    public void Le_widget_affiche_le_titre_et_pose_l_infobulle_du_producteur()
+    {
+        var item = Assert.Single(VmAvec(new SessionSnapshot("s-t", "dossier-x", SessionActivity.WaitingAttention,
+            "permission_prompt", Maintenant, Titre: "Titre de la session")).Items);
+        Assert.Equal("Titre de la session", item.Project);
+        Assert.Equal("Titre de la session — dossier-x — En attente\npermission demandée", item.Infobulle);
+        Assert.Equal("En attente", item.StateText);
+    }
+
     /// <summary>Un ViewModel dont la source de sessions est substituée et les magasins temporaires.</summary>
     private static SessionsViewModel VmAvec(params SessionSnapshot[] snaps)
     {
