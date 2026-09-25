@@ -48,6 +48,7 @@ chiffre exact.
 - ✓ Arbitrage des sources par FRAÎCHEUR, désaccords tracés dans le diagnostic (FUS-01, FUS-02) — Phase 24
 - ✓ Contrat d'événements : `PermissionRequest`, veto `Notification`, battements de cœur, attente déduite, `docs/hooks-contract.md` (EVT-01..05) — Phase 25
 - ✓ « Traité » = transition observée sur la même source, persistant, geste explicite, archivage permanent (TRT-01..04) — Phase 26
+- ✓ Deux mots à l'écran (« Réflexion », « En attente », « En attente ? »), question `AskUserQuestion` classée attente, ordre découplé de l'arbitrage, horizons uniques 20 min / 8 h (LIB-01..04, SIL-01) — Phase 28
 
 ### Active
 
@@ -81,6 +82,13 @@ Milestone v1.7 — « Lue ou non lue » : le widget de sessions ne montre que ce
 - **Hystérésis « traité » par focus de fenêtre** — supprimée avec l'UIA : elle exigeait `Origin == Desktop` et n'atteignait donc JAMAIS une session Claude Code. Remplacée par une transition observée et un geste explicite.
 
 ## Current State (entrée en v1.7 — 2026-09-25)
+
+**Avancement v1.7 (2026-09-25, soir) :** phase 27 close (relevé in vivo : alt-tab met `lastFocusedAt` à jour ;
+tour fini sous les yeux le laisse antérieur ⇒ LUE-02 nécessaire) ; **phase 28 close** (947 tests, vérification
+5/5 : les trois mots, la question en suspens, `HorizonsSessions`). **Découverte majeure** (sonde hors de l'arbre
+de l'app, `29-SONDE-HORS-ARBRE.txt`) : AppData est VIRTUALISÉ par MSIX pour tout ce qui tourne sous l'app
+bureau — l'overlay n'a jamais vu un fichier d'état de hook (`%APPDATA%\Chronos\sessions` réel vide) ; APP-06
+(phase 29) lit les deux vues.
 
 **Le cadran est réglé, et le widget observe.** v1.6 « Observer au lieu de déduire » est livré (exe **3.1.0**,
 6 phases, 18 exigences, 752 → 889 tests) et **vérifié en production le 2026-09-25** : les 8 groupes de hooks
@@ -195,4 +203,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-25 — clôture du milestone v1.6, entrée en v1.7 « Lue ou non lue »*
+*Last updated: 2026-09-25 — phases 27 et 28 de v1.7 closes ; APP-06 (AppData virtualisé) ajoutée*
