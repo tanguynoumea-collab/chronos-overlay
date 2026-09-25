@@ -10,11 +10,18 @@ namespace Chronos.Services;
 /// Ne dépend d'AUCUN hook : c'est la source de base du widget, et elle ne parle QUE de Claude Code.
 /// Ne montre que les sessions récemment actives (fenêtre <see cref="ActiveWindow"/>).
 ///
-/// Règle d'état (dernier message significatif, sous-agents ignorés) :
-///   • assistant AVEC un tool_use (pas encore de résultat) / dernier = user ou tool_result → Working
-///   • assistant SANS outil en cours (réponse finie : end_turn/stop_sequence/…)               → WaitingTurn (t'attend)
-/// Limite honnête : le transcript NE contient PAS l'état « attend une permission » (WaitingAttention) ;
-/// on n'affiche donc que Working / WaitingTurn.
+/// Règle d'état (dernier message significatif, sous-agents ignorés) — TROIS issues :
+///   • dernier = user (invite ou tool_result), ou assistant dont le dernier tool_use est un autre outil → Working
+///   • assistant dont le dernier tool_use s'appelle EXACTEMENT « AskUserQuestion »                 → WaitingAttention
+///   • assistant SANS tool_use (réponse finie : end_turn/stop_sequence/…)                          → WaitingTurn (t'attend)
+///
+/// <para>LIB-02 (phase 28) — une question n'est pas une réflexion. Limite honnête : le transcript ne contient
+/// pas le prompt de PERMISSION (seul le hook PermissionRequest le voit), mais il contient la question
+/// AskUserQuestion, qui attend l'utilisateur au même rang ; le motif du snapshot la nomme (un fait observé).
+/// Le nom est comparé ordinalement et exactement, sans liste extensible d'outils « au cas où ». Cas mesuré
+/// que la règle ne reconnaît pas (1 question sur 222, 28-RESEARCH.md Q3) : l'appel d'outils PARALLÈLE dont la
+/// dernière ligne porte un autre outil (Claude Code écrit un bloc par ligne). Il se dégrade vers le
+/// comportement v1.6 (Working), jamais vers une attente inventée.</para>
 ///
 /// <para>SRC-03 (phase 21) — la limite de <see cref="MaxSessions"/> porte sur les sessions RETENUES, pas
 /// sur les fichiers examinés. Auparavant elle était appliquée à l'énumération, donc AVANT le filtre des
@@ -101,7 +108,12 @@ public sealed class TranscriptSessionSource : ISessionSource
 
                 var type = o.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
                 if (type == "assistant")
-                    state = HasToolUse(o) ? SessionActivity.Working : SessionActivity.WaitingTurn;
+                    state = DernierOutil(o) switch   // switch sur string : comparaison ORDINALE et EXACTE
+                    {
+                        null => SessionActivity.WaitingTurn,                         // réponse finie : le tour est terminé
+                        "AskUserQuestion" => SessionActivity.WaitingAttention,       // LIB-02 : une question n'est pas une réflexion
+                        _ => SessionActivity.Working,                                // un outil est en cours
+                    };
                 else if (type == "user")
                     state = SessionActivity.Working; // prompt utilisateur OU tool_result → l'assistant va/continue de bosser
             }
@@ -110,21 +122,32 @@ public sealed class TranscriptSessionSource : ISessionSource
 
             var project = SessionHookProcessor.ProjectFromCwd(cwd);
             var sid = Path.GetFileNameWithoutExtension(fi.Name);
-            return new SessionSnapshot(sid, project, state.Value, null,
+            // Le motif est un FAIT observé : dans un transcript, seule la question produit une attente.
+            var reason = state == SessionActivity.WaitingAttention ? "AskUserQuestion" : null;
+            return new SessionSnapshot(sid, project, state.Value, reason,
                 new System.DateTimeOffset(fi.LastWriteTimeUtc, System.TimeSpan.Zero));
         }
         catch { return null; }
     }
 
-    // Un message assistant contient-il un bloc tool_use dans son content ? (→ exécution en cours)
-    private static bool HasToolUse(JsonElement o)
+    // Nom du DERNIER bloc tool_use du message : Claude Code écrit un bloc par ligne, et c'est le dernier qui dit
+    // ce que la session fait maintenant. "" si ce bloc n'a pas de nom lisible (c'est encore un outil en cours),
+    // null s'il n'y a aucun bloc tool_use (réponse finie). Les ValueKind sont vérifiés : un « message » qui ne
+    // serait pas un objet ne doit pas faire lever TryGetProperty et jeter tout le fichier.
+    private static string? DernierOutil(JsonElement o)
     {
-        if (!o.TryGetProperty("message", out var m) || !m.TryGetProperty("content", out var content)
-            || content.ValueKind != JsonValueKind.Array) return false;
+        if (!o.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object
+            || !m.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array) return null;
+        string? dernier = null;
         foreach (var block in content.EnumerateArray())
-            if (block.TryGetProperty("type", out var bt) && bt.ValueKind == JsonValueKind.String && bt.GetString() == "tool_use")
-                return true;
-        return false;
+        {
+            if (block.ValueKind != JsonValueKind.Object) continue;
+            if (!block.TryGetProperty("type", out var bt) || bt.ValueKind != JsonValueKind.String
+                || bt.GetString() != "tool_use") continue;
+            dernier = block.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String
+                ? n.GetString() ?? "" : "";
+        }
+        return dernier;
     }
 
     // Lit au plus les derniers <paramref name="bytes"/> octets du fichier (transcripts volumineux).
