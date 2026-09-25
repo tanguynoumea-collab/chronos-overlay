@@ -127,25 +127,25 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| APP-01 | — | Pending |
-| APP-02 | — | Pending |
-| APP-03 | — | Pending |
-| APP-04 | — | Pending |
-| APP-05 | — | Pending |
-| LUE-01 | — | Pending |
-| LUE-02 | — | Pending |
-| LUE-03 | — | Pending |
-| LUE-04 | — | Pending |
-| LIB-01 | — | Pending |
-| LIB-02 | — | Pending |
-| LIB-03 | — | Pending |
-| LIB-04 | — | Pending |
-| SIL-01 | — | Pending |
-| VAL-01 | — | Pending |
-| VAL-02 | — | Pending |
-| VAL-03 | — | Pending |
+| APP-01 | Phase 29 | Pending |
+| APP-02 | Phase 29 | Pending |
+| APP-03 | Phase 29 | Pending |
+| APP-04 | Phase 29 | Pending |
+| APP-05 | Phase 29 | Pending |
+| LUE-01 | Phase 30 | Pending |
+| LUE-02 | Phase 30 | Pending |
+| LUE-03 | Phase 30 | Pending |
+| LUE-04 | Phase 30 | Pending |
+| LIB-01 | Phase 28 | Pending |
+| LIB-02 | Phase 28 | Pending |
+| LIB-03 | Phase 28 | Pending |
+| LIB-04 | Phase 28 | Pending |
+| SIL-01 | Phase 28 | Pending |
+| VAL-01 | Phase 27 | Pending |
+| VAL-02 | Phase 31 | Pending |
+| VAL-03 | Phase 31 | Pending |
 
-**Couverture :** 17 requirements — à mapper par la roadmap.
+**Couverture :** 17 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
 
 ---
 *Last updated: 2026-09-25 — exigences v1.7 définies (relevé sur la vraie machine du même jour)*

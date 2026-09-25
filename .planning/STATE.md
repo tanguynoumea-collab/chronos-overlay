@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
-status: defining_requirements
-stopped_at: Milestone v1.6 archivé le 2026-09-25 ; v1.7 à définir (/gsd:new-milestone)
-last_updated: "2026-09-25T14:30:00.000Z"
+status: roadmap_created
+stopped_at: Roadmap v1.7 créée (5 phases, 27-31) ; prochaine action /gsd:plan-phase 27
+last_updated: "2026-09-25T18:05:00.000Z"
 last_activity: 2026-09-25
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -26,10 +26,11 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 ## Current Position
 
-Milestone: v1.7 — Lue ou non lue (pas encore défini)
-Phase: — (la numérotation continue : la prochaine phase est la 27)
-Status: v1.6 clos et archivé le 2026-09-25 (livré le 2026-09-13, exe 3.1.0, vérifié en production)
-Last activity: 2026-09-25
+Milestone: v1.7 — Lue ou non lue (roadmap créée : 5 phases, 27 → 31, 17 / 17 exigences mappées)
+Phase: 27 (Le relevé avant la règle) — 1re des 5 phases du milestone ; point de contrôle humain, en lecture seule
+Plan: — (phase pas encore planifiée)
+Status: Ready to plan
+Last activity: 2026-09-25 — roadmap v1.7 créée (phases 27-31)
 
 Progress: [░░░░░░░░░░] 0 %
 
@@ -493,10 +494,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- **Prochaine action : `/gsd:new-milestone`** → exigences v1.7 (APP, LUE, LIB, SIL) → roadmap (phases 27+) →
-  `/gsd:autonomous`.
-- **À vérifier in vivo par l'utilisateur, hors GSD** (phase de validation à PLANIFIER, leçon de v1.6) :
-  (1) `lastFocusedAt` au retour alt-tab sur la même session ; (2) le tour qui finit pendant qu'on regarde.
+- **Prochaine action : `/gsd:plan-phase 27`** (relevé), puis `/gsd:autonomous` pour 28 → 31.
+- **Relevé in vivo = Phase 27 (VAL-01), planifiée, pas « hors GSD »** : (1) `lastFocusedAt` au retour
+  alt-tab sur la même session ; (2) le tour qui finit pendant qu'on regarde. L'utilisateur fait les gestes,
+  l'agent relève en lecture seule.
 - **Reste de v1.5 non refermable par un agent** : HDR-02 (un 429 RÉEL porte-t-il bien les en-têtes
   `anthropic-ratelimit-unified-*` ?) et le parcours de reconnexion de bout en bout.
 
@@ -513,7 +514,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-25T14:30:00.000Z
-Stopped at: Milestone v1.6 archivé (complete-milestone) ; v1.7 à définir
+Last session: 2026-09-25
+Stopped at: Roadmap v1.7 créée (5 phases, 27-31, 17 / 17 exigences) — en attente d'approbation
 Resume file: .planning/RESUME-HERE.md
-Next: /gsd:new-milestone — v1.7 « Lue ou non lue »
+Next: /gsd:plan-phase 27 — le relevé in vivo se joue AVEC l'utilisateur (protocole écrit, lecture seule)
