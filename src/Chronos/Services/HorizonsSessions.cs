@@ -9,7 +9,9 @@ namespace Chronos.Services;
 ///   <item><see cref="Abandon"/> &lt; <see cref="RetentionTraitees"/> : une entrée « traitée » ne peut pas expirer
 ///   pendant que sa session est encore lisible — sinon elle reviendrait sans avoir rien redemandé ;</item>
 ///   <item><see cref="RetentionTraitees"/> &lt; <see cref="ExpirationEtat"/> : on ne balaie jamais un fichier d'état
-///   que le widget ou le magasin des traitées pourraient encore lire.</item>
+///   que le widget ou le magasin des traitées pourraient encore lire ;</item>
+///   <item><see cref="Abandon"/> ≤ <see cref="LectureAppBureau"/> : la fenêtre de LECTURE des métadonnées de l'app
+///   bureau couvre tout ce qui peut encore s'afficher — elle économise des lectures, elle ne cache aucun signal.</item>
 /// </list>
 /// Avant la phase 28, ces valeurs vivaient en littéraux privés dans quatre fichiers, et une cinquième — quinze
 /// minutes, la fenêtre des transcripts — faisait disparaître en silence toute session sans fichier de hook (trou
@@ -31,6 +33,9 @@ public static class HorizonsSessions
     /// <summary>Au-delà ET sans attestation de vie, un fichier d'état est balayé (phase 23).</summary>
     public static readonly System.TimeSpan ExpirationEtat = System.TimeSpan.FromHours(72);
 
-    /// <summary>SQUELETTE (phase RED de 29-02) : valeur provisoire.</summary>
-    public static readonly System.TimeSpan LectureAppBureau = System.TimeSpan.Zero;
+    /// <summary>Fenêtre de LECTURE des métadonnées de l'app bureau (APP-01) : un fichier écrit il y a plus longtemps
+    /// n'est pas ouvert. Économie de lecture, JAMAIS un horizon d'affichage — l'âge d'un signal se juge sur son instant
+    /// (<see cref="Abandon"/>). Elle vaut au moins <see cref="Abandon"/> : l'app réécrit le fichier d'une session à
+    /// chaque changement, donc un signal de moins de huit heures vient d'un fichier écrit depuis moins de huit heures.</summary>
+    public static readonly System.TimeSpan LectureAppBureau = System.TimeSpan.FromHours(24);
 }
