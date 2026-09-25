@@ -236,4 +236,273 @@ public class LecteurAppBureauTests : IDisposable
             + "un signal encore lisible viendrait d'un fichier que le lecteur n'ouvre plus.");
         Assert.Equal(TimeSpan.FromHours(24), HorizonsSessions.LectureAppBureau);
     }
+
+    // ------------------------------------------------------------------ Tâche 2 : Lire — énumérer, filtrer, cacher, dater
+
+    /// <summary>Une racine peuplée des fixtures données (écrites une minute avant <paramref name="maintenant"/>),
+    /// nettoyée en fin de test.</summary>
+    private string Racine(DateTimeOffset maintenant, params string[] fixtures)
+    {
+        var racine = RacineAppBureau.Creer(maintenant, fixtures);
+        _racines.Add(racine);
+        return racine;
+    }
+
+    private string RacineVide()
+    {
+        var racine = RacineAppBureau.NouvelleRacine();
+        _racines.Add(racine);
+        return racine;
+    }
+
+    /// <summary>Un chemin qui n'existe pas, sous le dossier temporaire.</summary>
+    private static string Absente()
+        => Path.Combine(Path.GetTempPath(), "chronos-appbureau-absente-" + Guid.NewGuid().ToString("N"));
+
+    private static string Chemin(string racine, string fixture)
+        => Path.Combine(RacineAppBureau.DossierUtilisateur(racine), RacineAppBureau.NomFichier(fixture));
+
+    /// <summary>Le bruit réel du dossier de l'app (Piège 3) : seul un <c>local_*.json</c> à la profondeur exacte
+    /// <c>&lt;org&gt;\&lt;user&gt;</c> est énuméré — ni l'index, ni le temporaire d'écriture atomique (qui contient
+    /// pourtant un vrai fichier « blocked »), ni <c>backlog</c>, ni la trace de suppression, ni un fichier posé trop
+    /// haut.</summary>
+    [Fact]
+    public void Seuls_les_local_json_a_profondeur_deux_sont_enumeres()
+    {
+        var racine = Racine(M, GesteB);
+        RacineAppBureau.AjouterBruit(racine, M);
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Equal(1, l.Enumeres);
+        Assert.Equal(new[] { IdGesteB }, l.ParSession.Keys.ToArray());
+        Assert.Equal(1, l.RelusSurDisque);
+        Assert.Equal(0, l.Illisibles);
+    }
+
+    /// <summary>La fenêtre de 24 h : un fichier écrit il y a 25 h est énuméré, jamais ouvert.</summary>
+    [Fact]
+    public void Un_fichier_modifie_il_y_a_plus_de_24_h_n_est_pas_ouvert()
+    {
+        var racine = Racine(M, GesteB, Bloquee);
+        File.SetLastWriteTimeUtc(Chemin(racine, Bloquee), M.AddHours(-25).UtcDateTime);
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Equal(2, l.Enumeres);
+        Assert.Equal(1, l.Recents);
+        Assert.Equal(1, l.RelusSurDisque);
+        Assert.False(l.ParSession.ContainsKey(IdBloquee));
+        Assert.True(l.ParSession.ContainsKey(IdGesteB));
+    }
+
+    /// <summary>Le cache (date d'écriture, taille) : rien n'est relu si rien n'a changé ; seul le fichier dont la
+    /// date d'écriture a bougé l'est — sa taille, elle, ne change pas à la réécriture (Piège 4).</summary>
+    [Fact]
+    public void Le_cache_ne_relit_que_ce_qui_a_change()
+    {
+        var racine = Racine(M, GesteB, Bloquee, PreteARevue);
+        var lecteur = new LecteurAppBureau(new[] { racine });
+
+        var l1 = lecteur.Lire(M);
+        Assert.Equal(3, l1.RelusSurDisque);
+        Assert.Equal(3, l1.Valides);
+
+        var l2 = lecteur.Lire(M.AddSeconds(2));
+        Assert.Equal(0, l2.RelusSurDisque);
+        Assert.Equal(3, l2.Valides);
+        Assert.Equal(l1.ParSession.ToDictionary(kv => kv.Key, kv => kv.Value.Titre),
+                     l2.ParSession.ToDictionary(kv => kv.Key, kv => kv.Value.Titre));
+
+        File.SetLastWriteTimeUtc(Chemin(racine, PreteARevue), M.UtcDateTime);   // une minute plus tard, même taille
+        var l3 = lecteur.Lire(M.AddSeconds(4));
+        Assert.Equal(1, l3.RelusSurDisque);
+        Assert.Equal(3, l3.Valides);
+        Assert.Equal("Session B", l3.ParSession[IdPreteARevue].Titre);
+    }
+
+    /// <summary>La réécriture EN PLACE de l'app (repli après trois renommages ratés) peut laisser voir un fichier à
+    /// moitié écrit : la relecture ratée garde la DERNIÈRE lecture valide, et la clé du cache n'est pas mise à jour —
+    /// le fichier est retenté au cycle suivant. Aucun titre ne clignote.</summary>
+    [Fact]
+    public void Un_fichier_tronque_pendant_sa_reecriture_ne_fait_pas_clignoter_le_titre()
+    {
+        var racine = Racine(M, GesteB);
+        var lecteur = new LecteurAppBureau(new[] { racine });
+        var complet = RacineAppBureau.Fixture(GesteB);
+        var nom = RacineAppBureau.NomFichier(GesteB);
+
+        var l1 = lecteur.Lire(M);
+        Assert.Equal("Session A", l1.ParSession[IdGesteB].Titre);
+
+        RacineAppBureau.EcrireOctets(racine, nom, complet[..(complet.Length / 2)], M);   // date + 1 min
+        var l2 = lecteur.Lire(M.AddSeconds(2));
+        Assert.Equal("Session A", l2.ParSession[IdGesteB].Titre);
+        Assert.Equal(1, l2.Illisibles);
+        Assert.Equal(1, l2.RelusSurDisque);
+
+        var l3 = lecteur.Lire(M.AddSeconds(4));   // inchangé sur le disque : relu quand même, la clé n'a pas bougé
+        Assert.Equal(1, l3.RelusSurDisque);
+        Assert.Equal(1, l3.Illisibles);
+        Assert.Equal("Session A", l3.ParSession[IdGesteB].Titre);
+
+        RacineAppBureau.EcrireOctets(racine, nom, complet, M.AddMinutes(1));   // date + 2 min, fichier complet
+        var l4 = lecteur.Lire(M.AddSeconds(6));
+        Assert.Equal(0, l4.Illisibles);
+        Assert.Equal(1, l4.RelusSurDisque);
+        Assert.Equal("Session A", l4.ParSession[IdGesteB].Titre);
+    }
+
+    /// <summary>Une première lecture ratée ne donne rien, se compte, et ne lève pas.</summary>
+    [Fact]
+    public void Une_premiere_lecture_illisible_ne_donne_rien_et_se_compte()
+    {
+        var racine = RacineVide();
+        RacineAppBureau.Ecrire(racine, "local_x.json", "pas du JSON {{{", M.AddMinutes(-1));
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Equal(1, l.Enumeres);
+        Assert.Equal(1, l.Illisibles);
+        Assert.Equal(0, l.Valides);
+        Assert.Empty(l.ParSession);
+    }
+
+    /// <summary>Un fichier sans <c>cliSessionId</c> se compte — au premier cycle comme depuis le cache — et ne donne
+    /// aucune session.</summary>
+    [Fact]
+    public void Un_fichier_sans_cliSessionId_est_compte_et_ignore()
+    {
+        var racine = Racine(M, SansId, GesteB);
+        var lecteur = new LecteurAppBureau(new[] { racine });
+
+        var l = lecteur.Lire(M);
+        Assert.Equal(1, l.SansCliSessionId);
+        Assert.Equal(1, l.Valides);
+        Assert.Single(l.ParSession);
+
+        var depuisLeCache = lecteur.Lire(M.AddSeconds(2));
+        Assert.Equal(0, depuisLeCache.RelusSurDisque);
+        Assert.Equal(1, depuisLeCache.SansCliSessionId);
+        Assert.Single(depuisLeCache.ParSession);
+    }
+
+    /// <summary>Deux fichiers pour une même session (aucun aujourd'hui, possible demain) : le plus récent par
+    /// <c>lastActivityAt</c> l'emporte, quel que soit l'ordre des noms, et le doublon se compte.</summary>
+    [Fact]
+    public void Deux_fichiers_pour_une_meme_session_gardent_le_plus_recent_et_se_comptent()
+    {
+        var ancienne = RacineAppBureau.Deriver(GesteB,
+            ("1790361286677", "1790361000000"),
+            ("\"title\": \"Session A\"", "\"title\": \"Session A (ancienne)\""));
+
+        var racine = RacineVide();
+        RacineAppBureau.EcrireOctets(racine, "local_a.json", RacineAppBureau.Fixture(GesteB), M.AddMinutes(-1));
+        RacineAppBureau.Ecrire(racine, "local_b.json", ancienne, M.AddMinutes(-1));
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Equal("Session A", l.ParSession[IdGesteB].Titre);
+        Assert.Equal(1, l.Doublons);
+        Assert.Equal(2, l.Valides);
+        Assert.Single(l.ParSession);
+
+        // Noms inversés : l'ordre d'énumération ne décide pas, la dernière activité si.
+        var inversee = RacineVide();
+        RacineAppBureau.Ecrire(inversee, "local_a.json", ancienne, M.AddMinutes(-1));
+        RacineAppBureau.EcrireOctets(inversee, "local_b.json", RacineAppBureau.Fixture(GesteB), M.AddMinutes(-1));
+
+        var li = new LecteurAppBureau(new[] { inversee }).Lire(M);
+
+        Assert.Equal("Session A", li.ParSession[IdGesteB].Titre);
+        Assert.Equal(1, li.Doublons);
+    }
+
+    /// <summary>Les racines se résolvent par candidats, dans l'ordre : le premier qui existe est lu, et lui seul.</summary>
+    [Fact]
+    public void La_racine_est_le_premier_candidat_qui_existe()
+    {
+        var absente = Absente();
+        var r2 = Racine(M, GesteB);
+        var r3 = Racine(M, Bloquee);
+
+        var l = new LecteurAppBureau(new[] { absente, r2, r3 }).Lire(M);
+
+        Assert.True(l.DossierTrouve);
+        Assert.Equal(r2, l.Racine);
+        Assert.Equal(new[] { absente, r2, r3 }, l.RacinesCherchees);
+        Assert.Equal(new[] { IdGesteB }, l.ParSession.Keys.ToArray());
+    }
+
+    /// <summary>Aucune racine : une lecture ABSENTE, entièrement à zéro, qui dit encore ce qu'elle a cherché.</summary>
+    [Fact]
+    public void Aucune_racine_rend_une_lecture_absente_sans_exception()
+    {
+        var l = new LecteurAppBureau(new[] { Absente(), Absente() }).Lire(M);
+
+        Assert.False(l.DossierTrouve);
+        Assert.Null(l.Racine);
+        Assert.Equal(2, l.RacinesCherchees.Count);
+        Assert.Empty(l.ParSession);
+        Assert.Empty(l.ChampsAbsents);
+        Assert.Equal(0, l.Enumeres);
+        Assert.Equal(0, l.Recents);
+        Assert.Equal(0, l.Valides);
+        Assert.Equal(0, l.RelusSurDisque);
+        Assert.Equal(0, l.Illisibles);
+        Assert.Equal(0, l.SansCliSessionId);
+        Assert.Equal(0, l.Doublons);
+    }
+
+    /// <summary>TRT-02, décision verrouillée : l'instant d'une question est <c>lastActivityAt</c> lu à la PREMIÈRE
+    /// apparition de son résumé, mémorisé par (<c>cliSessionId</c>, <c>postTurnSummaryFor</c>). L'activité de fond
+    /// qui fait avancer <c>lastActivityAt</c> (+3 min 10 s mesurés) ne la rajeunit pas ; un NOUVEL épisode, si.</summary>
+    [Fact]
+    public void L_instant_d_une_question_est_fige_par_episode()
+    {
+        var racine = Racine(MBloquee, Bloquee);
+        var lecteur = new LecteurAppBureau(new[] { racine });
+        var nom = RacineAppBureau.NomFichier(Bloquee);
+        var finDeTour = new DateTimeOffset(2026, 9, 24, 9, 0, 6, 552, TimeSpan.Zero);
+
+        var l1 = lecteur.Lire(MBloquee);
+        Assert.Equal(finDeTour, l1.ParSession[IdBloquee].InstantClassification);
+
+        // Activité de fond : +3 min 10 s, même épisode (même taille de fichier : seule la date d'écriture change).
+        RacineAppBureau.Ecrire(racine, nom, RacineAppBureau.Deriver(Bloquee, ("1790240406552", "1790240596552")),
+                               MBloquee);   // date + 1 min
+        var l2 = lecteur.Lire(MBloquee.AddSeconds(2));
+        Assert.Equal(1, l2.RelusSurDisque);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 9, 3, 16, 552, TimeSpan.Zero), l2.ParSession[IdBloquee].DerniereActivite);
+        Assert.Equal(finDeTour, l2.ParSession[IdBloquee].InstantClassification);
+
+        // Nouvel épisode : un autre postTurnSummaryFor, l'instant suit.
+        RacineAppBureau.Ecrire(racine, nom, RacineAppBureau.Deriver(Bloquee,
+                                   ("1790240406552", "1790240896552"),
+                                   ("5eec0de2-f19c-4e38-8db5-9c5d0be233f1", "0f0f0f0f-0000-4000-8000-000000000001")),
+                               MBloquee.AddMinutes(1));   // date + 2 min
+        var l3 = lecteur.Lire(MBloquee.AddSeconds(4));
+        Assert.Equal("0f0f0f0f-0000-4000-8000-000000000001", l3.ParSession[IdBloquee].ResumePour);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 9, 8, 16, 552, TimeSpan.Zero), l3.ParSession[IdBloquee].InstantClassification);
+    }
+
+    /// <summary>Les champs absents s'agrègent sur les fichiers retenus, et seulement eux : un champ retiré d'un seul
+    /// fichier se compte une fois, le résumé transitoire jamais.</summary>
+    [Fact]
+    public void Les_champs_absents_sont_comptes_sur_les_fichiers_lus()
+    {
+        var racine = RacineVide();
+        RacineAppBureau.Ecrire(racine, RacineAppBureau.NomFichier(GesteB),
+                               RacineAppBureau.Deriver(GesteB, ("\"latestUserFrameAt\": 1790361283093,", "")),
+                               M.AddMinutes(-1));
+        RacineAppBureau.EcrireOctets(racine, RacineAppBureau.NomFichier(Bloquee), RacineAppBureau.Fixture(Bloquee),
+                                     M.AddMinutes(-1));
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Equal(2, l.Valides);
+        var absent = Assert.Single(l.ChampsAbsents);
+        Assert.Equal("latestUserFrameAt", absent.Key);
+        Assert.Equal(1, absent.Value);
+    }
 }
