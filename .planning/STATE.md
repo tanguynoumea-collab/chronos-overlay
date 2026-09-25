@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-09-25T19:37:33.647Z"
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-09-25T19:54:29.153Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -27,7 +27,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.7 — Lue ou non lue
 Phase: 28 (Deux mots, une question, les mêmes horizons) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -215,6 +215,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 26 P04 | ~30 min | 2 tasks | 3 files |
 | Phase 28 P01 | 11min | 2 tasks | 6 files |
 | Phase 28 P02 | 11min | 2 tasks | 14 files |
+| Phase 28 P03 | 12min | 2 tasks | 15 files |
 
 ### Decisions
 
@@ -478,6 +479,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 28]: [28-02] R4 fermee par DECOUPLAGE : ArbitrageSessions a un RangArbitrage prive fige aux valeurs de la phase 24 ; l'ordre d'ecran (AffichageSessions.Urgence : Attention 0, Turn 1, Deduced 2, Working 3, Unknown 4) peut changer sans toucher FUS-01. Prouve sur un corpus qui DESCEND au rang 3 (720 permutations + non-vacuite) et par deux mutations ; le corpus d'origine est reste vert sous le couplage (muet sur R4, comme la recherche l'annoncait).
 - [Phase 28]: [28-02] L'indetermine est masque au MONITEUR (MotifMasquage.Indeterminee), apres archivee et traitee, jamais au ViewModel : Visibles reste mot pour mot l'ecran (OBS-01) et le rapport la liste parmi les MASQUEES. Un seul predicat nomme AffichageSessions.EstUneAttente (point d'entree phase 30), tenu egal a SessionTreatmentTracker.EstAttente (corps intact, passe internal) par test.
 - [Phase 28]: [28-02] L'ex aequo herite WaitingDeduced/Unknown au rang 3 de l'arbitrage est ECRIT et NON corrige (pas de rang 6) ; LIB-04 coche, LIB-01 et LIB-03 restent Pending jusqu'a 28-03 (les mots, les huit gabarits).
+- [Phase 28]: 28-03 : tout le vocabulaire (producteur, rôles des hooks, §1 et §3 du contrat, galerie, compteur, texte d'activation) change en UN commit - aucun état intermédiaire à deux vocabulaires
+- [Phase 28]: 28-03 : trois mots exacts (Réflexion / En attente / En attente ?) ; Unknown garde « indéterminé » pour le seul rapport ; le compteur de l'Annonciateur dit la constante telle quelle
+- [Phase 28]: 28-03 : IsGhost supprimé, six déclencheurs IsDeduced à 0,7 dans les Style.Triggers (Veilleurs sur l'oeil ouvert) ; Infobulle = « projet — mot » sur les huit gabarits, point d'accueil du titre en phase 29
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -534,7 +538,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-25T19:37:33.642Z
-Stopped at: Completed 28-02-PLAN.md
+Last session: 2026-09-25T19:54:29.147Z
+Stopped at: Completed 28-03-PLAN.md
 Resume file: None
 Next: /gsd:execute-phase 28 dès que les plans sont vérifiés

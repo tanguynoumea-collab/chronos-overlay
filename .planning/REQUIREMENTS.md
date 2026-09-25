@@ -88,12 +88,12 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 ### Deux libellés (LIB)
 
-- [ ] **LIB-01**: Le widget n'affiche plus que deux libellés d'état : **« Réflexion »** (travail observé) et
+- [x] **LIB-01**: Le widget n'affiche plus que deux libellés d'état : **« Réflexion »** (travail observé) et
   **« En attente »** (tour fini, permission, question posée). L'attente déduite du silence s'affiche
   **« En attente ? »** — le point d'interrogation reste obligatoire. L'état « inconnu » n'est plus affiché.
 - [x] **LIB-02**: Une question `AskUserQuestion` en suspens (bloc `tool_use` sans `tool_result` dans le
   transcript) est classée « En attente », pas « Réflexion ».
-- [ ] **LIB-03**: Les libellés et l'ordre viennent d'un seul producteur (`AffichageSessions`) partagé par le
+- [x] **LIB-03**: Les libellés et l'ordre viennent d'un seul producteur (`AffichageSessions`) partagé par le
   widget et le diagnostic ; aucun libellé ne dépasse seize caractères (garde existante) ; les huit styles
   visuels et les neuf thèmes les affichent sans troncature.
 - [x] **LIB-04**: L'ordre du widget est conservé : « En attente » d'abord (permission ou question avant tour
@@ -152,9 +152,9 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LUE-02 | Phase 30 | Pending |
 | LUE-03 | Phase 30 | Pending |
 | LUE-04 | Phase 30 | Pending |
-| LIB-01 | Phase 28 | Pending |
+| LIB-01 | Phase 28 | Complete |
 | LIB-02 | Phase 28 | Complete |
-| LIB-03 | Phase 28 | Pending |
+| LIB-03 | Phase 28 | Complete |
 | LIB-04 | Phase 28 | Complete |
 | SIL-01 | Phase 28 | Pending |
 | VAL-01 | Phase 27 | Pending |
