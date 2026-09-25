@@ -549,7 +549,7 @@ public sealed class DiagnosticService
                 // tronqué avec un écran complet, c'est reconstruire l'écart que ce plan ferme.
                 sb.AppendLine($"  Sessions AFFICHÉES par le widget : {lecture.Visibles.Count}");
                 foreach (var d in AffichageSessions.Ordonner(lecture.Visibles))
-                    sb.AppendLine($"    · {Court(d.SessionId)} {d.Project} — {AffichageSessions.Etat(d.Activity)}"
+                    sb.AppendLine($"    · {Court(d.SessionId)} {AffichageSessions.Nom(d)} — {AffichageSessions.Etat(d.Activity)}"
                                 + $" ({AffichageSessions.Age(_clock.UtcNow - d.UpdatedAt)})");
                 if (lecture.Visibles.Count == 0)
                     sb.AppendLine("    → aucune session à l'écran. Si tu en attendais une, lis la liste des MASQUÉES juste en dessous.");
@@ -562,7 +562,7 @@ public sealed class DiagnosticService
                 foreach (var m in lecture.Masquees
                              .OrderBy(m => AffichageSessions.Urgence(m.Session.Activity))
                              .ThenByDescending(m => m.Session.UpdatedAt))
-                    sb.AppendLine($"    · {Court(m.Session.SessionId)} {m.Session.Project} — {AffichageSessions.Etat(m.Session.Activity)}"
+                    sb.AppendLine($"    · {Court(m.Session.SessionId)} {AffichageSessions.Nom(m.Session)} — {AffichageSessions.Etat(m.Session.Activity)}"
                                 + $" ({AffichageSessions.Age(_clock.UtcNow - m.Session.UpdatedAt)}) — masquée par {LibelleMotif(m.Motif)}");
                 if (lecture.Masquees.Count == 0)
                     sb.AppendLine("    (aucune — aucun filtre n'écarte de session en ce moment)");
@@ -582,6 +582,11 @@ public sealed class DiagnosticService
                                 + $" « {AffichageSessions.Etat(d.EtatEcarte)} », plus ancien de {AffichageSessions.Ecart(d.EcartAge)}");
                 if (lecture.Desaccords.Count == 0)
                     sb.AppendLine("    (aucun — aucune source n'en contredit une autre en ce moment)");
+
+                // APP-04 — ce que l'app bureau sait, lu dans la MÊME lecture que le widget (OBS-01) : aucun second
+                // lecteur, aucun second Inspecter. Le lecteur du moniteur n'est consulté que pour distinguer « non
+                // branchée » d'une lecture qui a levé à ce cycle : il n'est jamais relu ici.
+                DecrireSourceAppBureau(sb, lecture, lecteurBranche: _moniteurSessions.Lecteur is not null);
             }
             catch (Exception ex) { sb.AppendLine("  (lecture du moniteur impossible : " + ex.GetType().Name + ")"); }
         }
@@ -637,6 +642,95 @@ public sealed class DiagnosticService
         SourceSession.Transcript => "transcript (~/.claude/projects)",
         _                        => "une source non nommée",
     };
+
+    // APP-04 — CE QUE L'APP BUREAU SAIT, et ce qu'elle ne sait pas. La section lit la lecture que le moniteur a rendue
+    // au SEUL appel Inspecter du rapport (OBS-01) : aucun second lecteur, aucune racine résolue ici — le rapport écrit
+    // les racines que CETTE lecture a cherchées. Quatre états, aucun tu :
+    //   · NON BRANCHÉE : le moniteur n'a pas de lecteur, personne n'a cherché ;
+    //   · lecture impossible : le lecteur est branché mais sa lecture a levé à ce cycle — le moniteur rend alors la même
+    //     lecture nulle qu'un moniteur sans lecteur, d'où le drapeau, pour ne jamais dire « non branchée » à tort ;
+    //   · absente (dossier introuvable), avec les racines cherchées : sans elles, « absente » ne dirait pas où l'on a
+    //     regardé — c'est exactement ce qui a caché la vue du paquet de l'app pendant deux semaines ;
+    //   · trouvée : la racine, les autres candidats, les compteurs, les champs absents, puis une ligne par session
+    //     AFFICHÉE, dans l'ordre de l'écran, disant ce que l'app en sait.
+    // « avec métadonnées » et « relus sur disque » sont deux nombres : avec le cache, « 0 relu » n'est pas une panne.
+    // Méthode d'INSTANCE : l'ancienneté du dernier focus se mesure à l'horloge injectée, jamais à celle du système.
+    private void DecrireSourceAppBureau(StringBuilder sb, LectureSessions lecture, bool lecteurBranche)
+    {
+        var a = lecture.AppBureau;
+        if (a is null)
+        {
+            sb.AppendLine(lecteurBranche
+                ? "  Source app-bureau : lecture impossible à ce cycle — le lecteur est branché mais sa lecture a levé ; le widget se comporte comme en v1.6"
+                : "  Source app-bureau : NON BRANCHÉE — le moniteur n'a pas de lecteur ; le widget se comporte comme en v1.6");
+            return;
+        }
+
+        if (!a.DossierTrouve)
+        {
+            sb.AppendLine("  Source app-bureau : absente (dossier introuvable) — cherché : " + string.Join(" ; ", a.RacinesCherchees));
+            return;
+        }
+
+        sb.AppendLine($"  Source app-bureau : trouvée — {a.Racine}");
+
+        // Les autres candidats, présents ou non : dans l'arbre de l'app, deux chemins montrent les mêmes fichiers ;
+        // hors de l'arbre (l'overlay), la vue réelle n'existe pas. Le dire évite de chercher la mauvaise.
+        var autres = a.RacinesCherchees
+            .Where(c => !string.Equals(c, a.Racine, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (autres.Count > 0)
+            sb.AppendLine("    Autres racines candidates : "
+                        + string.Join(" ; ", autres.Select(c => c + (DossierExiste(c) ? " (présente)" : " (absente)"))));
+
+        sb.AppendLine($"    Fichiers : {a.Enumeres} énumérés · {a.Recents} modifiés depuis moins de {(int)HorizonsSessions.LectureAppBureau.TotalHours} h"
+                    + $" · {a.Valides} avec métadonnées ({a.RelusSurDisque} relus sur disque à ce cycle) · {a.Illisibles} illisible(s)"
+                    + $" · {a.SansCliSessionId} sans cliSessionId (ignoré(s)) · {a.Doublons} doublon(s)");
+        sb.AppendLine("    Champs absents (fichiers lus) : "
+                    + (a.ChampsAbsents.Count == 0
+                        ? "aucun"
+                        : string.Join(" · ", a.ChampsAbsents.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $"{c.Key} {c.Value}"))));
+
+        var jointes = lecture.Visibles.Count(s => a.ParSession.ContainsKey(s.SessionId));
+        sb.AppendLine($"    Jointures : {jointes} session(s) affichée(s) sur {lecture.Visibles.Count} ont des métadonnées");
+        foreach (var s in AffichageSessions.Ordonner(lecture.Visibles))
+        {
+            if (!a.ParSession.TryGetValue(s.SessionId, out var m))
+            {
+                sb.AppendLine($"    · {Court(s.SessionId)} — aucune métadonnée (comportement v1.6)");
+                continue;
+            }
+
+            // Un titre blanc n'est pas un titre (même règle que le nom du widget) ; un focus absent reste absent,
+            // jamais remplacé par l'instant courant.
+            var titre = string.IsNullOrWhiteSpace(m.Titre) ? "sans titre" : $"« {m.Titre} »";
+            var focus = m.DernierFocus is { } f ? "focus " + AffichageSessions.Age(_clock.UtcNow - f) : "focus inconnu";
+            var archivee = m.Archivee ? " · archivée dans l'app" : "";
+            sb.AppendLine($"    · {Court(s.SessionId)} {titre} — {focus} — fin de tour : {LibelleClassification(m)}{archivee}");
+        }
+    }
+
+    // La classification de fin de tour, dite telle que l'app l'a écrite. Une catégorie que le lecteur ne connaît pas
+    // est recopiée BRUTE et dite non interprétée : le rapport ne traduit pas ce que le lecteur refuse de deviner. Une
+    // question sans motif n'est pas déposée comme attente (règle du moniteur) : la ligne le dit.
+    private static string LibelleClassification(MetadonneesAppBureau m) => m.ClassificationFinDeTour switch
+    {
+        ClassificationFinDeTour.Bloquee => string.IsNullOrWhiteSpace(m.MotifBlocage)
+            ? "question posée (sans motif — aucune attente déposée)"
+            : $"question posée (« {m.MotifBlocage} »)",
+        ClassificationFinDeTour.Terminee    => "terminée",
+        ClassificationFinDeTour.PreteARevue => "prête à revue",
+        _ => string.IsNullOrWhiteSpace(m.CategorieBrute)
+            ? "aucune classification"
+            : $"inconnue (« {m.CategorieBrute} ») — non interprétée",
+    };
+
+    // Existence d'un candidat NON retenu, pour l'écrire : un test d'existence qui lève compte comme « absente ».
+    private static bool DossierExiste(string dossier)
+    {
+        try { return Directory.Exists(dossier); }
+        catch { return false; }
+    }
 
     // Huit premiers caractères de l'identifiant : assez pour retrouver le fichier d'état correspondant dans
     // %APPDATA%\Chronos\sessions, assez court pour que la ligne reste lisible.
