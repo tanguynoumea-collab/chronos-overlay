@@ -8,7 +8,7 @@ namespace Chronos.Tests;
 /// Le diagnostic explique l'état réel (token, sources, plafonds, résultat affiché) — et n'expose
 /// JAMAIS le token en clair dans le rapport (sécurité).
 /// </summary>
-public class DiagnosticServiceTests
+public class DiagnosticServiceTests : IDisposable
 {
     private static ChronosPaths TempPaths()
     {
@@ -874,5 +874,228 @@ public class DiagnosticServiceTests
             Assert.NotEqual("une source non nommée", l);
         });
         Assert.Equal(libelles.Count, libelles.Distinct(System.StringComparer.Ordinal).Count());
+    }
+
+    // --- Phase 29 (APP-04) : ce que l'app bureau sait de chaque session, lu dans la MÊME lecture que le widget ---
+    //
+    // Les fixtures RÉELLES de la phase 27 datent des 24 et 25/09 : l'instant T22 (12/09) les mettrait hors de la fenêtre
+    // de lecture de 24 h, et le lecteur ne les ouvrirait pas. Ces tests prennent donc l'instant M29 des tests du lecteur,
+    // et le rapport est construit sur une horloge figée à cet instant (RapportA). Tout reste sous %TEMP% : racines de
+    // l'app (supprimées au Dispose), magasins, dossier d'état. Aucun ne lit le vrai %APPDATA% ni %LOCALAPPDATA%.
+
+    private static readonly DateTimeOffset M29 = new(2026, 9, 25, 18, 40, 0, TimeSpan.Zero);
+    private const string IdA29 = "11456cab-d447-42c7-aa85-9920ce64f7ba";   // geste B — « Session A », sans résumé de fin de tour
+    private const string IdE29 = "adac2711-86a4-4b4d-b71c-9a594c9d959e";   // blocked — « Session E »
+    private const string IdB29 = "c17a1b03-3c8d-4c05-a747-dd77bc702e1b";   // review_ready — « Session B »
+    private const string IdG29 = "939eb30a-0000-4000-8000-000000000000";   // aucune métadonnée de l'app
+
+    private readonly List<string> _racinesAppBureau29 = new();
+
+    public void Dispose()
+    {
+        foreach (var r in _racinesAppBureau29)
+        {
+            try { System.IO.Directory.Delete(r, recursive: true); }
+            catch { /* nettoyage best-effort */ }
+        }
+    }
+
+    /// <summary>Une racine de l'app, SUIVIE pour être supprimée au Dispose.</summary>
+    private string Suivre(string racine)
+    {
+        _racinesAppBureau29.Add(racine);
+        return racine;
+    }
+
+    /// <summary>Même construction que <see cref="Rapport"/>, à l'instant donné.</summary>
+    private static async Task<string> RapportA(SessionMonitor moniteur, DateTimeOffset maintenant)
+    {
+        var paths = TempPaths();
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+                                         new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                         new FakeClock(maintenant), machine: new FakeInventaireMachine(),
+                                         moniteurSessions: moniteur);
+        return await diag.BuildReportAsync();
+    }
+
+    /// <summary>Scénario S : quatre sessions affichées par les transcripts, dont trois ont des métadonnées de l'app.</summary>
+    private static SourceFixe22 TranscriptsS29() => new(
+        new SessionSnapshot(IdA29, "Projet-A", SessionActivity.WaitingTurn, null, new DateTimeOffset(2026, 9, 25, 18, 34, 4, 328, TimeSpan.Zero)),
+        new SessionSnapshot(IdE29, "Projet-E", SessionActivity.WaitingTurn, null, M29.AddHours(-1)),
+        new SessionSnapshot(IdB29, "Projet-B", SessionActivity.WaitingTurn, null, new DateTimeOffset(2026, 9, 25, 18, 34, 5, TimeSpan.Zero)),
+        new SessionSnapshot(IdG29, "Projet-G", SessionActivity.Working, null, M29.AddMinutes(-1)));
+
+    private static SessionMonitor MoniteurAppBureau29(string racine, ArchiveStore? archive = null)
+        => new(TempDir22(), TranscriptsS29(), archive ?? new ArchiveStore(TempFichier22()),
+               appBureau: new LecteurAppBureau(new[] { racine }));
+
+    private string RacineS29()
+        => Suivre(RacineAppBureau.Creer(M29, "session-courante-geste-b.json", "fin-de-tour-blocked.json",
+                                        "fin-de-tour-review-ready.json", "sans-cliSessionId.json"));
+
+    /// <summary>Les lignes par session de la section « Source app-bureau ». Elles se repèrent APRÈS « Jointures : » :
+    /// les lignes AFFICHÉES commencent aussi par « · », et les prendre ferait mesurer une autre section.</summary>
+    private static List<string> LignesAppBureau(string report)
+        => report.Split('\n')
+                 .SkipWhile(l => !l.Contains("Jointures : "))
+                 .Skip(1)
+                 .TakeWhile(l => l.TrimStart().StartsWith("· "))
+                 .ToList();
+
+    /// <summary>APP-04 — une source TROUVÉE dit où elle lit, combien de fichiers elle a vus et retenus, ce qui leur
+    /// manque, et combien de lignes de l'écran elle qualifie. « 0 relu » n'est pas une panne (cache) : c'est pourquoi
+    /// « avec métadonnées » et « relus » sont deux nombres.</summary>
+    [Fact]
+    public async Task La_source_app_bureau_trouvee_dit_sa_racine_ses_compteurs_et_ses_jointures()
+    {
+        var racine = RacineS29();
+
+        var report = await RapportA(MoniteurAppBureau29(racine), M29);
+
+        Assert.Contains($"Source app-bureau : trouvée — {racine}", report);
+        Assert.Contains("4 énumérés", report);
+        Assert.Contains("3 avec métadonnées", report);
+        Assert.Contains("1 sans cliSessionId", report);
+        Assert.Contains("Champs absents (fichiers lus) : aucun", report);
+        Assert.Contains("Jointures : 3 session(s) affichée(s) sur 4 ont des métadonnées", report);
+    }
+
+    /// <summary>APP-04 — pour chaque ligne de l'ÉCRAN, ce que l'app en sait : le titre lu, le dernier focus, la
+    /// classification de fin de tour ; ou, sans métadonnées, que la ligne se comporte comme en v1.6. Les anciennetés
+    /// sont celles des fixtures réelles à M29 (focus 18:30:44.976Z, 2026-09-24T08:54:06.504Z).</summary>
+    [Fact]
+    public async Task Chaque_session_affichee_dit_son_titre_son_dernier_focus_et_sa_classification()
+    {
+        var report = await RapportA(MoniteurAppBureau29(RacineS29()), M29);
+
+        var lignes = LignesAppBureau(report);
+        Assert.Equal(4, lignes.Count);   // une ligne par session AFFICHÉE, ni plus ni moins
+
+        var a = Assert.Single(lignes, l => l.Contains("11456cab"));
+        Assert.Contains("« Session A »", a);
+        Assert.Contains("focus il y a 9 min", a);
+        Assert.Contains("fin de tour : aucune classification", a);
+
+        var e = Assert.Single(lignes, l => l.Contains("adac2711"));
+        Assert.Contains("« Session E »", e);
+        Assert.Contains("focus il y a 33 h", e);
+        Assert.Contains("fin de tour : question posée (« (anonymisé) réponse attendue »)", e);
+
+        Assert.Contains("fin de tour : prête à revue", Assert.Single(lignes, l => l.Contains("c17a1b03")));
+        Assert.Contains("aucune métadonnée (comportement v1.6)", Assert.Single(lignes, l => l.Contains("939eb30a")));
+    }
+
+    /// <summary>Une catégorie que le disque n'a jamais montrée (le code de l'app en connaît d'autres : need_input…)
+    /// est écrite TELLE QUELLE et dite non interprétée : le rapport ne traduit pas ce que le lecteur refuse de deviner.</summary>
+    [Fact]
+    public async Task Une_categorie_inconnue_est_dite_brute_jamais_traduite()
+    {
+        var racine = Suivre(RacineAppBureau.NouvelleRacine());
+        RacineAppBureau.Ecrire(racine, RacineAppBureau.NomFichier("fin-de-tour-blocked.json"),
+            RacineAppBureau.Deriver("fin-de-tour-blocked.json",
+                ("\"status_category\": \"blocked\"", "\"status_category\": \"need_input\"")),
+            M29.AddMinutes(-1));
+
+        var report = await RapportA(MoniteurAppBureau29(racine), M29);
+
+        var e = Assert.Single(LignesAppBureau(report), l => l.Contains("adac2711"));
+        Assert.Contains("fin de tour : inconnue (« need_input ») — non interprétée", e);
+        Assert.DoesNotContain("question posée", e);
+    }
+
+    /// <summary>Une source ABSENTE est un fait à écrire, avec les racines cherchées : sans elles, « absente » ne dirait
+    /// pas où l'on a regardé — et c'est précisément ce qui a caché la vue du paquet pendant deux semaines.</summary>
+    [Fact]
+    public async Task La_source_app_bureau_absente_est_annoncee_avec_les_racines_cherchees()
+    {
+        var c1 = System.IO.Path.Combine(TempDir22(), "jamais-creee-1");
+        var c2 = System.IO.Path.Combine(TempDir22(), "jamais-creee-2");
+        Assert.False(System.IO.Directory.Exists(c1));
+        Assert.False(System.IO.Directory.Exists(c2));
+        var moniteur = new SessionMonitor(TempDir22(), TranscriptsS29(), new ArchiveStore(TempFichier22()),
+                                          appBureau: new LecteurAppBureau(new[] { c1, c2 }));
+
+        var report = await RapportA(moniteur, M29);
+
+        Assert.Contains($"Source app-bureau : absente (dossier introuvable) — cherché : {c1} ; {c2}", report);
+        Assert.DoesNotContain("Source app-bureau : trouvée", report);
+        Assert.DoesNotContain("NON BRANCHÉE", report);
+    }
+
+    /// <summary>Un moniteur SANS lecteur n'est pas une source absente : personne n'a cherché. Le rapport le dit
+    /// autrement, pour que « non branchée » et « cherchée, introuvable » ne se confondent jamais.</summary>
+    [Fact]
+    public async Task Un_moniteur_sans_lecteur_est_annonce_non_branche()
+    {
+        var moniteur = new SessionMonitor(TempDir22(), TranscriptsS29(), new ArchiveStore(TempFichier22()));
+
+        var report = await RapportA(moniteur, M29);
+
+        Assert.Contains("Source app-bureau : NON BRANCHÉE", report);
+        Assert.DoesNotContain("Source app-bureau : absente", report);
+        Assert.DoesNotContain("Jointures : ", report);
+    }
+
+    /// <summary>Un champ lu qui manque est NOMMÉ et compté : le format de l'app n'est pas documenté, et un champ qui
+    /// disparaît après une mise à jour de l'app doit se voir dans le rapport avant de se voir à l'écran.</summary>
+    [Fact]
+    public async Task Les_champs_absents_sont_nommes_et_comptes()
+    {
+        var racine = Suivre(RacineAppBureau.NouvelleRacine());
+        RacineAppBureau.Ecrire(racine, RacineAppBureau.NomFichier("session-courante-geste-b.json"),
+            RacineAppBureau.Deriver("session-courante-geste-b.json", ("\"latestUserFrameAt\": 1790361283093,", "")),
+            M29.AddMinutes(-1));
+        RacineAppBureau.Ecrire(racine, RacineAppBureau.NomFichier("fin-de-tour-review-ready.json"),
+            RacineAppBureau.Deriver("fin-de-tour-review-ready.json", ("\"latestUserFrameAt\": 1790361160707,", "")),
+            M29.AddMinutes(-1));
+        RacineAppBureau.EcrireOctets(racine, RacineAppBureau.NomFichier("fin-de-tour-blocked.json"),
+            RacineAppBureau.Fixture("fin-de-tour-blocked.json"), M29.AddMinutes(-1));
+
+        var report = await RapportA(MoniteurAppBureau29(racine), M29);
+
+        var ligne = report.Split('\n').Single(l => l.Contains("Champs absents (fichiers lus) : ")).Trim();
+        Assert.Equal("Champs absents (fichiers lus) : latestUserFrameAt 2", ligne);
+    }
+
+    /// <summary>OBS-01 étendu au titre : les lignes AFFICHÉES et MASQUÉES du rapport portent le nom que le widget
+    /// affiche (<see cref="AffichageSessions.Nom"/>), pas le dossier — sinon l'utilisateur ne retrouverait plus, dans le
+    /// rapport, la ligne qu'il regarde à l'écran.</summary>
+    [Fact]
+    public async Task Les_sessions_affichees_du_rapport_portent_le_nom_du_widget()
+    {
+        var archive = new ArchiveStore(TempFichier22());
+        archive.Add(IdB29);
+
+        var report = await RapportA(MoniteurAppBureau29(RacineS29(), archive), M29);
+
+        Assert.Contains("11456cab Session A — En attente", report);
+        Assert.DoesNotContain("11456cab Projet-A", report);
+        Assert.Contains(report.Split('\n'), l => l.Contains("c17a1b03 Session B — En attente") && l.Contains("masquée par archived.json"));
+    }
+
+    /// <summary>Les candidats d'un lecteur dont l'énumération lève : la seule façon, sans toucher au lecteur, d'obtenir
+    /// une lecture qui échoue — le lecteur est écrit pour ne jamais lever sur un dossier.</summary>
+    private sealed class CandidatsQuiLevent : IReadOnlyList<string>
+    {
+        public string this[int index] => throw new System.IO.IOException("candidats illisibles");
+        public int Count => 1;
+        public IEnumerator<string> GetEnumerator() => throw new System.IO.IOException("candidats illisibles");
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    /// <summary>Un lecteur BRANCHÉ dont la lecture a levé rend, au moniteur, la même lecture nulle qu'un moniteur sans
+    /// lecteur (29-03, limite écrite). Le rapport ne dit donc pas « non branchée » sur la seule foi de cette valeur :
+    /// il consulte le lecteur du moniteur, et dit la lecture impossible — l'écran, lui, se comporte comme en v1.6.</summary>
+    [Fact]
+    public async Task Un_lecteur_branche_dont_la_lecture_leve_n_est_pas_dit_non_branche()
+    {
+        var moniteur = new SessionMonitor(TempDir22(), TranscriptsS29(), new ArchiveStore(TempFichier22()),
+                                          appBureau: new LecteurAppBureau(new CandidatsQuiLevent()));
+
+        var report = await RapportA(moniteur, M29);
+
+        Assert.DoesNotContain("NON BRANCHÉE", report);
+        Assert.Contains("Source app-bureau : lecture impossible à ce cycle", report);
+        Assert.Contains("Sessions AFFICHÉES par le widget : 4", report);   // l'écran, lui, est celui de la v1.6
     }
 }

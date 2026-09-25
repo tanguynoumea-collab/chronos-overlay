@@ -415,6 +415,34 @@ public class GardesPerimetreTests
         Assert.DoesNotContain("retirer de l'overlay", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE NON-RETOUR (OBS-01 étendu, APP-04, phase 29). La section « Source app-bureau » du rapport lit la lecture
+    /// de l'app que le moniteur a rendue au SEUL appel <c>Inspecter</c> — celle qui a qualifié les lignes de l'écran.
+    ///
+    /// <para>Un second lecteur, un second <c>Lire</c> ou une résolution de racines propre au rapport décriraient une
+    /// autre lecture que celle du widget : un autre instant, un autre cache, peut-être une autre racine. C'est la classe
+    /// d'erreur que la phase 22 a fermée pour les sessions, rouverte une octave plus bas. Le rapport ne résout donc
+    /// aucune racine lui-même : il lit celles que la lecture du moniteur a cherchées.</para>
+    /// </summary>
+    [Fact]
+    public void Le_diagnostic_lit_la_source_app_bureau_dans_la_meme_lecture_que_le_widget()
+    {
+        var fichier = Path.Combine(CheminSources(), "Services", "DiagnosticService.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Anti-muet : le rapport et sa section existent, sinon les absences ci-dessous ne prouveraient rien.
+        Assert.Contains("BuildReportAsync", texte, StringComparison.Ordinal);
+        Assert.Contains("Source app-bureau", texte, StringComparison.Ordinal);
+        Assert.Contains("lecture.AppBureau", texte, StringComparison.Ordinal);
+
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("Inspecter(")).Count);
+        Assert.DoesNotContain("new LecteurAppBureau", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Lire(", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("RacinesEtat", texte, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()
