@@ -12,7 +12,11 @@ namespace Chronos.ViewModels;
 /// (demande et tour fini), « En attente ? » (attente déduite), « Réflexion » — et le compteur d'attentes, pour
 /// juger les 8 templates au coup d'œil. Aucune source réelle.
 /// <para>Les mots viennent du producteur unique (<see cref="AffichageSessions"/>), jamais d'un littéral : la
-/// galerie partage les gabarits de l'écran, elle doit parler comme lui.</para>
+/// galerie partage les gabarits de l'écran, elle doit parler comme lui. Le nom et l'info-bulle aussi (phase 29,
+/// Piège 7 de la phase 28 : une info-bulle non posée serait vide, sans erreur).</para>
+/// <para>Un titre LONG et un motif sont échantillonnés pour juger la coupe et l'info-bulle : « api-migration » porte
+/// un titre de 51 caractères, au-delà du plus long titre réel mesuré (43) ; « overlay » une permission demandée,
+/// dont l'info-bulle a deux lignes.</para>
 /// </summary>
 public sealed class SessionsPreviewViewModel : ObservableObject
 {
@@ -27,22 +31,33 @@ public sealed class SessionsPreviewViewModel : ObservableObject
     private static readonly Brush Amber = Frozen("#E9A23C");
     private static readonly Brush Green = Frozen("#3FB98A");
 
+    // Aucune horloge en prévisualisation : le détail temporel est écrit, l'instant ne sert à rien.
+    private static readonly System.DateTimeOffset Instant = System.DateTimeOffset.UnixEpoch;
+
     public SessionsPreviewViewModel()
     {
-        Add("overlay", AffichageSessions.Etat(SessionActivity.WaitingAttention), Amber, attention: true, detail: "à l'instant");
-        Add("api-migration", AffichageSessions.Etat(SessionActivity.WaitingTurn), Amber, turn: true, detail: "il y a 3 min");
-        Add("chronos", AffichageSessions.Etat(SessionActivity.Working), Green, working: true, detail: "à l'instant");
-        Add("docs-site", AffichageSessions.Etat(SessionActivity.Working), Green, working: true, detail: "il y a 1 min");
-        Add("interrompu", AffichageSessions.Etat(SessionActivity.WaitingDeduced), Amber, deduced: true, detail: "il y a 25 min");
+        Add(new SessionSnapshot("overlay", "overlay", SessionActivity.WaitingAttention, "PermissionRequest", Instant),
+            Amber, attention: true, detail: "à l'instant");
+        Add(new SessionSnapshot("api-migration", "api-migration", SessionActivity.WaitingTurn, null, Instant,
+                Titre: "Migration de l'API de facturation vers la v2 du SDK"),
+            Amber, turn: true, detail: "il y a 3 min");
+        Add(new SessionSnapshot("chronos", "chronos", SessionActivity.Working, null, Instant),
+            Green, working: true, detail: "à l'instant");
+        Add(new SessionSnapshot("docs-site", "docs-site", SessionActivity.Working, null, Instant),
+            Green, working: true, detail: "il y a 1 min");
+        Add(new SessionSnapshot("interrompu", "interrompu", SessionActivity.WaitingDeduced, null, Instant),
+            Amber, deduced: true, detail: "il y a 25 min");
     }
 
-    private void Add(string project, string state, Brush brush, bool attention = false, bool turn = false,
+    /// <summary>Un échantillon, mis en forme par le MÊME producteur que le widget : nom, mot, info-bulle.</summary>
+    private void Add(SessionSnapshot s, Brush brush, bool attention = false, bool turn = false,
                      bool working = false, bool deduced = false, string detail = "")
     {
-        var it = new SessionItemVm(project, 0, _ => { }, _ => { }, () => { })   // gestes no-op en prévisualisation
+        var it = new SessionItemVm(s.SessionId, 0, _ => { }, _ => { }, () => { })   // gestes no-op en prévisualisation
         {
-            Project = project,
-            StateText = state,
+            Project = AffichageSessions.Nom(s),
+            StateText = AffichageSessions.Etat(s.Activity),
+            Infobulle = AffichageSessions.Infobulle(s),
             StateBrush = brush,
             Detail = detail,
             IsWaiting = attention || turn || deduced,

@@ -5,8 +5,8 @@ namespace Chronos.Services;
 
 /// <summary>
 /// La FORME que le widget de sessions donne à ce que le moniteur rend : l'ordre des lignes, le libellé
-/// d'état, le libellé d'ancienneté. Couche NEUTRE (aucun type WPF) parce qu'il y a désormais DEUX
-/// consommateurs : le widget et le rapport de diagnostic.
+/// d'état, le libellé d'ancienneté, le nom affiché et l'info-bulle (phase 29). Couche NEUTRE (aucun type
+/// WPF) parce qu'il y a désormais DEUX consommateurs : le widget et le rapport de diagnostic.
 ///
 /// <para>OBS-01 demande que l'utilisateur puisse comparer LIGNE À LIGNE le rapport et le widget, sans
 /// constater le moindre écart. Deux mises en forme jumelles satisferaient ce critère le jour de leur
@@ -88,9 +88,33 @@ public static class AffichageSessions
     /// dossier, jamais un nom vide.</summary>
     public static string Nom(SessionSnapshot s) => string.IsNullOrWhiteSpace(s.Titre) ? s.Project : s.Titre!;
 
-    // SQUELETTE (RED 29-04) : remplacé par le GREEN de la tâche 1.
-    public static string? MotifLisible(SessionSnapshot s) => throw new System.NotImplementedException();
-    public static string Infobulle(SessionSnapshot s) => throw new System.NotImplementedException();
+    /// <summary>Le MOTIF d'une attente OBSERVÉE, en mots, ou rien (APP-03, versant lisible). Les codes techniques que
+    /// Chronos câble sont traduits — la permission dédiée et le type de notification qui la double, la question lue dans
+    /// un transcript, les trois demandes du bus retenues par le matcher de <c>Notification</c> : l'UI parle français, un
+    /// code ne s'affiche pas. Le texte de l'app bureau (<c>needs_action</c>) passe tel quel : c'est déjà une phrase
+    /// écrite pour l'utilisateur. Seule <see cref="SessionActivity.WaitingAttention"/> porte un motif d'attente : une
+    /// attente DÉDUITE garde le motif de son dernier TRAVAIL (la règle de silence ne change que l'activité), et le
+    /// recopier ferait lire « PreToolUse » comme une raison d'attendre ; un tour fini n'a pas de motif.</summary>
+    public static string? MotifLisible(SessionSnapshot s)
+        => s.Activity != SessionActivity.WaitingAttention || string.IsNullOrWhiteSpace(s.Reason) ? null : s.Reason switch
+        {
+            "PermissionRequest" or "permission_prompt" => "permission demandée",
+            "AskUserQuestion" => "question posée",
+            "agent_needs_input" or "elicitation_dialog" or "elicitation_url_dialog" => "réponse demandée",
+            _ => s.Reason.Trim(),
+        };
+
+    /// <summary>L'info-bulle des huit gabarits (APP-02) : « titre — dossier — mot », ou « dossier — mot » sans titre (la
+    /// forme de la phase 28, inchangée) ; puis, pour une attente observée qui en a un, le motif sur une seconde ligne
+    /// (<see cref="MotifLisible"/>). Le dossier reste lisible dans tous les cas : c'est lui que le titre remplace à
+    /// l'écran. Un producteur, deux consommateurs : le widget et la galerie, qui partagent les gabarits.</summary>
+    public static string Infobulle(SessionSnapshot s)
+    {
+        var entete = string.IsNullOrWhiteSpace(s.Titre)
+            ? $"{s.Project} — {Etat(s.Activity)}"
+            : $"{s.Titre} — {s.Project} — {Etat(s.Activity)}";
+        return MotifLisible(s) is { } m ? entete + "\n" + m : entete;
+    }
 
     /// <summary>Ancienneté d'une session, telle qu'affichée par le widget.</summary>
     public static string Age(System.TimeSpan d)

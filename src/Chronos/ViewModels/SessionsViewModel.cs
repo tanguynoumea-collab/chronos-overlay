@@ -10,8 +10,8 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Chronos.ViewModels;
 
-/// <summary>Une session dans la liste : projet, libellé d'état, couleur, détail temporel, et les trois
-/// gestes du menu contextuel (traiter celle-ci, tout traiter, archiver).</summary>
+/// <summary>Une session dans la liste : nom (titre ou dossier), libellé d'état, info-bulle, couleur, détail
+/// temporel, et les trois gestes du menu contextuel (traiter celle-ci, tout traiter, archiver).</summary>
 public sealed partial class SessionItemVm : ObservableObject
 {
     public string SessionId { get; }
@@ -26,8 +26,10 @@ public sealed partial class SessionItemVm : ObservableObject
     private readonly System.Action<SessionItemVm> _traiter;
     private readonly System.Action _traiterTout;
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(Infobulle))] private string _project = "";
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(Infobulle))] private string _stateText = "";
+    /// <summary>Le NOM affiché : le titre de l'app bureau s'il est connu, sinon le dossier (APP-02) — tiré de
+    /// <see cref="AffichageSessions.Nom"/>. Le nom de propriété reste <c>Project</c> : huit gabarits le lient.</summary>
+    [ObservableProperty] private string _project = "";
+    [ObservableProperty] private string _stateText = "";
     [ObservableProperty] private string _detail = "";
     [ObservableProperty] private Brush _stateBrush = Brushes.Gray;
     [ObservableProperty] private bool _isWaiting;
@@ -39,9 +41,10 @@ public sealed partial class SessionItemVm : ObservableObject
     [ObservableProperty] private bool _isWorking;    // Working : la session travaille
     [ObservableProperty] private bool _isDeduced;    // WaitingDeduced → « En attente ? » : atténuée (0,7), jamais effacée
 
-    /// <summary>L'info-bulle des huit gabarits : le projet ET le mot. Six gabarits sur huit ne montrent l'état que
-    /// par forme et couleur ; c'est ici que leur mot se lit. La phase 29 y ajoutera le titre de la session.</summary>
-    public string Infobulle => $"{Project} — {StateText}";
+    /// <summary>L'info-bulle des huit gabarits, POSÉE par le producteur unique (<see cref="AffichageSessions.Infobulle"/>) —
+    /// titre, dossier, mot, et le motif d'une attente observée — jamais composée ici. Six gabarits sur huit ne montrent
+    /// l'état que par forme et couleur : c'est là que leur mot se lit, et le dossier qu'un titre remplace à l'écran.</summary>
+    [ObservableProperty] private string _infobulle = "";
 
     /// <summary>Libellé du geste de masse, porté par chaque ligne parce que le menu contextuel a pour
     /// DataContext la ligne et non la liste. Il porte le NOMBRE : un geste qui agit sur vingt sessions
@@ -200,7 +203,8 @@ public sealed partial class SessionsViewModel : ObservableObject
             var it = new SessionItemVm(s.SessionId, s.UpdatedAt.ToUnixTimeMilliseconds(),
                                        ArchiveSession, MarquerSessionTraitee, MarquerToutTraite)
             {
-                Project = s.Project,
+                Project = AffichageSessions.Nom(s),
+                Infobulle = AffichageSessions.Infobulle(s),
                 ToutTraiterLibelle = $"Tout marquer traité ({snaps.Count}) — elles reviennent si elles redemandent",
             };
             (it.StateText, it.StateBrush) = Describe(s.Activity);
