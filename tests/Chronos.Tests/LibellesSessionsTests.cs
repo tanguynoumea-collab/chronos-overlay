@@ -190,6 +190,30 @@ public sealed class LibellesSessionsTests
         Assert.Equal(1, Occurrences(styles, "Text=\"{Binding LibelleCompteur}\""));
     }
 
+    /// <summary>APP-02, versant TEXTE de la compacité : dans Pastilles et Marge, les deux gabarits qui ÉCRIVENT le nom, il
+    /// est borné à 160 DIP — la largeur du plus long dossier réel — et coupé par l'ellipse ; sans borne, un titre long
+    /// élargirait la fenêtre (<c>SizeToContent</c>). Jetons (50) et Annonciateur (130) étaient déjà bornés, les quatre
+    /// autres gabarits n'écrivent pas le nom. Deux bornes à 160 exactement : une troisième dirait qu'un autre gabarit a
+    /// changé de largeur.</summary>
+    [Fact]
+    public void Le_nom_est_borne_a_160_dans_Pastilles_et_Marge()
+    {
+        var styles = Lire(Path.Combine("Resources", "SessionStyles.xaml"));
+        foreach (var cle in new[] { "TplPastilles", "TplMarge" })
+        {
+            var debut = styles.IndexOf($"DataTemplate x:Key=\"{cle}\"", StringComparison.Ordinal);
+            Assert.True(debut >= 0, $"Gabarit {cle} introuvable : la garde ne lirait rien.");
+            var fin = styles.IndexOf("DataTemplate x:Key=", debut + 1, StringComparison.Ordinal);
+            var bloc = fin < 0 ? styles[debut..] : styles[debut..fin];
+
+            var noms = Regex.Matches(bloc, "<TextBlock Text=\"\\{Binding Project\\}\"[^>]*>");
+            Assert.True(noms.Count == 1, $"{cle} : {noms.Count} TextBlock du nom au lieu d'un");
+            Assert.Contains("MaxWidth=\"160\"", noms[0].Value, StringComparison.Ordinal);
+            Assert.Contains("TextTrimming=\"CharacterEllipsis\"", noms[0].Value, StringComparison.Ordinal);
+        }
+        Assert.Equal(2, Occurrences(styles, "MaxWidth=\"160\""));
+    }
+
     /// <summary>
     /// PIÈGE 7 : les gabarits sont PARTAGÉS entre l'écran (<c>SessionsViewModel</c>) et la galerie
     /// (<c>SessionsPreviewViewModel</c>). Un binding vers une propriété absente de l'un des deux ne lève

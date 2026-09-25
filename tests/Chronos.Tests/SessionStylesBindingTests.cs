@@ -48,11 +48,13 @@ public class SessionStylesBindingTests
         public IReadOnlyList<SessionSnapshot> Read(DateTimeOffset now) => _snaps;
     }
 
-    private static SessionsViewModel Vm()
+    // « deuxieme » remplace s2 (tour fini) : c'est par lui que la matrice du titre long (APP-02) compare deux widgets
+    // identiques à un nom près. Sans argument, la liste est celle que tous les autres cas mesurent.
+    private static SessionsViewModel Vm(SessionSnapshot? deuxieme = null)
     {
         var source = new SourceFixe(
             new SessionSnapshot("s1", "overlay",       SessionActivity.WaitingAttention, "permission_prompt", Maintenant),
-            new SessionSnapshot("s2", "api-migration", SessionActivity.WaitingTurn,      null, Maintenant.AddMinutes(-3)),
+            deuxieme ?? new SessionSnapshot("s2", "api-migration", SessionActivity.WaitingTurn, null, Maintenant.AddMinutes(-3)),
             new SessionSnapshot("s3", "chronos",       SessionActivity.Working,          null, Maintenant),
             new SessionSnapshot("s4", "legacy",        SessionActivity.Unknown,          null, Maintenant.AddMinutes(-12)),
             new SessionSnapshot("s5", "interrompu",    SessionActivity.WaitingDeduced,   null, Maintenant.AddMinutes(-25)));
@@ -72,9 +74,13 @@ public class SessionStylesBindingTests
     /// son <c>Content</c> n'a aucun parent visuel — <c>fenetre.Measure()</c> rend alors 0×0 et aucun
     /// binding ne s'évalue. Poser le DataContext sur la grille rétablit une évaluation RÉELLE ; purger la
     /// file du Dispatcher évite qu'une réévaluation différée laisse l'arbre à son état par défaut.
+    /// <para>L'espace disponible vaut 400 × 400 par défaut ; la matrice du titre long monte sur 2000 × 2000, sans quoi
+    /// le rognage de <c>Measure</c> à 400 masquerait précisément l'élargissement qu'elle cherche.</para>
     /// </summary>
-    private static (SessionsWindow fenetre, FrameworkElement racine) Monter(SessionsViewModel vm, ChronosTheme theme)
+    private static (SessionsWindow fenetre, FrameworkElement racine) Monter(SessionsViewModel vm, ChronosTheme theme,
+                                                                            Size? disponible = null)
     {
+        var espace = disponible ?? new Size(400, 400);
         var fenetre = new SessionsWindow(vm);
         fenetre.ApplyThemeBrushes(theme);
 
@@ -82,8 +88,8 @@ public class SessionStylesBindingTests
         racine.DataContext = vm;
         racine.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
-        racine.Measure(new Size(400, 400));
-        racine.Arrange(new Rect(0, 0, 400, 400));
+        racine.Measure(espace);
+        racine.Arrange(new Rect(0, 0, espace.Width, espace.Height));
         racine.UpdateLayout();
         return (fenetre, racine);
     }
@@ -222,6 +228,68 @@ public class SessionStylesBindingTests
                     Assert.True(tb.ActualWidth + 0.5 >= tb.DesiredSize.Width,
                         $"{contexte} : « {tb.Text} » est rogné ({tb.ActualWidth} < {tb.DesiredSize.Width})");
                 }
+            }
+            combinaisons++;
+        }
+
+        Assert.Equal(72, combinaisons);   // la matrice n'a pas été traversée à vide
+    }
+
+    /// <summary>
+    /// APP-02, versant COMPACITÉ (Piège 11 de la recherche) : la fenêtre est en <c>SizeToContent</c> sans <c>MaxWidth</c> —
+    /// sans borne, un titre long l'ÉLARGIT, et <c>TextTrimming</c> ne coupe rien. Sur les 72 combinaisons, deux widgets
+    /// identiques à un nom près : s2 porte le plus long dossier réel de la mesure de la recherche (29-RESEARCH Q4.d,
+    /// 161 DIP en Segoe UI SemiBold 12,5 : « PROJET OLYMPE DATAMIND », 161,3 DIP — « PROJET ADVANCED SHEET » n'en fait
+    /// que 151,4, c'est la MÉDIANE), sans titre dans l'un, avec un titre de 51 caractères dans l'autre (au-delà du plus
+    /// long titre réel, 43). Le titre ne
+    /// doit pas élargir le widget de plus d'un DIP ; sur Pastilles et Marge, les deux gabarits qui ÉCRIVENT le nom, il
+    /// est coupé par l'ellipse à 160 DIP au plus. Les quatre gabarits sans nom écrit et les deux déjà bornés (Jetons 50,
+    /// Annonciateur 130) sont mesurés aussi : un élargissement venu d'ailleurs rougirait ici.
+    /// </summary>
+    [WpfFact]
+    public void Un_titre_long_est_coupe_sans_elargir_le_widget_sur_les_8_styles_et_les_9_themes()
+    {
+        const string dossier = "PROJET OLYMPE DATAMIND";   // 161,3 DIP : le maximum mesuré par la recherche
+        const string titre = "Migration de l'API de facturation vers la v2 du SDK";
+        Assert.Equal(51, titre.Length);
+
+        var styles = Enum.GetValues<SessionStyle>();
+        var themes = ThemeCatalog.All;
+        Assert.Equal(8, styles.Length);      // garde anti-muette : la matrice est bien 8 × 9
+        Assert.Equal(9, themes.Count);
+        var grand = new Size(2000, 2000);
+
+        var combinaisons = 0;
+        foreach (var theme in themes)
+        foreach (var style in styles)
+        {
+            var contexte = $"style {style}, thème {theme.Key}";
+            var sansTitre = Vm(new SessionSnapshot("s2", dossier, SessionActivity.WaitingTurn, null, Maintenant.AddMinutes(-3)));
+            var avecTitre = Vm(new SessionSnapshot("s2", dossier, SessionActivity.WaitingTurn, null, Maintenant.AddMinutes(-3),
+                                                   Titre: titre));
+            Assert.Equal(dossier, sansTitre.Items.Single(i => i.SessionId == "s2").Project);
+            Assert.Equal(titre, avecTitre.Items.Single(i => i.SessionId == "s2").Project);   // c'est bien le titre qu'on affiche
+            foreach (var vm in new[] { sansTitre, avecTitre })
+            {
+                vm.Style = style;
+                vm.SetTheme(theme);
+            }
+
+            var (_, racineDossier) = Monter(sansTitre, theme, grand);
+            var (_, racineTitre) = Monter(avecTitre, theme, grand);
+
+            Assert.True(racineTitre.DesiredSize.Width <= racineDossier.DesiredSize.Width + 1.0,
+                $"{contexte} : le titre long élargit le widget ({racineTitre.DesiredSize.Width:0.#} DIP contre "
+                + $"{racineDossier.DesiredSize.Width:0.#} DIP avec le plus long dossier)");
+
+            if (style is SessionStyle.Pastilles or SessionStyle.Marge)
+            {
+                var nom = TextesVisibles(racineTitre).Where(tb => tb.Text == titre).ToList();
+                Assert.True(nom.Count == 1, $"{contexte} : {nom.Count} TextBlock visibles portent le titre au lieu d'un");
+                Assert.Equal(TextTrimming.CharacterEllipsis, nom[0].TextTrimming);
+                Assert.Equal(160.0, nom[0].MaxWidth);
+                Assert.True(nom[0].ActualWidth <= 160.5,
+                    $"{contexte} : le nom occupe {nom[0].ActualWidth:0.#} DIP, 160 au plus");
             }
             combinaisons++;
         }
