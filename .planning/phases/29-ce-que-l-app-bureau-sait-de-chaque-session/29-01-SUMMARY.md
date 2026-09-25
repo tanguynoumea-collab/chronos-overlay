@@ -90,7 +90,8 @@ racine qui manque. La production câble le tout, et une garde le vérifie. La su
 | Mutation M2 (`foreach (var dossier in _dossiers.Take(1))` dans `BalayageMagasinSessions.Balayer`) | **2 échecs / 15** : `Chaque_racine_est_balayee_et_l_attestation_n_est_lue_qu_une_fois`, `Une_racine_absente_n_empeche_pas_de_balayer_les_autres`. Révoquée : sha256 `b8cfde23…95db` identique avant et après. `git diff --stat -- src/` vide après les deux |
 | **Isolé** (suite complète hors `LecteurAppBureauTests` et `LectureSeuleAppBureauTests`, les classes de 29-02) | **965 / 0** = 947 + 18 |
 | Les 18 cas de ce plan, filtrés par nom | **18 / 18** |
-| **Combiné**, suite complète, 2 exécutions consécutives après `a0aad8c` | 1re : **985 / 11 échecs / 996**, les 11 rouges volontaires de 29-02 (`LecteurAppBureauTests`, RED de `b2e6fed`). 2e : **996 / 0**, 29-02 ayant écrit entre-temps son implémentation (pas encore commitée). Le total final de vague (1000 annoncés) reste à mesurer quand 29-02 aura commité |
+| **Combiné**, suite complète, 2 exécutions consécutives après `a0aad8c` | 1re : **985 / 11 échecs / 996**, les 11 rouges volontaires de 29-02 (`LecteurAppBureauTests`, RED de `b2e6fed`). 2e : **996 / 0**, 29-02 ayant écrit entre-temps son implémentation (pas encore commitée) |
+| **Combiné, fin de vague 1** (arbre propre, après `14c91d2` de 29-02 et le commit de métadonnées de ce plan) | **1000 / 0**, exactement le total annoncé par le plan |
 
 ## Accomplishments
 
