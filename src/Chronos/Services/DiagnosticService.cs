@@ -633,6 +633,7 @@ public sealed class DiagnosticService
     internal static string LibelleSourceSession(SourceSession s) => s switch
     {
         SourceSession.Hook       => @"fichier de hook (%APPDATA%\Chronos\sessions)",
+        SourceSession.AppBureau => "classification de fin de tour de l'app bureau (métadonnées de session)",
         SourceSession.Transcript => "transcript (~/.claude/projects)",
         _                        => "une source non nommée",
     };

@@ -148,7 +148,7 @@ chacune. Un constat fait depuis une session Claude Code voit la vue virtualisée
 |---|---|---|---|
 | `Working` | `Réflexion` | un signal d'activité est arrivé **à cet instant-là** — jamais « ça travaille encore maintenant » | **observé** |
 | `WaitingTurn` | `En attente` | `Stop` est arrivé, ou le transcript s'arrête sur une réponse finie : le tour s'est réellement terminé | **observé** |
-| `WaitingAttention` | `En attente` | une permission a été demandée, le bus a porté une vraie demande, ou le transcript s'arrête sur une question `AskUserQuestion` sans réponse (LIB-02) | **observé** |
+| `WaitingAttention` | `En attente` | une permission a été demandée, le bus a porté une vraie demande, ou le transcript s'arrête sur une question `AskUserQuestion` sans réponse (LIB-02), ou l'app bureau a classé la fin du tour `blocked` avec un `needs_action` (APP-03) | **observé** |
 | `WaitingDeduced` | `En attente ?` | la session travaillait, et **plus aucun signal n'arrive** (battement de hook ou message de transcript) depuis le seuil de silence | **DÉDUIT — jamais observé** |
 | `Unknown` | (aucune ligne) | signal illisible ou indéterminé ; n'est jamais présenté comme une attente — le widget ne l'affiche pas, le rapport de diagnostic la liste parmi les MASQUÉES (motif « état indéterminé ») | ni l'un ni l'autre |
 
@@ -196,6 +196,15 @@ travail, puis déduit et indéterminé ex aequo).
 Dans l'arbitrage, une déduction ne bat jamais une observation.
 Les deux ordres sont découplés : changer l'un ne change pas l'autre, et un test le prouve sur 720 ordres
 d'arrivée.
+
+**Trois sources, un arbitrage (APP-03, phase 29).** L'app bureau classe elle-même la fin de chaque tour
+(`postTurnSummary.status_category`). Une classification `blocked` accompagnée d'un `needs_action` non vide est une
+question posée à l'utilisateur, observée par l'app : elle entre dans l'arbitrage comme troisième source,
+`SourceSession.AppBureau`, rangée à âge égal entre le hook et le transcript. La fraîcheur prime toujours.
+L'app qualifie une ligne, elle n'en crée pas : le signal n'est déposé que pour une session déjà connue d'un hook
+ou d'un transcript, de moins de huit heures (`HorizonsSessions.Abandon`), non archivée dans l'app. Il est daté par
+l'instant d'activité lu à la première apparition du résumé (clé `postTurnSummaryFor`) : l'activité de fond qui
+continue après la fin du tour ne rajeunit pas la question. `completed` et `review_ready` ne déposent rien.
 
 ### Ce que « traité » veut dire (phase 26 — TRT-01, TRT-02)
 

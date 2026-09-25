@@ -12,11 +12,16 @@ public enum SourceSession
     /// au-dessus d'un signal plus récent.</summary>
     Hook,
 
+    /// <summary>Métadonnées par session de l'app bureau Claude (APP-03) : la classification de FIN DE TOUR que l'app
+    /// fait elle-même. Elle ne dépose qu'une QUESTION (blocked avec un needs_action), et seulement pour une session déjà
+    /// connue d'une autre source : elle qualifie une ligne, elle n'en crée pas. À âge égal elle passe après le hook (lui
+    /// seul sait dire « permission ») et avant le transcript (qui ne voit pas une question posée en prose).
+    /// <para>Insérée au MILIEU, et c'est permis ici : <see cref="SourceSession"/> n'est persisté nulle part, son rang
+    /// ENTIER n'est lu que par <see cref="ArbitrageSessions"/> (contrairement à SessionActivity, ajoutée en fin).</para></summary>
+    AppBureau,
+
     /// <summary>Transcript JSONL. Universel et continu, mais muet sur la permission.</summary>
     Transcript,
-
-    // SQUELETTE (RED) : déclarée en FIN pour compiler ; le rang à âge égal est encore faux.
-    AppBureau,
 }
 
 /// <summary>Ce qu'UNE source dit d'UNE session, à un instant qu'elle porte elle-même
@@ -64,13 +69,15 @@ public sealed record ResultatArbitrage(
 /// <para>Le vainqueur est le maximum d'un ordre TOTAL sur le CONTENU des signaux :
 /// <list type="number">
 ///   <item>l'instant du signal, décroissant — LA FRAÎCHEUR ;</item>
-///   <item>à âge égal, le rang de la source (la plus spécifique d'abord) ;</item>
+///   <item>à âge égal, le rang de la source (la plus spécifique d'abord) : hook, puis app bureau, puis
+///   transcript — l'ordre de déclaration de <see cref="SourceSession"/> ;</item>
 ///   <item>puis le rang d'état PROPRE à l'arbitrage (<c>RangArbitrage</c>, figé aux valeurs de la phase 24) —
 ///   il ne lit PAS l'ordre d'écran (<see cref="AffichageSessions.Urgence"/>), qui a changé en phase 28 ;</item>
 ///   <item>puis le motif, puis le projet, en comparaison ordinale.</item>
 /// </list>
-/// Ces critères épuisent tous les champs de <see cref="SessionSnapshot"/> hors l'identifiant, qui est la
-/// clé de regroupement. Deux signaux encore ex aequo sont donc identiques champ pour champ : le choix ne
+/// Ces critères épuisent tous les champs de <see cref="SessionSnapshot"/> hors l'identifiant, clé de
+/// regroupement, et le titre, que le moniteur pose APRÈS l'arbitrage — aucune source d'activité ne le porte.
+/// Deux signaux encore ex aequo sont donc identiques champ pour champ : le choix ne
 /// PEUT plus dépendre de l'ordre d'entrée. C'est ce qui rend le test de permutation vrai par construction
 /// et non par chance.</para>
 ///
