@@ -30,4 +30,7 @@ public static class HorizonsSessions
 
     /// <summary>Au-delà ET sans attestation de vie, un fichier d'état est balayé (phase 23).</summary>
     public static readonly System.TimeSpan ExpirationEtat = System.TimeSpan.FromHours(72);
+
+    /// <summary>SQUELETTE (phase RED de 29-02) : valeur provisoire.</summary>
+    public static readonly System.TimeSpan LectureAppBureau = System.TimeSpan.Zero;
 }
