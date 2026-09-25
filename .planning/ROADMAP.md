@@ -223,7 +223,7 @@ intermédiaire à réécrire).
 **Plans**: 5 plans en 3 vagues (vague 1 : 29-01 ∥ 29-02 ; vague 2 : 29-03 ; vague 3 : 29-04 ∥ 29-05)
 
 Plans:
-- [ ] 29-01-PLAN.md — APP-06 : `RacinesEtat`, les racines par candidats (paquet `Claude_*` d'abord) ; moniteur, balayage et diagnostic sur chaque racine ; câblage de production et §3 du contrat (947 → 965)
+- [x] 29-01-PLAN.md — APP-06 : `RacinesEtat`, les racines par candidats (paquet `Claude_*` d'abord) ; moniteur, balayage et diagnostic sur chaque racine ; câblage de production et §3 du contrat (947 → 965)
 - [ ] 29-02-PLAN.md — APP-01, APP-05 : `LecteurAppBureau` seul, non branché — fichiers < 24 h, cache (mtime, taille), dernière lecture valide conservée, question datée par épisode ; gardes de lecture seule n° 1 et 3 (→ 1000 en fin de vague 1)
 - [ ] 29-03-PLAN.md — APP-03, APP-01, APP-02 : `SourceSession.AppBureau` entre Hook et Transcript ; dépôt des seules questions de sessions connues ; `Titre` posé après l'arbitrage ; cas C1-C11 en tests ; dégradation v1.6 exacte (→ 1039)
 - [ ] 29-04-PLAN.md — APP-02 : `Infobulle` et `MotifLisible` du producteur unique, titre long en galerie, `MaxWidth="160"` sur Pastilles et Marge, test WPF 8 × 9 (→ 1050 seul)
@@ -298,7 +298,7 @@ la 28 peut passer devant sans rien casser.
 |-------|----------------|--------|-----------|
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
-| 29. Ce que l'app bureau sait de chaque session | 0/5 | Planned | - |
+| 29. Ce que l'app bureau sait de chaque session | 1/5 | In Progress|  |
 | 30. La lecture fait disparaître | 0/? | Not started | - |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |
 
