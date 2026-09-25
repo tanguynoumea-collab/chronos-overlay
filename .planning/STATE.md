@@ -4,7 +4,7 @@ milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: verifying
 stopped_at: Completed 28-04-PLAN.md
-last_updated: "2026-09-25T20:11:47.061Z"
+last_updated: "2026-09-25T20:20:10.217Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
@@ -26,8 +26,8 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 28 (Deux mots, une question, les mêmes horizons) — COMPLETE (4/4 plans), vérification à faire
-Plan: 4 of 4
+Phase: 29
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-09-25
 
