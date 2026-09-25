@@ -443,7 +443,17 @@ public sealed class LecteurAppBureau
     }
 
     /// <summary>
-    /// L'UNIQUE ouverture de fichier du lecteur : en lecture seule, partage lecture, écriture ET suppression.
+    /// L'UNIQUE ouverture de fichier du lecteur (APP-05) : mode « ouvrir » (jamais créer), accès en lecture seule,
+    /// partage lecture, écriture ET suppression — mesuré en 29-RESEARCH (Q1.c) sur un dossier temporaire :
+    /// <list type="bullet">
+    ///   <item>le partage en ÉCRITURE est obligatoire : sans lui, notre poignée ferait échouer le repli de l'app, qui
+    ///   rouvre le fichier pour l'écrire en place quand son renommage a échoué ;</item>
+    ///   <item>le partage en SUPPRESSION ne coûte rien et laisse passer un renommage à la sémantique POSIX ou une
+    ///   suppression (l'app supprime des sessions) ;</item>
+    ///   <item>aucune combinaison de partage n'empêche en revanche notre poignée de faire échouer le renommage de l'app
+    ///   (il remplace une cible ouverte) : elle n'est donc tenue que le temps de COPIER les octets, jamais d'analyser.</item>
+    /// </list>
+    /// Tamponnage désactivé (taille 1) : les octets vont droit dans le tampon de copie.
     /// </summary>
     internal static FileStream Ouvrir(string chemin)
         => new(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.SequentialScan);
