@@ -187,14 +187,16 @@ public class AffichageSessionsTests
         Assert.True(item.IsTurn);                         // la famille visuelle des attentes
         Assert.True(item.IsWaiting);
 
-        // La rampe AMBRE, celle des attentes — jamais le gris de l'inconnu. Comparée au pinceau qu'un
+        // La rampe AMBRE, celle des attentes — jamais le vert du travail. Comparée au pinceau qu'un
         // WaitingTurn reçoit du même thème : c'est le seul moyen de l'asserter sans recopier une couleur.
+        // (La comparaison passait autrefois par le gris d'une session inconnue ; depuis LIB-01 l'état
+        // indéterminé n'a plus de ligne dans le widget, donc plus de pinceau à comparer.)
         var ambre = Assert.Single(VmAvec(new SessionSnapshot("s-tour", "p", SessionActivity.WaitingTurn, null,
                                                              Maintenant)).Items).StateBrush;
-        var gris = Assert.Single(VmAvec(new SessionSnapshot("s-inconnu", "p", SessionActivity.Unknown, null,
+        var vert = Assert.Single(VmAvec(new SessionSnapshot("s-travail", "p", SessionActivity.Working, null,
                                                             Maintenant)).Items).StateBrush;
         Assert.Equal(ambre.ToString(), item.StateBrush.ToString());
-        Assert.NotEqual(gris.ToString(), item.StateBrush.ToString());
+        Assert.NotEqual(vert.ToString(), item.StateBrush.ToString());
     }
 
     /// <summary>
@@ -210,9 +212,48 @@ public class AffichageSessionsTests
             new SessionSnapshot("s-travail", "p",          SessionActivity.Working, null, Maintenant),
             new SessionSnapshot("s-inconnu", "p",          SessionActivity.Unknown, null, Maintenant));
 
-        Assert.Equal(4, vm.TotalCount);
+        // LIB-01 : l'indéterminé n'a plus de ligne — le moniteur le masque, donc le compteur total ne le
+        // compte pas, et le geste « Tout marquer traité (N) » non plus.
+        Assert.Equal(3, vm.TotalCount);
+        Assert.DoesNotContain(vm.Items, i => i.SessionId == "s-inconnu");
         Assert.Equal(2, vm.WaitingCount);   // la déduction compte ; l'inconnu et le travail, non
         Assert.True(vm.HasWaiting);
+    }
+
+    /// <summary>
+    /// LIB-03 — IL N'Y A QU'UN prédicat « est une attente », et il porte un nom : c'est le point d'entrée de
+    /// la règle « lue » (phase 30). Le détecteur de traitement garde sa propre copie, parce qu'une garde
+    /// documentaire du contrat des hooks en lit le texte ; ce test tient les deux ÉGAUX, état par état, pour
+    /// qu'aucune dérive ne puisse s'installer entre ce que l'écran appelle une attente et ce que le détecteur
+    /// appelle une attente. C'est exactement la divergence que la phase 26 a dû refermer.
+    /// </summary>
+    [Fact]
+    public void EstUneAttente_dit_exactement_ce_que_dit_le_detecteur()
+    {
+        var valeurs = Enum.GetValues<SessionActivity>();
+        Assert.Equal(5, valeurs.Length);   // garde anti-muette : un parcours vide ne prouverait rien
+
+        foreach (var a in valeurs)
+            Assert.True(AffichageSessions.EstUneAttente(a) == SessionTreatmentTracker.EstAttente(a),
+                $"le prédicat d'écran et celui du détecteur divergent sur {a}");
+
+        // …et ce qu'ils disent ENSEMBLE est le bon partage : trois attentes, deux non-attentes.
+        Assert.Equal(
+            new[] { SessionActivity.WaitingAttention, SessionActivity.WaitingDeduced, SessionActivity.WaitingTurn },
+            valeurs.Where(AffichageSessions.EstUneAttente).OrderBy(a => a.ToString()).ToArray());
+        Assert.Contains(valeurs, a => !AffichageSessions.EstUneAttente(a));
+    }
+
+    /// <summary>LIB-01 — seul l'état indéterminé n'a pas de ligne dans le widget. Les quatre autres en ont
+    /// une, attente déduite comprise : une session qui m'attend peut-être ne disparaît pas.</summary>
+    [Fact]
+    public void Seul_l_etat_indetermine_n_a_pas_de_ligne()
+    {
+        var valeurs = Enum.GetValues<SessionActivity>();
+        Assert.Equal(5, valeurs.Length);   // garde anti-muette
+
+        var sansLigne = valeurs.Where(a => !AffichageSessions.AUneLigne(a)).ToArray();
+        Assert.Equal(new[] { SessionActivity.Unknown }, sansLigne);
     }
 
     /// <summary>Un ViewModel dont la source de sessions est substituée et les magasins temporaires.</summary>

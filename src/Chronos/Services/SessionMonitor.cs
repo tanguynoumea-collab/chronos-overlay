@@ -124,6 +124,11 @@ public sealed class SessionMonitor
         //    portée par le détecteur (purge sur nouvel épisode), pas par ce filtre.
         //    L'ORDRE d'évaluation est significatif : une session à la fois archivée et traitée est annoncée
         //    archivée, parce que c'est le geste de l'utilisateur qui prime sur une hystérésis automatique.
+        //    Vient ENSUITE l'état indéterminé (LIB-01) : il n'a pas de ligne dans le widget, il est donc masqué
+        //    ICI, avec son motif — et non au ViewModel, sans quoi Visibles cesserait d'être mot pour mot ce que
+        //    l'écran affiche (OBS-01) et le rapport montrerait une ligne que le widget n'a pas. Ordre complet :
+        //    archivée, puis traitée, puis indéterminée. Le détecteur, lui, a observé les vainqueurs AVANT ces
+        //    filtres (2.b) : il n'en est pas affecté.
         var archived = _archive.Load();
         var treatedMap = _treated?.Load();
         var visibles = new List<SessionSnapshot>(raw.Count);
@@ -132,6 +137,7 @@ public sealed class SessionMonitor
         {
             if (archived.Contains(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Archivee)); continue; }
             if (treatedMap is not null && treatedMap.ContainsKey(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Traitee)); continue; }
+            if (!AffichageSessions.AUneLigne(s.Activity)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Indeterminee)); continue; }
             visibles.Add(s);
         }
         return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords);

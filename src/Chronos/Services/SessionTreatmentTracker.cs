@@ -49,7 +49,9 @@ public sealed class SessionTreatmentTracker
     // le bandeau la compte, le cadran la colore, et l'exclure ici faisait qu'une attente devenue déduite
     // était lue comme une réponse — c'est-à-dire masquée six heures. Une déduction reste une déduction ;
     // ce n'est pas une raison pour conclure qu'on y a répondu.
-    private static bool EstAttente(SessionActivity a)
+    // Tenu égal à `AffichageSessions.EstUneAttente` par test (sur les cinq états) : son corps reste ICI, parce
+    // qu'une garde documentaire du contrat des hooks en lit le texte.
+    internal static bool EstAttente(SessionActivity a)
         => a is SessionActivity.WaitingTurn or SessionActivity.WaitingAttention
              or SessionActivity.WaitingDeduced;
 

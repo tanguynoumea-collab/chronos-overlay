@@ -599,6 +599,7 @@ public sealed class DiagnosticService
     {
         MotifMasquage.Archivee => "archived.json (archivage — geste explicite de l'utilisateur)",
         MotifMasquage.Traitee  => "treated.json (« traité » — hystérésis automatique OU geste explicite ; réversible)",
+        MotifMasquage.Indeterminee => "état indéterminé (signal illisible) — aucune ligne dans le widget",
         _                      => "un filtre non nommé",
     };
 

@@ -39,6 +39,17 @@ public static class AffichageSessions
         _ => 4,                                  // Unknown : aucune ligne à l'écran ; dernier au diagnostic
     };
 
+    /// <summary>LE prédicat « est une attente », unique et nommé : tour fini, permission ou question, attente
+    /// déduite. C'est le point d'entrée de la règle « lue » (phase 30). Le ViewModel le lit (plan 28-03) ; le
+    /// détecteur de traitement garde le sien — une garde documentaire en lit le texte — et un test tient leur
+    /// égalité sur les cinq états.</summary>
+    public static bool EstUneAttente(SessionActivity a)
+        => a is SessionActivity.WaitingAttention or SessionActivity.WaitingTurn or SessionActivity.WaitingDeduced;
+
+    /// <summary>Une session a-t-elle une LIGNE dans le widget ? L'état indéterminé n'en a plus (LIB-01) : il est
+    /// masqué par le moniteur, avec son motif, et le rapport de diagnostic le liste.</summary>
+    public static bool AUneLigne(SessionActivity a) => a is not SessionActivity.Unknown;
+
     /// <summary>Libellé d'état, tel qu'affiché par le widget. « à toi » et « tour fini » sont les deux
     /// attentes OBSERVÉES, distinguées par les mots et non par deux oranges ; « à toi ? déduit » est la
     /// troisième, et elle n'a été observée par personne — le mot et l'interrogation sont là pour ça.

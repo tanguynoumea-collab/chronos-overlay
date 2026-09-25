@@ -138,7 +138,7 @@ Cinq valeurs de `SessionActivity`. Le fichier d'état (`%APPDATA%\Chronos\sessio
 | `WaitingTurn` | `tour fini` | `Stop` est arrivé : le tour s'est réellement terminé | **observé** |
 | `WaitingAttention` | `à toi` | une permission a été demandée, ou le bus a porté une vraie demande | **observé** |
 | `WaitingDeduced` | `à toi ? déduit` | la session travaillait, et **plus aucun battement n'arrive** depuis le seuil de silence | **DÉDUIT — jamais observé** |
-| `Unknown` | `inconnu` | signal illisible ou indéterminé ; n'est jamais présenté comme une attente | ni l'un ni l'autre |
+| `Unknown` | (aucune ligne) | signal illisible ou indéterminé ; n'est jamais présenté comme une attente — le widget ne l'affiche pas, le rapport de diagnostic la liste parmi les MASQUÉES (motif « état indéterminé ») | ni l'un ni l'autre |
 
 **`WaitingDeduced` n'est JAMAIS écrite dans un fichier d'état.** Elle est dérivée **à la lecture**, par
 `SessionMonitor`, et en un seul endroit : `Working` dont le dernier battement dépasse

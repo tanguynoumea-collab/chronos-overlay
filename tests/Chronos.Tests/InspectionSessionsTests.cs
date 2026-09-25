@@ -429,24 +429,56 @@ public class InspectionSessionsTests
         Assert.Equal(SessionActivity.WaitingAttention, parId["demande-observee"]);
     }
 
+    /// <summary>Un fichier d'état au format réel, dont l'activité est ILLISIBLE, dans un dossier temporaire.</summary>
+    private static void EcritEtatIllisible(string dir, string id, DateTimeOffset maj)
+        => File.WriteAllText(Path.Combine(dir, id + ".json"),
+            "{\"session_id\":\"" + id + "\",\"project\":\"P\",\"activity\":\"NawakQuiNExistePas\","
+            + "\"updated_at\":" + maj.ToUnixTimeMilliseconds() + "}");
+
     /// <summary>
     /// Ce qu'on n'a pas pu LIRE n'est pas une déduction, c'est une ABSENCE. L'état porté par ce fichier est
     /// illisible ET silencieux depuis vingt-cinq minutes : les deux conditions du piège sont réunies, et
     /// il reste « inconnu ». Une déduction se tire d'un fait observé (la session travaillait) ; ici il n'y
     /// en a aucun.
+    ///
+    /// <para>LIB-01 (phase 28) : l'état indéterminé n'a plus de ligne dans le widget. La session n'est pas
+    /// perdue pour autant — elle est MASQUÉE par le moniteur, avec un motif nommé, et le rapport de
+    /// diagnostic la liste. L'assertion de fond ne change pas : jamais déduite.</para>
     /// </summary>
     [Fact]
     public void Une_activite_illisible_reste_inconnue_et_non_deduite()
     {
         var dir = TempDir();
-        File.WriteAllText(Path.Combine(dir, Mesuree + ".json"),
-            "{\"session_id\":\"" + Mesuree + "\",\"project\":\"P\",\"activity\":\"NawakQuiNExistePas\","
-            + "\"updated_at\":" + Maintenant.AddMinutes(-25).ToUnixTimeMilliseconds() + "}");
+        EcritEtatIllisible(dir, Mesuree, Maintenant.AddMinutes(-25));
 
-        var visible = Assert.Single(LireSansTranscript(dir).Visibles);
+        var lecture = LireSansTranscript(dir);
 
-        Assert.Equal(SessionActivity.Unknown, visible.Activity);
-        Assert.NotEqual(SessionActivity.WaitingDeduced, visible.Activity);
+        Assert.Empty(lecture.Visibles);
+        var masquee = Assert.Single(lecture.Masquees);
+        Assert.Equal(MotifMasquage.Indeterminee, masquee.Motif);
+        Assert.Equal(SessionActivity.Unknown, masquee.Session.Activity);
+        Assert.NotEqual(SessionActivity.WaitingDeduced, masquee.Session.Activity);
+    }
+
+    /// <summary>
+    /// L'ORDRE des filtres du moniteur : le geste de l'utilisateur prime. Une session archivée ET
+    /// d'état indéterminé est annoncée ARCHIVÉE — c'est ce que l'utilisateur a fait qui explique son
+    /// absence, pas ce que le moniteur n'a pas su lire. Une seule entrée : on ne masque pas deux fois.
+    /// </summary>
+    [Fact]
+    public void Le_geste_de_l_utilisateur_prime_sur_l_etat_indetermine()
+    {
+        var dir = TempDir();
+        EcritEtatIllisible(dir, Mesuree, Maintenant.AddMinutes(-5));
+        var archive = new ArchiveStore(TempFichier());
+        archive.Add(Mesuree);
+
+        var lecture = new SessionMonitor(dir, new SourceFixe(), archive).Inspecter(Maintenant);
+
+        Assert.Empty(lecture.Visibles);
+        var masquee = Assert.Single(lecture.Masquees);
+        Assert.Equal(Mesuree, masquee.Session.SessionId);
+        Assert.Equal(MotifMasquage.Archivee, masquee.Motif);
     }
 
     /// <summary>
@@ -472,24 +504,31 @@ public class InspectionSessionsTests
     /// LE CAS D'ÉGALITÉ À LA MILLISECONDE, figé tel qu'il est — pas corrigé.
     ///
     /// <para>Dans <c>ArbitrageSessions.Departager</c>, le rang <b>source</b> (2) précède le rang
-    /// <b>urgence</b> (3). À horodatage rigoureusement identique, un hook l'emporte donc sur un transcript
-    /// AVANT que le rang d'urgence n'ait la parole — et une DÉDUCTION issue du hook bat une OBSERVATION
-    /// issue du transcript. C'est une conséquence héritée de la phase 24, pas un défaut ouvert par
-    /// celle-ci.</para>
+    /// <b>d'état</b> (3, <c>RangArbitrage</c> depuis la phase 28). À horodatage rigoureusement identique, un
+    /// hook l'emporte donc sur un transcript AVANT que le rang d'état n'ait la parole — et une DÉDUCTION
+    /// issue du hook bat une OBSERVATION issue du transcript. C'est une conséquence héritée de la phase 24,
+    /// pas un défaut ouvert par celle-ci.</para>
     ///
     /// <para>Ce test ÉCRIT le comportement pour que la prochaine personne le trouve écrit, et il ne le
     /// modifie pas : le <c>25-CONTEXT.md</c> exige qu'aucune retouche de l'arbitrage ne se fasse sans
     /// qu'un test la motive. Le motiver est le travail d'une autre phase ; le constater est celui-ci.</para>
+    ///
+    /// <para>REFORMULÉ en phase 28 (dette n° 6, réserve R5 — reformulé, pas supprimé). La version d'origine
+    /// opposait un transcript <c>Working</c> ; dès le plan 28-04 la règle de silence s'applique aussi aux
+    /// transcripts : les deux signaux seraient alors déduits, le désaccord disparaîtrait, et la dette
+    /// redeviendrait non écrite. Un tour fini n'est pas touché par le silence : opposé au même instant, il
+    /// garde la dette écrite, à l'identique — une déduction issue du hook bat une observation issue du
+    /// transcript, par le seul rang de source.</para>
     /// </summary>
     [Fact]
-    public void Un_hook_deduit_et_un_transcript_travaillant_du_MEME_instant_sont_departages_par_la_source()
+    public void Un_hook_deduit_et_un_transcript_en_tour_fini_du_MEME_instant_sont_departages_par_la_source()
     {
         var instant = Maintenant.AddMinutes(-25);   // au-delà du silence des battements : le hook sera déduit
         var dir = TempDir();
         EcritEtat(dir, Mesuree, SessionActivity.Working, instant);
 
         var lecture = new SessionMonitor(dir,
-                new SourceFixe(Snap(Mesuree, SessionActivity.Working, instant)),   // EXACTEMENT le même instant
+                new SourceFixe(Snap(Mesuree, SessionActivity.WaitingTurn, instant)),   // EXACTEMENT le même instant
                 new ArchiveStore(TempFichier()))
             .Inspecter(Maintenant);
 
@@ -499,6 +538,7 @@ public class InspectionSessionsTests
         var desaccord = Assert.Single(lecture.Desaccords);
         Assert.Equal(SourceSession.Hook, desaccord.SourceRetenue);
         Assert.Equal(SourceSession.Transcript, desaccord.SourceEcartee);
+        Assert.Equal(SessionActivity.WaitingTurn, desaccord.EtatEcarte);  // l'observation écartée
         Assert.Equal(TimeSpan.Zero, desaccord.EcartAge);                  // zéro : c'est bien l'égalité stricte
     }
 

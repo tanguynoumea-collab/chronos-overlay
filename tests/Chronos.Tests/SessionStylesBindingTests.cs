@@ -36,9 +36,11 @@ public class SessionStylesBindingTests
     }
 
     // Source substituée : rend une liste FIXE couvrant les CINQ états, pour qu'aucun template ne soit
-    // mesuré à vide (une fenêtre sans élément passerait le test sans rien prouver). Le cinquième —
-    // l'attente DÉDUITE d'EVT-04 — porte le libellé le PLUS LONG des cinq (quatorze caractères) : sans
-    // lui dans la liste, la matrice 8 styles × 9 thèmes ne mesurerait rien du cas le plus contraignant.
+    // mesuré à vide (une fenêtre sans élément passerait le test sans rien prouver). L'attente DÉDUITE
+    // d'EVT-04 porte le libellé le PLUS LONG : sans elle dans la liste, la matrice 8 styles × 9 thèmes ne
+    // mesurerait rien du cas le plus contraignant. L'état INDÉTERMINÉ (s4) reste dans la SOURCE alors
+    // qu'il n'a plus de ligne dans le widget (LIB-01) : c'est ce qui prouve, au niveau du widget monté, que
+    // le moniteur le masque bien — quatre lignes à l'écran pour cinq sessions lues.
     private sealed class SourceFixe : ISessionSource
     {
         private readonly IReadOnlyList<SessionSnapshot> _snaps;
@@ -59,7 +61,8 @@ public class SessionStylesBindingTests
         var vm = new SessionsViewModel(monitor, new FakeClock(Maintenant), new ArchiveStore(Path.Combine(TempDir(), "b.json")),
                                        new TreatedStore(Path.Combine(TempDir(), "t.json"), new FakeClock(Maintenant)));
         vm.Refresh(Maintenant);
-        Assert.Equal(5, vm.Items.Count);   // une fenêtre vide ne prouverait rien
+        Assert.Equal(4, vm.Items.Count);   // une fenêtre vide ne prouverait rien ; l'indéterminé n'a pas de ligne
+        Assert.DoesNotContain(vm.Items, i => i.SessionId == "s4");
         return vm;
     }
 
@@ -146,9 +149,10 @@ public class SessionStylesBindingTests
 
         var separateurs = TextesVisibles(racine).Count(tb => tb.Text is "  ·  ");
 
-        // 5 sessions × 1 séparateur (état · détail). Deux par session = un orphelin laissé par le retrait
-        // du libellé de type ; zéro = on a supprimé le mauvais TextBlock.
-        Assert.Equal(5, separateurs);
+        // 4 lignes × 1 séparateur (état · détail) : cinq sessions lues, l'indéterminée sans ligne (LIB-01).
+        // Deux par session = un orphelin laissé par le retrait du libellé de type ; zéro = on a supprimé le
+        // mauvais TextBlock.
+        Assert.Equal(4, separateurs);
     }
 
     /// <summary>

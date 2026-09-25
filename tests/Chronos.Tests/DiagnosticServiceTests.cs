@@ -597,6 +597,28 @@ public class DiagnosticServiceTests
         Assert.Contains("masquée par archived.json", report);
     }
 
+    /// <summary>LIB-01, versant RAPPORT. L'état indéterminé n'a plus de ligne dans le widget ; le rapport,
+    /// lui, doit continuer de la montrer — sans quoi elle redeviendrait une session « absente », la faute que
+    /// la phase 22 a fermée. Elle figure donc parmi les MASQUÉES, avec un motif qui dit pourquoi, et le
+    /// compte des AFFICHÉES reste celui de l'écran (zéro).</summary>
+    [Fact]
+    public async Task Une_session_indeterminee_est_annoncee_masquee_avec_son_motif()
+    {
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot("inde-0001-xx", "projet-illisible", SessionActivity.Unknown,
+                                                 null, T22)),
+            new ArchiveStore(TempFichier22()));
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Sessions AFFICHÉES par le widget : 0", report);
+        Assert.Contains("Sessions MASQUÉES par un filtre : 1", report);
+        // L'identifiant est abrégé à huit caractères par le rapport : la ligne se repère par son projet.
+        var ligne = report.Split('\n').Single(l => l.Contains("projet-illisible"));
+        Assert.Contains("inde-000", ligne);
+        Assert.Contains("masquée par état indéterminé", ligne);
+    }
+
     // --- Phase 24 (FUS-02) : les désaccords entre sources deviennent lisibles ---
 
     /// <summary>Le relevé du 2026-09-12, rejoué de bout en bout : un fichier de hook figé depuis 7 h contre

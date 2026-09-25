@@ -19,6 +19,10 @@ public enum MotifMasquage
 
     /// <summary>Écartée par <see cref="TreatedStore"/> — hystérésis « traité », posée par le détecteur.</summary>
     Traitee,
+
+    /// <summary>État INDÉTERMINÉ (signal illisible) : le widget n'a pas de ligne pour ce qu'il n'a pas pu lire
+    /// (LIB-01). Ce n'est pas un geste de l'utilisateur ; le rapport la liste pour que son absence reste explicable.</summary>
+    Indeterminee,
 }
 
 /// <summary>Une session détectée que le widget n'affiche pas, et le filtre qui l'a écartée.</summary>
