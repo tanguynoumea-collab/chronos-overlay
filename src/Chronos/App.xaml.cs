@@ -146,6 +146,8 @@ public partial class App : Application
 
             var res = SessionHookProcessor.Process(eventName, input, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
+            // Lancé sous l'app bureau, ce chemin atterrit dans la vue virtualisée du paquet — l'overlay la lit par
+            // RacinesEtat (APP-06).
             var dossier = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
 
@@ -251,17 +253,24 @@ public partial class App : Application
         services.AddSingleton(sp => new TreatedStore(null, sp.GetRequiredService<IClock>()));
         services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
 
+        // APP-06 — racines des fichiers d'état ET de l'app bureau, résolues UNE fois par candidats (paquet MSIX d'abord).
+        // L'overlay, lancé hors de l'arbre de l'app bureau, ne voit pas la vue virtualisée où les hooks lancés sous
+        // l'app écrivent : sans ces racines, le widget n'a jamais lu un fichier de hook d'une session de l'app.
+        services.AddSingleton(_ => RacinesEtat.ParDefaut());
+
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
-            sp.GetRequiredService<SessionTreatmentTracker>()));
+            sp.GetRequiredService<SessionTreatmentTracker>(),
+            dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks));
 
-        // CYC-01 — balayage du magasin d'états au démarrage. Le dossier balayé est celui DU MONITEUR du
-        // widget, jamais un second chemin déduit : deux chemins pour un seul widget rouvriraient l'écart
-        // que la phase 22 vient de fermer, et un balayage qui se tromperait de dossier effacerait les
-        // fichiers de quelqu'un d'autre. L'attestation de vie vient des transcripts — c'est ce qui permet
+        // CYC-01 — balayage du magasin d'états au démarrage. Les racines balayées sont celles DU MONITEUR du
+        // widget, toutes (vue du paquet de l'app bureau ET vue réelle), jamais un second chemin déduit : deux
+        // listes pour un seul widget rouvriraient l'écart que la phase 22 a fermé, et un balayage qui se
+        // tromperait de dossier effacerait les fichiers de quelqu'un d'autre — la racine des métadonnées de l'app
+        // bureau n'est jamais une racine d'état. L'attestation de vie vient des transcripts — c'est ce qui permet
         // à une session vivante depuis plusieurs jours de survivre au nettoyage.
         services.AddSingleton(sp => new BalayageMagasinSessions(
-            sp.GetRequiredService<SessionMonitor>().Directory,
+            sp.GetRequiredService<SessionMonitor>().Dossiers,
             new TranscriptSessionSource(),
             sp.GetRequiredService<IClock>()));
 

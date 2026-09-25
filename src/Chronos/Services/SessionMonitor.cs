@@ -5,8 +5,9 @@ using System.Text.Json;
 namespace Chronos.Services;
 
 /// <summary>
-/// Lit les fichiers d'état de session (%APPDATA%\Chronos\sessions\*.json) écrits par les hooks
-/// (<see cref="SessionHookProcessor"/>) et les transcripts (<see cref="ISessionSource"/>), et en produit des
+/// Lit les fichiers d'état de session (*.json) écrits par les hooks (<see cref="SessionHookProcessor"/>) — dans
+/// TOUTES les racines d'état : la vue réelle (%APPDATA%\Chronos\sessions) ET la vue du paquet de l'app bureau,
+/// résolues par <see cref="RacinesEtat"/> (APP-06) — et les transcripts (<see cref="ISessionSource"/>), et en produit des
 /// <see cref="SessionSnapshot"/>, en appliquant une politique d'HONNÊTETÉ sur la fraîcheur — la MÊME pour
 /// toutes les sources (SIL-01), avec les seuils de <see cref="HorizonsSessions"/> :
 ///   • Working dont le dernier signal — battement de hook ou dernier message de transcript — date de plus
@@ -22,7 +23,7 @@ namespace Chronos.Services;
 /// </summary>
 public sealed class SessionMonitor
 {
-    private readonly string _dir;
+    private readonly IReadOnlyList<string> _dossiers;
     private readonly ISessionSource _transcripts;
     private readonly ArchiveStore _archive;
 
@@ -32,23 +33,33 @@ public sealed class SessionMonitor
     private readonly TreatedStore? _treated;
     private readonly SessionTreatmentTracker? _tracker;
 
+    /// <param name="sessionsDir">UNE racine d'état : le raccourci des tests, qui n'en ont qu'une.</param>
+    /// <param name="dossiersEtat">La liste des racines d'état, dans l'ordre (APP-06) — celle que la production
+    /// résout une fois par <see cref="RacinesEtat"/> : la vue du paquet de l'app bureau d'abord, la vue réelle
+    /// ensuite. Donner les deux paramètres lève <see cref="System.ArgumentException"/> : deux façons de dire la
+    /// même chose sont une ambiguïté, et le moniteur ne choisit pas en silence. N'en donner aucun revient aux
+    /// candidats de la machine.</param>
     public SessionMonitor(string? sessionsDir = null, ISessionSource? transcripts = null,
         ArchiveStore? archive = null,
         TreatedStore? treated = null, SessionTreatmentTracker? tracker = null,
         IReadOnlyList<string>? dossiersEtat = null)
     {
-        // SQUELETTE (RED, 29-01) : une seule racine est retenue — le comportement arrive au commit suivant.
-        _dir = dossiersEtat?.FirstOrDefault() ?? sessionsDir ?? Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
+        if (sessionsDir is not null && dossiersEtat is not null)
+            throw new System.ArgumentException("Les racines des fichiers d'état se donnent d'UNE façon : un dossier (sessionsDir) OU la liste des racines (dossiersEtat).", nameof(dossiersEtat));
+
+        // Copie défensive : la liste reçue ne peut plus changer sous le moniteur.
+        _dossiers = dossiersEtat?.ToArray()
+                    ?? (sessionsDir is not null ? new[] { sessionsDir } : RacinesEtat.ParDefaut().EtatsHooks.ToArray());
         _transcripts = transcripts ?? new TranscriptSessionSource();
         _archive = archive ?? new ArchiveStore();
         _treated = treated;
         _tracker = tracker;
     }
 
-    public string Directory => _dir;
-
-    public IReadOnlyList<string> Dossiers => new[] { _dir };
+    /// <summary>Les racines d'état lues à chaque cycle, dans l'ordre. Une propriété SINGULIÈRE mentirait : le
+    /// moniteur en lit plusieurs (APP-06). Le balayage CYC-01 et le rapport de diagnostic passent sur CES racines,
+    /// jamais sur un chemin déduit dans leur coin.</summary>
+    public IReadOnlyList<string> Dossiers => _dossiers;
 
     private static readonly JsonSerializerOptions Tolerant = new()
     {
@@ -69,9 +80,11 @@ public sealed class SessionMonitor
     /// OBS-01 — la MÊME lecture que <see cref="Read"/>, doublée de ce qu'elle a écarté et pourquoi.
     /// FUSIONNE deux sources par session_id :
     ///   • transcripts (~/.claude/projects) — la base, universelle ;
-    ///   • fichiers d'état des HOOKS (%APPDATA%\Chronos\sessions) — plus précis (permission),
-    ///     mais JAMAIS prioritaires du seul fait d'être des hooks : c'est le signal le plus RÉCENT
-    ///     qui gagne (FUS-01).
+    ///   • fichiers d'état des HOOKS — plus précis (permission), mais JAMAIS prioritaires du seul fait d'être
+    ///     des hooks : c'est le signal le plus RÉCENT qui gagne (FUS-01). Ils sont lus dans TOUTES les racines
+    ///     d'état (<see cref="Dossiers"/> : vue réelle ET vue du paquet de l'app bureau, résolues par
+    ///     <see cref="RacinesEtat"/> — APP-06). Une même session vue dans deux racines est tranchée par
+    ///     l'arbitrage, comme deux sources : jamais deux lignes, et un désaccord entre les deux est DIT.
     /// Puis applique les filtres, EN RENDANT COMPTE de chacun au lieu de jeter en silence.
     /// </summary>
     public LectureSessions Inspecter(System.DateTimeOffset now)
@@ -88,25 +101,34 @@ public sealed class SessionMonitor
         foreach (var t in _transcripts.Read(now))
             signaux.Add(new SignalSession(SourceSession.Transcript, AppliquerSilence(t, now)));
 
-        string[] files;
-        try { files = System.IO.Directory.Exists(_dir) ? System.IO.Directory.GetFiles(_dir, "*.json") : System.Array.Empty<string>(); }
-        catch { files = System.Array.Empty<string>(); }
-
         // Un fichier écarté pour son ÂGE est un fait observable, pas un non-événement : c'est l'écart entre
         // « 54 fichiers sur disque » et « 1 ligne à l'écran ». Un fichier ILLISIBLE n'est pas compté ici —
-        // il n'a pas été écarté pour son âge, il n'a pas été lu.
+        // il n'a pas été écarté pour son âge, il n'a pas été lu. Le compte est CUMULÉ sur toutes les racines.
         var ecartesParAnciennete = 0;
-        foreach (var f in files)
-        {
-            var snap = TryRead(f, now, out var perimee);
-            if (perimee) { ecartesParAnciennete++; continue; }
 
-            // Un FRAGMENT — la contrepartie assumée de l'écriture directe de la phase 23, qui tronque la
-            // cible avant de la réécrire — rend null SANS être périmé. C'est une ABSENCE de signal, et elle
-            // se traite comme telle : le fragment n'est pas déposé. Le compter comme un signal sans date en
-            // ferait un « très vieux signal » perdant contre n'importe quoi — une fausse déposition, là où
-            // il n'y a rien à déposer.
-            if (snap is not null) signaux.Add(new SignalSession(SourceSession.Hook, AppliquerSilence(snap, now)));
+        // APP-06 — chaque racine d'état est lue. L'overlay, lancé hors de l'arbre de l'app bureau, ne voit pas la
+        // vue virtualisée où les hooks de l'app écrivent : sans cette boucle, il n'en lisait jamais un fichier.
+        // L'EXISTENCE est testée ici, à chaque cycle : un dossier créé après le démarrage est lu dès qu'il existe.
+        // Une racine absente ou illisible ne coûte rien aux autres. Dans l'arbre de l'app, deux racines peuvent
+        // montrer les mêmes fichiers : les doublons s'y tranchent comme deux sources d'accord (aucun désaccord).
+        foreach (var racine in _dossiers)
+        {
+            string[] files;
+            try { files = System.IO.Directory.Exists(racine) ? System.IO.Directory.GetFiles(racine, "*.json") : System.Array.Empty<string>(); }
+            catch { files = System.Array.Empty<string>(); }
+
+            foreach (var f in files)
+            {
+                var snap = TryRead(f, now, out var perimee);
+                if (perimee) { ecartesParAnciennete++; continue; }
+
+                // Un FRAGMENT — la contrepartie assumée de l'écriture directe de la phase 23, qui tronque la
+                // cible avant de la réécrire — rend null SANS être périmé. C'est une ABSENCE de signal, et elle
+                // se traite comme telle : le fragment n'est pas déposé. Le compter comme un signal sans date en
+                // ferait un « très vieux signal » perdant contre n'importe quoi — une fausse déposition, là où
+                // il n'y a rien à déposer.
+                if (snap is not null) signaux.Add(new SignalSession(SourceSession.Hook, AppliquerSilence(snap, now)));
+            }
         }
 
         var arbitrage = ArbitrageSessions.Trancher(signaux);

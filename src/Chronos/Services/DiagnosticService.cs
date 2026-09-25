@@ -459,14 +459,33 @@ public sealed class DiagnosticService
         // tiré par le hasard d'un nom de fichier, présenté comme un état des lieux. C'est cette liste-là
         // que l'utilisateur lisait quand il croyait voir des sessions mortes dans son widget.
         //
-        // Le dossier lu est celui du MONITEUR quand il est injecté : lire un autre dossier que celui du
+        // Les racines lues sont celles du MONITEUR quand il est injecté : lire un autre dossier que celui du
         // widget rouvrirait exactement l'écart qu'OBS-01 vient de fermer.
-        var sessDir = _moniteurSessions?.Directory
-                      ?? Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "sessions");
+        //
+        // APP-06 (phase 29) — le moniteur lit PLUSIEURS racines : la vue du paquet de l'app bureau, où les hooks
+        // lancés sous l'app écrivent réellement, et la vue réelle d'AppData. Une ligne par racine, TOUTES avant
+        // la liste fusionnée : c'est la seule façon de voir, dans le rapport de l'overlay, laquelle des deux vues
+        // contient les fichiers. Une racine qui n'existe pas est ÉCRITE absente, jamais tue — sinon rien ne
+        // distinguerait « cherchée et vide » de « jamais cherchée ».
+        var racinesEtat = _moniteurSessions?.Dossiers ?? new[] { Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "sessions") };
         try
         {
-            var files = Directory.Exists(sessDir) ? Directory.GetFiles(sessDir, "*.json") : System.Array.Empty<string>();
-            sb.AppendLine($"  Fichiers d'état ({sessDir}) : {files.Length}");
+            var files = new List<string>();
+            foreach (var racine in racinesEtat)
+            {
+                try
+                {
+                    if (!Directory.Exists(racine))
+                    {
+                        sb.AppendLine($"  Fichiers d'état ({racine}) : absent (dossier introuvable)");
+                        continue;
+                    }
+                    var ici = Directory.GetFiles(racine, "*.json");
+                    sb.AppendLine($"  Fichiers d'état ({racine}) : {ici.Length}");
+                    files.AddRange(ici);
+                }
+                catch { sb.AppendLine($"  Fichiers d'état ({racine}) : illisible"); }
+            }
 
             // Lire les 54 fichiers coûte 15,15 ms (mesure du 2026-09-12) : négligeable sur un rapport qui
             // dure des secondes, et c'est le prix d'un choix motivé plutôt que d'un tirage alphabétique.
@@ -506,8 +525,8 @@ public sealed class DiagnosticService
             }
             if (lus.Count > MaxFichiersEtat)
                 sb.AppendLine($"    … et {lus.Count - MaxFichiersEtat} autre(s) non listé(s) : ni en attente, ni parmi les plus récents");
-            if (files.Length == 0)
-                sb.AppendLine("    (aucun — les hooks n'ont encore rien écrit dans ce dossier)");
+            if (files.Count == 0)
+                sb.AppendLine("    (aucun — les hooks n'ont encore rien écrit dans ces racines)");
         }
         catch { }
 
