@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using Chronos.Services;
 using Xunit;
 
@@ -198,5 +199,120 @@ public class HorizonsSessionsTests : IDisposable
         Assert.Equal(2, visibles.Count);
         Assert.Equal(SessionActivity.WaitingDeduced, visibles["h"].Activity);   // battement de hook
         Assert.Equal(SessionActivity.WaitingDeduced, visibles["t"].Activity);   // dernier message de transcript
+    }
+
+    // ------------------------------------------------------------------ Les gardes : les horizons ne divergent plus en silence
+
+    // Les quatre fichiers qui CONSOMMENT un horizon, et les noms privés qu'ils portaient avant la phase 28.
+    private static readonly string[] Consommateurs =
+        { "SessionMonitor.cs", "TranscriptSessionSource.cs", "TreatedStore.cs", "BalayageMagasinSessions.cs" };
+
+    private static readonly Regex AnciensNoms = new(@"\b(ActiveWindow|DropAfter|SilenceDesBattements|RetentionMax)\b");
+
+    private static string DossierServices()
+    {
+        var racine = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racine),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde ne lit aucun "
+            + "fichier et ne garde rien.");
+        var dossier = Path.Combine(racine, "Services");
+        Assert.True(Directory.Exists(dossier), $"Dossier introuvable : {dossier}");
+        return dossier;
+    }
+
+    /// <summary>
+    /// LA CHAÎNE (recommandation n° 2 de l'audit v1.6, §6). Chaque inégalité a une raison : se taire avant de
+    /// disparaître (20 min &lt; 8 h) ; ne jamais oublier un « traité » dont la session est encore lisible
+    /// (8 h &lt; 24 h) ; ne jamais balayer ce que le widget pourrait montrer (24 h &lt; 72 h). Les inégalités sont
+    /// assertées AVANT les valeurs exactes : si l'une se défait, le rouge dit laquelle.
+    /// </summary>
+    [Fact]
+    public void La_chaine_des_horizons_tient()
+    {
+        Assert.True(HorizonsSessions.Silence < HorizonsSessions.Abandon,
+            $"Silence ({HorizonsSessions.Silence}) < Abandon ({HorizonsSessions.Abandon}) défait : on cesserait de lire "
+            + "une session avant d'avoir cessé de dire « Réflexion ».");
+        Assert.True(HorizonsSessions.Abandon < HorizonsSessions.RetentionTraitees,
+            $"Abandon ({HorizonsSessions.Abandon}) < RetentionTraitees ({HorizonsSessions.RetentionTraitees}) défait : "
+            + "une entrée « traitée » expirerait pendant que sa session est encore lisible, et la session reviendrait "
+            + "sans avoir rien redemandé.");
+        Assert.True(HorizonsSessions.RetentionTraitees < HorizonsSessions.ExpirationEtat,
+            $"RetentionTraitees ({HorizonsSessions.RetentionTraitees}) < ExpirationEtat ({HorizonsSessions.ExpirationEtat}) "
+            + "défait : le balayage supprimerait un fichier d'état que le widget ou le magasin pourraient encore lire.");
+        Assert.True(HorizonsSessions.ExpirationEtat >= HorizonsSessions.Abandon * 9,
+            $"ExpirationEtat ({HorizonsSessions.ExpirationEtat}) n'est plus au moins neuf fois l'abandon "
+            + $"({HorizonsSessions.Abandon}) : le « neuf fois » de l'audit v1.6 (§6) est rompu.");
+
+        Assert.Equal(TimeSpan.FromMinutes(20), HorizonsSessions.Silence);
+        Assert.Equal(TimeSpan.FromHours(8), HorizonsSessions.Abandon);
+        Assert.Equal(TimeSpan.FromHours(24), HorizonsSessions.RetentionTraitees);
+        Assert.Equal(TimeSpan.FromHours(72), HorizonsSessions.ExpirationEtat);
+
+        // L'alias public du balayage ne peut pas diverger du type unique.
+        Assert.Equal(HorizonsSessions.ExpirationEtat, BalayageMagasinSessions.ExpirationEtat);
+    }
+
+    /// <summary>
+    /// LE CÂBLAGE. Sans lui, la chaîne serait vraie pendant qu'un fichier réintroduit un littéral privé : on
+    /// testerait un type que plus personne ne lit. Chacun des quatre consommateurs lit <c>HorizonsSessions.</c>,
+    /// ne porte plus aucun des anciens noms, et les trois premiers ne déclarent plus aucune durée.
+    /// </summary>
+    [Fact]
+    public void Les_quatre_fichiers_lisent_le_type_unique()
+    {
+        var services = DossierServices();
+        var infractions = new List<string>();
+
+        foreach (var nom in Consommateurs)
+        {
+            var chemin = Path.Combine(services, nom);
+            Assert.True(File.Exists(chemin), $"Fichier introuvable : {chemin}");
+            var texte = File.ReadAllText(chemin);
+            Assert.True(texte.Length >= 500, $"{nom} — fichier vide ou tronqué : la garde serait muette.");
+
+            if (!texte.Contains("HorizonsSessions.", StringComparison.Ordinal))
+                infractions.Add($"{nom} — ne lit pas HorizonsSessions");
+            foreach (Match m in AnciensNoms.Matches(texte))
+                infractions.Add($"{nom} — ancien nom « {m.Value} »");
+            if (nom != "BalayageMagasinSessions.cs" && texte.Contains("TimeSpan.From", StringComparison.Ordinal))
+                infractions.Add($"{nom} — littéral « TimeSpan.From »");
+        }
+
+        var balayage = File.ReadAllText(Path.Combine(services, "BalayageMagasinSessions.cs"));
+        if (!balayage.Contains("ExpirationEtat = HorizonsSessions.ExpirationEtat", StringComparison.Ordinal))
+            infractions.Add("BalayageMagasinSessions.cs — l'alias « ExpirationEtat = HorizonsSessions.ExpirationEtat » a disparu");
+
+        Assert.True(infractions.Count == 0,
+            "Un horizon vit de nouveau hors de HorizonsSessions :\n" + string.Join("\n", infractions));
+    }
+
+    /// <summary>
+    /// LE SILENCE EN UN POINT. La règle « un travail muet depuis vingt minutes devient une attente déduite » a
+    /// UN siège, le moniteur, qui l'applique à toutes les sources avant l'arbitrage. Une source qui la
+    /// reproduirait chez elle ferait diverger les seuils au premier changement — exactement ce que SIL-01 ferme.
+    /// </summary>
+    [Fact]
+    public void La_regle_de_silence_vit_en_un_seul_point()
+    {
+        var services = DossierServices();
+        var fichiers = Directory.GetFiles(services, "*.cs", SearchOption.TopDirectoryOnly);
+        Assert.True(fichiers.Length >= 40,
+            $"Seulement {fichiers.Length} fichiers dans {services} : la garde lirait le mauvais dossier et serait muette.");
+
+        var lecteurs = fichiers
+            .Where(f => !string.Equals(Path.GetFileName(f), "HorizonsSessions.cs", StringComparison.Ordinal))
+            .Where(f => File.ReadAllText(f).Contains("HorizonsSessions.Silence", StringComparison.Ordinal))
+            .Select(f => Path.GetFileName(f)!)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(new[] { "SessionMonitor.cs" }, lecteurs);
+
+        var moniteur = File.ReadAllText(Path.Combine(services, "SessionMonitor.cs"));
+        Assert.Contains("private static SessionSnapshot AppliquerSilence(", moniteur, StringComparison.Ordinal);
+        Assert.Single(Regex.Matches(moniteur, Regex.Escape("Activity = SessionActivity.WaitingDeduced")));
+
+        var source = File.ReadAllText(Path.Combine(services, "TranscriptSessionSource.cs"));
+        Assert.True(source.Length >= 500, "TranscriptSessionSource.cs vide ou tronqué : la garde serait muette.");
+        Assert.DoesNotContain("WaitingDeduced", source, StringComparison.Ordinal);
     }
 }

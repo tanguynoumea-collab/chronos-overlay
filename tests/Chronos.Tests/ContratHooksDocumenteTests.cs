@@ -472,4 +472,48 @@ public sealed class ContratHooksDocumenteTests
                 Assert.Contains("aucune ligne", ligne[1], StringComparison.Ordinal);
         }
     }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (SIL-01, décision D-28-01). Le §3 nomme les quatre horizons par leur siège
+    /// unique, <c>HorizonsSessions</c>, dit que la règle de silence est appliquée en UN point
+    /// (<c>AppliquerSilence</c>) à toutes les sources, et consigne qu'un transcript est daté par son dernier
+    /// message. Les anciens noms privés ne peuvent plus y survivre : ils désigneraient des constantes qui
+    /// n'existent plus — un document qui décrit un câblage disparu.
+    ///
+    /// <para>Chaque fragment cherché tient sur UNE ligne du document, sans mise en forme au milieu : la garde lit
+    /// le texte brut. Et chaque siège nommé doit exister dans le code sous ce nom.</para>
+    /// </summary>
+    [Fact]
+    public void Le_contrat_nomme_les_horizons_du_type_unique_et_date_le_transcript_par_son_message()
+    {
+        var texte = LireDocument();
+
+        foreach (var fragment in new[]
+                 {
+                     "HorizonsSessions.Silence", "HorizonsSessions.Abandon", "HorizonsSessions.RetentionTraitees",
+                     "HorizonsSessions.ExpirationEtat", "`AppliquerSilence`", "Un transcript est daté par son dernier MESSAGE",
+                 })
+            Assert.Contains(fragment, texte, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("`DropAfter`", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("`SilenceDesBattements`", texte, StringComparison.Ordinal);
+
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas le code et ne croise donc rien.");
+
+        var services = Path.Combine(racineSources, "Services");
+        Assert.True(File.Exists(Path.Combine(services, "HorizonsSessions.cs")),
+            "Le document nomme HorizonsSessions, et le type n'existe plus : il décrirait un siège vide.");
+
+        var source = Path.Combine(services, "TranscriptSessionSource.cs");
+        Assert.True(File.Exists(source), $"Source transcripts introuvable : {source}");
+        Assert.Contains("UsageNormalization.InstantDepuisIso(", File.ReadAllText(source), StringComparison.Ordinal);
+
+        var moniteur = Path.Combine(services, "SessionMonitor.cs");
+        Assert.True(File.Exists(moniteur), $"Moniteur introuvable : {moniteur}");
+        Assert.Contains("private static SessionSnapshot AppliquerSilence(", File.ReadAllText(moniteur),
+            StringComparison.Ordinal);
+    }
 }

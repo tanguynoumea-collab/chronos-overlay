@@ -141,7 +141,7 @@ rapport de diagnostic (LIB-03) ; la table ci-dessous est comparée à ce product
 | `Working` | `Réflexion` | un signal d'activité est arrivé **à cet instant-là** — jamais « ça travaille encore maintenant » | **observé** |
 | `WaitingTurn` | `En attente` | `Stop` est arrivé, ou le transcript s'arrête sur une réponse finie : le tour s'est réellement terminé | **observé** |
 | `WaitingAttention` | `En attente` | une permission a été demandée, le bus a porté une vraie demande, ou le transcript s'arrête sur une question `AskUserQuestion` sans réponse (LIB-02) | **observé** |
-| `WaitingDeduced` | `En attente ?` | la session travaillait, et **plus aucun battement n'arrive** depuis le seuil de silence | **DÉDUIT — jamais observé** |
+| `WaitingDeduced` | `En attente ?` | la session travaillait, et **plus aucun signal n'arrive** (battement de hook ou message de transcript) depuis le seuil de silence | **DÉDUIT — jamais observé** |
 | `Unknown` | (aucune ligne) | signal illisible ou indéterminé ; n'est jamais présenté comme une attente — le widget ne l'affiche pas, le rapport de diagnostic la liste parmi les MASQUÉES (motif « état indéterminé ») | ni l'un ni l'autre |
 
 <!-- ETATS-AFFICHES:fin -->
@@ -153,11 +153,30 @@ mot que l'utilisateur lit. `Unknown` n'a plus de ligne dans le widget ; le rappo
 sa raison.
 
 **`WaitingDeduced` n'est JAMAIS écrite dans un fichier d'état.** Elle est dérivée **à la lecture**, par
-`SessionMonitor`, et en un seul endroit : `Working` dont le dernier battement dépasse
-`SilenceDesBattements` (**vingt minutes**). Au-delà de `DropAfter` (**huit heures**), un état n'est plus lu
-du tout. Le point d'interrogation de « En attente ? » est dans le **libellé** — pas dans un commentaire, pas dans
-une documentation : dans les mots que l'utilisateur lit. C'est la doctrine du milestone, appliquée à
-l'endroit où elle se vérifie.
+`SessionMonitor`, et en un seul endroit (`AppliquerSilence`) : tout signal `Working` — battement de hook OU
+dernier message de transcript — plus vieux que le seuil de silence (**vingt minutes**, `HorizonsSessions.Silence`)
+devient `WaitingDeduced`, AVANT l'arbitrage. Au-delà du seuil d'abandon (**huit heures**, `HorizonsSessions.Abandon`),
+un signal n'est plus lu du tout — fichier de hook comme transcript. Le point d'interrogation de « En attente ? »
+est dans le **libellé** — pas dans un commentaire, pas dans une documentation : dans les mots que l'utilisateur
+lit. C'est la doctrine du milestone, appliquée à l'endroit où elle se vérifie.
+
+**Un transcript est daté par son dernier MESSAGE, pas par son fichier (décision D-28-01, 2026-09-25).** L'instant
+d'un signal de transcript est le `timestamp` de sa dernière ligne `user` ou `assistant`, borné par la date
+d'écriture du fichier, avec repli sur celle-ci si le champ manque ou est illisible ; la date d'écriture ne sert
+qu'à écarter d'emblée les fichiers trop vieux. Relevé du 2026-09-25 à 16 h 58 : la fermeture de l'app bureau a
+ajouté des lignes SANS horodatage (`bridge-session`, `last-prompt`, `cost-state`) à douze transcripts dont le
+dernier message datait de deux heures à deux jours. Datés par l'écriture, ils seraient revenus d'un bloc
+« En attente » ; et les mêmes lignes, écrites pendant qu'une question attend, feraient revenir une session
+marquée traitée sans qu'elle ait rien redemandé.
+
+**Les mêmes horizons pour tous (SIL-01).** `HorizonsSessions` porte les quatre seuils — silence 20 min < abandon
+8 h < rétention de `treated.json` 24 h (`HorizonsSessions.RetentionTraitees`) < balayage des fichiers d'état 72 h
+(`HorizonsSessions.ExpirationEtat`) — et `HorizonsSessionsTests` rougit si une inégalité se défait ou si l'un des
+quatre fichiers qui les consomment réintroduit un littéral. Une session connue par son seul transcript suit donc
+les mêmes règles qu'une session à fichier de hook : muette depuis plus de vingt minutes après un travail, elle
+s'affiche « En attente ? » ; en tour fini, elle reste « En attente » jusqu'à huit heures après son dernier message
+— y compris après un `SessionEnd` qui a supprimé son fichier d'état. C'est le trou §9.1 de l'audit v1.6, refermé ;
+c'est aussi la population que la règle « lue » (phase 30) devra connaître.
 
 **Deux ordres, et non un (LIB-04 ; réserve R4 de l'audit v1.6).** L'ordre d'écran
 (`AffichageSessions.Urgence`, partagé par le widget et le rapport) range les sessions par urgence puis par
@@ -182,8 +201,9 @@ session comme traitée que si la source qui a parlé au cycle précédent disait
   la phase 25 est refermée ici.
 - **`Unknown` ne ferme aucun épisode.** Un signal illisible ou indéterminé n'affirme rien ; le lire
   comme une réponse, c'est conclure d'une absence de lecture.
-- **Une bascule de source n'est pas une transition.** Un fichier de hook qui franchit `DropAfter`
-  pendant qu'un transcript reprend la main, ce n'est pas quelqu'un qui répond : c'est une source qui
+- **Une bascule de source n'est pas une transition.** Un fichier de hook qui franchit le seuil
+  d'abandon (`HorizonsSessions.Abandon`) pendant qu'un transcript reprend la main, ce n'est pas
+  quelqu'un qui répond : c'est une source qui
   se tait pendant qu'une autre parle. Le relevé du 2026-09-12 en donne la mesure — une attente
   enregistrée quatre cent soixante-dix-huit minutes avant un seuil de quatre cent quatre-vingts, puis
   la bascule, et six heures de masquage sur une session réellement en attente de permission.
@@ -242,8 +262,10 @@ outil anormalement long : la cause n'est donc **jamais nommée**.
 redémarrage de la machine. Rien, sur la page, ne documente une garantie d'émission dans ces cas.
 
 **Conséquence livrée.** `SessionEnd` reste un **raccourci de nettoyage propre**, jamais une garantie. Le
-vrai filet est le **balayage d'expiration de la phase 23** et son seuil de **huit heures** (`DropAfter`) :
-au-delà, un état n'est plus lu, quelle que soit la raison de sa survie.
+vrai filet est le **seuil de lecture de huit heures** (`HorizonsSessions.Abandon`) : au-delà, un état n'est
+plus lu, quelle que soit la raison de sa survie. Le **balayage d'expiration de la phase 23** a son propre
+seuil, **soixante-douze heures** (`HorizonsSessions.ExpirationEtat`), et ne supprime qu'un état qu'aucune
+source n'atteste plus (réserve R10 de l'audit v1.6, corrigée le 2026-09-25).
 
 **Et — c'est le point à retenir — le battement de cœur ne SUPPRIME pas le besoin d'expiration : il le
 RACCOURCIT.** Une session morte sans `SessionEnd` cesse de se dire « Réflexion » au bout de vingt minutes de
