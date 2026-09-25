@@ -37,7 +37,9 @@ public class BalayageMagasinSessionsTests
     private static BalayageMagasinSessions Balayeur(string dossier, params SessionSnapshot[] vivantes)
     {
         var b = new BalayageMagasinSessions(dossier, new SourceFixe(vivantes), new FakeClock(Maintenant));
-        Assert.StartsWith(Path.GetTempPath(), b.Dossier);   // garde anti-accident, AVANT tout balayage
+        // Garde anti-accident, AVANT tout balayage — sur CHAQUE racine (APP-06 : le balayeur en a plusieurs).
+        Assert.NotEmpty(b.Dossiers);
+        Assert.All(b.Dossiers, d => Assert.StartsWith(Path.GetTempPath(), d));
         return b;
     }
 
@@ -251,5 +253,62 @@ public class BalayageMagasinSessionsTests
         var bilan = Balayeur(absent).Balayer();
 
         Assert.Equal(new BilanBalayage(0, 0, 0), bilan);
+    }
+
+    // --- APP-06 (phase 29) : chaque racine d'état est balayée — la vue du paquet de l'app bureau comme la vue réelle ---
+
+    /// <summary>Une source d'attestation qui COMPTE ses lectures : lire les transcripts coûte, et une attestation
+    /// relue racine par racine pourrait en outre dire deux choses différentes au cours d'un même balayage.</summary>
+    private sealed class SourceComptee : ISessionSource
+    {
+        private readonly IReadOnlyList<SessionSnapshot> _snaps;
+        public int Lectures { get; private set; }
+        public SourceComptee(params SessionSnapshot[] snaps) => _snaps = snaps;
+        public IReadOnlyList<SessionSnapshot> Read(DateTimeOffset now) { Lectures++; return _snaps; }
+    }
+
+    private static BalayageMagasinSessions BalayeurSur(IReadOnlyList<string> racines, ISessionSource attestation)
+    {
+        var b = new BalayageMagasinSessions(racines, attestation, new FakeClock(Maintenant));
+        Assert.Equal(racines, b.Dossiers);
+        Assert.All(b.Dossiers, d => Assert.StartsWith(Path.GetTempPath(), d));   // AVANT tout balayage
+        return b;
+    }
+
+    /// <summary>Le bilan est la SOMME des racines, et l'attestation de vie est lue UNE fois pour tout le balayage.
+    /// L'état attesté de la seconde racine survit à son âge, comme dans une racine seule.</summary>
+    [Fact]
+    public void Chaque_racine_est_balayee_et_l_attestation_n_est_lue_qu_une_fois()
+    {
+        var paquet = TempDossier();
+        var reel = TempDossier();
+        var vieuxP = EcrireEtat(paquet, "vieux-paquet", SessionActivity.Working, TimeSpan.FromDays(40));
+        var vieuxR = EcrireEtat(reel, "vieux-reel", SessionActivity.Working, TimeSpan.FromDays(40));
+        var atteste = EcrireEtat(reel, "atteste", SessionActivity.Working, TimeSpan.FromDays(40));
+        var source = new SourceComptee(Snap("atteste", SessionActivity.Working, Maintenant.AddMinutes(-2)));
+
+        var bilan = BalayeurSur(new[] { paquet, reel }, source).Balayer();
+
+        Assert.Equal(new BilanBalayage(EtatsRetires: 2, TemporairesRetires: 0, EtatsConserves: 1), bilan);
+        Assert.Equal(1, source.Lectures);
+        Assert.False(File.Exists(vieuxP));
+        Assert.False(File.Exists(vieuxR));
+        Assert.True(File.Exists(atteste), "une session attestée vivante survit, quelle que soit sa racine");
+    }
+
+    /// <summary>La vue du paquet n'existe pas sur une machine sans l'app bureau : une racine absente est sautée,
+    /// sans exception et sans priver les autres de leur balayage.</summary>
+    [Fact]
+    public void Une_racine_absente_n_empeche_pas_de_balayer_les_autres()
+    {
+        var absente = Path.Combine(TempDossier(), "jamais-creee");
+        Assert.False(Directory.Exists(absente));
+        var reel = TempDossier();
+        var vieux = EcrireEtat(reel, "vieux", SessionActivity.WaitingTurn, TimeSpan.FromDays(40));
+
+        var bilan = BalayeurSur(new[] { absente, reel }, new SourceComptee()).Balayer();
+
+        Assert.Equal(1, bilan.EtatsRetires);
+        Assert.False(File.Exists(vieux));
     }
 }

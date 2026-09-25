@@ -65,9 +65,17 @@ public sealed class BalayageMagasinSessions
         _horloge = horloge;
     }
 
+    // SQUELETTE (RED, 29-01) : une seule racine est retenue — le comportement arrive au commit suivant.
+    public BalayageMagasinSessions(IReadOnlyList<string> dossiers, ISessionSource attestationDeVie, IClock horloge)
+        : this(dossiers.FirstOrDefault() ?? "", attestationDeVie, horloge)
+    {
+    }
+
     /// <summary>Le dossier balayé. Exposé pour qu'un test puisse VÉRIFIER qu'il est temporaire avant
     /// d'appeler <see cref="Balayer"/> : ce code supprime des fichiers.</summary>
     public string Dossier => _dossier;
+
+    public IReadOnlyList<string> Dossiers => new[] { _dossier };
 
     public BilanBalayage Balayer()
     {

@@ -34,9 +34,11 @@ public sealed class SessionMonitor
 
     public SessionMonitor(string? sessionsDir = null, ISessionSource? transcripts = null,
         ArchiveStore? archive = null,
-        TreatedStore? treated = null, SessionTreatmentTracker? tracker = null)
+        TreatedStore? treated = null, SessionTreatmentTracker? tracker = null,
+        IReadOnlyList<string>? dossiersEtat = null)
     {
-        _dir = sessionsDir ?? Path.Combine(
+        // SQUELETTE (RED, 29-01) : une seule racine est retenue — le comportement arrive au commit suivant.
+        _dir = dossiersEtat?.FirstOrDefault() ?? sessionsDir ?? Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "sessions");
         _transcripts = transcripts ?? new TranscriptSessionSource();
         _archive = archive ?? new ArchiveStore();
@@ -45,6 +47,8 @@ public sealed class SessionMonitor
     }
 
     public string Directory => _dir;
+
+    public IReadOnlyList<string> Dossiers => new[] { _dir };
 
     private static readonly JsonSerializerOptions Tolerant = new()
     {

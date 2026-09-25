@@ -796,4 +796,65 @@ public class DiagnosticServiceTests
         Assert.Contains($"Fichiers d'état ({dir}) : 1", report);
         Assert.Contains(LignesFichiersEtat(report), l => l.Contains("PROJET DU MONITEUR"));
     }
+
+    // --- Phase 29 (APP-06) : le rapport compte les fichiers d'état RACINE PAR RACINE ---
+    //
+    // Le moniteur lit désormais plusieurs racines (vue du paquet de l'app bureau, vue réelle d'AppData). Le rapport
+    // écrit une ligne « Fichiers d'état (<racine>) » par racine, TOUTES avant les lignes « · », qui fusionnent les
+    // fichiers de toutes les racines.
+
+    private static SessionMonitor MoniteurSurRacines(params string[] racines)
+        => new(null, new SourceFixe22(), new ArchiveStore(TempFichier22()), dossiersEtat: racines);
+
+    /// <summary>Les lignes à puce qui suivent la DERNIÈRE ligne « Fichiers d'état ( » — le bloc fusionné. Pas
+    /// <see cref="LignesFichiersEtat"/>, qui lit après la PREMIÈRE et tomberait sur la ligne de la racine suivante.</summary>
+    private static List<string> LignesApresLaDerniereRacine(string report)
+    {
+        var lignes = report.Split('\n');
+        var derniere = Array.FindLastIndex(lignes, l => l.Contains("Fichiers d'état ("));
+        Assert.True(derniere >= 0, "aucune ligne « Fichiers d'état ( » dans le rapport");
+        return lignes.Skip(derniere + 1).TakeWhile(l => l.TrimStart().StartsWith("· ")).ToList();
+    }
+
+    [Fact]
+    public async Task Le_rapport_compte_les_fichiers_d_etat_racine_par_racine()
+    {
+        var paquet = TempDir22();
+        var reel = TempDir22();
+        EcrireEtat(paquet, "p1", "PAQUET-UN", SessionActivity.WaitingAttention, T22.AddMinutes(-2));
+        EcrireEtat(paquet, "p2", "PAQUET-DEUX", SessionActivity.Working, T22.AddMinutes(-1));
+        EcrireEtat(reel, "r1", "REEL-UN", SessionActivity.WaitingTurn, T22.AddMinutes(-3));
+
+        var report = await Rapport(MoniteurSurRacines(paquet, reel));
+
+        var lignePaquet = $"Fichiers d'état ({paquet}) : 2";
+        var ligneReel = $"Fichiers d'état ({reel}) : 1";
+        Assert.Contains(lignePaquet, report);
+        Assert.Contains(ligneReel, report);
+        Assert.True(report.IndexOf(lignePaquet, StringComparison.Ordinal) < report.IndexOf(ligneReel, StringComparison.Ordinal),
+            "la racine du paquet est écrite avant la vue réelle, dans l'ordre du moniteur");
+
+        var puces = LignesApresLaDerniereRacine(report);
+        Assert.Equal(3, puces.Count);
+        Assert.Contains(puces, l => l.Contains("PAQUET-UN"));
+        Assert.Contains(puces, l => l.Contains("PAQUET-DEUX"));
+        Assert.Contains(puces, l => l.Contains("REEL-UN"));
+    }
+
+    /// <summary>Une racine qui n'existe pas est un FAIT à écrire : sur une machine où la vue du paquet manque, taire
+    /// la ligne laisserait croire qu'on ne l'a pas cherchée.</summary>
+    [Fact]
+    public async Task Une_racine_d_etat_absente_est_ecrite_absente_jamais_tue()
+    {
+        var absente = System.IO.Path.Combine(TempDir22(), "jamais-creee");
+        Assert.False(System.IO.Directory.Exists(absente));
+        var reel = TempDir22();
+        EcrireEtat(reel, "r1", "REEL-SEUL", SessionActivity.Working, T22);
+
+        var report = await Rapport(MoniteurSurRacines(absente, reel));
+
+        Assert.Contains($"Fichiers d'état ({absente}) : absent (dossier introuvable)", report);
+        Assert.Contains($"Fichiers d'état ({reel}) : 1", report);
+        Assert.Contains(LignesApresLaDerniereRacine(report), l => l.Contains("REEL-SEUL"));
+    }
 }

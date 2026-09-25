@@ -143,6 +143,12 @@ public class CompositionRootTests
     /// sur le vrai magasin de l'utilisateur ; et ce test ne demande jamais au balayeur d'agir. Une garde DI
     /// prouve la RÉSOLUTION du graphe, pas le comportement — celui-ci est couvert par
     /// <c>BalayageMagasinSessionsTests</c>, en dossier temporaire.</para>
+    ///
+    /// <para>Phase 29 (APP-06) : le miroir suit la production mot pour mot — des <see cref="RacinesCandidates"/>
+    /// enregistrées en singleton, passées au moniteur par l'argument NOMMÉ <c>dossiersEtat</c>, et un balayeur
+    /// construit sur les <c>Dossiers</c> du moniteur. Les candidats sont résolus sur une arborescence TEMPORAIRE
+    /// (<c>Local\Packages\Claude_test</c> + <c>Roaming</c>), jamais par <c>RacinesEtat.ParDefaut</c> : les deux
+    /// racines rendues vivent sous le dossier temporaire, et aucune n'est celle de l'app bureau.</para>
     /// </summary>
     [Fact]
     public void Le_graphe_DI_resout_la_chaine_de_sessions()
@@ -156,30 +162,41 @@ public class CompositionRootTests
             System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosTreated_" + System.Guid.NewGuid().ToString("N") + ".json")));
         services.AddSingleton(sp => new SessionTreatmentTracker(sp.GetRequiredService<TreatedStore>()));
 
-        // Dossier TEMPORAIRE et non « null » comme en production : le balayeur enregistré ci-dessous dérive
-        // son dossier de CE moniteur, et ce code supprime des fichiers. Aucune garde DI ne doit pouvoir
-        // viser le vrai magasin de l'utilisateur.
-        var dossierSessions = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
-            "ChronosSessions_" + System.Guid.NewGuid().ToString("N"));
-        services.AddSingleton(sp => new SessionMonitor(dossierSessions, null, sp.GetRequiredService<ArchiveStore>(),
+        // Racines TEMPORAIRES et non celles de la machine : le balayeur enregistré ci-dessous dérive ses racines
+        // de CE moniteur, et ce code supprime des fichiers. Aucune garde DI ne doit pouvoir viser le vrai
+        // magasin de l'utilisateur — ni sa vue réelle, ni celle du paquet de l'app bureau.
+        var racineTemp = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+            "ChronosRacines_" + System.Guid.NewGuid().ToString("N"));
+        var tmpLocal = System.IO.Path.Combine(racineTemp, "Local");
+        var tmpRoaming = System.IO.Path.Combine(racineTemp, "Roaming");
+        System.IO.Directory.CreateDirectory(System.IO.Path.Combine(tmpLocal, "Packages", "Claude_test"));
+        var racines = RacinesEtat.Candidats(tmpLocal, tmpRoaming);
+        services.AddSingleton(_ => racines);
+
+        services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
-            sp.GetRequiredService<SessionTreatmentTracker>()));
+            sp.GetRequiredService<SessionTreatmentTracker>(),
+            dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks));
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton(sp => new BalayageMagasinSessions(
-            sp.GetRequiredService<SessionMonitor>().Directory,
+            sp.GetRequiredService<SessionMonitor>().Dossiers,
             new TranscriptSessionSource(),
             sp.GetRequiredService<IClock>()));
 
         var provider = services.BuildServiceProvider();
 
         // Résolution sans exception = graphe câblé dans le BON ORDRE (aucun service manquant/mal ordonné).
-        Assert.NotNull(provider.GetRequiredService<SessionMonitor>());
+        var moniteur = provider.GetRequiredService<SessionMonitor>();
+        Assert.NotNull(moniteur);
+        Assert.Equal(2, moniteur.Dossiers.Count);   // la vue du paquet ET la vue réelle
+        Assert.All(moniteur.Dossiers, d => Assert.StartsWith(System.IO.Path.GetTempPath(), d));
 
         var balayeur = provider.GetRequiredService<BalayageMagasinSessions>();
         Assert.NotNull(balayeur);
-        Assert.StartsWith(System.IO.Path.GetTempPath(), balayeur.Dossier);   // garde anti-accident
-        Assert.Equal(provider.GetRequiredService<SessionMonitor>().Directory, balayeur.Dossier);
+        Assert.Equal(moniteur.Dossiers, balayeur.Dossiers);   // les racines balayées sont celles du moniteur
+        Assert.All(balayeur.Dossiers, d => Assert.StartsWith(System.IO.Path.GetTempPath(), d));   // garde anti-accident
+        Assert.All(balayeur.Dossiers, d => Assert.DoesNotContain("claude-code-sessions", d));
 
         // OBS-01 — le partage d'instance repose entièrement sur la portée : passer ce moniteur en transient
         // donnerait au diagnostic un exemplaire distinct de celui du widget, avec ses propres magasins
@@ -188,6 +205,7 @@ public class CompositionRootTests
         Assert.Same(provider.GetRequiredService<SessionMonitor>(), provider.GetRequiredService<SessionMonitor>());
 
         provider.Dispose();
+        try { System.IO.Directory.Delete(racineTemp, recursive: true); } catch { /* nettoyage best-effort */ }
     }
 
     /// <summary>

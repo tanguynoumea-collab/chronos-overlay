@@ -179,6 +179,10 @@ public class GardesPerimetreTests
     /// exactement ce qui s'est produit pendant deux mois avec le magasin de sessions. La seconde assertion
     /// est la plus importante : le balayage doit viser le dossier DU MONITEUR du widget, jamais un chemin
     /// déduit dans son coin.
+    ///
+    /// <para>Phase 29 (APP-06) : le moniteur a désormais PLUSIEURS racines (vue du paquet de l'app bureau, vue
+    /// réelle). Le littéral passe de <c>.Directory</c> à <c>.Dossiers</c> sans changer d'intention ni de force :
+    /// les racines balayées sont celles du moniteur, toutes, et aucune autre.</para>
     /// </summary>
     [Fact]
     public void Le_demarrage_balaie_le_magasin_de_sessions_sur_le_dossier_du_moniteur()
@@ -190,7 +194,40 @@ public class GardesPerimetreTests
 
         Assert.Contains("OnStartup", texte, StringComparison.Ordinal);   // garde muette sinon
         Assert.Contains("GetRequiredService<BalayageMagasinSessions>().Balayer()", texte, StringComparison.Ordinal);
-        Assert.Contains("GetRequiredService<SessionMonitor>().Directory", texte, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredService<SessionMonitor>().Dossiers", texte, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE DE CÂBLAGE (APP-06, phase 29). Le moniteur peut lire deux racines en test et une seule en production :
+    /// il suffit qu'App.xaml.cs ne lui passe pas la liste — le paramètre est optionnel, et son défaut, résolu dans le
+    /// moniteur, ne se verrait pas. Le widget resterait alors aveugle aux fichiers que les hooks de l'app bureau
+    /// écrivent dans la vue du paquet, exactement comme avant cette phase, et en silence. Contrôle de SOURCE :
+    /// <c>OnStartup</c> monte un host WPF, il n'est pas instanciable sous test.
+    ///
+    /// <para>Le fragment lu est l'enregistrement du moniteur, pas le fichier entier (même motif que
+    /// <see cref="Le_diagnostic_recoit_le_moniteur_du_conteneur"/>). Il ne doit pas recevoir la racine de l'app bureau :
+    /// les métadonnées de sessions ne sont pas des fichiers d'état, et le balayage suit les racines du moniteur.</para>
+    /// </summary>
+    [Fact]
+    public void Le_moniteur_de_production_lit_les_deux_vues_d_AppData()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Les racines sont résolues UNE fois, par candidats (paquet d'abord), et enregistrées dans le conteneur.
+        Assert.Contains("RacinesEtat.ParDefaut()", texte, StringComparison.Ordinal);
+
+        var debut = texte.IndexOf("new SessionMonitor(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "Enregistrement du SessionMonitor introuvable dans App.xaml.cs");
+        var fin = texte.IndexOf("));", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin de l'enregistrement du SessionMonitor introuvable");
+
+        var enregistrement = texte[debut..fin];
+        Assert.Contains("dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks", enregistrement,
+                        StringComparison.Ordinal);
+        Assert.DoesNotContain("SessionsAppBureau", enregistrement, StringComparison.Ordinal);
     }
 
     /// <summary>
