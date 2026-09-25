@@ -109,15 +109,15 @@ public sealed class SessionHookInstaller
     /// </summary>
     public static readonly EvenementCable[] Cablage =
     {
-        new("SessionStart",      null, "la session démarre → en cours"),
-        new("UserPromptSubmit",  null, "un message est envoyé → en cours"),
-        new("Stop",              null, "le tour se termine → tour fini"),
+        new("SessionStart",      null, "la session démarre → Réflexion"),
+        new("UserPromptSubmit",  null, "un message est envoyé → Réflexion"),
+        new("Stop",              null, "le tour se termine → En attente"),
         new("SessionEnd",        null, "fin de session → le fichier d'état est supprimé"),
-        new("PermissionRequest", null, "une permission est DEMANDÉE → à toi (EVT-01)"),
+        new("PermissionRequest", null, "une permission est DEMANDÉE → En attente (EVT-01)"),
         new("Notification",      "agent_needs_input|elicitation_dialog|elicitation_url_dialog",
-                                 "les TROIS types du bus qui sont de vraies demandes → à toi (EVT-02)"),
-        new("PreToolUse",        null, "un outil va être appelé → battement de cœur : en cours (EVT-03)", 3),
-        new("PostToolUse",       null, "un outil vient de réussir → battement de cœur : en cours (EVT-03)", 3),
+                                 "les TROIS types du bus qui sont de vraies demandes → En attente (EVT-02)"),
+        new("PreToolUse",        null, "un outil va être appelé → battement de cœur : Réflexion (EVT-03)", 3),
+        new("PostToolUse",       null, "un outil vient de réussir → battement de cœur : Réflexion (EVT-03)", 3),
     };
 
     /// <summary>Les noms des événements câblés. CONSERVÉ (le diagnostic et plusieurs tests le lisent)

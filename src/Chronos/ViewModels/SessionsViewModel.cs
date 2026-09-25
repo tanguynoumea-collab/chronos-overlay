@@ -32,11 +32,11 @@ public sealed partial class SessionItemVm : ObservableObject
     [ObservableProperty] private Brush _stateBrush = Brushes.Gray;
     [ObservableProperty] private bool _isWaiting;
 
-    // États d'activité distincts, exposés pour les templates de la refonte visuelle (formes/rythmes par état).
-    // « à toi » (Attention) vs « tour fini » (Turn) = les DEUX attentes, distinguées SANS deux oranges.
-    [ObservableProperty] private bool _isAttention;  // WaitingAttention → « à toi » (respire)
-    [ObservableProperty] private bool _isTurn;       // WaitingTurn → « tour fini » (fixe)
-    [ObservableProperty] private bool _isWorking;    // en cours
+    // États d'activité distincts, exposés pour les templates de la refonte visuelle : des FORMES et des
+    // rythmes seulement. Le mot est dans StateText, tiré du producteur unique (AffichageSessions).
+    [ObservableProperty] private bool _isAttention;  // WaitingAttention : permission ou question (respire)
+    [ObservableProperty] private bool _isTurn;       // WaitingTurn, et la déduction : famille des attentes (fixe)
+    [ObservableProperty] private bool _isWorking;    // Working : la session travaille
     [ObservableProperty] private bool _isGhost;      // Unknown / périmé → fantôme
 
     /// <summary>Libellé du geste de masse, porté par chaque ligne parce que le menu contextuel a pour
@@ -71,9 +71,10 @@ public sealed partial class SessionItemVm : ObservableObject
 }
 
 /// <summary>
-/// Liste temps réel des sessions Claude Code (source : <see cref="SessionMonitor"/>). Tri « en attente
-/// d'abord ». N'affiche jamais « en attente » sur un signal périmé (le monitor l'a déjà ramené à Unknown).
-/// Rafraîchi par un DispatcherTimer créé côté UI (jamais dans le ctor — Pitfall threading).
+/// Liste temps réel des sessions Claude Code (source : <see cref="SessionMonitor"/>). L'ordre est celui du
+/// producteur unique (<see cref="AffichageSessions.Ordonner"/>) : les attentes d'abord, puis la fraîcheur.
+/// L'état indéterminé n'a pas de ligne : le moniteur le masque, avec un motif nommé que le rapport de
+/// diagnostic affiche. Rafraîchi par un DispatcherTimer créé côté UI (jamais dans le ctor — Pitfall threading).
 /// </summary>
 public sealed partial class SessionsViewModel : ObservableObject
 {
@@ -88,6 +89,9 @@ public sealed partial class SessionsViewModel : ObservableObject
     [ObservableProperty] private int _totalCount;
     [ObservableProperty] private bool _hasWaiting;
     [ObservableProperty] private string _summary = "Aucune session";
+
+    /// <summary>Mot du compteur de l'Annonciateur, tiré du producteur : jamais en dur dans un gabarit.</summary>
+    public string LibelleCompteur => AffichageSessions.EnAttente;
 
     // Style visuel du widget (refonte). Piloté par la fenêtre de réglages via SessionsController.SetStyle ;
     // les booléens IsStyleX sélectionnent le template dans SessionsWindow.xaml.
@@ -119,13 +123,14 @@ public sealed partial class SessionsViewModel : ObservableObject
     partial void OnVerticalChanged(bool value) => OnPropertyChanged(nameof(RowOrientation));
 
     // Couleurs d'ÉTAT dérivées du THÈME courant (cohérence avec le cadran). Recalculées par SetTheme ;
-    // valeurs de départ = thème par défaut. attente → rampe ambre, en cours → rampe verte, déduit → texte atténué.
+    // valeurs de départ = thème par défaut. Les trois attentes → rampe ambre, « Réflexion » → rampe verte,
+    // gris défensif (l'état indéterminé n'a pas de ligne : le moniteur le masque).
     private ChronosTheme _theme = ThemeCatalog.Default;
-    private Brush _amber = FrozenC(ThemeCatalog.Default.RampAmber);   // EN ATTENTE (tour fini / à toi)
-    private Brush _green = FrozenC(ThemeCatalog.Default.RampGreen);   // en cours
-    private Brush _gray = FrozenC(ThemeCatalog.Default.TexteSecondaire); // inconnu/périmé
+    private Brush _amber = FrozenC(ThemeCatalog.Default.RampAmber);   // « En attente » et « En attente ? »
+    private Brush _green = FrozenC(ThemeCatalog.Default.RampGreen);   // « Réflexion »
+    private Brush _gray = FrozenC(ThemeCatalog.Default.TexteSecondaire); // défensif : jamais à l'écran
 
-    /// <summary>Applique un thème : recolore les états (attente/en cours/déduit) selon la rampe et re-rend.
+    /// <summary>Applique un thème : recolore les états (attentes / réflexion) selon la rampe et re-rend.
     /// Les fonds/textes des templates suivent via les DynamicResource posés par SessionsWindow.ApplyThemeBrushes.</summary>
     public void SetTheme(ChronosTheme theme)
     {

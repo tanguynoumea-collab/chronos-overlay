@@ -42,14 +42,14 @@ Chaque groupe installé appelle `"<chemin>/Chronos.exe" --hook <Événement>` �
 
 | Événement | `matcher` | Ce que Chronos en produit | `timeout` |
 |---|---|---|---|
-| `SessionStart` | (aucun) | la session démarre → en cours | 10 |
-| `UserPromptSubmit` | (aucun) | un message est envoyé → en cours | 10 |
-| `Stop` | (aucun) | le tour se termine → tour fini | 10 |
+| `SessionStart` | (aucun) | la session démarre → Réflexion | 10 |
+| `UserPromptSubmit` | (aucun) | un message est envoyé → Réflexion | 10 |
+| `Stop` | (aucun) | le tour se termine → En attente | 10 |
 | `SessionEnd` | (aucun) | fin de session → le fichier d'état est supprimé | 10 |
-| `PermissionRequest` | (aucun) | une permission est DEMANDÉE → à toi (EVT-01) | 10 |
-| `Notification` | `agent_needs_input\|elicitation_dialog\|elicitation_url_dialog` | les TROIS types du bus qui sont de vraies demandes → à toi (EVT-02) | 10 |
-| `PreToolUse` | (aucun) | un outil va être appelé → battement de cœur : en cours (EVT-03) | 3 |
-| `PostToolUse` | (aucun) | un outil vient de réussir → battement de cœur : en cours (EVT-03) | 3 |
+| `PermissionRequest` | (aucun) | une permission est DEMANDÉE → En attente (EVT-01) | 10 |
+| `Notification` | `agent_needs_input\|elicitation_dialog\|elicitation_url_dialog` | les TROIS types du bus qui sont de vraies demandes → En attente (EVT-02) | 10 |
+| `PreToolUse` | (aucun) | un outil va être appelé → battement de cœur : Réflexion (EVT-03) | 3 |
+| `PostToolUse` | (aucun) | un outil vient de réussir → battement de cœur : Réflexion (EVT-03) | 3 |
 
 <!-- EVENEMENTS-CABLES:fin -->
 
@@ -129,21 +129,33 @@ Seul `Notification` inscrit `notification_type` comme motif, lorsqu'il est lisib
 
 ## 3. Les états produits
 
-Cinq valeurs de `SessionActivity`. Le fichier d'état (`%APPDATA%\Chronos\sessions\<id>.json`) porte
-`session_id`, `project`, `activity`, `reason` (optionnel) et `updated_at`.
+Cinq valeurs de `SessionActivity`, **trois mots à l'écran**. Le fichier d'état
+(`%APPDATA%\Chronos\sessions\<id>.json`) porte `session_id`, `project`, `activity`, `reason` (optionnel) et
+`updated_at`. Les libellés viennent d'un producteur unique, `AffichageSessions.Etat`, partagé par le widget et le
+rapport de diagnostic (LIB-03) ; la table ci-dessous est comparée à ce producteur par `ContratHooksDocumenteTests`.
+
+<!-- ETATS-AFFICHES:debut -->
 
 | `activity` | Libellé affiché | Ce que l'état AFFIRME | Observé ou déduit ? |
 |---|---|---|---|
-| `Working` | `en cours` | un signal d'activité est arrivé **à cet instant-là** — jamais « ça travaille encore maintenant » | **observé** |
-| `WaitingTurn` | `tour fini` | `Stop` est arrivé : le tour s'est réellement terminé | **observé** |
-| `WaitingAttention` | `à toi` | une permission a été demandée, ou le bus a porté une vraie demande | **observé** |
-| `WaitingDeduced` | `à toi ? déduit` | la session travaillait, et **plus aucun battement n'arrive** depuis le seuil de silence | **DÉDUIT — jamais observé** |
+| `Working` | `Réflexion` | un signal d'activité est arrivé **à cet instant-là** — jamais « ça travaille encore maintenant » | **observé** |
+| `WaitingTurn` | `En attente` | `Stop` est arrivé, ou le transcript s'arrête sur une réponse finie : le tour s'est réellement terminé | **observé** |
+| `WaitingAttention` | `En attente` | une permission a été demandée, le bus a porté une vraie demande, ou le transcript s'arrête sur une question `AskUserQuestion` sans réponse (LIB-02) | **observé** |
+| `WaitingDeduced` | `En attente ?` | la session travaillait, et **plus aucun battement n'arrive** depuis le seuil de silence | **DÉDUIT — jamais observé** |
 | `Unknown` | (aucune ligne) | signal illisible ou indéterminé ; n'est jamais présenté comme une attente — le widget ne l'affiche pas, le rapport de diagnostic la liste parmi les MASQUÉES (motif « état indéterminé ») | ni l'un ni l'autre |
+
+<!-- ETATS-AFFICHES:fin -->
+
+**Trois mots, pas cinq.** « Réflexion » dit le travail observé. « En attente » dit les trois attentes OBSERVÉES
+— tour fini, permission, question posée — sans les distinguer par le mot : c'est l'ORDRE qui porte l'urgence, et
+la couleur (rampe ambre). « En attente ? » est la seule attente DÉDUITE ; son point d'interrogation est dans le
+mot que l'utilisateur lit. `Unknown` n'a plus de ligne dans le widget ; le rapport de diagnostic la liste, avec
+sa raison.
 
 **`WaitingDeduced` n'est JAMAIS écrite dans un fichier d'état.** Elle est dérivée **à la lecture**, par
 `SessionMonitor`, et en un seul endroit : `Working` dont le dernier battement dépasse
 `SilenceDesBattements` (**vingt minutes**). Au-delà de `DropAfter` (**huit heures**), un état n'est plus lu
-du tout. L'interrogation et le mot « déduit » sont dans le **libellé** — pas dans un commentaire, pas dans
+du tout. Le point d'interrogation de « En attente ? » est dans le **libellé** — pas dans un commentaire, pas dans
 une documentation : dans les mots que l'utilisateur lit. C'est la doctrine du milestone, appliquée à
 l'endroit où elle se vérifie.
 
@@ -187,8 +199,8 @@ session comme traitée que si la source qui a parlé au cycle précédent disait
 > distinguent **que** par la présence de `agent_id` / `agent_type`.
 
 Sur cette machine, **quatre-vingt-quatorze pour cent** des transcripts sont des sous-agents (817
-`agent-*.jsonl` sur 868). Sans filtre, une vague d'agents parallèles réaffirmerait « en cours » sur une
-session parente qui n'y est plus — et écraserait un « à toi » encore en attente.
+`agent-*.jsonl` sur 868). Sans filtre, une vague d'agents parallèles réaffirmerait « Réflexion » sur une
+session parente qui n'y est plus — et écraserait une attente encore ouverte.
 
 **La règle livrée :** un sous-agent ne parle **jamais** de l'activité ni du cycle de vie de son parent ; il
 peut seulement **réclamer une intervention**. Concrètement, tout événement portant l'un des deux marqueurs
@@ -219,7 +231,7 @@ Que `Stop` soit **muet** lorsque l'utilisateur appuie sur Échap reste donc **pl
 confirmable**. C'est un trou, pas une réponse.
 
 **Conséquence livrée.** Il n'existait rien à câbler : l'état ne peut être que **DÉDUIT** du silence des
-battements, et le libellé le dit (`à toi ? déduit`, §3). **Latence assumée : vingt minutes** — le seuil de
+battements, et le libellé le dit (« En attente ? », §3). **Latence assumée : vingt minutes** — le seuil de
 silence. La même signature (plus aucun battement) vaut aussi pour un terminal tué, une mise en veille ou un
 outil anormalement long : la cause n'est donc **jamais nommée**.
 
@@ -234,7 +246,7 @@ vrai filet est le **balayage d'expiration de la phase 23** et son seuil de **hui
 au-delà, un état n'est plus lu, quelle que soit la raison de sa survie.
 
 **Et — c'est le point à retenir — le battement de cœur ne SUPPRIME pas le besoin d'expiration : il le
-RACCOURCIT.** Une session morte sans `SessionEnd` cesse de se dire « en cours » au bout de vingt minutes de
+RACCOURCIT.** Une session morte sans `SessionEnd` cesse de se dire « Réflexion » au bout de vingt minutes de
 silence au lieu de huit heures. Elle ne disparaît pour autant qu'à huit heures.
 
 ### 5.3 — Le sort d'un nom d'événement INCONNU : NON DOCUMENTÉ
@@ -261,7 +273,7 @@ signal d'entrée d'un build de dix minutes et son signal de sortie, **rien n'arr
 longue réflexion sans appel d'outil.
 
 **Donc : un outil unique de plus de vingt minutes fera franchir le seuil de silence à une session qui
-travaille encore**, et elle s'affichera « à toi ? déduit ».
+travaille encore**, et elle s'affichera « En attente ? ».
 
 **C'est une LIMITE, pas un défaut à corriger.** Elle est la conséquence directe de l'absence de battement
 périodique dans le catalogue, et le seuil ne peut pas la résoudre : le baisser multiplierait les fausses
@@ -306,12 +318,12 @@ inconditionnelle — elle ne porte pas d'état à comparer.
 **Un battement PLUS RÉCENT écrase toujours une attente observée.** Le second cran envisagé par l'audit —
 refuser qu'un battement écrase une attente observée du **même épisode** — **n'est pas livré**, et ce n'est
 pas un oubli : après l'octroi d'une permission, **aucun `UserPromptSubmit` ne survient**. La session
-resterait affichée « à toi » pendant qu'elle travaille. Ce serait **remplacer un mensonge par un autre**, ce
+resterait affichée « En attente » pendant qu'elle travaille. Ce serait **remplacer un mensonge par un autre**, ce
 que la doctrine de ce projet interdit.
 
 **Donc : observation in vivo d'abord, correctif ensuite.** Trois signes à guetter, dans cet ordre :
 
-1. une session affichée « en cours » alors qu'un **prompt de permission est à l'écran** ;
+1. une session affichée « Réflexion » alors qu'un **prompt de permission est à l'écran** ;
 2. dans `%APPDATA%/Chronos/sessions/<session_id>.json`, un `activity` qui passe de `WaitingAttention` à
    `Working` avec un `reason` de **battement** (`PreToolUse` / `PostToolUse`) **sans qu'aucune réponse
    n'ait été donnée** ;
@@ -319,7 +331,7 @@ que la doctrine de ce projet interdit.
 
 Si ces signes apparaissent, ce n'est pas le seuil qu'il faudra bouger : c'est la **sortie d'attente** qu'il
 faudra régler d'abord — quel événement atteste qu'une permission a été **accordée** — faute de quoi le
-second cran figerait la session sur « à toi » indéfiniment.
+second cran figerait la session sur « En attente » indéfiniment.
 
 ### 5.6 — Ce que ce relevé n'autorise pas, en une ligne
 

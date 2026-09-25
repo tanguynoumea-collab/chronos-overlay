@@ -35,6 +35,8 @@ public sealed class ContratHooksDocumenteTests
 {
     private const string MarqueurDebut = "EVENEMENTS-CABLES:debut";
     private const string MarqueurFin = "EVENEMENTS-CABLES:fin";
+    private const string EtatsDebut = "ETATS-AFFICHES:debut";
+    private const string EtatsFin = "ETATS-AFFICHES:fin";
     private const string DateDuReleve = "2026-09-12";
     private const string TitreNonGaranti = "## 5.";
     private const int LignesMinimum = 90;
@@ -85,14 +87,18 @@ public sealed class ContratHooksDocumenteTests
     }
 
     /// <summary>Les lignes de DONNÉES de la table du §1, en-tête et ligne de séparation retirées.</summary>
-    private static IReadOnlyList<string[]> TableDocumentee(string texte)
-    {
-        var debut = texte.IndexOf(MarqueurDebut, StringComparison.Ordinal);
-        var fin = texte.IndexOf(MarqueurFin, StringComparison.Ordinal);
-        Assert.True(debut >= 0, $"Marqueur « {MarqueurDebut} » absent du document.");
-        Assert.True(fin > debut, $"Marqueur « {MarqueurFin} » absent, ou posé avant le marqueur d'ouverture.");
+    private static IReadOnlyList<string[]> TableDocumentee(string texte) => TableEntre(texte, MarqueurDebut, MarqueurFin);
 
-        var bloc = texte.Substring(debut + MarqueurDebut.Length, fin - debut - MarqueurDebut.Length);
+    /// <summary>Les lignes de DONNÉES d'une table balisée par deux marqueurs (§1 : événements câblés ; §3 :
+    /// états affichés), en-tête et ligne de séparation retirées. Backticks retirés de chaque cellule.</summary>
+    private static IReadOnlyList<string[]> TableEntre(string texte, string marqueurDebut, string marqueurFin)
+    {
+        var debut = texte.IndexOf(marqueurDebut, StringComparison.Ordinal);
+        var fin = texte.IndexOf(marqueurFin, StringComparison.Ordinal);
+        Assert.True(debut >= 0, $"Marqueur « {marqueurDebut} » absent du document.");
+        Assert.True(fin > debut, $"Marqueur « {marqueurFin} » absent, ou posé avant le marqueur d'ouverture.");
+
+        var bloc = texte.Substring(debut + marqueurDebut.Length, fin - debut - marqueurDebut.Length);
 
         var lignes = new List<string[]>();
         foreach (var brute in bloc.Replace("\r\n", "\n").Split('\n'))
@@ -114,8 +120,8 @@ public sealed class ContratHooksDocumenteTests
         }
 
         Assert.True(lignes.Count >= 2,
-            "La table du §1 ne porte pas même un en-tête et une ligne : un document tronqué rendrait "
-            + "toutes les comparaisons vertes, faute de matière à comparer.");
+            $"La table balisée par « {marqueurDebut} » ne porte pas même un en-tête et une ligne : un "
+            + "document tronqué rendrait toutes les comparaisons vertes, faute de matière à comparer.");
 
         return lignes.Skip(1).ToList();   // la première ligne retenue est l'EN-TÊTE
     }
@@ -139,10 +145,10 @@ public sealed class ContratHooksDocumenteTests
         return string.Join("\n", lignes.Skip(debut).Take(fin - debut));
     }
 
-    private static string[] LigneDe(IReadOnlyList<string[]> table, string evenement)
+    private static string[] LigneDe(IReadOnlyList<string[]> table, string cle)
     {
-        var ligne = table.FirstOrDefault(l => string.Equals(l[0], evenement, StringComparison.Ordinal));
-        Assert.True(ligne is not null, $"Aucune ligne documentée pour l'événement câblé « {evenement} ».");
+        var ligne = table.FirstOrDefault(l => string.Equals(l[0], cle, StringComparison.Ordinal));
+        Assert.True(ligne is not null, $"Aucune ligne documentée pour « {cle} ».");
         return ligne!;
     }
 
@@ -429,5 +435,41 @@ public sealed class ContratHooksDocumenteTests
         Assert.True(File.Exists(fichier), $"Arbitrage introuvable : {fichier}");
         Assert.Contains("private static int RangArbitrage(SessionActivity", File.ReadAllText(fichier),
             StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ PRODUCTEUR (LIB-01, LIB-03). La table du §3 dit, pour chaque valeur de
+    /// <c>SessionActivity</c>, le mot que l'utilisateur lit. Ce mot a UN producteur,
+    /// <c>AffichageSessions.Etat</c>, partagé par le widget et le rapport ; si le document cessait de
+    /// l'égaler, il décrirait un écran qui n'existe pas — ce que la garde du §1 empêche déjà pour les rôles
+    /// des hooks, celle-ci l'empêche pour les mots.
+    ///
+    /// <para>Exactement cinq lignes, une par valeur : une ligne en trop ou en moins passerait sinon la
+    /// comparaison cellule à cellule. L'état indéterminé n'a pas de mot à l'écran : sa cellule le dit.</para>
+    /// </summary>
+    [Fact]
+    public void Le_paragraphe_3_affiche_les_libelles_du_producteur()
+    {
+        var texte = LireDocument();
+        Assert.Contains(EtatsDebut, SectionDe(texte, "## 3."), StringComparison.Ordinal);
+
+        var table = TableEntre(texte, EtatsDebut, EtatsFin);
+        var valeurs = Enum.GetValues<SessionActivity>();
+        Assert.Equal(5, valeurs.Length);   // garde anti-muette
+        Assert.Equal(valeurs.Length, table.Count);
+
+        foreach (var a in valeurs)
+        {
+            var ligne = LigneDe(table, a.ToString());
+            Assert.True(ligne.Length >= 2, $"Ligne « {a} » du §3 : moins de deux colonnes.");
+
+            if (AffichageSessions.AUneLigne(a))
+                Assert.True(string.Equals(ligne[1], AffichageSessions.Etat(a), StringComparison.Ordinal),
+                    $"« {a} » : le libellé documenté au §3 n'est plus celui que le producteur affiche.\n"
+                    + $"  producteur : {AffichageSessions.Etat(a)}\n"
+                    + $"  documenté  : {ligne[1]}");
+            else
+                Assert.Contains("aucune ligne", ligne[1], StringComparison.Ordinal);
+        }
     }
 }

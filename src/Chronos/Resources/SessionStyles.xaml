@@ -1,11 +1,13 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Templates des 8 styles du widget de sessions (refonte visuelle), PARTAGÉS entre la fenêtre réelle
-         (SessionsWindow) et la galerie de prévisualisation. Loi commune : mouvement réservé à l'attente ;
-         « à toi » (Attention) respire, « tour fini » (Turn) fixe ; Ghost = inconnu, estompé — l'attente DÉDUITE, elle, reste lisible. -->
+         (SessionsWindow) et la galerie de prévisualisation. Trois mots, tous venus du producteur unique
+         (AffichageSessions) : « Réflexion », « En attente », « En attente ? ». Loi commune : mouvement réservé
+         à l'attente ; une demande (permission, question) respire, un tour fini est fixe ; l'attente DÉDUITE
+         s'atténue sans s'effacer. Aucun libellé d'état n'est écrit en dur ici. -->
     <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-    <!-- Pouls lent RÉSERVÉ à « à toi » (WaitingAttention). Appliqué à l'élément coloré de chaque style. -->
+    <!-- Pouls lent RÉSERVÉ aux demandes observées (WaitingAttention : permission ou question). Appliqué à l'élément coloré de chaque style. -->
     <Style x:Key="PulseAttention" TargetType="FrameworkElement">
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsAttention}" Value="True">
@@ -314,7 +316,7 @@
                                 <Style.Triggers><DataTrigger Binding="{Binding HasWaiting}" Value="True"><Setter Property="Foreground" Value="#161019"/></DataTrigger></Style.Triggers>
                             </Style></TextBlock.Style>
                         </TextBlock>
-                        <TextBlock Text="  en attente" FontSize="11" VerticalAlignment="Center" Margin="2,0,0,0">
+                        <TextBlock Text="{Binding LibelleCompteur}" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0">
                             <TextBlock.Style><Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="#8C8A98"/>
                                 <Style.Triggers><DataTrigger Binding="{Binding HasWaiting}" Value="True"><Setter Property="Foreground" Value="#3A2A12"/></DataTrigger></Style.Triggers>

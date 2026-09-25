@@ -45,11 +45,8 @@ public sealed class SessionsController : ISessionsController
             _installer.Install(ExePath); // hooks = précision « permission » pour le terminal (bonus)
             Persist(s => s with { SessionsWidgetEnabled = true });
             ShowWindow();
-            MessageBox.Show(Owner(),
-                "Widget de sessions activé.\n\nIl affiche tes sessions Claude Code ACTIVES, détectées via\n" +
-                "leurs transcripts. Une session apparaît dès qu'elle a de l'activité récente et indique si\n" +
-                "elle a fini son tour (elle t'attend) ou travaille encore.",
-                "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Le texte vient du producteur des mots (réserve R9) : il dit ce que l'écran dit, et rien d'autre.
+            MessageBox.Show(Owner(), AffichageSessions.TexteActivation(), "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (System.Exception ex)
         {

@@ -7,8 +7,9 @@
         WindowStartupLocation="Manual" FontFamily="Segoe UI">
     <!-- Panneau CHROMELESS. Le STYLE (refonte visuelle) est choisi dans les réglages ; un ContentControl
          sélectionne le template correspondant via IsStyleX. Templates partagés (Resources/SessionStyles.xaml)
-         avec la galerie de prévisualisation. Loi : mouvement réservé à l'attente ; « à toi » respire,
-         « tour fini » fixe ; déduit = fantôme. -->
+         avec la galerie de prévisualisation. Trois mots, venus du producteur unique (AffichageSessions).
+         Loi : mouvement réservé à l'attente ; une demande (permission, question) respire, un tour fini est
+         fixe ; l'attente DÉDUITE (« En attente ? ») s'atténue sans s'effacer. -->
     <Window.Resources>
         <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/SessionStyles.xaml"/>
     </Window.Resources>

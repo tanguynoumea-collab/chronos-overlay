@@ -14,17 +14,48 @@ public class AffichageSessionsTests
 {
     private static readonly DateTimeOffset Maintenant = new(2026, 9, 12, 13, 28, 0, TimeSpan.Zero);
 
+    /// <summary>LIB-01 — les trois attentes OBSERVÉES disent le même mot ; l'ordre et la couleur portent la
+    /// distinction. L'attente DÉDUITE porte son « ? ». « indéterminé » n'est lu que par le rapport de
+    /// diagnostic : l'état indéterminé n'a pas de ligne dans le widget.</summary>
     [Theory]
-    [InlineData(SessionActivity.WaitingAttention, "à toi")]
-    [InlineData(SessionActivity.WaitingTurn, "tour fini")]
-    [InlineData(SessionActivity.Working, "en cours")]
-    [InlineData(SessionActivity.Unknown, "inconnu")]
-    [InlineData(SessionActivity.WaitingDeduced, "à toi ? déduit")]
+    [InlineData(SessionActivity.WaitingAttention, "En attente")]
+    [InlineData(SessionActivity.WaitingTurn, "En attente")]
+    [InlineData(SessionActivity.Working, "Réflexion")]
+    [InlineData(SessionActivity.Unknown, "indéterminé")]
+    [InlineData(SessionActivity.WaitingDeduced, "En attente ?")]
     public void Chaque_etat_a_son_libelle(SessionActivity a, string attendu)
         => Assert.Equal(attendu, AffichageSessions.Etat(a));
 
+    /// <summary>
+    /// LIB-01 — les TROIS mots du widget, verrouillés par l'utilisateur, et rien d'autre. Les constantes sont
+    /// comparées à leurs chaînes EXACTES (un accent, une capitale, l'espace avant « ? » comptent) ; puis
+    /// l'ensemble de ce que le producteur rend pour une session qui a une ligne doit être EXACTEMENT ces trois
+    /// mots — un quatrième libellé qui naîtrait en silence rougirait ici, pas chez l'utilisateur.
+    /// </summary>
+    [Fact]
+    public void Le_producteur_ne_connait_que_trois_mots_visibles()
+    {
+        Assert.Equal("Réflexion", AffichageSessions.Reflexion);
+        Assert.Equal("En attente", AffichageSessions.EnAttente);
+        Assert.Equal(AffichageSessions.EnAttente + " ?", AffichageSessions.EnAttenteDeduite);
+
+        var valeurs = Enum.GetValues<SessionActivity>();
+        Assert.Equal(5, valeurs.Length);   // garde anti-muette : un parcours vide ne prouverait rien
+
+        var visibles = valeurs.Where(AffichageSessions.AUneLigne)
+                              .Select(AffichageSessions.Etat)
+                              .ToHashSet(StringComparer.Ordinal);
+        var attendus = new[] { "Réflexion", "En attente", "En attente ?" };
+        Assert.True(visibles.SetEquals(attendus),
+            "Le widget doit parler en trois mots exactement. Mots produits : « "
+            + string.Join(" », « ", visibles.OrderBy(m => m, StringComparer.Ordinal)) + " »");
+
+        // L'indéterminé n'a pas de ligne ; son mot n'est lu que par le rapport de diagnostic.
+        Assert.Equal("indéterminé", AffichageSessions.Etat(SessionActivity.Unknown));
+    }
+
     /// <summary>EVT-04 — sans ce parcours, un futur état pourrait naître MUET : le `_` du switch de libellés
-    /// l'absorberait en silence, et le widget afficherait « inconnu » pour quelque chose qui ne l'est pas.
+    /// l'absorberait en silence, et le rapport dirait « indéterminé » pour quelque chose qui ne l'est pas.
     /// C'est exactement ce qui serait arrivé à l'attente déduite si personne ne lui avait écrit de mot.</summary>
     [Fact]
     public void Chaque_valeur_de_l_enumeration_a_un_libelle_non_vide()
@@ -37,7 +68,8 @@ public class AffichageSessionsTests
     }
 
     /// <summary>Garde de COMPACITÉ du widget, mécanique et falsifiable : huit gabarits affichent ce libellé
-    /// sur une seule ligne, et « à toi ? déduit » est le plus long des cinq (quatorze caractères).</summary>
+    /// sur une seule ligne, et « En attente ? » (douze caractères) est désormais le plus long des mots à
+    /// l'écran.</summary>
     [Fact]
     public void Aucun_libelle_d_etat_ne_depasse_seize_caracteres()
     {
@@ -158,7 +190,7 @@ public class AffichageSessionsTests
             new TreatedStore(System.IO.Path.Combine(TempDir(), "t.json"), new FakeClock(Maintenant)));
         vm.Refresh(Maintenant);
 
-        Assert.Equal(new[] { "à toi", "en cours" }, vm.Items.Select(i => i.StateText).ToArray());
+        Assert.Equal(new[] { "En attente", "Réflexion" }, vm.Items.Select(i => i.StateText).ToArray());
         Assert.Equal(new[] { "il y a 5 min", "à l'instant" }, vm.Items.Select(i => i.Detail).ToArray());
         Assert.Equal(1, vm.WaitingCount);
     }
@@ -180,7 +212,7 @@ public class AffichageSessionsTests
 
         var item = Assert.Single(vm.Items);
 
-        Assert.Equal("à toi ? déduit", item.StateText);   // le libellé DIT qu'il déduit
+        Assert.Equal("En attente ?", item.StateText);     // le libellé DIT qu'il déduit
         Assert.False(item.IsGhost);                       // …et il n'est pas estompé comme un inconnu
         Assert.False(item.IsWorking);                     // ni présenté comme un travail en cours
         Assert.False(item.IsAttention);                   // ni comme une demande OBSERVÉE

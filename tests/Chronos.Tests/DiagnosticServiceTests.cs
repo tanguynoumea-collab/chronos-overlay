@@ -552,7 +552,7 @@ public class DiagnosticServiceTests
         var report = await Rapport(moniteur);
 
         Assert.Contains("Sessions AFFICHÉES par le widget : 1", report);
-        Assert.Contains("overlay — à toi (il y a 5 min)", report);   // libellés IDENTIQUES à ceux du widget
+        Assert.Contains("overlay — En attente (il y a 5 min)", report);   // libellés IDENTIQUES à ceux du widget
     }
 
     /// <summary>Critère n°2 de la phase — ce qui est masqué est dit, ET on dit par quoi. Reconstitution du
@@ -577,7 +577,7 @@ public class DiagnosticServiceTests
         Assert.Contains("Sessions AFFICHÉES par le widget : 0", report);
         var ligne = report.Split('\n').Single(l => l.Contains("e465420e"));
         Assert.Contains("PROJET ADVANCED SHEET", ligne);
-        Assert.Contains("à toi", ligne);
+        Assert.Contains("En attente", ligne);
         Assert.Contains("masquée par treated.json", ligne);
     }
 
@@ -645,9 +645,9 @@ public class DiagnosticServiceTests
         // La ligne à puce du désaccord, isolée par ses deux marqueurs : l'identifiant ET le mot « retenu ».
         var ligne = report.Split('\n').Single(l => l.Contains("e465420e") && l.Contains("retenu "));
         Assert.Contains("transcript (~/.claude/projects)", ligne);
-        Assert.Contains("en cours", ligne);
+        Assert.Contains("« Réflexion »", ligne);
         Assert.Contains(@"fichier de hook (%APPDATA%\Chronos\sessions)", ligne);
-        Assert.Contains("à toi", ligne);
+        Assert.Contains("« En attente »", ligne);
         Assert.Contains("plus ancien de 6 h", ligne);   // 7 h moins 10 s → 6 h 59 min 50 s, tronqué à l'heure
 
         // Un désaccord n'est PAS un masquage : la session est bel et bien à l'écran.

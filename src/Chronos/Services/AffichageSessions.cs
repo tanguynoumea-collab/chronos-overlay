@@ -22,6 +22,11 @@ namespace Chronos.Services;
 /// </summary>
 public static class AffichageSessions
 {
+    /// <summary>Les TROIS mots du widget (LIB-01), verrouillés par l'utilisateur. Rien d'autre ne s'affiche.</summary>
+    public const string Reflexion = "Réflexion";
+    public const string EnAttente = "En attente";
+    public const string EnAttenteDeduite = "En attente ?";   // espace ORDINAIRE avant « ? » ; le « ? » est obligatoire
+
     /// <summary>Ordre du widget et du rapport : ce qui réclame une intervention d'abord, déduction comprise,
     /// puis le plus récent (LIB-04).</summary>
     public static IReadOnlyList<SessionSnapshot> Ordonner(IEnumerable<SessionSnapshot> sessions)
@@ -50,21 +55,33 @@ public static class AffichageSessions
     /// masqué par le moniteur, avec son motif, et le rapport de diagnostic le liste.</summary>
     public static bool AUneLigne(SessionActivity a) => a is not SessionActivity.Unknown;
 
-    /// <summary>Libellé d'état, tel qu'affiché par le widget. « à toi » et « tour fini » sont les deux
-    /// attentes OBSERVÉES, distinguées par les mots et non par deux oranges ; « à toi ? déduit » est la
-    /// troisième, et elle n'a été observée par personne — le mot et l'interrogation sont là pour ça.
+    /// <summary>Libellé d'état, tel qu'affiché par le widget ET par le rapport de diagnostic (LIB-03). Trois
+    /// mots, là où la v1.6 en avait cinq : « Réflexion » dit le travail observé ; « En attente » couvre les
+    /// trois attentes OBSERVÉES — tour fini, permission demandée, question posée — sans les distinguer par le
+    /// mot : c'est l'ORDRE (<see cref="Urgence"/>) qui porte l'urgence, et la couleur (rampe ambre) ;
+    /// « En attente ? » est la seule attente DÉDUITE, et son point d'interrogation est ce qui la distingue
+    /// d'une observation — il n'est pas décoratif.
+    /// <para>L'état indéterminé n'a pas de ligne dans le widget (<see cref="AUneLigne"/>) : son mot n'est lu
+    /// que par le rapport de diagnostic, qui le liste parmi les masquées.</para>
     /// <para>Aucun de ces libellés ne dépasse seize caractères : huit gabarits les affichent sur une
     /// ligne, et la garde est tenue par un test, pas par cette phrase.</para></summary>
     public static string Etat(SessionActivity a) => a switch
     {
-        SessionActivity.WaitingAttention => "à toi",
-        SessionActivity.WaitingTurn => "tour fini",
-        SessionActivity.Working => "en cours",
-        // L'interrogation et le mot ne sont pas décoratifs : ils sont ce qui distingue une déduction d'une
-        // observation. « tour fini » et « à toi » restent réservés à ce qui a été réellement observé.
-        SessionActivity.WaitingDeduced => "à toi ? déduit",
-        _ => "inconnu",
+        SessionActivity.WaitingAttention or SessionActivity.WaitingTurn => EnAttente,
+        SessionActivity.WaitingDeduced => EnAttenteDeduite,
+        SessionActivity.Working => Reflexion,
+        _ => "indéterminé",   // lu par le DIAGNOSTIC seulement : Unknown n'a pas de ligne dans le widget
     };
+
+    /// <summary>Le seul texte de l'application qui explique le widget, lu au moment de l'activer (réserve R9 de
+    /// l'audit v1.6). Construit à partir des trois constantes : il ne peut plus dériver des mots de l'écran.</summary>
+    public static string TexteActivation()
+        => "Widget de sessions activé.\n\n"
+         + "Il affiche tes sessions Claude Code actives, observées par leurs hooks et par leurs transcripts, en trois mots :\n"
+         + $"  « {Reflexion} » — la session travaille ;\n"
+         + $"  « {EnAttente} » — elle a fini son tour, demande une permission ou te pose une question ;\n"
+         + $"  « {EnAttenteDeduite} » — elle travaillait et plus rien n'arrive : Chronos le déduit, il ne l'a pas vu.\n\n"
+         + "Clic droit sur une session : la marquer traitée (elle revient si elle te redemande quelque chose) ou l'archiver.";
 
     /// <summary>Ancienneté d'une session, telle qu'affichée par le widget.</summary>
     public static string Age(System.TimeSpan d)

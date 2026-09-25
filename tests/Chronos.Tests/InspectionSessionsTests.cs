@@ -407,7 +407,7 @@ public class InspectionSessionsTests
 
         Assert.Equal(SessionActivity.WaitingDeduced, visible.Activity);
         Assert.NotEqual(SessionActivity.WaitingTurn, visible.Activity);   // l'interdit, écrit
-        Assert.Equal("à toi ? déduit", AffichageSessions.Etat(visible.Activity));
+        Assert.Equal("En attente ?", AffichageSessions.Etat(visible.Activity));
     }
 
     /// <summary>

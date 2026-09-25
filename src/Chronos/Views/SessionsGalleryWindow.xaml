@@ -29,7 +29,7 @@
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
             <TextBlock Text="Sessions — 8 styles" Foreground="#F4F2EC" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            <TextBlock Text="données d'échantillon · 2 en attente, 2 en cours, 1 fantôme" Style="{StaticResource TileSub}"
+            <TextBlock Text="données d'échantillon · 2 « En attente », 1 « En attente ? », 2 « Réflexion »" Style="{StaticResource TileSub}"
                        Margin="12,0,0,0" VerticalAlignment="Center"/>
         </StackPanel>
 
