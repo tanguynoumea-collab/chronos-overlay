@@ -28,6 +28,18 @@ namespace Chronos.Services;
 /// sous-agents : 94 % des transcripts étant des sous-agents (mesure du 2026-09-12 : 819 sur 870), une
 /// vague d'agents parallèles consommait les douze emplacements et faisait disparaître la vraie session.</para>
 ///
+/// <para>D-28-01 (phase 28) — l'instant du signal. Un transcript est daté par le « timestamp » de sa DERNIÈRE
+/// ligne significative (user / assistant), borné par la date d'écriture du fichier, avec repli sur celle-ci si
+/// le champ manque ou est illisible — jamais par la seule date d'écriture. Fait mesuré le 2026-09-25 à
+/// 16:58:20 : la fermeture de l'app bureau a ajouté des lignes SANS horodatage (bridge-session, last-prompt,
+/// cost-state) à douze transcripts dont le dernier vrai message datait de deux heures à deux jours ; les mêmes
+/// lignes s'écrivent pendant qu'une question attend. Datés par l'écriture, ces transcripts revenaient
+/// « en attente » d'un bloc (fantômes, limite saturée), faisaient avancer l'épisode d'attente du détecteur
+/// (une session marquée traitée ressortait sans avoir rien redemandé : NET-03 dévoyé) et faisaient perdre une
+/// permission contre un transcript (FUS-01 faussé). La date d'écriture ne sert plus qu'au PRÉ-FILTRE
+/// d'énumération, qui reste exact : l'horodatage d'un message ne dépasse jamais l'écriture du fichier. Classer
+/// tous les candidats avant la limite coûte ~0,6 ms par fichier supplémentaire (mesuré en recherche).</para>
+///
 /// Lecture EFFICACE : seule la fin du fichier (~64 Ko) est lue (les transcripts font plusieurs Mo).
 /// </summary>
 // Le contrat ISessionSource n'avait qu'une seule implémentation, la source app-bureau, qui disparaît en
@@ -47,30 +59,32 @@ public sealed class TranscriptSessionSource : ISessionSource
 
     public IReadOnlyList<SessionSnapshot> Read(System.DateTimeOffset now)
     {
-        var result = new List<SessionSnapshot>();
-        if (!Directory.Exists(_projectsRoot)) return result;
+        if (!Directory.Exists(_projectsRoot)) return new List<SessionSnapshot>();
 
-        List<FileInfo> recents;
+        List<FileInfo> candidats;
         try
         {
-            recents = new DirectoryInfo(_projectsRoot)
+            candidats = new DirectoryInfo(_projectsRoot)
                 .EnumerateFiles("*.jsonl", SearchOption.AllDirectories)
                 .Where(f => !EstSousAgent(f))
+                // PRÉ-FILTRE d'économie, jamais l'autorité : l'horodatage d'un message ne dépasse pas l'écriture
+                // du fichier, donc un fichier écrit hors fenêtre ne peut contenir aucun signal dans la fenêtre.
                 .Where(f => now - new System.DateTimeOffset(f.LastWriteTimeUtc, System.TimeSpan.Zero) < ActiveWindow)
-                .OrderByDescending(f => f.LastWriteTimeUtc)
-                .ToList();   // MATÉRIALISÉ ici, dans le try : l'énumération était paresseuse, donc une erreur
-                             // d'accès disque survenait DANS le foreach, hors de ce catch, et remontait.
+                .ToList();   // MATÉRIALISÉ dans le try : l'énumération paresseuse levait hors du catch (phase 21)
         }
-        catch { return result; }
+        catch { return new List<SessionSnapshot>(); }
 
-        foreach (var fi in recents)
-        {
-            var snap = Classify(fi, now);
-            if (snap is null) continue;                 // rien d'exploitable → ne consomme AUCUN emplacement
-            result.Add(snap);
-            if (result.Count >= MaxSessions) break;     // SRC-03 : la limite porte sur les sessions RETENUES
-        }
-        return result;
+        // L'AUTORITÉ : l'instant que le signal porte. Tout candidat est classé AVANT la limite — un fichier
+        // rajeuni par des métadonnées ne doit plus voler un emplacement à une session réellement récente.
+        // Un fichier sans rien d'exploitable (Classify → null) ne consomme AUCUN emplacement.
+        return candidats
+            .Select(fi => Classify(fi, now))
+            .Where(s => s is not null && now - s.UpdatedAt < ActiveWindow)
+            .Select(s => s!)
+            .OrderByDescending(s => s.UpdatedAt)
+            .ThenBy(s => s.SessionId, System.StringComparer.Ordinal)   // départage déterministe
+            .Take(MaxSessions)                                        // SRC-03 : la limite porte sur les RETENUES
+            .ToList();
     }
 
     // SRC-03 — reconnaît un transcript de SOUS-AGENT par son chemin, avant tout I/O de contenu.
@@ -91,6 +105,7 @@ public sealed class TranscriptSessionSource : ISessionSource
 
             string? cwd = null;
             SessionActivity? state = null; // dernier verdict rencontré
+            System.DateTimeOffset? instant = null; // horodatage de la DERNIÈRE ligne significative (null : absent ou illisible)
 
             // On saute la 1re ligne SEULEMENT si le fichier a été tronqué par le seek (sinon elle est complète).
             int i0 = fi.Length > TailBytes ? 1 : 0;
@@ -116,6 +131,10 @@ public sealed class TranscriptSessionSource : ISessionSource
                     };
                 else if (type == "user")
                     state = SessionActivity.Working; // prompt utilisateur OU tool_result → l'assistant va/continue de bosser
+                else
+                    continue;                        // métadonnées (bridge-session, cost-state…) : ni état ni instant
+
+                instant = Horodatage(o);   // à CHAQUE ligne significative : la dernière l'emporte, null compris
             }
 
             if (state is null) return null; // aucun message exploitable
@@ -124,8 +143,15 @@ public sealed class TranscriptSessionSource : ISessionSource
             var sid = Path.GetFileNameWithoutExtension(fi.Name);
             // Le motif est un FAIT observé : dans un transcript, seule la question produit une attente.
             var reason = state == SessionActivity.WaitingAttention ? "AskUserQuestion" : null;
-            return new SessionSnapshot(sid, project, state.Value, reason,
-                new System.DateTimeOffset(fi.LastWriteTimeUtc, System.TimeSpan.Zero));
+
+            // L'instant que le SIGNAL porte (doctrine TRT-02, déjà appliquée par le détecteur), borné par l'écriture
+            // du fichier — une source dont l'horloge avance ne doit pas dater un signal dans l'avenir — et repli sur
+            // l'écriture si la ligne n'est pas horodatée ou illisible. Décision D-28-01 : la date d'écriture n'est PAS
+            // l'instant du signal ; l'app bureau ajoute des lignes de métadonnées sans horodatage à la fermeture et
+            // pendant qu'une question attend (relevé du 2026-09-25, 16 h 58 : douze transcripts rajeunis d'un bloc).
+            var ecriture = new System.DateTimeOffset(fi.LastWriteTimeUtc, System.TimeSpan.Zero);
+            var updatedAt = instant is { } h && h <= ecriture ? h : ecriture;
+            return new SessionSnapshot(sid, project, state.Value, reason, updatedAt);
         }
         catch { return null; }
     }
@@ -149,6 +175,12 @@ public sealed class TranscriptSessionSource : ISessionSource
         }
         return dernier;
     }
+
+    // Le « timestamp » ISO d'une ligne, par le point UNIQUE de conversion (garde HDR-05) ; null si absent ou illisible.
+    private static System.DateTimeOffset? Horodatage(JsonElement o)
+        => o.TryGetProperty("timestamp", out var ts) && ts.ValueKind == JsonValueKind.String
+            ? UsageNormalization.InstantDepuisIso(ts.GetString())
+            : null;
 
     // Lit au plus les derniers <paramref name="bytes"/> octets du fichier (transcripts volumineux).
     private static string ReadTail(string path, int bytes)

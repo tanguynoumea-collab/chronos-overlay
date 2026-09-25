@@ -112,6 +112,21 @@ public class TranscriptQuestionTests : IDisposable
         Assert.Null(s.Reason);
     }
 
+    /// <summary>D-28-01 sur les lignes réelles : les cinq lignes de métadonnées SANS horodatage écrites pendant
+    /// que la question attend font avancer la date d'écriture du fichier, pas l'instant du signal. Daté par
+    /// l'écriture, l'épisode d'attente avancerait à chaque ligne et une question marquée traitée ressortirait
+    /// sans rien avoir redemandé (NET-03 dévoyé).</summary>
+    [Fact]
+    public void Les_metadonnees_ecrites_pendant_la_question_ne_la_rajeunissent_pas()
+    {
+        var racine = CopierFixture("question-en-suspens.jsonl", ecriture: tQuestion.AddSeconds(210));
+
+        var s = Assert.Single(new TranscriptSessionSource(racine).Read(tQuestion.AddMinutes(4)));
+
+        Assert.Equal(SessionActivity.WaitingAttention, s.Activity);
+        Assert.Equal(tQuestion, s.UpdatedAt);   // l'instant de la QUESTION, et non l'écriture (question + 3 min 30 s)
+    }
+
     // --- La règle, et ses limites écrites -----------------------------------------------------------------
 
     /// <summary>Comparaison ORDINALE et EXACTE : ni la casse, ni un préfixe, ni un suffixe ne font une question.
