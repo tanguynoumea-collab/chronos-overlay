@@ -33,11 +33,11 @@ public sealed class SessionsPreviewViewModel : ObservableObject
         Add("api-migration", AffichageSessions.Etat(SessionActivity.WaitingTurn), Amber, turn: true, detail: "il y a 3 min");
         Add("chronos", AffichageSessions.Etat(SessionActivity.Working), Green, working: true, detail: "à l'instant");
         Add("docs-site", AffichageSessions.Etat(SessionActivity.Working), Green, working: true, detail: "il y a 1 min");
-        Add("interrompu", AffichageSessions.Etat(SessionActivity.WaitingDeduced), Amber, turn: true, detail: "il y a 25 min");
+        Add("interrompu", AffichageSessions.Etat(SessionActivity.WaitingDeduced), Amber, deduced: true, detail: "il y a 25 min");
     }
 
     private void Add(string project, string state, Brush brush, bool attention = false, bool turn = false,
-                     bool working = false, string detail = "")
+                     bool working = false, bool deduced = false, string detail = "")
     {
         var it = new SessionItemVm(project, 0, _ => { }, _ => { }, () => { })   // gestes no-op en prévisualisation
         {
@@ -45,10 +45,11 @@ public sealed class SessionsPreviewViewModel : ObservableObject
             StateText = state,
             StateBrush = brush,
             Detail = detail,
-            IsWaiting = attention || turn,
+            IsWaiting = attention || turn || deduced,
             IsAttention = attention,
-            IsTurn = turn,
+            IsTurn = turn || deduced,        // la déduction garde la forme de la famille des attentes
             IsWorking = working,
+            IsDeduced = deduced,
         };
         Items.Add(it);
     }

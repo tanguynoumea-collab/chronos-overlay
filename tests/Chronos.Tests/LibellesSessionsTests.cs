@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Chronos.Services;
+using Chronos.ViewModels;
 using Xunit;
 
 namespace Chronos.Tests;
@@ -126,5 +128,101 @@ public sealed class LibellesSessionsTests
         var controleur = Lire(Path.Combine("Views", "SessionsController.cs"));
         Assert.Contains("AffichageSessions.TexteActivation()", controleur, StringComparison.Ordinal);
         Assert.DoesNotContain("détectées via", controleur, StringComparison.Ordinal);
+    }
+
+    private static int Occurrences(string texte, string motif)
+    {
+        var n = 0;
+        for (var i = texte.IndexOf(motif, StringComparison.Ordinal); i >= 0;
+             i = texte.IndexOf(motif, i + motif.Length, StringComparison.Ordinal)) n++;
+        return n;
+    }
+
+    /// <summary>
+    /// Le fantôme (<c>IsGhost</c>) n'a plus de cas vrai depuis que l'état indéterminé n'a plus de ligne
+    /// (plan 28-02). Chacun de ses six déclencheurs devient un déclencheur <c>IsDeduced</c> : là où le fantôme
+    /// s'effaçait (jusqu'à 0,22), l'attente déduite s'atténue SANS s'effacer — au moins 0,6, jamais 1 (sinon
+    /// l'atténuation serait décorative). Un binding vers une propriété disparue ne lève rien, il se tait : d'où
+    /// ce contrôle au TEXTE.
+    /// </summary>
+    [Fact]
+    public void Le_fantome_a_quitte_les_gabarits_et_la_deduction_s_attenue_sans_s_effacer()
+    {
+        var styles = Lire(Path.Combine("Resources", "SessionStyles.xaml"));
+        Assert.Equal(8, Regex.Matches(styles, "DataTemplate x:Key=").Count);   // anti-muet
+        Assert.DoesNotContain("IsGhost", styles, StringComparison.Ordinal);
+
+        var declencheurs = Regex.Matches(styles,
+            "<DataTrigger Binding=\"\\{Binding IsDeduced\\}\" Value=\"True\"><Setter Property=\"Opacity\" Value=\"([0-9.]+)\"/></DataTrigger>");
+        Assert.Equal(6, declencheurs.Count);
+        foreach (Match m in declencheurs)
+        {
+            var opacite = double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            Assert.True(opacite >= 0.6 && opacite < 1,
+                $"Opacité d'atténuation {opacite} : l'attente déduite doit rester lisible (≥ 0,6) et atténuée (< 1).");
+        }
+        Assert.Equal(6, Occurrences(styles, "IsDeduced"));
+
+        foreach (var relatif in new[]
+                 {
+                     Path.Combine("Resources", "SessionStyles.xaml"),
+                     Path.Combine("Views", "SessionsWindow.xaml"),
+                     Path.Combine("Views", "SessionsGalleryWindow.xaml"),
+                     Path.Combine("ViewModels", "SessionsViewModel.cs"),
+                     Path.Combine("ViewModels", "SessionsPreviewViewModel.cs"),
+                 })
+        {
+            var texte = Lire(relatif);
+            Assert.False(texte.Contains("Ghost", StringComparison.Ordinal), $"{relatif} parle encore de Ghost");
+            Assert.False(texte.Contains("fantôme", StringComparison.Ordinal), $"{relatif} parle encore de fantôme");
+        }
+    }
+
+    /// <summary>Six gabarits sur huit ne montrent l'état que par forme et couleur : leur seul canal textuel est
+    /// l'info-bulle. Elle dit désormais « projet — mot » sur les huit, et le compteur de l'Annonciateur lit le
+    /// producteur.</summary>
+    [Fact]
+    public void Les_huit_infobulles_disent_le_mot()
+    {
+        var styles = Lire(Path.Combine("Resources", "SessionStyles.xaml"));
+        Assert.Equal(8, Occurrences(styles, "ToolTip=\"{Binding Infobulle}\""));
+        Assert.Equal(0, Occurrences(styles, "ToolTip=\"{Binding Project}\""));
+        Assert.Equal(1, Occurrences(styles, "Text=\"{Binding LibelleCompteur}\""));
+    }
+
+    /// <summary>
+    /// PIÈGE 7 : les gabarits sont PARTAGÉS entre l'écran (<c>SessionsViewModel</c>) et la galerie
+    /// (<c>SessionsPreviewViewModel</c>). Un binding vers une propriété absente de l'un des deux ne lève
+    /// aucune exception et ne rougit pas la matrice 8 × 9 (qui mesure des tailles) : il se TAIT. Chaque nom
+    /// lié doit donc exister sur la ligne (<c>SessionItemVm</c>), ou sur les DEUX listes.
+    /// </summary>
+    [Fact]
+    public void Tout_ce_que_les_gabarits_lient_existe_sur_les_deux_ViewModels()
+    {
+        var styles = Lire(Path.Combine("Resources", "SessionStyles.xaml"));
+        var noms = Regex.Matches(styles, "\\{Binding (?:Path=)?([A-Za-z]+)")
+                        .Select(m => m.Groups[1].Value)
+                        .Where(n => n is not ("PlacementTarget" or "DataContext"))
+                        .Distinct(StringComparer.Ordinal)
+                        .ToList();
+        Assert.True(noms.Count >= 10, $"Seulement {noms.Count} noms liés trouvés : la garde ne lit pas les gabarits.");
+
+        static bool Porte(Type t, string nom) => t.GetProperty(nom, BindingFlags.Public | BindingFlags.Instance) is not null;
+
+        var muets = noms.Where(n => !Porte(typeof(SessionItemVm), n)
+                                    && !(Porte(typeof(SessionsViewModel), n) && Porte(typeof(SessionsPreviewViewModel), n)))
+                        .ToList();
+        Assert.True(muets.Count == 0,
+            "Bindings MUETS (propriété absente de la ligne, ou de l'un des deux ViewModels de liste) : "
+            + string.Join(", ", muets));
+
+        Assert.True(Porte(typeof(SessionsViewModel), "RowOrientation") && Porte(typeof(SessionsPreviewViewModel), "RowOrientation"),
+            "RowOrientation (lié via DataContext.RowOrientation) doit exister sur les deux ViewModels de liste.");
+        Assert.False(Porte(typeof(SessionItemVm), "IsGhost"), "Le fantôme n'a plus de cas vrai : IsGhost doit disparaître.");
+
+        var galerie = new SessionsPreviewViewModel();
+        var mots = new HashSet<string>(galerie.Items.Select(i => i.StateText), StringComparer.Ordinal);
+        Assert.True(mots.SetEquals(new[] { AffichageSessions.Reflexion, AffichageSessions.EnAttente, AffichageSessions.EnAttenteDeduite }),
+            "Les échantillons de la galerie doivent dire exactement les trois mots : " + string.Join(" | ", mots));
     }
 }

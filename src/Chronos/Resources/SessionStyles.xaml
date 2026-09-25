@@ -25,9 +25,9 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Bulle de survol (style implicite) : petite étiquette sombre arrondie avec le nom de la session.
-         Couleurs fixes (les popups résolvent mal les DynamicResource du thème). S'applique à tous les
-         ToolTip="{Binding Project}" des icônes de session. -->
+    <!-- Bulle de survol (style implicite) : petite étiquette sombre arrondie avec le projet ET le mot d'état.
+         Couleurs fixes (les popups résolvent mal les DynamicResource du thème). S'applique aux huit
+         info-bulles des sessions, liées à Infobulle (projet — mot d'état). -->
     <Style TargetType="ToolTip">
         <Setter Property="Foreground" Value="#F4F2EC"/>
         <Setter Property="FontSize" Value="11.5"/>
@@ -49,7 +49,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border CornerRadius="9" Padding="10,7" Margin="0,3" MinWidth="180" Background="{DynamicResource SessPanel}"
-                            ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
+                            ToolTip="{Binding Infobulle}" ToolTipService.InitialShowDelay="300">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.35" Color="Black"/>
                         </Border.Effect>
@@ -87,7 +87,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Border Background="{DynamicResource SessPanel}" CornerRadius="7" Margin="0,2" Padding="0,0,10,0"
-                            ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
+                            ToolTip="{Binding Infobulle}" ToolTipService.InitialShowDelay="300">
                         <Border.ContextMenu>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                 <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -127,7 +127,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Width="52" Height="52" Margin="3,0" Background="#01000000"
-                              ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
+                              ToolTip="{Binding Infobulle}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                     <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -145,7 +145,7 @@
                                                     <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="-13"/></Setter.Value></Setter>
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsWorking}" Value="True"><Setter Property="Opacity" Value="0.55"/></DataTrigger>
-                                                <DataTrigger Binding="{Binding IsGhost}" Value="True"><Setter Property="Opacity" Value="0.4"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding IsDeduced}" Value="True"><Setter Property="Opacity" Value="0.7"/></DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Grid.Style>
@@ -170,7 +170,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Width="34" Height="34" Margin="3" Background="#01000000"
-                              ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
+                              ToolTip="{Binding Infobulle}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                     <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -205,7 +205,7 @@
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsGhost}" Value="True"><Setter Property="Opacity" Value="0.4"/></DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDeduced}" Value="True"><Setter Property="Opacity" Value="0.7"/></DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Ellipse.Style>
@@ -224,7 +224,7 @@
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel MaxWidth="118"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="26" Height="20" Margin="3" CornerRadius="3" Background="{Binding StateBrush}" ToolTip="{Binding Project}">
+                        <Border Width="26" Height="20" Margin="3" CornerRadius="3" Background="{Binding StateBrush}" ToolTip="{Binding Infobulle}">
                             <Border.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                     <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -237,7 +237,7 @@
                                 <Style TargetType="Border" BasedOn="{StaticResource PulseAttention}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsWorking}" Value="True"><Setter Property="Opacity" Value="0.45"/></DataTrigger>
-                                        <DataTrigger Binding="{Binding IsGhost}" Value="True"><Setter Property="Opacity" Value="0.22"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding IsDeduced}" Value="True"><Setter Property="Opacity" Value="0.7"/></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
@@ -256,7 +256,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Width="40" Height="70" Margin="1" Background="#01000000"
-                              ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
+                              ToolTip="{Binding Infobulle}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                     <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -284,7 +284,7 @@
                                                 <Setter Property="Width" Value="11"/>
                                                 <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="22"/></Setter.Value></Setter>
                                             </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsGhost}" Value="True"><Setter Property="Opacity" Value="0.35"/></DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDeduced}" Value="True"><Setter Property="Opacity" Value="0.7"/></DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Rectangle.Style>
@@ -327,7 +327,7 @@
                 <ItemsControl ItemsSource="{Binding Items}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border CornerRadius="6" Margin="0,2" Padding="8,4" Background="{Binding StateBrush}" ToolTip="{Binding Project}">
+                            <Border CornerRadius="6" Margin="0,2" Padding="8,4" Background="{Binding StateBrush}" ToolTip="{Binding Infobulle}">
                                 <Border.ContextMenu>
                                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                         <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -340,7 +340,7 @@
                                     <Style TargetType="Border" BasedOn="{StaticResource PulseAttention}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsWorking}" Value="True"><Setter Property="Opacity" Value="0.5"/></DataTrigger>
-                                            <DataTrigger Binding="{Binding IsGhost}" Value="True"><Setter Property="Opacity" Value="0.3"/></DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDeduced}" Value="True"><Setter Property="Opacity" Value="0.7"/></DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
@@ -362,7 +362,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Width="34" Height="30" Margin="3" Background="#01000000"
-                              ToolTip="{Binding Project}" ToolTipService.InitialShowDelay="300">
+                              ToolTip="{Binding Infobulle}" ToolTipService.InitialShowDelay="300">
                             <Grid.ContextMenu>
                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                     <MenuItem Header="Marquer traitée (revient si elle me redemande)" Command="{Binding MarquerTraiteeCommand}"/>
@@ -372,6 +372,15 @@
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Grid Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVis}}">
+                                <!-- L'attente DÉDUITE s'atténue sur l'œil OUVERT : l'œil fermé est masqué dès qu'une
+                                     session attend, un déclencheur posé sur lui ne se verrait jamais. -->
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDeduced}" Value="True"><Setter Property="Opacity" Value="0.7"/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
                                 <Ellipse Width="28" Height="18" Fill="#EDE6D6"/>
                                 <Ellipse Width="13" Height="13" Fill="{Binding StateBrush}" Style="{StaticResource PulseAttention}"/>
                                 <Ellipse Width="5" Height="5" Fill="#201810">
@@ -392,10 +401,6 @@
                                         <Setter Property="Visibility" Value="Visible"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsWaiting}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                            <DataTrigger Binding="{Binding IsGhost}" Value="True">
-                                                <Setter Property="Opacity" Value="0.45"/>
-                                                <Setter Property="StrokeDashArray" Value="2 2"/>
-                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Path.Style>

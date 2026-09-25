@@ -100,6 +100,26 @@ public class SessionStylesBindingTests
         }
     }
 
+    // Parcourt l'arbre VISUEL et rend les info-bulles TEXTUELLES : c'est le seul canal textuel de six gabarits
+    // sur huit, qui ne montrent l'état que par forme et couleur.
+    private static IEnumerable<string> InfobullesVisibles(DependencyObject racine)
+    {
+        var n = VisualTreeHelper.GetChildrenCount(racine);
+        for (var i = 0; i < n; i++)
+        {
+            var enfant = VisualTreeHelper.GetChild(racine, i);
+            if (enfant is FrameworkElement fe && fe.ToolTip is string s) yield return s;
+            foreach (var petit in InfobullesVisibles(enfant)) yield return petit;
+        }
+    }
+
+    private static readonly string[] TroisMots =
+        { AffichageSessions.Reflexion, AffichageSessions.EnAttente, AffichageSessions.EnAttenteDeduite };
+
+    // Les anciens libellés de la v1.6, tels qu'un TextBlock les aurait affichés.
+    private static readonly string[] AnciensLibelles =
+        { "à toi", "tour fini", "en cours", "à toi ? déduit", "inconnu", "  en attente" };
+
     // Parcourt l'arbre VISUEL et rend les menus contextuels attachés. Un ContextMenu n'est PAS dans
     // l'arbre visuel de la fenêtre (il a le sien, créé à l'ouverture) : il est la VALEUR d'une propriété,
     // et c'est là qu'on va le chercher — ce qui permet de le vérifier sans jamais ouvrir de menu, donc
@@ -136,6 +156,83 @@ public class SessionStylesBindingTests
             Assert.True(racine.DesiredSize.Width > 0 && racine.DesiredSize.Height > 0,
                 $"taille dégénérée pour le style {style} et le thème {theme.Key} : {racine.DesiredSize}");
         }
+    }
+
+    /// <summary>
+    /// LIB-01 et LIB-03, versant ÉCRAN, sur les 72 combinaisons : aucun ancien libellé n'est rendu ; les
+    /// info-bulles des huit gabarits disent « projet — mot » et, ensemble, les trois mots ; sur Pastilles et
+    /// Marge, les deux gabarits qui affichent le mot en texte, il se lit en entier — ni rogné, ni tronqué.
+    /// </summary>
+    [WpfFact]
+    public void Les_trois_mots_se_lisent_sur_les_8_styles_et_les_9_themes()
+    {
+        var styles = Enum.GetValues<SessionStyle>();
+        var themes = ThemeCatalog.All;
+        Assert.Equal(8, styles.Length);
+        Assert.Equal(9, themes.Count);
+
+        var combinaisons = 0;
+        foreach (var theme in themes)
+        foreach (var style in styles)
+        {
+            var vm = Vm();
+            vm.Style = style;
+            vm.SetTheme(theme);
+            var (_, racine) = Monter(vm, theme);
+            var contexte = $"style {style}, thème {theme.Key}";
+
+            var textes = TextesVisibles(racine).ToList();
+            foreach (var tb in textes)
+                Assert.False(AnciensLibelles.Contains(tb.Text, StringComparer.Ordinal),
+                    $"{contexte} : ancien libellé rendu à l'écran : « {tb.Text} »");
+
+            var bulles = InfobullesVisibles(racine).ToList();
+            Assert.True(bulles.Count == 4, $"{contexte} : {bulles.Count} info-bulles textuelles au lieu de 4");
+            var motsDesBulles = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var bulle in bulles)
+            {
+                var i = bulle.LastIndexOf(" — ", StringComparison.Ordinal);
+                Assert.True(i > 0, $"{contexte} : l'info-bulle « {bulle} » ne dit pas « projet — mot »");
+                var mot = bulle.Substring(i + 3);
+                Assert.True(TroisMots.Contains(mot, StringComparer.Ordinal),
+                    $"{contexte} : l'info-bulle « {bulle} » ne se termine pas par l'un des trois mots");
+                motsDesBulles.Add(mot);
+            }
+            Assert.True(motsDesBulles.SetEquals(TroisMots),
+                $"{contexte} : les info-bulles ne disent pas, ensemble, les trois mots");
+
+            if (style is SessionStyle.Pastilles or SessionStyle.Marge)
+            {
+                var etats = textes.Where(tb => TroisMots.Contains(tb.Text, StringComparer.Ordinal)).ToList();
+                Assert.True(etats.Count == 4, $"{contexte} : {etats.Count} mots d'état visibles au lieu de 4");
+                Assert.True(new HashSet<string>(etats.Select(tb => tb.Text), StringComparer.Ordinal).SetEquals(TroisMots),
+                    $"{contexte} : les mots d'état rendus ne sont pas exactement les trois mots");
+                foreach (var tb in etats)
+                {
+                    Assert.Equal(TextTrimming.None, tb.TextTrimming);
+                    Assert.True(tb.ActualWidth + 0.5 >= tb.DesiredSize.Width,
+                        $"{contexte} : « {tb.Text} » est rogné ({tb.ActualWidth} < {tb.DesiredSize.Width})");
+                }
+            }
+            combinaisons++;
+        }
+
+        Assert.Equal(72, combinaisons);   // la matrice n'a pas été traversée à vide
+    }
+
+    /// <summary>Le compteur de l'Annonciateur n'a plus de littéral : il lit <c>LibelleCompteur</c>, qui vient
+    /// du producteur. Quatre lignes à l'écran, dont trois attentes (demande, tour fini, déduite).</summary>
+    [WpfFact]
+    public void L_annonciateur_annonce_En_attente_par_le_producteur()
+    {
+        var vm = Vm();
+        vm.Style = SessionStyle.Annonciateur;
+        vm.SetTheme(ThemeCatalog.Default);
+        var (_, racine) = Monter(vm, ThemeCatalog.Default);
+
+        var textes = TextesVisibles(racine).Select(tb => tb.Text).ToList();
+        Assert.Contains(AffichageSessions.EnAttente, textes);
+        Assert.Contains("3", textes);
     }
 
     [WpfFact]

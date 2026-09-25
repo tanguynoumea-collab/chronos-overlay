@@ -26,8 +26,8 @@ public sealed partial class SessionItemVm : ObservableObject
     private readonly System.Action<SessionItemVm> _traiter;
     private readonly System.Action _traiterTout;
 
-    [ObservableProperty] private string _project = "";
-    [ObservableProperty] private string _stateText = "";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Infobulle))] private string _project = "";
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(Infobulle))] private string _stateText = "";
     [ObservableProperty] private string _detail = "";
     [ObservableProperty] private Brush _stateBrush = Brushes.Gray;
     [ObservableProperty] private bool _isWaiting;
@@ -37,7 +37,11 @@ public sealed partial class SessionItemVm : ObservableObject
     [ObservableProperty] private bool _isAttention;  // WaitingAttention : permission ou question (respire)
     [ObservableProperty] private bool _isTurn;       // WaitingTurn, et la déduction : famille des attentes (fixe)
     [ObservableProperty] private bool _isWorking;    // Working : la session travaille
-    [ObservableProperty] private bool _isGhost;      // Unknown / périmé → fantôme
+    [ObservableProperty] private bool _isDeduced;    // WaitingDeduced → « En attente ? » : atténuée (0,7), jamais effacée
+
+    /// <summary>L'info-bulle des huit gabarits : le projet ET le mot. Six gabarits sur huit ne montrent l'état que
+    /// par forme et couleur ; c'est ici que leur mot se lit. La phase 29 y ajoutera le titre de la session.</summary>
+    public string Infobulle => $"{Project} — {StateText}";
 
     /// <summary>Libellé du geste de masse, porté par chaque ligne parce que le menu contextuel a pour
     /// DataContext la ligne et non la liste. Il porte le NOMBRE : un geste qui agit sur vingt sessions
@@ -199,44 +203,38 @@ public sealed partial class SessionsViewModel : ObservableObject
                 Project = s.Project,
                 ToutTraiterLibelle = $"Tout marquer traité ({snaps.Count}) — elles reviennent si elles redemandent",
             };
-            (it.StateText, it.StateBrush, it.IsWaiting) = Describe(s.Activity);
+            (it.StateText, it.StateBrush) = Describe(s.Activity);
+            // Le drapeau d'attente LIT le prédicat unique du producteur ; il ne le recopie plus.
+            it.IsWaiting = AffichageSessions.EstUneAttente(s.Activity);
             it.IsAttention = s.Activity == SessionActivity.WaitingAttention;
-            // La déduction rejoint la famille VISUELLE des attentes. Un drapeau de gabarit décrit une
-            // forme, il n'affirme rien : l'affirmation est dans StateText, et c'est lui qui porte
-            // l'interrogation. La ranger parmi les fantômes l'estomperait jusqu'à 0,22 d'opacité dans deux
-            // gabarits — une session qui m'attend peut-être ne doit pas être la plus effacée de l'écran.
+            // La déduction rejoint la famille VISUELLE des attentes (IsTurn), et porte en plus son propre
+            // drapeau (IsDeduced) : les gabarits l'atténuent sans jamais l'effacer. Un drapeau de gabarit
+            // décrit une forme, il n'affirme rien : l'affirmation est dans StateText, et c'est lui qui porte
+            // le point d'interrogation.
             it.IsTurn = s.Activity is SessionActivity.WaitingTurn or SessionActivity.WaitingDeduced;
             it.IsWorking = s.Activity == SessionActivity.Working;
-            it.IsGhost = s.Activity == SessionActivity.Unknown;
+            it.IsDeduced = s.Activity == SessionActivity.WaitingDeduced;
             it.Detail = AffichageSessions.Age(now - s.UpdatedAt);
             Items.Add(it);
         }
 
         TotalCount = snaps.Count;
         // Le compteur sert à ALERTER : taire une attente probable serait pire que l'annoncer avec un point
-        // d'interrogation. La déduction y entre donc, et son libellé dit ce qu'elle vaut.
-        WaitingCount = snaps.Count(s => s.Activity is SessionActivity.WaitingAttention
-                                        or SessionActivity.WaitingTurn or SessionActivity.WaitingDeduced);
+        // d'interrogation. La déduction y entre donc — c'est le prédicat unique qui le dit — et son mot dit
+        // ce qu'elle vaut.
+        WaitingCount = snaps.Count(s => AffichageSessions.EstUneAttente(s.Activity));
         HasWaiting = WaitingCount > 0;
         Summary = TotalCount == 0 ? "Aucune session"
             : (WaitingCount > 0 ? $"{WaitingCount} en attente · {TotalCount} session(s)" : $"{TotalCount} session(s)");
     }
 
-    // Le LIBELLÉ vient de la couche neutre (partagé avec le rapport) ; seules la couleur et le drapeau
-    // d'attente restent ici — ce sont des types WPF, ils ne peuvent pas en descendre.
-    private (string, Brush, bool) Describe(SessionActivity a)
+    // Le MOT vient du producteur unique (partagé avec le rapport) ; seule la couleur reste ici — c'est un
+    // type WPF, il ne peut pas en descendre.
+    private (string, Brush) Describe(SessionActivity a)
         => (AffichageSessions.Etat(a),
-            a switch
-            {
-                // Les deux attentes OBSERVÉES et l'attente DÉDUITE → rampe ambre. Le gris reste au seul
-                // inconnu : ce qu'on n'a pas pu lire s'efface, ce qu'on déduit se lit.
-                SessionActivity.WaitingAttention or SessionActivity.WaitingTurn
-                    or SessionActivity.WaitingDeduced => _amber,
-                SessionActivity.Working => _green,
-                _ => _gray,
-            },
-            a is SessionActivity.WaitingAttention or SessionActivity.WaitingTurn
-                 or SessionActivity.WaitingDeduced);
+            AffichageSessions.EstUneAttente(a) ? _amber          // les trois attentes : rampe ambre
+            : a == SessionActivity.Working ? _green               // « Réflexion » : rampe verte
+            : _gray);                                             // défensif : l'indéterminé est masqué par le moniteur
 
     private static Brush FrozenC(Color c)
     {

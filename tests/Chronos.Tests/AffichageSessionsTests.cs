@@ -197,10 +197,10 @@ public class AffichageSessionsTests
 
     /// <summary>
     /// EVT-04, versant ÉCRAN. La déduction doit être VISIBLE — le critère n°3 du ROADMAP exige un état
-    /// juste ET visible, et deux gabarits estompent les fantômes jusqu'à 0,22 d'opacité : une session qui
-    /// m'attend peut-être ne doit pas être la plus effacée de l'écran.
+    /// juste ET visible. Le fantôme de la v1.6 (estompé jusqu'à 0,22 d'opacité) n'existe plus : la déduction
+    /// porte son propre drapeau, <c>IsDeduced</c>, que les gabarits atténuent à 0,7 sans jamais l'effacer.
     ///
-    /// <para>Elle rejoint donc la famille VISUELLE des attentes (<c>IsTurn</c>), et c'est un choix de
+    /// <para>Elle rejoint aussi la famille VISUELLE des attentes (<c>IsTurn</c>), et c'est un choix de
     /// FORME, pas une affirmation : un drapeau de gabarit ne dit rien, l'affirmation est dans
     /// <c>StateText</c>, et c'est lui qui porte l'interrogation.</para>
     /// </summary>
@@ -213,7 +213,7 @@ public class AffichageSessionsTests
         var item = Assert.Single(vm.Items);
 
         Assert.Equal("En attente ?", item.StateText);     // le libellé DIT qu'il déduit
-        Assert.False(item.IsGhost);                       // …et il n'est pas estompé comme un inconnu
+        Assert.True(item.IsDeduced);                      // …atténué par son propre drapeau, jamais effacé
         Assert.False(item.IsWorking);                     // ni présenté comme un travail en cours
         Assert.False(item.IsAttention);                   // ni comme une demande OBSERVÉE
         Assert.True(item.IsTurn);                         // la famille visuelle des attentes
@@ -286,6 +286,73 @@ public class AffichageSessionsTests
 
         var sansLigne = valeurs.Where(a => !AffichageSessions.AUneLigne(a)).ToArray();
         Assert.Equal(new[] { SessionActivity.Unknown }, sansLigne);
+    }
+
+    /// <summary>
+    /// LE TABLEAU DE L'UTILISATEUR (contexte de la phase 28), rejoué tel quel : réfléchit → « Réflexion » ; a
+    /// fini, demande une permission ou pose une question → « En attente » ; déduit → « En attente ? » ;
+    /// indéterminé → aucune ligne. L'ordre dit l'urgence : la question et la permission d'abord (la plus
+    /// fraîche en tête), puis le tour fini, puis la déduction, puis la réflexion.
+    ///
+    /// <para>La troisième ligne du tableau (« a fini et lue → rien ») est la phase 30 ; son point d'entrée est
+    /// <c>AffichageSessions.EstUneAttente</c>, le prédicat unique que ce ViewModel lit déjà.</para>
+    /// </summary>
+    [Fact]
+    public void Le_tableau_de_l_utilisateur_se_rejoue_en_trois_mots()
+    {
+        var vm = VmAvec(
+            new SessionSnapshot("reflechit",  "p", SessionActivity.Working, null, Maintenant),
+            new SessionSnapshot("fini",       "p", SessionActivity.WaitingTurn, null, Maintenant.AddMinutes(-3)),
+            new SessionSnapshot("question",   "p", SessionActivity.WaitingAttention, "AskUserQuestion", Maintenant.AddMinutes(-1)),
+            new SessionSnapshot("permission", "p", SessionActivity.WaitingAttention, "PermissionRequest", Maintenant.AddMinutes(-2)),
+            new SessionSnapshot("muette",     "p", SessionActivity.WaitingDeduced, null, Maintenant.AddMinutes(-25)),
+            new SessionSnapshot("illisible",  "p", SessionActivity.Unknown, null, Maintenant));
+
+        Assert.Equal(5, vm.Items.Count);
+        Assert.DoesNotContain(vm.Items, i => i.SessionId == "illisible");
+
+        string Mot(string id) => vm.Items.Single(i => i.SessionId == id).StateText;
+        Assert.Equal("Réflexion", Mot("reflechit"));
+        Assert.Equal("En attente", Mot("fini"));
+        Assert.Equal("En attente", Mot("question"));
+        Assert.Equal("En attente", Mot("permission"));
+        Assert.Equal("En attente ?", Mot("muette"));
+
+        Assert.Equal(new[] { "question", "permission", "fini", "muette", "reflechit" },
+                     vm.Items.Select(i => i.SessionId).ToArray());
+    }
+
+    /// <summary>
+    /// LIB-03, versant ViewModel : le drapeau d'attente et le compteur ne recopient plus le prédicat, ils le
+    /// LISENT (<c>AffichageSessions.EstUneAttente</c>). Et l'info-bulle — le seul canal textuel de six
+    /// gabarits sur huit — dit le projet ET le mot du producteur.
+    /// </summary>
+    [Fact]
+    public void Le_drapeau_et_le_compteur_d_attente_viennent_du_predicat_unique()
+    {
+        var avecLigne = Enum.GetValues<SessionActivity>().Where(AffichageSessions.AUneLigne).ToArray();
+        Assert.Equal(4, avecLigne.Length);   // garde anti-muette
+
+        foreach (var a in avecLigne)
+        {
+            var item = Assert.Single(VmAvec(new SessionSnapshot("s-" + a, "p", a, null, Maintenant)).Items);
+            Assert.True(item.IsWaiting == AffichageSessions.EstUneAttente(a), $"IsWaiting faux pour {a}");
+            Assert.True(item.IsDeduced == (a == SessionActivity.WaitingDeduced), $"IsDeduced faux pour {a}");
+            Assert.Equal($"p — {AffichageSessions.Etat(a)}", item.Infobulle);
+        }
+
+        var melange = new[]
+        {
+            new SessionSnapshot("m1", "p", SessionActivity.WaitingAttention, null, Maintenant),
+            new SessionSnapshot("m2", "p", SessionActivity.WaitingTurn, null, Maintenant.AddMinutes(-1)),
+            new SessionSnapshot("m3", "p", SessionActivity.WaitingDeduced, null, Maintenant.AddMinutes(-25)),
+            new SessionSnapshot("m4", "p", SessionActivity.Working, null, Maintenant),
+            new SessionSnapshot("m5", "p", SessionActivity.Working, null, Maintenant.AddMinutes(-2)),
+            new SessionSnapshot("m6", "p", SessionActivity.Unknown, null, Maintenant),
+        };
+        var vm = VmAvec(melange);
+        Assert.Equal(melange.Count(s => AffichageSessions.EstUneAttente(s.Activity)), vm.WaitingCount);
+        Assert.Equal(3, vm.WaitingCount);
     }
 
     /// <summary>Un ViewModel dont la source de sessions est substituée et les magasins temporaires.</summary>
