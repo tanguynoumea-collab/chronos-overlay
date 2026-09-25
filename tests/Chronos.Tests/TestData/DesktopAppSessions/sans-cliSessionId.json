@@ -1,0 +1,17 @@
+{
+  "sessionId": "local_fixture-05",
+  "cwd": "C:\\Projets\\Projet-F",
+  "originCwd": "C:\\Projets\\Projet-F",
+  "createdAt": 1780907795659,
+  "lastFocusedAt": 1781190743865,
+  "lastActivityAt": 1781186423361,
+  "completedTurns": 43,
+  "isArchived": false,
+  "model": "claude-opus-4-8",
+  "_fixture": {
+    "origine": "local_a80ef1c4-39ef-451f-9371-917aec0615cc.json",
+    "releve": "2026-09-25 (phase 27)",
+    "champs_retires": "enabledMcpTools, remoteMcpServersConfig, promptAppendSnapshot, toolSurfaceSnapshot, bridgeSessionIds, sessionPermissionUpdates, etc. (non lus par Chronos)",
+    "anonymise": "title, cwd, originCwd, sessionId, status_detail, needs_action"
+  }
+}

@@ -101,7 +101,7 @@ notification au reset, exploitation de `latestUserFrameAt` / `completedTurns`.
 - Phases entières (27→31) : travail de milestone planifié — continue après la Phase 26 (v1.6)
 - Phases décimales (27.1, 27.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 27: Le relevé avant la règle** - Les deux inconnues de la règle « lue » sont tranchées sur la vraie machine, en lecture seule et avec l'utilisateur, avant qu'une ligne de la règle ne soit écrite
+- [x] **Phase 27: Le relevé avant la règle** - Les deux inconnues de la règle « lue » sont tranchées sur la vraie machine, en lecture seule et avec l'utilisateur, avant qu'une ligne de la règle ne soit écrite
 - [ ] **Phase 28: Deux mots, une question, les mêmes horizons** - « Réflexion » / « En attente » / « En attente ? », une question `AskUserQuestion` classée attente, et une session sans fichier de hook qui ne disparaît plus en silence à 15 min
 - [ ] **Phase 29: Ce que l'app bureau sait de chaque session** - Titre, dernier focus et classification de fin de tour lus dans les fichiers de l'app, en lecture seule, avec dégradation vers le comportement v1.6
 - [ ] **Phase 30: La lecture fait disparaître** - Une session lue quitte le widget sans clic, revient si elle redemande, et le diagnostic dit pourquoi elle est masquée
@@ -137,9 +137,10 @@ qu'une ligne de la règle ne soit écrite ; et LUE-02 est réécrite d'après ce
      lit, couvrant les valeurs de `status_category` présentes sur disque et un fichier sans `cliSessionId`,
      sont versionnés comme fixtures de test — une fixture régénérée par sérialisation ne prouverait rien
      (précédent DEL-06).
-**Plans**: TBD — phase à point de contrôle humain (l'utilisateur fait les gestes, l'agent relève en lecture
-seule). Seule phase du milestone sans test ajouté : son livrable est un fait, et des fixtures ; la suite reste
-à 889 verts.
+**Plans**: 1 plan
+
+Plans:
+- [x] 27-01-PLAN.md — Protocole du relevé (Task 1 passif, gestes A et B avec l'utilisateur), conclusion, LUE-01/LUE-02 réécrites, six fixtures réelles. Baseline 896 verts.
 
 ### Phase 28: Deux mots, une question, les mêmes horizons
 **Goal**: Le widget ne parle plus qu'en deux mots — **« Réflexion »** ou **« En attente »**, et
@@ -278,7 +279,7 @@ la 28 peut passer devant sans rien casser.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Le relevé avant la règle | 0/? | Not started | - |
+| 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
 | 28. Deux mots, une question, les mêmes horizons | 0/? | Not started | - |
 | 29. Ce que l'app bureau sait de chaque session | 0/? | Not started | - |
 | 30. La lecture fait disparaître | 0/? | Not started | - |

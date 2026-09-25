@@ -1,0 +1,29 @@
+{
+  "sessionId": "local_fixture-04",
+  "cliSessionId": "adac2711-86a4-4b4d-b71c-9a594c9d959e",
+  "cwd": "C:\\Projets\\Projet-E",
+  "originCwd": "C:\\Projets\\Projet-E",
+  "createdAt": 1790148912467,
+  "lastFocusedAt": 1790240046504,
+  "lastActivityAt": 1790240406552,
+  "latestUserFrameAt": 1790240398328,
+  "completedTurns": 70,
+  "lastAssistantUuid": "5eec0de2-f19c-4e38-8db5-9c5d0be233f1",
+  "isArchived": false,
+  "title": "Session E",
+  "titleSource": "auto",
+  "postTurnSummary": {
+    "status_category": "blocked",
+    "status_detail": "(anonymisé)",
+    "needs_action": "(anonymisé) réponse attendue",
+    "summarizes_uuid": "5eec0de2-f19c-4e38-8db5-9c5d0be233f1"
+  },
+  "postTurnSummaryFor": "5eec0de2-f19c-4e38-8db5-9c5d0be233f1",
+  "model": "claude-opus-5-5",
+  "_fixture": {
+    "origine": "local_0404943a-7f87-46c3-ab45-2c99dc090955.json",
+    "releve": "2026-09-25 (phase 27)",
+    "champs_retires": "enabledMcpTools, remoteMcpServersConfig, promptAppendSnapshot, toolSurfaceSnapshot, bridgeSessionIds, sessionPermissionUpdates, etc. (non lus par Chronos)",
+    "anonymise": "title, cwd, originCwd, sessionId, status_detail, needs_action"
+  }
+}

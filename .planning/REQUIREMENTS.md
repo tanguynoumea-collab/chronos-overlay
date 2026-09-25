@@ -60,10 +60,18 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   **antérieur** au dernier focus (`lastFocusedAt`) est marquée traitée automatiquement, via le magasin
   réversible existant (`TreatedStore`, épisode daté par l'instant du signal) — elle disparaît **sans clic**.
   Réversible comme aujourd'hui : un nouvel épisode d'attente plus récent la ramène (NET-03 inchangé).
-- [ ] **LUE-02**: La session **sélectionnée** dans l'app (celle dont `lastFocusedAt` est le plus récent) compte
-  comme lue lorsque la fenêtre de l'app Claude est au **premier plan** depuis au moins 2,5 s — c'est le cas du
-  tour qui se termine pendant qu'on le regarde, où `lastFocusedAt` précède la fin du tour. Détection du premier
-  plan par Win32 (`GetForegroundWindow` + processus), **sans UI Automation**.
+  *Précisé le 2026-09-25 d'après `27-RELEVE.md`* : l'instant d'attente est le **`timestamp` du dernier message
+  assistant `end_turn` (ou de la question posée) du transcript** — jamais le `mtime` du fichier (rafraîchi par
+  des lignes de métadonnées sans message), ni le seul fichier de hook (supprimé à la frontière des tours par
+  l'app bureau). Le `Stop` du hook, s'il existe, confirme ; il ne fait pas référence.
+- [ ] **LUE-02**: La session **sélectionnée** dans l'app (celle dont `lastFocusedAt` est le plus récent, tous
+  fichiers confondus) compte comme lue tant que la fenêtre au **premier plan** appartient au processus
+  **`claude`**, avec un délai de grâce de 2,5 s après la fin du tour — c'est le cas du tour qui se termine
+  pendant qu'on le regarde, où `lastFocusedAt` précède la fin du tour. Détection Win32
+  (`GetForegroundWindow` → `GetWindowThreadProcessId` → nom du processus), **sans UI Automation**.
+  *Confirmée NÉCESSAIRE le 2026-09-25 par le geste B de `27-RELEVE.md`* : fin de tour 20:34:04 sous les yeux
+  de l'utilisateur, `lastFocusedAt` resté à 20:30:44. Et le geste A a montré qu'un retour alt-tab met
+  `lastFocusedAt` à jour : dès que le premier plan quitte `claude`, LUE-01 reprend seule.
 - [ ] **LUE-03**: Le diagnostic distingue « lue » de « répondue » : pour une session masquée, il nomme le motif
   (« lue : focus à HH:MM > attente à HH:MM », « sélectionnée au premier plan », ou « répondue »), et jamais un
   masquage sans cause.
@@ -148,4 +156,4 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 **Couverture :** 17 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
 
 ---
-*Last updated: 2026-09-25 — exigences v1.7 définies (relevé sur la vraie machine du même jour)*
+*Last updated: 2026-09-25 — LUE-01 précisée et LUE-02 confirmée d'après le relevé de la phase 27*

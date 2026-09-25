@@ -1,0 +1,22 @@
+{
+  "sessionId": "local_fixture-03",
+  "cliSessionId": "dae57d29-d277-4e4c-8cad-b4d2b97701e5",
+  "cwd": "C:\\Projets\\Projet-D",
+  "originCwd": "C:\\Projets\\Projet-D",
+  "createdAt": 1790240426001,
+  "lastFocusedAt": 1790361025541,
+  "lastActivityAt": 1790361028351,
+  "latestUserFrameAt": 1790337085346,
+  "completedTurns": 3,
+  "lastAssistantUuid": "22ca876b-334e-42cc-ae3d-137328922683",
+  "isArchived": false,
+  "title": "Session D",
+  "titleSource": "auto",
+  "model": "claude-opus-5-5",
+  "_fixture": {
+    "origine": "local_06b830b5-a3bc-4141-8051-4addb16d0f56.json",
+    "releve": "2026-09-25 (phase 27)",
+    "champs_retires": "enabledMcpTools, remoteMcpServersConfig, promptAppendSnapshot, toolSurfaceSnapshot, bridgeSessionIds, sessionPermissionUpdates, etc. (non lus par Chronos)",
+    "anonymise": "title, cwd, originCwd, sessionId, status_detail, needs_action"
+  }
+}

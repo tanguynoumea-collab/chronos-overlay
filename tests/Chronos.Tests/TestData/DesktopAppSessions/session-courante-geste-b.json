@@ -1,0 +1,22 @@
+{
+  "sessionId": "local_fixture-00",
+  "cliSessionId": "11456cab-d447-42c7-aa85-9920ce64f7ba",
+  "cwd": "C:\\Projets\\Projet-A",
+  "originCwd": "C:\\Projets\\Projet-A",
+  "createdAt": 1790345146164,
+  "lastFocusedAt": 1790361044976,
+  "lastActivityAt": 1790361286677,
+  "latestUserFrameAt": 1790361283093,
+  "completedTurns": 5,
+  "lastAssistantUuid": "644b6461-a49f-4897-87d2-8f6097554f0f",
+  "isArchived": false,
+  "title": "Session A",
+  "titleSource": "auto",
+  "model": "claude-fable-5-1",
+  "_fixture": {
+    "origine": "local_eb880bbb-0c15-45d9-8a46-8ff311a61296.json",
+    "releve": "2026-09-25 (phase 27)",
+    "champs_retires": "enabledMcpTools, remoteMcpServersConfig, promptAppendSnapshot, toolSurfaceSnapshot, bridgeSessionIds, sessionPermissionUpdates, etc. (non lus par Chronos)",
+    "anonymise": "title, cwd, originCwd, sessionId, status_detail, needs_action"
+  }
+}

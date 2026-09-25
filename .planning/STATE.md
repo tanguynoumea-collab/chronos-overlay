@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
-status: roadmap_created
-stopped_at: Roadmap v1.7 créée (5 phases, 27-31) ; prochaine action /gsd:plan-phase 27
-last_updated: "2026-09-25T18:05:00.000Z"
+status: executing
+stopped_at: Phase 27 close (VAL-01) ; phase 28 en planification
+last_updated: "2026-09-25T18:45:00.000Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -26,17 +26,22 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 ## Current Position
 
-Milestone: v1.7 — Lue ou non lue (roadmap créée : 5 phases, 27 → 31, 17 / 17 exigences mappées)
-Phase: 27 (Le relevé avant la règle) — 1re des 5 phases du milestone ; point de contrôle humain, en lecture seule
-Plan: — (phase pas encore planifiée)
-Status: Ready to plan
-Last activity: 2026-09-25 — roadmap v1.7 créée (phases 27-31)
+Milestone: v1.7 — Lue ou non lue
+Phase: 28 (Deux mots, une question, les mêmes horizons) — PLANNING (recherche faite, planificateur lancé)
+Plan: —
+Status: Phase 27 CLOSE le 2026-09-25 (relevé in vivo avec l'utilisateur, gestes A et B) ; phases 28 → 31 restantes
+Last activity: 2026-09-25
 
-Progress: [░░░░░░░░░░] 0 %
+Progress: [██░░░░░░░░] 20 % (1 phase sur 5)
+
+**Relevé de phase 27, en deux lignes :** le retour alt-tab met `lastFocusedAt` à jour (16:23:51 → 20:30:44) ;
+un tour terminé sous les yeux laisse `lastFocusedAt` antérieur à la fin du tour (20:30:44 < 20:34:04) ⇒ LUE-02
+nécessaire (premier plan = processus `claude`). Dater les attentes par le `timestamp` du dernier message du
+transcript, jamais par le mtime. Détail : `.planning/phases/27-le-relev-avant-la-r-gle/27-RELEVE.md`.
 
 ## Performance Metrics
 
-- Suite de tests à la clôture de v1.6 : **889 verts / 0 échec** en ~6 s.
+- Suite de tests : **896 verts / 0 échec** en 7 s (baseline mesurée le 2026-09-25 à l'entrée de v1.7 ; l'audit v1.6 disait 889, avant les derniers commits).
 - v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
 ## Milestone v1.6 (clos)
@@ -494,10 +499,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ### Pending Todos
 
-- **Prochaine action : `/gsd:plan-phase 27`** (relevé), puis `/gsd:autonomous` pour 28 → 31.
-- **Relevé in vivo = Phase 27 (VAL-01), planifiée, pas « hors GSD »** : (1) `lastFocusedAt` au retour
-  alt-tab sur la même session ; (2) le tour qui finit pendant qu'on regarde. L'utilisateur fait les gestes,
-  l'agent relève en lecture seule.
+- **Prochaine action : planification puis exécution de la phase 28** (en cours), puis 29 → 31.
+- ~~Relevé in vivo = Phase 27 (VAL-01)~~ FAIT le 2026-09-25 (gestes A et B joués par l'utilisateur).
 - **Reste de v1.5 non refermable par un agent** : HDR-02 (un 429 RÉEL porte-t-il bien les en-têtes
   `anthropic-ratelimit-unified-*` ?) et le parcours de reconnexion de bout en bout.
 
@@ -514,7 +517,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-25
-Stopped at: Roadmap v1.7 créée (5 phases, 27-31, 17 / 17 exigences) — en attente d'approbation
+Last session: 2026-09-25T18:45:00.000Z
+Stopped at: Phase 27 close ; planificateur de la phase 28 lancé
 Resume file: .planning/RESUME-HERE.md
-Next: /gsd:plan-phase 27 — le relevé in vivo se joue AVEC l'utilisateur (protocole écrit, lecture seule)
+Next: /gsd:execute-phase 28 dès que les plans sont vérifiés
