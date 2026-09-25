@@ -173,9 +173,17 @@ y entre, et le couplage R4 rompu avant qu'une nouvelle source rejoigne l'arbitra
      (20 min de silence, 8 h d'abandon), et une garde rougit si la chaîne 20 min < 8 h < 24 h < 72 h se défait
      (recommandation n° 2 de l'audit v1.6). Le §3 de `docs/hooks-contract.md` et le texte d'activation du
      widget (réserve R9) disent les mêmes mots que l'écran (SIL-01, LIB-01).
-**Plans**: TBD — point d'attention pour le plan : porter la fenêtre des transcripts de 15 min à 8 h élargit la
-population lue (limite `MaxSessions` = 12, lecture des queues de 64 Ko à chaque cycle de 2 s) ; le coût et
-l'effet sur la limite se MESURENT sur la vraie machine, ils ne se supposent pas.
+**Plans**: 4 plans en 3 vagues — point d'attention pour le plan : porter la fenêtre des transcripts de 15 min à 8 h
+élargit la population lue (limite `MaxSessions` = 12, lecture des queues de 64 Ko à chaque cycle de 2 s) ; le coût et
+l'effet sur la limite se MESURENT sur la vraie machine, ils ne se supposent pas (recherche : 19,6 ms médian à 8 h ;
+remesuré avec le code livré par 28-04, tâche 3). Décision consignée au plan 28-01 (D-28-01) : un transcript est daté
+par le `timestamp` de son dernier message, jamais par la date d'écriture de son fichier.
+
+Plans:
+- [ ] 28-01-PLAN.md — La question `AskUserQuestion` est une attente, et un transcript est daté par son dernier message (LIB-02, SIL-01 partiel) — vague 1
+- [ ] 28-02-PLAN.md — L'ordre d'écran dit l'urgence sans toucher l'arbitrage (`RangArbitrage`, R4), l'indéterminé n'a plus de ligne, prédicat d'attente unique (LIB-04, LIB-01, LIB-03) — vague 1
+- [ ] 28-03-PLAN.md — Trois mots partout, d'un seul producteur : contrat §1/§3, rôles des hooks, texte d'activation, galerie, 8 gabarits × 9 thèmes (LIB-01, LIB-03) — vague 2
+- [ ] 28-04-PLAN.md — Les mêmes horizons : `HorizonsSessions`, règle de silence en un point, 8 h pour les transcripts, deux gardes, mesure sur la vraie machine (SIL-01) — vague 3
 **UI hint**: yes
 
 ### Phase 29: Ce que l'app bureau sait de chaque session
@@ -280,7 +288,7 @@ la 28 peut passer devant sans rien casser.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
-| 28. Deux mots, une question, les mêmes horizons | 0/? | Not started | - |
+| 28. Deux mots, une question, les mêmes horizons | 0/4 | Planned | - |
 | 29. Ce que l'app bureau sait de chaque session | 0/? | Not started | - |
 | 30. La lecture fait disparaître | 0/? | Not started | - |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |
