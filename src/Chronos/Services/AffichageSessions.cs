@@ -83,6 +83,9 @@ public static class AffichageSessions
          + $"  « {EnAttenteDeduite} » — elle travaillait et plus rien n'arrive : Chronos le déduit, il ne l'a pas vu.\n\n"
          + "Clic droit sur une session : la marquer traitée (elle revient si elle te redemande quelque chose) ou l'archiver.";
 
+    // SQUELETTE (RED) : le nom affiché n'est pas encore produit.
+    public static string Nom(SessionSnapshot s) => throw new System.NotImplementedException();
+
     /// <summary>Ancienneté d'une session, telle qu'affichée par le widget.</summary>
     public static string Age(System.TimeSpan d)
     {

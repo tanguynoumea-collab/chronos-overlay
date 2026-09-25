@@ -49,4 +49,5 @@ public sealed record LectureSessions(
     IReadOnlyList<SessionSnapshot> Visibles,
     IReadOnlyList<SessionMasquee> Masquees,
     int FichiersEcartesParAnciennete,
-    IReadOnlyList<DesaccordSources> Desaccords);
+    IReadOnlyList<DesaccordSources> Desaccords,
+    LectureAppBureau? AppBureau = null);

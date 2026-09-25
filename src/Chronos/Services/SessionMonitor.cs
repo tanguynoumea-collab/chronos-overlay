@@ -33,6 +33,9 @@ public sealed class SessionMonitor
     private readonly TreatedStore? _treated;
     private readonly SessionTreatmentTracker? _tracker;
 
+    // SQUELETTE (RED) : le lecteur de l'app bureau est reçu, mais ignoré par Inspecter.
+    private readonly LecteurAppBureau? _appBureau;
+
     /// <param name="sessionsDir">UNE racine d'état : le raccourci des tests, qui n'en ont qu'une.</param>
     /// <param name="dossiersEtat">La liste des racines d'état, dans l'ordre (APP-06) — celle que la production
     /// résout une fois par <see cref="RacinesEtat"/> : la vue du paquet de l'app bureau d'abord, la vue réelle
@@ -42,7 +45,7 @@ public sealed class SessionMonitor
     public SessionMonitor(string? sessionsDir = null, ISessionSource? transcripts = null,
         ArchiveStore? archive = null,
         TreatedStore? treated = null, SessionTreatmentTracker? tracker = null,
-        IReadOnlyList<string>? dossiersEtat = null)
+        IReadOnlyList<string>? dossiersEtat = null, LecteurAppBureau? appBureau = null)
     {
         if (sessionsDir is not null && dossiersEtat is not null)
             throw new System.ArgumentException("Les racines des fichiers d'état se donnent d'UNE façon : un dossier (sessionsDir) OU la liste des racines (dossiersEtat).", nameof(dossiersEtat));
@@ -54,7 +57,10 @@ public sealed class SessionMonitor
         _archive = archive ?? new ArchiveStore();
         _treated = treated;
         _tracker = tracker;
+        _appBureau = appBureau;
     }
+
+    internal LecteurAppBureau? Lecteur => _appBureau;
 
     /// <summary>Les racines d'état lues à chaque cycle, dans l'ordre. Une propriété SINGULIÈRE mentirait : le
     /// moniteur en lit plusieurs (APP-06). Le balayage CYC-01 et le rapport de diagnostic passent sur CES racines,

@@ -355,6 +355,23 @@ public class AffichageSessionsTests
         Assert.Equal(3, vm.WaitingCount);
     }
 
+    // ── APP-02 (phase 29) : le NOM affiché, un producteur pour le widget et le rapport ──
+
+    /// <summary>Le titre de l'app, quand la jointure l'a posé, est le nom que l'utilisateur lit.</summary>
+    [Fact]
+    public void Le_nom_affiche_est_le_titre_s_il_existe()
+        => Assert.Equal("Session A", AffichageSessions.Nom(
+               new SessionSnapshot("s", "Projet-A", SessionActivity.WaitingTurn, null, Maintenant, "Session A")));
+
+    /// <summary>Sans titre — absent, vide ou blanc — le nom affiché reste le dossier : jamais une ligne sans nom.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Sans_titre_le_nom_affiche_est_le_dossier(string? titre)
+        => Assert.Equal("Projet-A", AffichageSessions.Nom(
+               new SessionSnapshot("s", "Projet-A", SessionActivity.WaitingTurn, null, Maintenant, titre)));
+
     /// <summary>Un ViewModel dont la source de sessions est substituée et les magasins temporaires.</summary>
     private static SessionsViewModel VmAvec(params SessionSnapshot[] snaps)
     {

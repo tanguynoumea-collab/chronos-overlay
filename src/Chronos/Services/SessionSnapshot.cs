@@ -29,4 +29,5 @@ public sealed record SessionSnapshot(
     string Project,
     SessionActivity Activity,
     string? Reason,
-    System.DateTimeOffset UpdatedAt);
+    System.DateTimeOffset UpdatedAt,
+    string? Titre = null);
