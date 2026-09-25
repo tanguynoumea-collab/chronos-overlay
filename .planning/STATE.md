@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Phase 27 close (VAL-01) ; phase 28 en planification
-last_updated: "2026-09-25T18:45:00.000Z"
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-09-25T19:35:24.910Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 20
+  total_plans: 5
+  completed_plans: 2
 ---
 
 # Project State
@@ -22,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend.
-**Current focus:** Milestone v1.7 « Lue ou non lue » — définir les exigences puis la roadmap.
+**Current focus:** Phase 28 — Deux mots, une question, les mêmes horizons
 
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 28 (Deux mots, une question, les mêmes horizons) — PLANNING (recherche faite, planificateur lancé)
-Plan: —
-Status: Phase 27 CLOSE le 2026-09-25 (relevé in vivo avec l'utilisateur, gestes A et B) ; phases 28 → 31 restantes
+Phase: 28 (Deux mots, une question, les mêmes horizons) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-09-25
 
 Progress: [██░░░░░░░░] 20 % (1 phase sur 5)
@@ -60,8 +59,10 @@ Enquête d'origine : .planning/debug/widget-sessions-statuts.md (close).
 été LUE.** Les trois seuls chemins de disparition : nouveau prompt (NET-01), clic droit, ou 8 h.
 
 **La source qui manquait — métadonnées par session de l'app bureau Claude :**
+
 - Chemin : `%APPDATA%\Claude\claude-code-sessions\<orgId>\<userId>\local_<id>.json` — 142 fichiers,
   ~275 Ko chacun, réécrits EN ENTIER au changement de session et en fin de tour (mtime suit).
+
 - **CORRIGÉ le 2026-09-25 (21:17)** : `%APPDATA%\Claude` n'est PAS une jonction — c'est la **virtualisation
   AppData de MSIX**, visible seulement des processus lancés sous l'app bureau (sessions Claude Code, hooks,
   agents). Vu de l'overlay (lancé par explorer/startup), `%APPDATA%\Claude` **n'existe pas** et
@@ -71,6 +72,7 @@ Enquête d'origine : .planning/debug/widget-sessions-statuts.md (close).
   v1.6 ni avant ; le widget en production ne tournait que sur les transcripts (15 min). D'où APP-06 : lire les
   deux vues (racines par candidats, paquet en premier). Le `usage.json` du pont statusLine est vieux dans les
   DEUX vues (09.07 et 10.07) : pas de source cadran à ressusciter.
+
 - Champs : `cliSessionId` (= l'UUID de session des hooks/transcripts, présent 115/138), `title` (titre lisible,
   `titleSource: auto`), `lastFocusedAt` (ms, dernier instant où la session a été SÉLECTIONNÉE dans l'app ;
   72/75 fichiers refocalisés bien après création), `lastActivityAt`, `latestUserFrameAt` (dernier message
@@ -78,6 +80,7 @@ Enquête d'origine : .planning/debug/widget-sessions-statuts.md (close).
   `postTurnSummary { status_category ∈ completed | blocked | review_ready, needs_action (texte : ce que
   l'utilisateur doit faire), status_detail, summarizes_uuid }` (classification de fin de tour faite par l'app,
   `classifierSummaryEnabled`). `blocked` = question posée à l'utilisateur.
+
 - Le titre `ai-title` des transcripts CLI **n'existe pas** dans les transcripts de l'app bureau (0 ligne sur 4).
 - Titre de la fenêtre de l'app bureau = « Claude » (pas de nom de session) : la technique « spinner dans le
   titre » de claude-session-browser ne s'applique pas.
@@ -210,6 +213,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 26 P02 | ~10 min | 2 tasks | 4 files |
 | Phase 26 P03 | ~11 min | 3 tasks | 11 files |
 | Phase 26 P04 | ~30 min | 2 tasks | 3 files |
+| Phase 28 P01 | 11min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -468,6 +472,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 26]: 26-03 : le libelle du geste de masse vient du ViewModel (ToutTraiterLibelle), jamais du XAML - en dur dans le gabarit, il ne pourrait plus porter le nombre de sessions
 - [Phase 26]: La garde croisee document/code porte sur la chaine EXACTE de la regle, jamais sur des mots qui figurent deja ailleurs : mutation M2 mesuree (le compte de la chaine generique MONTE a 3 et la garde rougit quand meme)
 - [Phase 26]: REQUIREMENTS.md non modifie au plan 26-04 : les 4 TRT etaient deja cochees. TRT-04 l'avait ete en 26-02, une vague avant l'arrivee de son volet UI - consigne comme ecart, pas lisse
+- [Phase 28]: [28-01] D-28-01 : un transcript est daté par le timestamp de sa dernière ligne user/assistant, borné par l'écriture, repli sur l'écriture si absent ou illisible ; la date d'écriture n'est plus qu'un PRÉ-FILTRE d'énumération (fait du 2026-09-25 16:58:20 : douze transcripts rajeunis par des métadonnées sans horodatage). Read classe tous les candidats, trie par UpdatedAt puis SessionId ordinal, puis Take(12).
+- [Phase 28]: [28-01] LIB-02 : dernier tool_use nommé EXACTEMENT « AskUserQuestion » ⇒ WaitingAttention, motif « AskUserQuestion » (fait observé) ; aucune liste extensible ; l'appel parallèle (1/222 mesuré) se dégrade vers v1.6 (Working), écrit et testé. Piège 3 non tranché : les deux issues d'arbitrage sont écrites en test, in vivo reporté à la phase 31.
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -514,15 +520,17 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - **Format interne de l'app bureau** : les fichiers `local_*.json` peuvent changer à toute mise à jour de
   l'app (v1.20186+). Risque n° 1 du milestone → test de santé au démarrage, dégradation vers v1.6, diagnostic
   qui dit « source app-bureau : absente / illisible / N fichiers ».
+
 - **R3 (v1.6, cran 1 livré)** : un battement pouvait écraser un « à toi » observé ; l'écriture est désormais
   monotone (MON-01), la suite du chemin est ouverte. À ne pas rouvrir sans nécessité.
+
 - **Trou §9.1 (audit v1.6)** : une session sans fichier de hook disparaît à 15 min sans devenir « à toi ? déduit ».
 - **Économie possible, à trancher après constat** : si `/api/oauth/usage` sert déjà la famille
   `anthropic-ratelimit-unified-*`, les ~288 micro-requêtes/jour de la sonde deviennent redondantes.
 
 ## Session Continuity
 
-Last session: 2026-09-25T18:45:00.000Z
-Stopped at: Phase 27 close ; planificateur de la phase 28 lancé
-Resume file: .planning/RESUME-HERE.md
+Last session: 2026-09-25T19:35:24.904Z
+Stopped at: Completed 28-01-PLAN.md
+Resume file: None
 Next: /gsd:execute-phase 28 dès que les plans sont vérifiés
