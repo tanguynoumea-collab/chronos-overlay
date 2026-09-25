@@ -17,16 +17,23 @@ question posée). Elle NE décide PAS « lue » (phase 30) et ne change pas les 
 <decisions>
 ## Implementation Decisions
 
-### Où et comment lire — VERROUILLÉ
-- Racine : `Path.Combine(Environment.GetFolderPath(ApplicationData), "Claude", "claude-code-sessions")`, puis
-  `<orgId>\<userId>\local_*.json` (énumération récursive à profondeur 2 ; ne PAS coder les identifiants).
-  `%APPDATA%\Claude` est une jonction vers le cache du paquet MSIX : `Path.Combine` uniquement, jamais de
-  séparateur mixte (un chemin `/`+`\` a échoué en Python via la jonction).
-- Fichiers de ~275 Ko réécrits EN ENTIER par l'app : ouvrir en `FileShare.ReadWrite`, parser avec
-  `JsonDocument` tolérant, un fichier tronqué ou invalide ⇒ ignoré ce cycle (pas d'état, pas de log bruyant).
-- Ne lire que les fichiers dont le `mtime` < 24 h ; relire un fichier seulement si (mtime, taille) a changé
-  depuis la dernière lecture (cache par chemin, en mémoire, pas de fichier). Coût à MESURER sur la vraie
-  machine : ~20 fichiers < 24 h, 142 au total.
+### Où et comment lire — VERROUILLÉ (corrigé le 2026-09-25 par la recherche de phase 29 + sonde hors arbre)
+- **`%APPDATA%\Claude` n'existe PAS vu de l'overlay.** Ce n'est pas une jonction : c'est la virtualisation
+  AppData de MSIX, visible seulement des processus lancés sous l'app bureau (Claude Code, ses hooks, les
+  agents). La racine se résout par CANDIDATS, dans l'ordre : (1)
+  `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude-code-sessions` (énumérer `Claude_*`,
+  ne pas coder le suffixe éditeur), (2) `%APPDATA%\Claude\claude-code-sessions` (si un jour l'app n'est plus
+  packagée). Puis `<orgId>\<userId>\local_*.json` (profondeur 2, identifiants non codés).
+- **Même règle pour les fichiers d'état des hooks (APP-06)** : `%LOCALAPPDATA%\Packages\Claude_*\LocalCache
+  \Roaming\Chronos\sessions` ET `%APPDATA%\Chronos\sessions` sont lus, balayés et comptés ; fusion par
+  `session_id` via l'arbitrage existant. Un type `RacinesEtat` (ou équivalent) porte la résolution, testable
+  par racines injectées.
+- Fichiers de ~275 Ko réécrits par fichier temporaire + `MoveFileExW` (3 essais) puis repli en écriture sur
+  place : ouvrir en **`FileShare.ReadWrite | FileShare.Delete`**, copier les octets (0,36 ms médian), parser
+  APRÈS fermeture avec `JsonDocument` tolérant ; jamais `File.ReadAll*`. Un fichier tronqué ou invalide ⇒
+  ignoré ce cycle, en gardant la dernière lecture valide (aucun titre ne clignote).
+- Ne lire que les fichiers dont le `mtime` < 24 h ; cache (mtime, taille) par chemin, en mémoire : mesuré
+  24 ms médian / 68 ms p90 sans cache contre 0,73 ms avec — le cache est justifié.
 - Champs lus, et seulement eux : `cliSessionId`, `title`, `titleSource`, `cwd`, `createdAt`, `lastFocusedAt`,
   `lastActivityAt`, `latestUserFrameAt`, `completedTurns`, `isArchived`, `postTurnSummary.status_category`,
   `postTurnSummary.needs_action`. Champs inconnus (`_fixture`, `enabledMcpTools`, …) ignorés.
@@ -39,9 +46,14 @@ question posée). Elle NE décide PAS « lue » (phase 30) et ne change pas les 
   `MotifBlocage` (texte `needs_action`).
 - Elle n'est PAS un `ISessionSource` qui dépose des `SignalSession` d'activité (elle ne sait pas si la session
   travaille) — SAUF pour `blocked` : une classification `blocked` avec `needs_action` non vide est déposée
-  comme signal d'ATTENTE (`WaitingAttention`, motif = `needs_action`), datée par `lastActivityAt`, et entre
-  dans l'arbitrage FUS-01 comme troisième source (`SourceSession.AppBureau`, rang après Hook et avant
-  Transcript à âge égal — décision écrite et testée). `completed` / `review_ready` ne déposent rien.
+  comme signal d'ATTENTE (`WaitingAttention`, motif = `needs_action`), et entre dans l'arbitrage FUS-01 comme
+  troisième source (`SourceSession.AppBureau`, rang entre Hook et Transcript à âge égal — décision écrite et
+  testée). `completed` / `review_ready` ne déposent rien.
+- **Règle « l'app qualifie une ligne, elle n'en crée pas »** : le signal `blocked` n'est déposé que pour une
+  session déjà connue d'une autre source (hook ou transcript), sous l'horizon de 8 h, non archivée.
+- **Datation de `blocked` figée par épisode** : à la première apparition du résumé (clé `postTurnSummaryFor`),
+  pas `lastActivityAt` qui continue d'avancer après la fin du tour (+3 min 10 s mesurés) et ferait revenir
+  une session marquée traitée.
 - `postTurnSummary` est TRANSITOIRE (effacé au redémarrage de l'app, absent sur la plupart des sessions) :
   jamais un état persistant, toujours un indice daté.
 

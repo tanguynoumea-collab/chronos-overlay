@@ -194,7 +194,7 @@ forme : le widget retombe alors exactement sur son comportement v1.6.
 **Depends on**: Phase 27 (format re-confirmé sur la version du jour, fixtures réelles) et Phase 28 (vocabulaire
 et ordre définitifs : `blocked` entre directement dans « En attente », au rang des questions, sans libellé
 intermédiaire à réécrire).
-**Requirements**: APP-01, APP-02, APP-03, APP-04, APP-05
+**Requirements**: APP-01, APP-02, APP-03, APP-04, APP-05, APP-06
 **Success Criteria** (what must be TRUE):
   1. **Le titre remplace le dossier** : une session de l'app bureau s'affiche sous son titre, celui que
      l'utilisateur voit dans l'app ; une session sans titre connu garde son nom de dossier ; dans les deux cas
@@ -215,6 +215,11 @@ intermédiaire à réécrire).
      falsifiée avant commit ; les fixtures réelles de la Phase 27 passent ; `GardesPerimetreTests`,
      `ServicesLayerPurityTests` et `CompositionRootTests` restent verts sans que leurs listes soient
      assouplies (APP-05).
+  6. **Les deux vues d'AppData sont lues** (ajouté le 2026-09-25) : les fichiers d'état écrits par les hooks
+     sous l'app bureau (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Chronos\sessions`) ET ceux de
+     la vue réelle (`%APPDATA%\Chronos\sessions`) alimentent le moniteur, sont balayés et comptés par le
+     diagnostic racine par racine ; la racine `claude-code-sessions` se résout par candidats, le paquet en
+     premier. Constaté par une sonde lancée HORS de l'arbre de l'app, jamais depuis une session (APP-06).
 **Plans**: TBD — deux points de conception à trancher au plan, sur mesure : (a) 142 fichiers d'environ 275 Ko
 réécrits en entier ne se relisent pas tous les 2 s — la borne de 24 h et un cache par date de modification sont
 à mesurer ; (b) la place de `blocked` dans l'arbitrage FUS-01 — troisième source datée, ou enrichissement d'un
@@ -295,13 +300,13 @@ la 28 peut passer devant sans rien casser.
 
 ### Couverture des exigences
 
-17 requirements v1.7, chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
+18 requirements v1.7, chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
 
 | Phase | Requirements | Nombre |
 |-------|--------------|--------|
 | 27 | VAL-01 | 1 |
 | 28 | LIB-01, LIB-02, LIB-03, LIB-04, SIL-01 | 5 |
-| 29 | APP-01, APP-02, APP-03, APP-04, APP-05 | 5 |
+| 29 | APP-01, APP-02, APP-03, APP-04, APP-05, APP-06 | 6 |
 | 30 | LUE-01, LUE-02, LUE-03, LUE-04 | 4 |
 | 31 | VAL-02, VAL-03 | 2 |
-| **Total** | | **17 / 17** |
+| **Total** | | **18 / 18** |

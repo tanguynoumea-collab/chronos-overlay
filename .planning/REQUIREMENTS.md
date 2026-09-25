@@ -53,7 +53,14 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   dernier focus et la classification lus. Une source absente est annoncée « absente », pas passée sous silence.
 - [ ] **APP-05**: Chronos n'écrit **jamais** dans `%APPDATA%\Claude` : la source est en lecture seule, et une
   garde le tient par test.
-
+- [ ] **APP-06** *(ajoutée le 2026-09-25, sonde hors de l'arbre de l'app — `29-SONDE-HORS-ARBRE.txt`)* :
+  l'overlay lit les fichiers d'état des hooks dans **toutes les vues d'AppData** — la vue réelle
+  (`%APPDATA%\Chronos\sessions`, vide en production) ET le cache du paquet MSIX de l'app bureau
+  (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Chronos\sessions`, où les hooks lancés sous l'app
+  écrivent réellement) — résolution des racines par candidats, fusion par `session_id` (l'arbitrage par
+  fraîcheur existe), balayage CYC-01 et diagnostic sur chaque racine. La racine de la source app-bureau
+  (`claude-code-sessions`) se résout de la même façon, le paquet en premier : `%APPDATA%\Claude` n'existe
+  pas vu de l'overlay. Sans cette exigence, rien de v1.6 ni de v1.7 n'atteint le widget en production.
 ### La lecture fait disparaître (LUE)
 
 - [ ] **LUE-01**: Une session en attente (tour fini, à toi, ou question posée) dont l'instant d'attente est
@@ -140,6 +147,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | APP-03 | Phase 29 | Pending |
 | APP-04 | Phase 29 | Pending |
 | APP-05 | Phase 29 | Pending |
+| APP-06 | Phase 29 | Pending |
 | LUE-01 | Phase 30 | Pending |
 | LUE-02 | Phase 30 | Pending |
 | LUE-03 | Phase 30 | Pending |
@@ -153,7 +161,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | VAL-02 | Phase 31 | Pending |
 | VAL-03 | Phase 31 | Pending |
 
-**Couverture :** 17 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
+**Couverture :** 18 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
 
 ---
-*Last updated: 2026-09-25 — LUE-01 précisée et LUE-02 confirmée d'après le relevé de la phase 27*
+*Last updated: 2026-09-25 — APP-06 ajoutée (deux vues d'AppData), LUE-01/LUE-02 ajustées d'après la phase 27*

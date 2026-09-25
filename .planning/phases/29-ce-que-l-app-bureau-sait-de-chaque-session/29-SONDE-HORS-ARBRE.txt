@@ -1,0 +1,30 @@
+﻿heure: 21:17:28
+parent: 8124
+=== REEL %APPDATA%\Chronos ===
+backups 23.09 11:09
+archived.json 13.07 08:30
+chronos.log 23.09 11:11
+last-exact.json 25.09 21:16
+oauth.dat 25.09 17:50
+settings.json 25.09 20:29
+treated.json 25.09 21:15
+usage.json 09.07 22:55
+=== REEL sessions ===
+=== REEL settings.json ===
+"SessionsWidgetEnabled": true,
+=== REEL usage.json ===
+mtime 09.07.2026 22:55
+=== REEL %APPDATA%\Claude\claude-code-sessions existe ? ===
+False
+=== PAQUET Chronos\sessions ===
+11456cab-d447-42c7-aa85-9920ce64f7ba.json 25.09 21:17
+3498ae3d-eda4-428a-bbff-e95f4cf136ce.json 13.09 18:51
+88677186-8690-44dc-ac77-7a319a0aa5cb.json 25.09 20:32
+c17a1b03-3c8d-4c05-a747-dd77bc702e1b.json 25.09 21:03
+dae57d29-d277-4e4c-8cad-b4d2b97701e5.json 25.09 21:15
+=== PAQUET settings.json ===
+"SessionsWidgetEnabled": true,
+=== PAQUET usage.json ===
+mtime 10.07.2026 08:55
+=== PAQUET claude-code-sessions : nb fichiers ===
+142

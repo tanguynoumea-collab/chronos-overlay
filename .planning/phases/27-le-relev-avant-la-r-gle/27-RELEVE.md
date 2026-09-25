@@ -3,6 +3,16 @@
 Relevé en lecture seule sur la machine de l'utilisateur, le 2026-09-25. Aucun overlay de développement lancé,
 aucune écriture dans `%APPDATA%\Claude`, `%APPDATA%\Chronos` ni `~/.claude/settings.json`.
 
+## Erratum (2026-09-25, 21:17 — recherche de phase 29 + sonde hors de l'arbre de l'app)
+
+Ce relevé, comme tout ce qui a été lu depuis une session Claude Code, voit la **vue virtualisée MSIX**
+d'AppData, pas la vue réelle. `%APPDATA%\Claude` n'est pas une jonction : il **n'existe pas** pour un
+processus lancé hors de l'app (sonde WMI, `29-SONDE-HORS-ARBRE.txt`). Et `%APPDATA%\Chronos\sessions` réel
+est **vide** : les fichiers d'état des hooks vivent dans `%LOCALAPPDATA%\Packages\Claude_*\LocalCache
+\Roaming\Chronos\sessions`, que l'overlay ne lit pas. Les VALEURS relevées ici restent exactes (mêmes
+fichiers, lus par un autre chemin) ; ce qui change est la racine à coder (APP-06, phase 29) et la lecture des
+« disparitions » de fichiers d'état : elles sont réelles dans la vue du paquet.
+
 ## Task 1 — relevé passif (sans geste)
 
 ### Environnement relevé à 20:00

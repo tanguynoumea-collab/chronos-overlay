@@ -62,10 +62,15 @@ Enquête d'origine : .planning/debug/widget-sessions-statuts.md (close).
 **La source qui manquait — métadonnées par session de l'app bureau Claude :**
 - Chemin : `%APPDATA%\Claude\claude-code-sessions\<orgId>\<userId>\local_<id>.json` — 142 fichiers,
   ~275 Ko chacun, réécrits EN ENTIER au changement de session et en fin de tour (mtime suit).
-- `%APPDATA%\Claude` est une **jonction** vers `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude`
-  (app MSIX). Lisible par un processus non packagé : vérifié en PowerShell par les deux chemins (142 fichiers).
-  Piège : un chemin à séparateurs mixtes `/` et `\` a échoué en Python via la jonction — construire le chemin
-  proprement (`Path.Combine`).
+- **CORRIGÉ le 2026-09-25 (21:17)** : `%APPDATA%\Claude` n'est PAS une jonction — c'est la **virtualisation
+  AppData de MSIX**, visible seulement des processus lancés sous l'app bureau (sessions Claude Code, hooks,
+  agents). Vu de l'overlay (lancé par explorer/startup), `%APPDATA%\Claude` **n'existe pas** et
+  `%APPDATA%\Chronos\sessions` est **vide** : les fichiers d'état des hooks vivent dans
+  `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Chronos\sessions` (sonde WMI hors arbre :
+  `29-SONDE-HORS-ARBRE.txt`). **L'overlay n'a jamais vu un fichier de hook d'une session app bureau** — ni en
+  v1.6 ni avant ; le widget en production ne tournait que sur les transcripts (15 min). D'où APP-06 : lire les
+  deux vues (racines par candidats, paquet en premier). Le `usage.json` du pont statusLine est vieux dans les
+  DEUX vues (09.07 et 10.07) : pas de source cadran à ressusciter.
 - Champs : `cliSessionId` (= l'UUID de session des hooks/transcripts, présent 115/138), `title` (titre lisible,
   `titleSource: auto`), `lastFocusedAt` (ms, dernier instant où la session a été SÉLECTIONNÉE dans l'app ;
   72/75 fichiers refocalisés bien après création), `lastActivityAt`, `latestUserFrameAt` (dernier message
