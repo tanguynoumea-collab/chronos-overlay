@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Chronos.Services;
@@ -103,6 +104,19 @@ public sealed record LectureAppBureau(
 ///
 /// <para><b>Les racines sont INJECTÉES.</b> Le lecteur ne connaît aucun chemin de l'app : il reçoit ses racines
 /// candidates, dans l'ordre (en production, celles que résout la composition ; en test, des dossiers temporaires).</para>
+///
+/// <para><b>Lire peu.</b> Seuls les <c>local_*.json</c> à la profondeur exacte <c>&lt;org&gt;\&lt;user&gt;</c>, écrits
+/// dans la fenêtre de lecture de 24 h, sont ouverts ; et un fichier n'est relu que si sa date d'écriture ou sa taille
+/// a changé. Mesuré hors de l'arbre de l'app : 24 ms médian, 68 ms au p90 sans cache ; 0,73 ms avec.</para>
+///
+/// <para><b>Ne jamais gêner l'écrivain.</b> L'app réécrit chaque fichier par un temporaire puis un renommage (trois
+/// essais), et se replie sur une écriture EN PLACE si le renommage échoue. Notre poignée partage lecture, écriture
+/// et suppression, et n'est tenue que le temps de COPIER les octets ; l'analyse vient après sa fermeture. Les
+/// lectures intégrales du framework, qui ouvrent en partage lecture seule, sont proscrites dans ce fichier : elles
+/// feraient échouer le repli en place de l'app.</para>
+///
+/// <para><b>Concurrence.</b> Le minuteur de l'interface et le rapport de diagnostic appellent <see cref="Lire"/> :
+/// un verrou protège le cache et la mémoire des épisodes (coût nul, question fermée).</para>
 /// </summary>
 public sealed class LecteurAppBureau
 {
@@ -113,14 +127,245 @@ public sealed class LecteurAppBureau
         CommentHandling = JsonCommentHandling.Skip,
     };
 
+    /// <summary>Taille au-delà de laquelle un fichier est « illisible » sans être copié : ~275 Ko relevés ; au-delà,
+    /// ce n'est plus le format relevé, et une allocation démesurée ne vaut pas un titre.</summary>
+    private const long TailleMaximale = 16_777_216;
+
+    private readonly object _verrou = new();
+
+    /// <summary>Par chemin : la clé (date d'écriture UTC, taille) de la dernière lecture RÉUSSIE, et ce qu'elle a donné.
+    /// Une relecture illisible ne la remplace pas : la dernière métadonnée valide reste servie, et la clé inchangée
+    /// fait retenter le fichier au cycle suivant.</summary>
+    private readonly Dictionary<string, (System.DateTime Ecriture, long Taille, IssueLecture Issue, MetadonneesAppBureau? Meta)> _cache
+        = new(System.StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>TRT-02 : par (cliSessionId, postTurnSummaryFor), l'instant de l'épisode lu à sa PREMIÈRE apparition.</summary>
+    private readonly Dictionary<(string Id, string Resume), System.DateTimeOffset> _premiereApparition = new();
+
+    /// <summary>La dernière lecture COMPLÈTE, rendue telle quelle si une énumération échoue en cours de route.</summary>
+    private LectureAppBureau? _derniere;
+
     /// <summary>Les racines candidates, dans l'ordre d'essai.</summary>
     public LecteurAppBureau(IReadOnlyList<string> candidats) => Candidats = candidats;
 
     /// <summary>Les racines candidates, dans l'ordre d'essai.</summary>
     public IReadOnlyList<string> Candidats { get; }
 
-    /// <summary>Un cycle de lecture (tâche 2).</summary>
-    public LectureAppBureau Lire(System.DateTimeOffset now) => throw new System.NotImplementedException();
+    /// <summary>
+    /// Un cycle de lecture, à l'instant injecté <paramref name="now"/>. Jamais d'exception, jamais de lecture partielle.
+    /// <list type="number">
+    ///   <item>La racine est le premier candidat qui existe ; aucun ⇒ une lecture ABSENTE (tout à zéro, candidats
+    ///   listés) et les mémoires vidées.</item>
+    ///   <item>L'énumération est MATÉRIALISÉE dans un bloc protégé, à la profondeur exacte deux ; un nom doit commencer
+    ///   par <c>local_</c> (les temporaires de l'app commencent par <c>.local_</c>) et finir par <c>.json</c>. Si elle
+    ///   échoue, la dernière lecture complète de la même racine est rendue.</item>
+    ///   <item>Un fichier écrit hors de la fenêtre de lecture n'est pas ouvert ; un fichier dont la clé (date
+    ///   d'écriture, taille) n'a pas changé n'est pas relu. Les chemins disparus ou sortis de la fenêtre quittent le
+    ///   cache.</item>
+    ///   <item>Deux fichiers pour un même identifiant : le plus récent par dernière activité l'emporte (ex aequo :
+    ///   le premier chemin dans l'ordre ordinal), l'autre est compté en doublon.</item>
+    ///   <item>L'instant d'une classification est FIGÉ par épisode : la dernière activité lue à la première apparition
+    ///   de (identifiant, <c>postTurnSummaryFor</c>). L'activité de fond qui la fait avancer après la fin du tour
+    ///   (+3 min 10 s mesurés) ne rajeunit donc pas une question — sinon une session marquée traitée reviendrait sans
+    ///   rien avoir redemandé (NET-03). Sans <c>postTurnSummaryFor</c>, la valeur courante. Les épisodes qui ne sont
+    ///   plus présents sont oubliés (mémoire bornée).</item>
+    /// </list>
+    /// <para><b>Limite assumée :</b> la mémoire des épisodes vit dans le processus. Un redémarrage de l'overlay pendant
+    /// une activité de fond re-mémorise, une fois, une valeur plus récente que la vraie fin du tour.</para>
+    /// </summary>
+    public LectureAppBureau Lire(System.DateTimeOffset now)
+    {
+        lock (_verrou)
+        {
+            var racine = PremiereRacine();
+            if (racine is null)
+            {
+                _cache.Clear();
+                _premiereApparition.Clear();
+                return _derniere = Vide(null);
+            }
+
+            List<(string Chemin, System.DateTime Ecriture, long Taille)> fichiers;
+            try
+            {
+                fichiers = Enumerer(racine);   // MATÉRIALISÉ ici : une énumération paresseuse lèverait hors du bloc
+            }
+            catch (System.Exception)
+            {
+                return _derniere is { } derniere && string.Equals(derniere.Racine, racine, System.StringComparison.OrdinalIgnoreCase)
+                    ? derniere
+                    : Vide(racine);
+            }
+
+            var recents = 0;
+            var relus = 0;
+            var illisibles = 0;
+            var sansId = 0;
+            var retenus = new List<(string Chemin, MetadonneesAppBureau Meta)>();
+            var vus = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (chemin, ecriture, taille) in fichiers)
+            {
+                // Économie de lecture, jamais un horizon d'affichage : l'âge d'un signal se juge sur son instant.
+                if (now - new System.DateTimeOffset(ecriture, System.TimeSpan.Zero) > HorizonsSessions.LectureAppBureau)
+                    continue;
+                recents++;
+                vus.Add(chemin);
+
+                var connue = _cache.TryGetValue(chemin, out var entree);
+                if (!connue || entree.Ecriture != ecriture || entree.Taille != taille)
+                {
+                    relus++;
+                    var issue = LireEtInterpreter(chemin, out var meta);
+                    if (issue == IssueLecture.Illisible)
+                    {
+                        // Réécriture en cours, fichier supprimé entre-temps… : la dernière lecture valide est gardée
+                        // et la clé n'avance pas — le fichier sera retenté au cycle suivant. Aucun titre ne clignote.
+                        illisibles++;
+                    }
+                    else
+                    {
+                        entree = (ecriture, taille, issue, meta);
+                        _cache[chemin] = entree;
+                        connue = true;
+                    }
+                }
+
+                if (!connue) continue;   // première lecture ratée : rien à servir pour ce fichier
+                if (entree.Issue == IssueLecture.SansCliSessionId) sansId++;
+                else if (entree.Meta is { } retenue) retenus.Add((chemin, retenue));
+            }
+
+            foreach (var perime in _cache.Keys.Where(c => !vus.Contains(c)).ToList())
+                _cache.Remove(perime);
+
+            // Une session, un fichier : le plus récent par dernière activité ; ex aequo, le premier chemin ordinal.
+            var parSession = new Dictionary<string, MetadonneesAppBureau>(System.StringComparer.OrdinalIgnoreCase);
+            var doublons = 0;
+            foreach (var groupe in retenus.GroupBy(r => r.Meta.CliSessionId, System.StringComparer.OrdinalIgnoreCase))
+            {
+                var elu = groupe
+                    .OrderByDescending(r => r.Meta.DerniereActivite ?? System.DateTimeOffset.MinValue)
+                    .ThenBy(r => r.Chemin, System.StringComparer.Ordinal)
+                    .First();
+                doublons += groupe.Count() - 1;
+                parSession[elu.Meta.CliSessionId] = elu.Meta;
+            }
+
+            FigerLesEpisodes(parSession);
+
+            var champsAbsents = new SortedDictionary<string, int>(System.StringComparer.Ordinal);
+            foreach (var meta in parSession.Values)
+                foreach (var champ in meta.ChampsAbsents)
+                    champsAbsents[champ] = champsAbsents.TryGetValue(champ, out var n) ? n + 1 : 1;
+
+            var lecture = new LectureAppBureau(
+                racine, Candidats,
+                fichiers.Count, recents, parSession.Count + doublons, relus, illisibles, sansId, doublons,
+                champsAbsents, parSession);
+            _derniere = lecture;
+            return lecture;
+        }
+    }
+
+    /// <summary>TRT-02 : remplace l'instant de classification COURANT par celui de la première apparition de
+    /// l'épisode, et oublie les épisodes qui ne sont plus présents. Appelé sous le verrou.</summary>
+    private void FigerLesEpisodes(Dictionary<string, MetadonneesAppBureau> parSession)
+    {
+        var presents = new HashSet<(string Id, string Resume)>();
+        foreach (var (cle, meta) in parSession.ToList())
+        {
+            if (meta.ResumePour is not { } resume || meta.InstantClassification is not { } instantLu) continue;
+
+            var episode = (meta.CliSessionId, resume);
+            presents.Add(episode);
+            if (!_premiereApparition.TryGetValue(episode, out var fige))
+            {
+                fige = instantLu;
+                _premiereApparition[episode] = fige;
+            }
+            if (fige != instantLu)
+                parSession[cle] = meta with { InstantClassification = fige };
+        }
+
+        foreach (var oublie in _premiereApparition.Keys.Where(k => !presents.Contains(k)).ToList())
+            _premiereApparition.Remove(oublie);
+    }
+
+    /// <summary>Le premier candidat qui existe, ou nul.</summary>
+    private string? PremiereRacine()
+    {
+        foreach (var candidat in Candidats)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(candidat) && Directory.Exists(candidat)) return candidat;
+            }
+            catch (System.Exception) { /* chemin invalide : candidat suivant */ }
+        }
+        return null;
+    }
+
+    /// <summary>Les <c>local_*.json</c> à la profondeur EXACTE <c>&lt;org&gt;\&lt;user&gt;</c>, avec leur clé de cache.
+    /// Ni l'index des archives, ni les temporaires d'écriture atomique, ni les traces de suppression, ni un
+    /// sous-dossier : jamais un motif récursif.</summary>
+    private static List<(string Chemin, System.DateTime Ecriture, long Taille)> Enumerer(string racine)
+    {
+        var fichiers = new List<(string Chemin, System.DateTime Ecriture, long Taille)>();
+        foreach (var org in new DirectoryInfo(racine).EnumerateDirectories())
+            foreach (var utilisateur in org.EnumerateDirectories())
+                foreach (var fichier in utilisateur.EnumerateFiles("local_*.json"))
+                {
+                    if (!fichier.Name.StartsWith("local_", System.StringComparison.Ordinal)
+                        || !fichier.Name.EndsWith(".json", System.StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    fichiers.Add((fichier.FullName, fichier.LastWriteTimeUtc, fichier.Length));
+                }
+        return fichiers;
+    }
+
+    /// <summary>Une lecture vide de la racine donnée (nulle : source absente).</summary>
+    private LectureAppBureau Vide(string? racine)
+        => new(racine, Candidats, 0, 0, 0, 0, 0, 0, 0,
+               new SortedDictionary<string, int>(System.StringComparer.Ordinal),
+               new Dictionary<string, MetadonneesAppBureau>(System.StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>Copie puis interprète ; toute erreur d'accès (fichier supprimé ou renommé entre l'énumération et
+    /// l'ouverture, accès refusé, erreur d'entrée-sortie) vaut « illisible ».</summary>
+    private static IssueLecture LireEtInterpreter(string chemin, out MetadonneesAppBureau? meta)
+    {
+        meta = null;
+        try
+        {
+            var octets = LireOctets(chemin);
+            return octets is null ? IssueLecture.Illisible : Interpreter(octets, out meta);
+        }
+        catch (System.Exception)
+        {
+            meta = null;
+            return IssueLecture.Illisible;
+        }
+    }
+
+    /// <summary>Les octets du fichier, copiés poignée ouverte le moins longtemps possible (0,36 ms médian mesuré pour
+    /// 289 Ko) ; la poignée est fermée AVANT toute analyse. Nul au-delà de <see cref="TailleMaximale"/>. Un fichier
+    /// raccourci pendant la copie (troncature en cours) rend ce qui a été lu : l'analyse JSON dira non.</summary>
+    private static byte[]? LireOctets(string chemin)
+    {
+        using var flux = Ouvrir(chemin);
+        var longueur = flux.Length;
+        if (longueur > TailleMaximale) return null;
+
+        var tampon = new byte[longueur];
+        var lu = 0;
+        while (lu < tampon.Length)
+        {
+            var n = flux.Read(tampon, lu, tampon.Length - lu);
+            if (n == 0) break;
+            lu += n;
+        }
+        return lu == tampon.Length ? tampon : tampon[..lu];
+    }
 
     /// <summary>
     /// Interprétation PURE d'un fichier (prouvée sur les six fixtures réelles). Une marque d'ordre d'octets UTF-8 en
@@ -197,8 +442,11 @@ public sealed class LecteurAppBureau
         }
     }
 
-    /// <summary>Ouverture en lecture seule (tâche 3).</summary>
-    internal static FileStream Ouvrir(string chemin) => throw new System.NotImplementedException();
+    /// <summary>
+    /// L'UNIQUE ouverture de fichier du lecteur : en lecture seule, partage lecture, écriture ET suppression.
+    /// </summary>
+    internal static FileStream Ouvrir(string chemin)
+        => new(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.SequentialScan);
 
     // ------------------------------------------------------------------ lecture tolérante d'un champ
 
