@@ -37,7 +37,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 ### Source app-bureau par fichiers (APP)
 
-- [ ] **APP-01**: Chronos lit les métadonnées par session écrites par l'app bureau Claude
+- [x] **APP-01**: Chronos lit les métadonnées par session écrites par l'app bureau Claude
   (`%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_*.json`) et les joint aux sessions du widget par
   `cliSessionId`. Lecture tolérante (`FileShare.ReadWrite`, JSON invalide ignoré), limitée aux fichiers modifiés
   depuis moins de 24 h. Le chemin est construit par `Path.Combine` (la jonction MSIX refuse les séparateurs
@@ -45,7 +45,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   widget garde le comportement v1.6 — jamais de crash, jamais d'invention.
 - [ ] **APP-02**: Le widget affiche le **titre** de la session (`title`) à la place du nom de dossier quand il est
   connu ; le dossier reste en repli quand il ne l'est pas, et reste lisible en info-bulle dans les deux cas.
-- [ ] **APP-03**: La classification de fin de tour de l'app est reconnue : `status_category = blocked` avec
+- [x] **APP-03**: La classification de fin de tour de l'app est reconnue : `status_category = blocked` avec
   `needs_action` est une **attente observée** (question posée à l'utilisateur), et le motif (`needs_action`)
   est lisible en détail ou en info-bulle. `completed` et `review_ready` ne fabriquent aucun état à eux seuls.
 - [ ] **APP-04**: Le diagnostic rapporte l'état de la source app-bureau — dossier trouvé ou non, nombre de
@@ -142,9 +142,9 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
-| APP-01 | Phase 29 | Pending |
+| APP-01 | Phase 29 | Complete |
 | APP-02 | Phase 29 | Pending |
-| APP-03 | Phase 29 | Pending |
+| APP-03 | Phase 29 | Complete |
 | APP-04 | Phase 29 | Pending |
 | APP-05 | Phase 29 | Pending |
 | APP-06 | Phase 29 | Pending |

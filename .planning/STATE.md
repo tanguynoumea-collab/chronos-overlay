@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-09-25T21:18:28.778Z"
+stopped_at: Completed 29-03-PLAN.md
+last_updated: "2026-09-25T21:41:10.158Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -27,7 +27,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.7 — Lue ou non lue
 Phase: 29 (Ce que l'app bureau sait de chaque session) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -44,6 +44,7 @@ transcript, jamais par le mtime. Détail : `.planning/phases/27-le-relev-avant-l
 - Suite de tests en sortie de phase 28 : **947 verts / 0 échec** (deux exécutions consécutives, 2026-09-25, après `331a33e`).
 - Après 29-01 (APP-06, `a0aad8c`) : **965 / 0 isolé** (hors classes de 29-02) ; combiné avec 29-02 en cours : 996 / 0 (2e exécution).
 - Après 29-02 (APP-01/APP-05 lecteur, `14c91d2`) : 947 + 35 = **982 isolé** ; fin de vague 1 (29-01 + 29-02) : **1000 verts / 0 échec**, deux exécutions consécutives (8 s, 7 s).
+- Après 29-03 (APP-03 + jointure/titre + câblage, `2753384`) : 1000 + 9 + 28 + 2 = **1039 verts / 0 échec**, deux exécutions consécutives (8 s, 8 s) ; mutations (d), (e), (f), (g1), (g2) jouées et révoquées.
 - Transcripts à 8 h (SIL-01), mesuré avec la DLL livrée : médiane **28,2 / 25,7 ms** par cycle de 2 s, 4 sessions visibles — pas de cache (seuil 50 ms). Détail : 28-VALIDATION.md.
 - v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
@@ -223,6 +224,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 28 P04 | 15min | 3 tasks | 11 files |
 | Phase 29 P01 | 16min | 3 tasks | 13 files |
 | Phase 29 P02 | 13min | 3 tasks | 5 files |
+| Phase 29 P03 | 19min | 3 tasks | 15 files |
 
 ### Decisions
 
@@ -498,6 +500,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 29]: [29-02] Instant d'une classification de fin de tour = lastActivityAt lu a la PREMIERE apparition de (cliSessionId, postTurnSummaryFor), memorise dans LecteurAppBureau (TRT-02) ; redemarrage de l'overlay pendant une activite de fond = une re-memorisation plus recente (limite ecrite)
 - [Phase 29]: [29-02] lastAssistantUuid NON lu (ecart a la recherche : pas de ResumeAJour) - liste des champs verrouillee, l'app efface elle-meme le resume au tour suivant
 - [Phase 29]: [29-02] LecteurAppBureau : partage ReadWrite|Delete, poignee tenue le temps de COPIER ; cache (date d'ecriture, taille) dont la cle n'avance pas sur une relecture illisible (derniere lecture valide gardee) ; HorizonsSessions.LectureAppBureau = 24 h >= Abandon (economie de lecture, jamais un horizon d'affichage)
+- [Phase 29]: 29-03 : blocked est une TROISIÈME source datée (SourceSession.AppBureau), rang à âge égal hook > app bureau > transcript, la fraîcheur d'abord ; prouvé sur 720 ordres
+- [Phase 29]: 29-03 : l'app qualifie une ligne, elle n'en crée pas — question déposée seulement pour un id déjà déposé ce cycle par transcript/hook, avec le dossier de cette source, sous Abandon (borne incluse), non archivée, datée par l'épisode figé
+- [Phase 29]: 29-03 : le titre (SessionSnapshot.Titre) est posé sur les RETENUS après Trancher, avant les filtres ; AffichageSessions.Nom = titre sinon dossier ; Piège 8 accepté (désaccord lisible par libellé de source)
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -554,7 +559,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-25T21:18:28.773Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-09-25T21:41:10.153Z
+Stopped at: Completed 29-03-PLAN.md
 Resume file: None
 Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29
