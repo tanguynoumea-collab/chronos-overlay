@@ -102,7 +102,7 @@ notification au reset, exploitation de `latestUserFrameAt` / `completedTurns`.
 - Phases décimales (27.1, 27.2) : insertions urgentes (marquées INSERTED)
 
 - [x] **Phase 27: Le relevé avant la règle** - Les deux inconnues de la règle « lue » sont tranchées sur la vraie machine, en lecture seule et avec l'utilisateur, avant qu'une ligne de la règle ne soit écrite
-- [ ] **Phase 28: Deux mots, une question, les mêmes horizons** - « Réflexion » / « En attente » / « En attente ? », une question `AskUserQuestion` classée attente, et une session sans fichier de hook qui ne disparaît plus en silence à 15 min
+- [x] **Phase 28: Deux mots, une question, les mêmes horizons** - « Réflexion » / « En attente » / « En attente ? », une question `AskUserQuestion` classée attente, et une session sans fichier de hook qui ne disparaît plus en silence à 15 min (completed 2026-09-25)
 - [ ] **Phase 29: Ce que l'app bureau sait de chaque session** - Titre, dernier focus et classification de fin de tour lus dans les fichiers de l'app, en lecture seule, avec dégradation vers le comportement v1.6
 - [ ] **Phase 30: La lecture fait disparaître** - Une session lue quitte le widget sans clic, revient si elle redemande, et le diagnostic dit pourquoi elle est masquée
 - [ ] **Phase 31: Écrit, publié, constaté** - `docs/desktop-app-sessions.md`, exe 3.2.0 publié et réconcilié, et le tableau en trois lignes vérifié sur la machine de l'utilisateur
@@ -183,7 +183,7 @@ Plans:
 - [x] 28-01-PLAN.md — La question `AskUserQuestion` est une attente, et un transcript est daté par son dernier message (LIB-02, SIL-01 partiel) — vague 1
 - [x] 28-02-PLAN.md — L'ordre d'écran dit l'urgence sans toucher l'arbitrage (`RangArbitrage`, R4), l'indéterminé n'a plus de ligne, prédicat d'attente unique (LIB-04, LIB-01, LIB-03) — vague 1
 - [x] 28-03-PLAN.md — Trois mots partout, d'un seul producteur : contrat §1/§3, rôles des hooks, texte d'activation, galerie, 8 gabarits × 9 thèmes (LIB-01, LIB-03) — vague 2
-- [ ] 28-04-PLAN.md — Les mêmes horizons : `HorizonsSessions`, règle de silence en un point, 8 h pour les transcripts, deux gardes, mesure sur la vraie machine (SIL-01) — vague 3
+- [x] 28-04-PLAN.md — Les mêmes horizons : `HorizonsSessions`, règle de silence en un point, 8 h pour les transcripts, deux gardes, mesure sur la vraie machine (SIL-01) — vague 3
 **UI hint**: yes
 
 ### Phase 29: Ce que l'app bureau sait de chaque session
@@ -293,7 +293,7 @@ la 28 peut passer devant sans rien casser.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
-| 28. Deux mots, une question, les mêmes horizons | 3/4 | In Progress|  |
+| 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete   | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 0/? | Not started | - |
 | 30. La lecture fait disparaître | 0/? | Not started | - |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |

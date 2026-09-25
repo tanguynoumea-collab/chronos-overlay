@@ -101,7 +101,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 ### Le trou de couverture §9.1 (SIL)
 
-- [ ] **SIL-01**: Une session connue par son transcript seul (sans fichier de hook) suit les **mêmes horizons**
+- [x] **SIL-01**: Une session connue par son transcript seul (sans fichier de hook) suit les **mêmes horizons**
   que les sessions à fichier de hook : travail sans écriture depuis plus de 20 min ⇒ « En attente ? »,
   abandon à 8 h. Elle ne disparaît plus en silence 15 min après la dernière écriture.
 
@@ -156,7 +156,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LIB-02 | Phase 28 | Complete |
 | LIB-03 | Phase 28 | Complete |
 | LIB-04 | Phase 28 | Complete |
-| SIL-01 | Phase 28 | Pending |
+| SIL-01 | Phase 28 | Complete |
 | VAL-01 | Phase 27 | Pending |
 | VAL-02 | Phase 31 | Pending |
 | VAL-03 | Phase 31 | Pending |

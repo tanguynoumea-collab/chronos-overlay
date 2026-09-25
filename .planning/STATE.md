@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
-status: executing
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-09-25T19:54:29.153Z"
+status: verifying
+stopped_at: Completed 28-04-PLAN.md
+last_updated: "2026-09-25T20:11:47.061Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -26,12 +26,12 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 28 (Deux mots, une question, les mêmes horizons) — EXECUTING
+Phase: 28 (Deux mots, une question, les mêmes horizons) — COMPLETE (4/4 plans), vérification à faire
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-25
 
-Progress: [██░░░░░░░░] 20 % (1 phase sur 5)
+Progress: [████░░░░░░] 40 % (2 phases sur 5)
 
 **Relevé de phase 27, en deux lignes :** le retour alt-tab met `lastFocusedAt` à jour (16:23:51 → 20:30:44) ;
 un tour terminé sous les yeux laisse `lastFocusedAt` antérieur à la fin du tour (20:30:44 < 20:34:04) ⇒ LUE-02
@@ -41,6 +41,8 @@ transcript, jamais par le mtime. Détail : `.planning/phases/27-le-relev-avant-l
 ## Performance Metrics
 
 - Suite de tests : **896 verts / 0 échec** en 7 s (baseline mesurée le 2026-09-25 à l'entrée de v1.7 ; l'audit v1.6 disait 889, avant les derniers commits).
+- Suite de tests en sortie de phase 28 : **947 verts / 0 échec** (deux exécutions consécutives, 2026-09-25, après `331a33e`).
+- Transcripts à 8 h (SIL-01), mesuré avec la DLL livrée : médiane **28,2 / 25,7 ms** par cycle de 2 s, 4 sessions visibles — pas de cache (seuil 50 ms). Détail : 28-VALIDATION.md.
 - v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
 ## Milestone v1.6 (clos)
@@ -216,6 +218,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 28 P01 | 11min | 2 tasks | 6 files |
 | Phase 28 P02 | 11min | 2 tasks | 14 files |
 | Phase 28 P03 | 12min | 2 tasks | 15 files |
+| Phase 28 P04 | 15min | 3 tasks | 11 files |
 
 ### Decisions
 
@@ -482,6 +485,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 28]: 28-03 : tout le vocabulaire (producteur, rôles des hooks, §1 et §3 du contrat, galerie, compteur, texte d'activation) change en UN commit - aucun état intermédiaire à deux vocabulaires
 - [Phase 28]: 28-03 : trois mots exacts (Réflexion / En attente / En attente ?) ; Unknown garde « indéterminé » pour le seul rapport ; le compteur de l'Annonciateur dit la constante telle quelle
 - [Phase 28]: 28-03 : IsGhost supprimé, six déclencheurs IsDeduced à 0,7 dans les Style.Triggers (Veilleurs sur l'oeil ouvert) ; Infobulle = « projet — mot » sur les huit gabarits, point d'accueil du titre en phase 29
+- [Phase 28]: SIL-01 : la règle de silence est UNE fonction du moniteur (AppliquerSilence), appliquée à tous les signaux avant l'arbitrage ; la source transcripts ne déduit rien
+- [Phase 28]: Les quatre horizons vivent dans HorizonsSessions (20 min < 8 h < 24 h < 72 h), sous deux gardes (chaîne, câblage) ; BalayageMagasinSessions.ExpirationEtat reste un alias public
+- [Phase 28]: Pas de cache pour les transcripts à 8 h : médiane réelle 28,2 puis 25,7 ms par cycle (< 50 ms), mesurée avec la DLL livrée
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -538,7 +544,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-25T19:54:29.147Z
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-09-25T20:11:47.055Z
+Stopped at: Completed 28-04-PLAN.md
 Resume file: None
-Next: /gsd:execute-phase 28 dès que les plans sont vérifiés
+Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29
