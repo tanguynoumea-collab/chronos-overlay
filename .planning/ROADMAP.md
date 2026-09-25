@@ -220,10 +220,14 @@ intermédiaire à réécrire).
      la vue réelle (`%APPDATA%\Chronos\sessions`) alimentent le moniteur, sont balayés et comptés par le
      diagnostic racine par racine ; la racine `claude-code-sessions` se résout par candidats, le paquet en
      premier. Constaté par une sonde lancée HORS de l'arbre de l'app, jamais depuis une session (APP-06).
-**Plans**: TBD — deux points de conception à trancher au plan, sur mesure : (a) 142 fichiers d'environ 275 Ko
-réécrits en entier ne se relisent pas tous les 2 s — la borne de 24 h et un cache par date de modification sont
-à mesurer ; (b) la place de `blocked` dans l'arbitrage FUS-01 — troisième source datée, ou enrichissement d'un
-signal existant — doit être une règle écrite et testée, pas un effet de bord.
+**Plans**: 5 plans en 3 vagues (vague 1 : 29-01 ∥ 29-02 ; vague 2 : 29-03 ; vague 3 : 29-04 ∥ 29-05)
+
+Plans:
+- [ ] 29-01-PLAN.md — APP-06 : `RacinesEtat`, les racines par candidats (paquet `Claude_*` d'abord) ; moniteur, balayage et diagnostic sur chaque racine ; câblage de production et §3 du contrat (947 → 965)
+- [ ] 29-02-PLAN.md — APP-01, APP-05 : `LecteurAppBureau` seul, non branché — fichiers < 24 h, cache (mtime, taille), dernière lecture valide conservée, question datée par épisode ; gardes de lecture seule n° 1 et 3 (→ 1000 en fin de vague 1)
+- [ ] 29-03-PLAN.md — APP-03, APP-01, APP-02 : `SourceSession.AppBureau` entre Hook et Transcript ; dépôt des seules questions de sessions connues ; `Titre` posé après l'arbitrage ; cas C1-C11 en tests ; dégradation v1.6 exacte (→ 1039)
+- [ ] 29-04-PLAN.md — APP-02 : `Infobulle` et `MotifLisible` du producteur unique, titre long en galerie, `MaxWidth="160"` sur Pastilles et Marge, test WPF 8 × 9 (→ 1050 seul)
+- [ ] 29-05-PLAN.md — APP-04, APP-05, APP-06 : section « Source app-bureau » du diagnostic (même lecture que le widget), garde de lecture seule n° 2, sonde WMI hors arbre `29-SONDE-APP06.txt` (→ 1049 seul ; 1060 en fin de phase)
 **UI hint**: yes
 
 ### Phase 30: La lecture fait disparaître
@@ -294,7 +298,7 @@ la 28 peut passer devant sans rien casser.
 |-------|----------------|--------|-----------|
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
-| 29. Ce que l'app bureau sait de chaque session | 0/? | Not started | - |
+| 29. Ce que l'app bureau sait de chaque session | 0/5 | Planned | - |
 | 30. La lecture fait disparaître | 0/? | Not started | - |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |
 
