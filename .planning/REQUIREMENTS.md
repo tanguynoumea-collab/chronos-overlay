@@ -96,7 +96,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 - [ ] **LIB-03**: Les libellés et l'ordre viennent d'un seul producteur (`AffichageSessions`) partagé par le
   widget et le diagnostic ; aucun libellé ne dépasse seize caractères (garde existante) ; les huit styles
   visuels et les neuf thèmes les affichent sans troncature.
-- [ ] **LIB-04**: L'ordre du widget est conservé : « En attente » d'abord (permission ou question avant tour
+- [x] **LIB-04**: L'ordre du widget est conservé : « En attente » d'abord (permission ou question avant tour
   fini avant déduit), puis « Réflexion », puis la fraîcheur.
 
 ### Le trou de couverture §9.1 (SIL)
@@ -155,7 +155,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LIB-01 | Phase 28 | Pending |
 | LIB-02 | Phase 28 | Complete |
 | LIB-03 | Phase 28 | Pending |
-| LIB-04 | Phase 28 | Pending |
+| LIB-04 | Phase 28 | Complete |
 | SIL-01 | Phase 28 | Pending |
 | VAL-01 | Phase 27 | Pending |
 | VAL-02 | Phase 31 | Pending |

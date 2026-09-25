@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Completed 28-01-PLAN.md
-last_updated: "2026-09-25T19:35:24.910Z"
+stopped_at: Completed 28-02-PLAN.md
+last_updated: "2026-09-25T19:37:33.647Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -27,7 +27,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.7 — Lue ou non lue
 Phase: 28 (Deux mots, une question, les mêmes horizons) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -214,6 +214,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 26 P03 | ~11 min | 3 tasks | 11 files |
 | Phase 26 P04 | ~30 min | 2 tasks | 3 files |
 | Phase 28 P01 | 11min | 2 tasks | 6 files |
+| Phase 28 P02 | 11min | 2 tasks | 14 files |
 
 ### Decisions
 
@@ -474,6 +475,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 26]: REQUIREMENTS.md non modifie au plan 26-04 : les 4 TRT etaient deja cochees. TRT-04 l'avait ete en 26-02, une vague avant l'arrivee de son volet UI - consigne comme ecart, pas lisse
 - [Phase 28]: [28-01] D-28-01 : un transcript est daté par le timestamp de sa dernière ligne user/assistant, borné par l'écriture, repli sur l'écriture si absent ou illisible ; la date d'écriture n'est plus qu'un PRÉ-FILTRE d'énumération (fait du 2026-09-25 16:58:20 : douze transcripts rajeunis par des métadonnées sans horodatage). Read classe tous les candidats, trie par UpdatedAt puis SessionId ordinal, puis Take(12).
 - [Phase 28]: [28-01] LIB-02 : dernier tool_use nommé EXACTEMENT « AskUserQuestion » ⇒ WaitingAttention, motif « AskUserQuestion » (fait observé) ; aucune liste extensible ; l'appel parallèle (1/222 mesuré) se dégrade vers v1.6 (Working), écrit et testé. Piège 3 non tranché : les deux issues d'arbitrage sont écrites en test, in vivo reporté à la phase 31.
+- [Phase 28]: [28-02] R4 fermee par DECOUPLAGE : ArbitrageSessions a un RangArbitrage prive fige aux valeurs de la phase 24 ; l'ordre d'ecran (AffichageSessions.Urgence : Attention 0, Turn 1, Deduced 2, Working 3, Unknown 4) peut changer sans toucher FUS-01. Prouve sur un corpus qui DESCEND au rang 3 (720 permutations + non-vacuite) et par deux mutations ; le corpus d'origine est reste vert sous le couplage (muet sur R4, comme la recherche l'annoncait).
+- [Phase 28]: [28-02] L'indetermine est masque au MONITEUR (MotifMasquage.Indeterminee), apres archivee et traitee, jamais au ViewModel : Visibles reste mot pour mot l'ecran (OBS-01) et le rapport la liste parmi les MASQUEES. Un seul predicat nomme AffichageSessions.EstUneAttente (point d'entree phase 30), tenu egal a SessionTreatmentTracker.EstAttente (corps intact, passe internal) par test.
+- [Phase 28]: [28-02] L'ex aequo herite WaitingDeduced/Unknown au rang 3 de l'arbitrage est ECRIT et NON corrige (pas de rang 6) ; LIB-04 coche, LIB-01 et LIB-03 restent Pending jusqu'a 28-03 (les mots, les huit gabarits).
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -530,7 +534,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-25T19:35:24.904Z
-Stopped at: Completed 28-01-PLAN.md
+Last session: 2026-09-25T19:37:33.642Z
+Stopped at: Completed 28-02-PLAN.md
 Resume file: None
 Next: /gsd:execute-phase 28 dès que les plans sont vérifiés
