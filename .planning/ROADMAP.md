@@ -305,7 +305,7 @@ la 28 peut passer devant sans rien casser.
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
-| 30. La lecture fait disparaître | 4/4 | Complete   | 2026-09-26 |
+| 30. La lecture fait disparaître | 4/4 | Complete    | 2026-09-26 |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |
 
 ### Couverture des exigences
