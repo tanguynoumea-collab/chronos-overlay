@@ -45,10 +45,24 @@ public sealed class SessionTreatmentTracker
     // Instant (ms) de l'épisode d'attente courant, STABLE pendant l'épisode (il n'est posé qu'à son ouverture).
     private readonly Dictionary<string, long> _attenteDepuis = new();
 
+    // LUE-03 — la CAUSE de chaque inscription que le détecteur a faite ou constatée : l'épisode et pourquoi. treated.json
+    // ne porte que « id → épisode » (D-30-05) ; ce qui n'a pas été constaté ici (un geste, une entrée d'avant le
+    // démarrage non relue) n'a pas de cause, et le moniteur l'annonce comme telle. Mémoire bornée par le nombre de
+    // sessions vues. Qui la pose, qui la retire :
+    //   • lue par focus (LUE-01, cas 4, 5 ou 6)        → « lue par focus » (attente, focus, constat)
+    //   • lue au premier plan (LUE-02, cas 4, 5 ou 6)  → « lue au premier plan » (attente, focus, depuis, constat)
+    //   • répondue (NET-01)                             → « répondue » (attente, constat) — remplace toujours
+    //   • rien de constaté (geste, avant le démarrage)  → aucune cause : le résidu « traitée », honnête
+    // NET-03 (la session revient) la retire avec l'inscription.
+    private readonly Dictionary<string, (long Episode, CauseTraitement Cause)> _causes = new();
+
     public SessionTreatmentTracker(TreatedStore store)
         => _store = store ?? throw new System.ArgumentNullException(nameof(store));
 
-    public CauseTraitement? CauseDe(string sessionId, long episodeTraite) => null;   // SQUELETTE RED
+    /// <summary>La cause connue de l'inscription <paramref name="episodeTraite"/>, ou nul si le détecteur ne l'a pas
+    /// constatée (geste, entrée antérieure au démarrage non relue, épisode différent).</summary>
+    public CauseTraitement? CauseDe(string sessionId, long episodeTraite)
+        => _causes.TryGetValue(sessionId, out var c) && c.Episode == episodeTraite ? c.Cause : null;
 
     // Trois valeurs disent « quelque chose m'attend ». L'attente DÉDUITE en fait partie depuis la phase 25 :
     // le bandeau la compte, le cadran la colore, et l'exclure ici faisait qu'une attente devenue déduite
@@ -116,8 +130,14 @@ public sealed class SessionTreatmentTracker
             // qui expire pendant qu'une autre reprend la main n'est pas l'utilisateur qui répond.
             if (connue && prec.Source == v.Source && EstAttente(prec.Activite) && EstTravailObserve(etat))
             {
-                _store.Set(id, _attenteDepuis.TryGetValue(id, out var ep) ? ep : InstantDuSignal(v, nowMs));
+                var ep = _attenteDepuis.TryGetValue(id, out var e) ? e : InstantDuSignal(v, nowMs);
+                _store.Set(id, ep);
                 _attenteDepuis.Remove(id);
+                // Une réponse est un fait NOUVEAU : elle remplace toujours la cause (lue puis répondue = répondue).
+                if (UsageNormalization.InstantDepuisEpochMillisecondes(ep) is { } attenteRepondue)
+                    _causes[id] = (ep, new CauseTraitement(MotifMasquage.Repondue, attenteRepondue, Constat: now));
+                else
+                    _causes.Remove(id);
             }
 
             // Épisode d'attente courant. Il ne suit PAS l'horloge du guetteur : il suit l'instant que la
@@ -145,11 +165,22 @@ public sealed class SessionTreatmentTracker
                 var traitee = traitees.TryGetValue(id, out var tts);
                 if (lue is not null)
                 {
-                    if (!traitee || tts < cur) _store.Set(id, cur);   // cas 4 et 5 : un épisode pas encore inscrit
-                    // cas 6 (déjà inscrit pour cet épisode ou au-delà) : zéro écriture
+                    if (!traitee || tts < cur)                          // cas 4 et 5 : un épisode pas encore inscrit
+                    {
+                        _store.Set(id, cur);
+                        _causes[id] = (cur, lue);
+                    }
+                    // cas 6 (déjà inscrit pour cet épisode ou au-delà) : zéro écriture. La cause d'un épisode est FIGÉE
+                    // à son premier constat — « depuis N s » ne grandit pas à chaque cycle ; une cause déjà connue pour
+                    // cet épisode (répondue, ou lue plus tôt) n'est pas remplacée.
+                    else if (!_causes.TryGetValue(id, out var deja) || deja.Episode != cur)
+                        _causes[id] = (cur, lue);
                 }
                 else if (traitee && cur > tts)                          // cas 3 : NET-03 INCHANGÉ — la session redemande
+                {
                     _store.Remove(id);
+                    _causes.Remove(id);
+                }
             }
 
             _dernier[id] = (v.Source, etat);
