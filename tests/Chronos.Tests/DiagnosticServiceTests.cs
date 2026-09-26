@@ -541,6 +541,28 @@ public class DiagnosticServiceTests : IDisposable
         Assert.DoesNotContain("Désaccords entre sources", report);
     }
 
+    /// <summary>VAL-03 — le rapport dit la version EMBARQUÉE, juste sous « Date : » : c'est le « diagnostic » du critère 2
+    /// de la phase 31. La valeur attendue est lue ICI sur l'assembly, indépendamment du code du rapport, et jamais écrite en
+    /// dur : la valeur publiée est tenue par le plan de release et par <see cref="VersionPublieeTests"/>.</summary>
+    [Fact]
+    public async Task Le_rapport_dit_la_version_embarquee()
+    {
+        var attendue = (typeof(DiagnosticService).Assembly
+                            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                            .SingleOrDefault() as System.Reflection.AssemblyInformationalVersionAttribute)?.InformationalVersion;
+        // Anti-muet : une assembly sans version informative ne garderait rien.
+        Assert.False(string.IsNullOrWhiteSpace(attendue), "l'assembly de Chronos ne porte aucune version informative");
+        Assert.Matches(@"^\d+\.\d+\.\d+$", attendue);   // X.Y.Z, sans « +<sha> »
+
+        var report = await Rapport(null);
+        var lignes = report.Replace("\r\n", "\n").Split('\n');
+
+        Assert.Equal("=== Chronos — Diagnostic ===", lignes[0]);
+        Assert.StartsWith("Date : ", lignes[1]);
+        Assert.Equal("Version : " + attendue, lignes[2]);
+        Assert.Single(lignes, l => l.StartsWith("Version : ", System.StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Le_rapport_decrit_les_sessions_du_moniteur_qu_on_lui_donne()
     {
