@@ -64,6 +64,8 @@ public sealed class LibellesSessionsTests
             ("ViewModels/SessionsPreviewViewModel.cs", Path.Combine(src, "ViewModels", "SessionsPreviewViewModel.cs")),
             ("Services/AffichageSessions.cs",         Path.Combine(src, "Services", "AffichageSessions.cs")),
             ("Services/SessionHookInstaller.cs",      Path.Combine(src, "Services", "SessionHookInstaller.cs")),
+            ("docs/desktop-app-sessions.md",          Path.Combine(docs, "desktop-app-sessions.md")),
+            ("README.md",                             Path.GetFullPath(Path.Combine(docs, "..", "README.md"))),
         };
     }
 
@@ -88,7 +90,7 @@ public sealed class LibellesSessionsTests
     {
         var infractions = new List<string>();
         var fichiers = FichiersSurveilles();
-        Assert.Equal(9, fichiers.Count);   // anti-muet : la liste n'a pas été vidée
+        Assert.Equal(11, fichiers.Count);   // anti-muet : la liste n'a pas été vidée
 
         foreach (var (nom, chemin) in fichiers)
         {

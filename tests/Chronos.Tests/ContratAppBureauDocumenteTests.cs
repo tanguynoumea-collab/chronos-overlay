@@ -234,4 +234,44 @@ public sealed class ContratAppBureauDocumenteTests
             $"La section « {TitreNonGaranti} » doit porter chaque trou daté de la source app-bureau. Manquants : "
             + string.Join(" | ", manquants));
     }
+
+    /// <summary>
+    /// La règle « lue » n'est écrite qu'UNE fois (D-31-02) : au §3 du contrat des hooks, sous sa propre garde. Le contrat
+    /// de l'app y renvoie sans la recopier ; et les trois documents voisins — le §3 des hooks, les sources d'usage, le
+    /// README — renvoient au contrat de l'app : un document que rien ne cite n'est lu par personne.
+    ///
+    /// <para>Le renvoi du contrat des hooks est cherché DANS son §3 : l'introduction et le §9 le citent aussi, et une garde
+    /// qui lirait le document entier resterait verte si le §3 le perdait.</para>
+    /// </summary>
+    [Fact]
+    public void Les_documents_voisins_renvoient_au_contrat_de_l_app_et_la_regle_n_est_ecrite_qu_une_fois()
+    {
+        var texte = LireDocument();
+        var docs = CheminDocs();
+
+        var hooks = LireVoisin("docs/hooks-contract.md", Path.Combine(docs, "hooks-contract.md"));
+        Assert.Contains(NomDocument, ContratHooksDocumenteTests.SectionDe(hooks, "## 3."), StringComparison.Ordinal);
+
+        var sources = LireVoisin("docs/data-sources.md", Path.Combine(docs, "data-sources.md"));
+        Assert.Contains(NomDocument, ContratHooksDocumenteTests.SectionDe(sources, "## 6."), StringComparison.Ordinal);
+
+        var readme = LireVoisin("README.md", Path.GetFullPath(Path.Combine(docs, "..", "README.md")));
+        Assert.Contains("## Widget de sessions Claude Code", readme, StringComparison.Ordinal);
+        Assert.Contains(NomDocument, readme, StringComparison.Ordinal);
+
+        Assert.Contains("hooks-contract.md", texte, StringComparison.Ordinal);
+        Assert.Contains("§3", texte, StringComparison.Ordinal);
+        Assert.False(texte.Contains("HorizonsSessions.GraceLecture", StringComparison.Ordinal),
+            "docs/desktop-app-sessions.md cite HorizonsSessions.GraceLecture : la règle « lue » vit au §3 du contrat des "
+            + "hooks ; deux copies dériveraient.");
+    }
+
+    /// <summary>Lit un document voisin. ANTI-MUET : présent et non vide.</summary>
+    private static string LireVoisin(string nom, string chemin)
+    {
+        Assert.True(File.Exists(chemin), $"{nom} introuvable : {chemin}");
+        var texte = File.ReadAllText(chemin);
+        Assert.False(string.IsNullOrWhiteSpace(texte), $"{nom} est vide : {chemin}");
+        return texte;
+    }
 }
