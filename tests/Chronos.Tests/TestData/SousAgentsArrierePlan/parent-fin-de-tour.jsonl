@@ -1,0 +1,15 @@
+{"type":"assistant","isSidechain":false,"timestamp":"2026-09-26T12:32:51.350Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","message":{"role":"assistant","stop_reason":"tool_use","content":[{"type":"text","text":"(anonymisé)"}]}}
+{"type":"assistant","isSidechain":false,"timestamp":"2026-09-26T12:32:57.408Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","message":{"role":"assistant","stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_01M1CcNgf7NDyiQky5Gh35fY","name":"Bash","input":{"command":"(anonymisé)","description":"(anonymisé)"},"caller":{"type":"direct"}}]}}
+{"type":"user","isSidechain":false,"timestamp":"2026-09-26T12:33:00.081Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01M1CcNgf7NDyiQky5Gh35fY","content":"(anonymisé)","is_error":false}]}}
+{"type":"attachment","isSidechain":false,"timestamp":"2026-09-26T12:33:00.092Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"assistant","isSidechain":false,"timestamp":"2026-09-26T12:33:18.994Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","message":{"role":"assistant","stop_reason":"tool_use","content":[{"type":"tool_use","id":"toolu_01KcG4665tUacz6HSfw89DcX","name":"Agent","input":{"description":"(anonymisé)","subagent_type":"(anonymisé)","model":"(anonymisé)","run_in_background":true,"prompt":"(anonymisé)"},"caller":{"type":"direct"}}]}}
+{"type":"user","isSidechain":false,"timestamp":"2026-09-26T12:33:20.231Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01KcG4665tUacz6HSfw89DcX","content":"(anonymisé)"}]}}
+{"type":"attachment","isSidechain":false,"timestamp":"2026-09-26T12:33:20.239Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"assistant","isSidechain":false,"timestamp":"2026-09-26T12:33:21.818Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"(anonymisé)"}]}}
+{"type":"system","isSidechain":false,"timestamp":"2026-09-26T12:33:23.529Z","cwd":"C:\\Projets\\Projet-A","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"last-prompt","lastPrompt":"(anonymisé)","leafUuid":"(anonymisé)","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"custom-title","customTitle":"(anonymisé)","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"agent-name","agentName":"(anonymisé)","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"mode","mode":"(anonymisé)","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"atis-latch","atis":"","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb"}
+{"type":"bridge-session","sessionId":"88677186-8690-44dc-ac77-7a319a0aa5cb","bridgeSessionId":"(anonymisé)","lastSequenceNum":0,"ownerAccountUuid":"(anonymisé)","ownerOrganizationUuid":"(anonymisé)"}

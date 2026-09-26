@@ -11,7 +11,8 @@ namespace Chronos.Services;
 /// Ne montre que les sessions dont le dernier message a moins de <see cref="HorizonsSessions.Abandon"/> ; la règle
 /// de silence n'est PAS ici, elle est dans le moniteur (SIL-01 : une seule règle, appliquée à tous les signaux).
 ///
-/// Règle d'état (dernier message significatif, sous-agents ignorés) — TROIS issues :
+/// Règle d'état (dernier message significatif ; sous-agents : jamais une ligne ; le dernier message de leurs
+/// transcripts est un signal de TRAVAIL de la session (SUB-01)) — TROIS issues :
 ///   • dernier = user (invite ou tool_result), ou assistant dont le dernier tool_use est un autre outil → Working
 ///   • assistant dont le dernier tool_use s'appelle EXACTEMENT « AskUserQuestion »                 → WaitingAttention
 ///   • assistant SANS tool_use (réponse finie : end_turn/stop_sequence/…)                          → WaitingTurn (t'attend)
@@ -40,6 +41,17 @@ namespace Chronos.Services;
 /// permission contre un transcript (FUS-01 faussé). La date d'écriture ne sert plus qu'au PRÉ-FILTRE
 /// d'énumération, qui reste exact : l'horodatage d'un message ne dépasse jamais l'écriture du fichier. Classer
 /// tous les candidats avant la limite coûte ~0,6 ms par fichier supplémentaire (mesuré en recherche).</para>
+///
+/// <para>SUB-01 (phase 30.1) — un sous-agent qui écrit est un travail de sa session. Écart E2 du constat de phase 31
+/// (2026-09-26, 14:44) : le tour parent s'était fini (end_turn) juste après avoir lancé un agent en arrière-plan, qui
+/// écrivait encore son transcript douze minutes plus tard ; la session restait « En attente ». Décision D-30.1-05 : APRÈS
+/// la classification du parent et le filtre d'abandon, si le parent travaille ou a fini son tour, les
+/// « &lt;session&gt;/subagents/agent-*.jsonl » (dossier seul, non récursif) écrits APRÈS le dernier message du parent sont
+/// lus par leur queue, à rebours, jusqu'à leur dernier message user / assistant ; le plus récent de ces instants, s'il
+/// est postérieur à celui du parent, rend la session Working, datée de cet instant, motif
+/// « transcript (sous-agent) » (TravailSousAgent). Sans horodatage lisible sur ce dernier message : aucun signal (pas de
+/// repli sur l'écriture). Une question du parent n'est jamais modifiée. Un sous-agent n'est toujours pas une LIGNE
+/// (<see cref="EstSousAgent"/>, <see cref="MaxSessions"/> inchangés).</para>
 ///
 /// Lecture EFFICACE : seule la fin du fichier (~64 Ko) est lue (les transcripts font plusieurs Mo).
 /// </summary>
@@ -78,9 +90,9 @@ public sealed class TranscriptSessionSource : ISessionSource
         // rajeuni par des métadonnées ne doit plus voler un emplacement à une session réellement récente.
         // Un fichier sans rien d'exploitable (Classify → null) ne consomme AUCUN emplacement.
         return candidats
-            .Select(fi => Classify(fi, now))
-            .Where(s => s is not null && now - s.UpdatedAt <= HorizonsSessions.Abandon)   // même borne que le moniteur : n'écarte qu'au-delà
-            .Select(s => s!)
+            .Select(fi => (Fichier: fi, Session: Classify(fi, now)))
+            .Where(x => x.Session is not null && now - x.Session.UpdatedAt <= HorizonsSessions.Abandon)   // même borne que le moniteur : n'écarte qu'au-delà
+            .Select(x => AvecSesSousAgents(x.Fichier, x.Session!))                                         // SUB-01 : après le parent
             .OrderByDescending(s => s.UpdatedAt)
             .ThenBy(s => s.SessionId, System.StringComparer.Ordinal)   // départage déterministe
             .Take(MaxSessions)                                        // SRC-03 : la limite porte sur les RETENUES
@@ -95,6 +107,60 @@ public sealed class TranscriptSessionSource : ISessionSource
     private static bool EstSousAgent(FileInfo f)
         => string.Equals(f.Directory?.Name, "subagents", System.StringComparison.OrdinalIgnoreCase)
            || f.Name.StartsWith("agent-", System.StringComparison.Ordinal);
+
+    // SUB-01 (phase 30.1) — un sous-agent qui écrit est un travail de sa session. Jamais une LIGNE (EstSousAgent reste),
+    // seulement un signal : APRÈS la classification du parent, les subagents/agent-*.jsonl de CETTE session dont l'écriture est
+    // postérieure au dernier message du parent (pré-filtre d'économie : rien de plus récent ne peut être écrit dans un fichier
+    // plus ancien) ; le plus récent de leurs derniers messages, s'il est postérieur à celui du parent, rend la session Working,
+    // datée de cet instant — end_turn compris : le parent va reprendre, et le seuil de silence couvre le cas où il ne reprend pas.
+    // Une QUESTION du parent (WaitingAttention) n'est jamais effacée par un sous-agent : même doctrine que le hook (30.1-01).
+    private static SessionSnapshot AvecSesSousAgents(FileInfo parent, SessionSnapshot s)
+    {
+        if (s.Activity is not (SessionActivity.Working or SessionActivity.WaitingTurn)) return s;
+        System.DateTimeOffset? plusRecent = null;
+        try
+        {
+            var dossier = new DirectoryInfo(Path.Combine(parent.DirectoryName ?? "",
+                                                         Path.GetFileNameWithoutExtension(parent.Name), "subagents"));
+            if (!dossier.Exists) return s;
+            foreach (var f in dossier.EnumerateFiles("agent-*.jsonl", SearchOption.TopDirectoryOnly))
+            {
+                if (new System.DateTimeOffset(f.LastWriteTimeUtc, System.TimeSpan.Zero) <= s.UpdatedAt) continue;
+                if (DernierMessage(f) is { } t && t > s.UpdatedAt && (plusRecent is null || t > plusRecent)) plusRecent = t;
+            }
+        }
+        catch { return s; }   // un dossier de sous-agents illisible ne coûte rien au parent
+        return plusRecent is { } p
+            ? s with { Activity = SessionActivity.Working, Reason = TravailSousAgent.MotifTranscript, UpdatedAt = p }
+            : s;
+    }
+
+    // L'instant du DERNIER message (user / assistant, isSidechain indifférent : tout un sous-agent est « sidechain ») d'un
+    // transcript de sous-agent, lu à rebours dans la queue, borné par l'écriture du fichier (D-28-01). Le dernier message fait
+    // foi : sans horodatage lisible, AUCUN signal — pas de repli sur l'écriture, ce signal ne sert qu'à dire « travail ».
+    private static System.DateTimeOffset? DernierMessage(FileInfo f)
+    {
+        try
+        {
+            var lignes = ReadTail(f.FullName, TailBytes).Split('\n');
+            int i0 = f.Length > TailBytes ? 1 : 0;   // première ligne tronquée par le seek
+            for (int i = lignes.Length - 1; i >= i0; i--)
+            {
+                if (string.IsNullOrWhiteSpace(lignes[i])) continue;
+                JsonElement o;
+                try { using var d = JsonDocument.Parse(lignes[i]); o = d.RootElement.Clone(); }
+                catch { continue; }
+                if (o.ValueKind != JsonValueKind.Object) continue;
+                var type = o.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
+                if (type is not ("user" or "assistant")) continue;
+                if (Horodatage(o) is not { } h) return null;
+                var ecriture = new System.DateTimeOffset(f.LastWriteTimeUtc, System.TimeSpan.Zero);
+                return h <= ecriture ? h : ecriture;
+            }
+            return null;
+        }
+        catch { return null; }
+    }
 
     private static SessionSnapshot? Classify(FileInfo fi, System.DateTimeOffset now)
     {
