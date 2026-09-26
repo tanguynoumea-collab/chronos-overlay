@@ -185,8 +185,9 @@ public sealed class SessionMonitor
             ? arbitrage.Retenus.Select(s => Enrichir(s, appBureau)).ToList()
             : arbitrage.Retenus;
 
-        // 3) Filtres : archivées (permanent, NET-04) PUIS traitées (réversible). Le détecteur possède l'ajout ET
-        //    la purge des entrées treated ; ici on MASQUE simplement toute session encore présente dans le magasin.
+        // 3) Filtres : archivées (permanent, NET-04) PUIS traitées-en-attente (réversible). Le détecteur possède
+        //    l'ajout ET la purge des entrées treated ; ici on MASQUE simplement toute session EN ATTENTE encore
+        //    présente dans le magasin ; une session traitée qui travaille est visible — LUE-05.
         //    On NE ré-implémente PAS la comparaison treatedWaitingTs >= UpdatedAt : la réversibilité NET-03 est
         //    portée par le détecteur (purge sur nouvel épisode), pas par ce filtre.
         //    L'ORDRE d'évaluation est significatif : une session à la fois archivée et traitée est annoncée
@@ -194,8 +195,8 @@ public sealed class SessionMonitor
         //    Vient ENSUITE l'état indéterminé (LIB-01) : il n'a pas de ligne dans le widget, il est donc masqué
         //    ICI, avec son motif — et non au ViewModel, sans quoi Visibles cesserait d'être mot pour mot ce que
         //    l'écran affiche (OBS-01) et le rapport montrerait une ligne que le widget n'a pas. Ordre complet :
-        //    archivée, puis traitée, puis indéterminée. Le détecteur, lui, a observé les vainqueurs AVANT ces
-        //    filtres (2.b) : il n'en est pas affecté.
+        //    archivée, puis traitée-en-attente, puis indéterminée (traitée ET indéterminée ⇒ Indeterminee). Le
+        //    détecteur, lui, a observé les vainqueurs AVANT ces filtres (2.b) : il n'en est pas affecté.
         var archived = _archive.Load();
         var treatedMap = _treated?.Load();
         var visibles = new List<SessionSnapshot>(raw.Count);
@@ -203,7 +204,16 @@ public sealed class SessionMonitor
         foreach (var s in raw)
         {
             if (archived.Contains(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Archivee)); continue; }
-            if (treatedMap is not null && treatedMap.ContainsKey(s.SessionId)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Traitee)); continue; }
+            // LUE-05 — le masquage « traité » ne vaut que pour une ATTENTE : répondue, lue ou marquée traitée, une session qui se remet
+            // à travailler s'affiche « Réflexion » ; son prochain épisode d'attente plus récent la ramène (NET-03, détecteur). Le filtre
+            // ne purge rien. La CAUSE vient du détecteur (LUE-03) : treated.json ne la porte pas ; sans cause connue (geste, entrée
+            // d'avant le démarrage non relue), le motif résiduel Traitee.
+            if (treatedMap is not null && treatedMap.TryGetValue(s.SessionId, out var tts) && AffichageSessions.EstUneAttente(s.Activity))
+            {
+                var cause = _tracker?.CauseDe(s.SessionId, tts);
+                masquees.Add(new SessionMasquee(s, cause?.Motif ?? MotifMasquage.Traitee, cause));
+                continue;
+            }
             if (!AffichageSessions.AUneLigne(s.Activity)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Indeterminee)); continue; }
             visibles.Add(s);
         }
