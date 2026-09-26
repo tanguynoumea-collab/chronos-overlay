@@ -131,6 +131,7 @@ public sealed class DiagnosticService
         var sb = new StringBuilder();
         sb.AppendLine("=== Chronos — Diagnostic ===");
         sb.AppendLine("Date : " + _clock.UtcNow.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
+        sb.AppendLine("Version : " + VersionEmbarquee());
         sb.AppendLine();
 
         // 1) Réglage
@@ -794,6 +795,13 @@ public sealed class DiagnosticService
     // Huit premiers caractères de l'identifiant : assez pour retrouver le fichier d'état correspondant dans
     // %APPDATA%\Chronos\sessions, assez court pour que la ligne reste lisible.
     private static string Court(string id) => id.Length <= 8 ? id : id[..8];
+
+    // VAL-03 — la version EMBARQUÉE, lue sur l'assembly : une seule source, les quatre propriétés du csproj
+    // (IncludeSourceRevisionInInformationalVersion=false, donc sans « +sha »). Jamais écrite en dur ici.
+    private static string VersionEmbarquee()
+        => (System.Attribute.GetCustomAttribute(typeof(DiagnosticService).Assembly,
+                typeof(System.Reflection.AssemblyInformationalVersionAttribute))
+            as System.Reflection.AssemblyInformationalVersionAttribute)?.InformationalVersion ?? "?";
 
     // Issue du dernier passage de la sonde, UN LIBELLÉ PAR MEMBRE. Le grain fin est le livrable : la panne
     // silencieuse que v1.5 corrige venait précisément de l'écrasement de causes distinctes en un seul
