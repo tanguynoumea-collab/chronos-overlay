@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Completed 31-02-PLAN.md
-last_updated: "2026-09-26T11:01:39.622Z"
+stopped_at: Completed 30.1-01-PLAN.md
+last_updated: "2026-09-26T13:49:32.185Z"
 last_activity: 2026-09-26
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 16
+  total_plans: 20
+  completed_plans: 18
 ---
 
 # Project State
@@ -21,13 +21,13 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend.
-**Current focus:** Phase 31 — Écrit, publié, constaté
+**Current focus:** Phase 30.1 — Un sous-agent qui écrit est un travail de sa session
 
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 31 (Écrit, publié, constaté) — EXECUTING
-Plan: 3 of 3
+Phase: 30.1 (Un sous-agent qui écrit est un travail de sa session) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
 Last activity: 2026-09-26
 
@@ -118,8 +118,8 @@ fichiers modifiés < 24 h, dégrader vers le comportement v1.6 si dossier/champs
 ## Accumulated Context
 
 ### Roadmap Evolution
-- Phase 30.1 inserted after Phase 30: Un sous-agent qui écrit est un travail de sa session — écart E2 du constat de phase 31 (2026-09-26 14:44) : une session dont le tour parent est fini mais dont un sous-agent tourne en arrière-plan est affichée « En attente » au lieu de « Réflexion » (URGENT ; republication 3.2.1 avant la reprise du constat)
 
+- Phase 30.1 inserted after Phase 30: Un sous-agent qui écrit est un travail de sa session — écart E2 du constat de phase 31 (2026-09-26 14:44) : une session dont le tour parent est fini mais dont un sous-agent tourne en arrière-plan est affichée « En attente » au lieu de « Réflexion » (URGENT ; republication 3.2.1 avant la reprise du constat)
 
 ### Contexte technique v1.5 (diagnostic DÉJÀ ÉTABLI — ne pas re-enquêter)
 
@@ -244,6 +244,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 30 P04 | 17min | 2 tasks | 6 files |
 | Phase 31 P01 | 17min | 2 tasks | 7 files |
 | Phase 31 P02 | 10min | 2 tasks | 5 files |
+| Phase 30.1 P01 | 12min | 2 tasks | 4 files |
 
 ### Decisions
 
@@ -547,6 +548,8 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 31]: D-31-04 : la version se lit, elle ne s'écrit pas — le rapport lit AssemblyInformationalVersionAttribute (ligne « Version : » sous « Date : ») ; VersionPublieeTests tient la cohérence csproj ↔ assembly, aucun test n'épingle 3.2.0
 - [Phase 31]: D-31-05/06 : Chronos-v3.2.0.exe à la racine du dépôt principal (77 377 466 o, md5 2cffcec5…, VersionInfo 3.2.0.0 / 3.2.0), ignoré par /Chronos-v*.exe (vérifié, non modifié) ; Chronos-v3.1.0.exe conservé
 - [Phase 31]: Release 3.2.0 = f321180, sans étiquette ni push ; smoke --hook SessionStart stdin vide code 0, settings.json md5 9eab8a8e… inchangé ; overlay jamais lancé par l'agent (réconciliation par l'utilisateur en 31-03)
+- [Phase 30.1]: [30.1-01] D-30.1-01 : le veto sous-agent se reduit au cycle de vie (SessionStart, SessionEnd, Stop, UserPromptSubmit) ; PreToolUse / PostToolUse de sous-agent ecrivent Working pour la session parente, motif suffixe " (sous-agent)" (D-30.1-02, SessionHookProcessor.SuffixeSousAgent) ; une demande de sous-agent garde son motif ordinaire
+- [Phase 30.1]: [30.1-01] D-30.1-03/04 : un battement de sous-agent ne reaffirme que Working ou WaitingTurn, relu sous le meme verrou (liste blanche) ; jamais sur WaitingAttention, jamais sur un etat illisible, jamais de creation (FileMode.Open) ; refus = succes nomme IgnoreeCarSousAgent, App.xaml.cs inchange. Limite ecrite : une permission de sous-agent accordee reste En attente jusqu'au prochain signal du parent
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -603,7 +606,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-26T11:01:39.616Z
-Stopped at: Completed 31-02-PLAN.md
+Last session: 2026-09-26T13:49:32.180Z
+Stopped at: Completed 30.1-01-PLAN.md
 Resume file: None
 Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29
