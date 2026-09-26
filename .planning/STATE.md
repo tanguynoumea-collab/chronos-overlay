@@ -4,7 +4,7 @@ milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: verifying
 stopped_at: Completed 29-05-PLAN.md
-last_updated: "2026-09-26T07:57:10.377Z"
+last_updated: "2026-09-26T08:10:43.682Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 5
@@ -26,8 +26,8 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 29 (Ce que l'app bureau sait de chaque session) — EXECUTING
-Plan: 5 of 5
+Phase: 30
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-09-26
 
