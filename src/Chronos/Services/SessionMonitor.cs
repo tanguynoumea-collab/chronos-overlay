@@ -113,6 +113,9 @@ public sealed class SessionMonitor
     ///   • questions de l'APP BUREAU (APP-03) — une fin de tour classée <c>blocked</c> avec un motif. L'app QUALIFIE
     ///     une ligne, elle n'en crée pas : sa question n'est déposée que pour une session déjà déposée CE cycle par un
     ///     transcript ou un hook, sous l'horizon d'abandon, non archivée dans l'app, datée par son épisode.
+    /// SUB-01 (phase 30.1) : un signal de SOUS-AGENT (motif « (sous-agent) » : battement de hook ou transcript subagents/)
+    /// n'est pas déposé pour une session dont le verdict PROPRE — l'arbitrage de ses autres signaux — est une permission,
+    /// une question ou un blocked : un travail de fond n'efface jamais une attente d'intervention (<see cref="TravailSousAgent"/>).
     /// Le TITRE de l'app n'est pas un signal : il est posé sur les retenus, APRÈS l'arbitrage, avant les filtres
     /// (les masquées le portent aussi) ; il ne départage rien (APP-02).
     /// La LECTURE (phase 30) : le détecteur reçoit le dernier focus de chaque session, la session sélectionnée
@@ -185,7 +188,11 @@ public sealed class SessionMonitor
                     signaux.Add(new SignalSession(SourceSession.AppBureau, AppliquerSilence(q, now)));
         }
 
-        var arbitrage = ArbitrageSessions.Trancher(signaux);
+        // 2.e) SUB-01 — un travail de sous-agent n'efface jamais une attente d'intervention : les signaux au motif
+        //      « (sous-agent) » (battement de hook, transcript subagents/) ne sont pas déposés pour une session dont le
+        //      verdict PROPRE est une permission, une question ou un blocked (TravailSousAgent). L'arbitrage lui-même est
+        //      inchangé.
+        var arbitrage = ArbitrageSessions.Trancher(TravailSousAgent.SansEffacerLesAttentes(signaux));
 
         // 2.b) Le détecteur de traitement observe les snapshots RETENUS (+ horloge) et met à jour
         //      TreatedStore (ajout NET-01, ajout LUE, purge NET-03). Best-effort : ne casse JAMAIS le pipeline.

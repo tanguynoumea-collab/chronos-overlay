@@ -25,4 +25,29 @@ public static class TravailSousAgent
     /// déduite par le seuil de silence reste un signal de sous-agent).</summary>
     public static bool Est(SessionSnapshot s)
         => s.Reason is { } r && r.EndsWith(Suffixe, System.StringComparison.Ordinal);
+
+    /// <summary>
+    /// LA RÈGLE DE NON-EFFACEMENT AU POINT DE FUSION (D-30.1-06). FUS-01 fait gagner le signal le plus récent : sans cette parade,
+    /// un transcript de sous-agent écrit après une demande de permission du parent, ou un battement de sous-agent écrit après une
+    /// question classée « blocked » par l'app, gagnerait — et « à toi » deviendrait « Réflexion » : la brèche R3 par une autre porte.
+    /// Pour chaque session, le verdict PROPRE est l'arbitrage de ses signaux HORS sous-agents (le même ordre total, sans copie) ;
+    /// s'il vaut WaitingAttention, ses signaux de sous-agent ne sont pas déposés. Le travail propre du parent, plus récent qu'une
+    /// question, en change le verdict : les sous-agents reprennent alors leur place ordinaire.
+    /// <para>Limite assumée : quand le transcript d'une session est daté par un sous-agent, le verdict propre ne voit plus le
+    /// transcript du parent. Une question « blocked » de l'app à laquelle l'utilisateur a répondu, le parent travaillant en
+    /// même temps qu'un agent de fond dont le battement est le dernier écrit au fichier d'état, reste donc « En attente »
+    /// jusqu'au prochain signal propre du parent — le sens autorisé de l'erreur : une attente de trop, jamais un travail qui
+    /// cache une demande.</para>
+    /// </summary>
+    public static IReadOnlyList<SignalSession> SansEffacerLesAttentes(IReadOnlyList<SignalSession> signaux)
+    {
+        var enAttente = ArbitrageSessions.Trancher(signaux.Where(s => !Est(s.Session)))
+            .Retenus
+            .Where(r => r.Activity == SessionActivity.WaitingAttention)
+            .Select(r => r.SessionId)
+            .ToHashSet(System.StringComparer.Ordinal);
+        return enAttente.Count == 0
+            ? signaux
+            : signaux.Where(s => !(Est(s.Session) && enAttente.Contains(s.Session.SessionId))).ToList();
+    }
 }
