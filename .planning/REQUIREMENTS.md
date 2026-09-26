@@ -78,10 +78,10 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   *Confirmée NÉCESSAIRE le 2026-09-25 par le geste B de `27-RELEVE.md`* : fin de tour 20:34:04 sous les yeux
   de l'utilisateur, `lastFocusedAt` resté à 20:30:44. Et le geste A a montré qu'un retour alt-tab met
   `lastFocusedAt` à jour : dès que le premier plan quitte `claude`, LUE-01 reprend seule.
-- [ ] **LUE-03**: Le diagnostic distingue « lue » de « répondue » : pour une session masquée, il nomme le motif
+- [x] **LUE-03**: Le diagnostic distingue « lue » de « répondue » : pour une session masquée, il nomme le motif
   (« lue : focus à HH:MM > attente à HH:MM », « sélectionnée au premier plan », ou « répondue »), et jamais un
   masquage sans cause.
-- [ ] **LUE-04**: Quand la source app-bureau est absente pour une session (terminal pur, fichier illisible,
+- [x] **LUE-04**: Quand la source app-bureau est absente pour une session (terminal pur, fichier illisible,
   format changé), la règle « lue » ne s'applique pas à cette session : le comportement v1.6 est conservé, sans
   faux masquage.
 - [x] **LUE-05** *(ajoutée le 2026-09-26, recherche de phase 30, point 9)* : le masquage « traitée » — qu'il vienne
@@ -153,8 +153,8 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | APP-06 | Phase 29 | Complete |
 | LUE-01 | Phase 30 | Complete |
 | LUE-02 | Phase 30 | Complete |
-| LUE-03 | Phase 30 | Pending |
-| LUE-04 | Phase 30 | Pending |
+| LUE-03 | Phase 30 | Complete |
+| LUE-04 | Phase 30 | Complete |
 | LUE-05 | Phase 30 | Complete |
 | LIB-01 | Phase 28 | Complete |
 | LIB-02 | Phase 28 | Complete |

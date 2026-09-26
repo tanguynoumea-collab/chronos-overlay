@@ -104,7 +104,7 @@ notification au reset, exploitation de `latestUserFrameAt` / `completedTurns`.
 - [x] **Phase 27: Le relevé avant la règle** - Les deux inconnues de la règle « lue » sont tranchées sur la vraie machine, en lecture seule et avec l'utilisateur, avant qu'une ligne de la règle ne soit écrite
 - [x] **Phase 28: Deux mots, une question, les mêmes horizons** - « Réflexion » / « En attente » / « En attente ? », une question `AskUserQuestion` classée attente, et une session sans fichier de hook qui ne disparaît plus en silence à 15 min (completed 2026-09-25)
 - [x] **Phase 29: Ce que l'app bureau sait de chaque session** - Titre, dernier focus et classification de fin de tour lus dans les fichiers de l'app, en lecture seule, avec dégradation vers le comportement v1.6 (completed 2026-09-26)
-- [ ] **Phase 30: La lecture fait disparaître** - Une session lue quitte le widget sans clic, revient si elle redemande, et le diagnostic dit pourquoi elle est masquée
+- [x] **Phase 30: La lecture fait disparaître** - Une session lue quitte le widget sans clic, revient si elle redemande, et le diagnostic dit pourquoi elle est masquée (completed 2026-09-26)
 - [ ] **Phase 31: Écrit, publié, constaté** - `docs/desktop-app-sessions.md`, exe 3.2.0 publié et réconcilié, et le tableau en trois lignes vérifié sur la machine de l'utilisateur
 
 ### Phase Details
@@ -266,7 +266,7 @@ Plans:
 - [x] 30-01-PLAN.md — LUE-01..04 côté détecteur : NET-03 et LUE-01/LUE-02 décidées en un seul bloc (six cas), une écriture par épisode, la cause de chaque masquage retenue (1062 → 1088 isolé)
 - [x] 30-02-PLAN.md — LUE-02, LUE-04 : `IPremierPlan` / `PremierPlanWin32` (processus `claude`, cache 1 s) et `LectureAppBureau.Selection` sur tous les fichiers (→ 1110 en fin de vague 1)
 - [x] 30-03-PLAN.md — LUE-01, 02, 04, 05 : le moniteur branche le tout, le filtre « traitée » ne masque que les attentes (LUE-05), câblage de production (→ 1132)
-- [ ] 30-04-PLAN.md — LUE-03, LUE-04 : cause et instants de chaque masquage au diagnostic, section « Règle « lue » », §3 du contrat réécrit (→ 1143)
+- [x] 30-04-PLAN.md — LUE-03, LUE-04 : cause et instants de chaque masquage au diagnostic, section « Règle « lue » », §3 du contrat réécrit (→ 1143)
 
 ### Phase 31: Écrit, publié, constaté
 **Goal**: La source app-bureau est documentée comme l'est le contrat des hooks, l'exe **3.2.0** est publié et
@@ -305,7 +305,7 @@ la 28 peut passer devant sans rien casser.
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
-| 30. La lecture fait disparaître | 3/4 | In Progress|  |
+| 30. La lecture fait disparaître | 4/4 | Complete   | 2026-09-26 |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |
 
 ### Couverture des exigences

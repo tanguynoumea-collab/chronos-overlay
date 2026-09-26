@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
-status: executing
-stopped_at: Completed 30-03-PLAN.md
-last_updated: "2026-09-26T09:30:36.701Z"
+status: verifying
+stopped_at: Completed 30-04-PLAN.md
+last_updated: "2026-09-26T09:48:06.413Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -26,12 +26,12 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 30 (La lecture fait disparaître) — EXECUTING
+Phase: 30 (La lecture fait disparaître) — 4 plans sur 4 exécutés, à vérifier (`/gsd:verify-work`)
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-26
 
-Progress: [████░░░░░░] 40 % (2 phases sur 5)
+Progress: [████████░░] 80 % (4 phases sur 5 : 27, 28, 29, 30 ; reste 31)
 
 **Relevé de phase 27, en deux lignes :** le retour alt-tab met `lastFocusedAt` à jour (16:23:51 → 20:30:44) ;
 un tour terminé sous les yeux laisse `lastFocusedAt` antérieur à la fin du tour (20:30:44 < 20:34:04) ⇒ LUE-02
@@ -50,6 +50,7 @@ transcript, jamais par le mtime. Détail : `.planning/phases/27-le-relev-avant-l
 - Après 30-02 (LUE-02/04 premier plan + sélection, `b10620f`) : 1062 + 14 + 8 = **1084 isolé**, deux exécutions (worktree temporaire à `af60f59` + les 4 commits du plan) ; fin de vague 1 avec 30-01 (à `284fcc7`) : **1110 verts / 0 échec**, deux exécutions (9 s, 8 s), le total attendu ; mutations (m7), (m3) jouées et révoquées (sha256).
 - Après 30-01 (LUE-01..04 au détecteur, `f0ab69a`) : 1062 + 19 + 7 = **1088 isolé** (1057 hors classes de 30-02 + 31 cas préexistants de LecteurAppBureauTests) ; fin de vague 1 avec 30-02 : **1110 / 0**, deux exécutions (8 s, 9 s) ; mutations (m1) L04, (m2) L05, (m4) L10+L13+L21 jouées et révoquées (sha256 44264408…).
 - Après 30-03 (LUE-01/02/05 au moniteur, câblage de production, `9ec7233`) : 1110 + 4 + 17 + 1 = **1132 verts / 0 échec**, deux exécutions (11 s, 11 s) ; 3 tests adaptés dont 1 renommé (LUE-05) ; mutations (m6), (m3 bis), (m5) jouées et révoquées (sha256) ; un test de la phase 04 instable sous charge consigné dans 30/deferred-items.md.
+- Après 30-04 (LUE-03/04 au rapport, §3 du contrat, `5995fa5`) : 1132 + 9 + 1 + 1 = **1143 verts / 0 échec**, deux exécutions (10 s, 10 s) — cible de fin de phase 30 atteinte exactement ; aucun test existant retouché ; mutation (m8) jouée et révoquée (sha256 77f2ff90…) ; LUE-01..LUE-05 cochés.
 - Transcripts à 8 h (SIL-01), mesuré avec la DLL livrée : médiane **28,2 / 25,7 ms** par cycle de 2 s, 4 sessions visibles — pas de cache (seuil 50 ms). Détail : 28-VALIDATION.md.
 - v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
@@ -235,6 +236,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 30 P02 | 9min | 2 tasks | 5 files |
 | Phase 30 P01 | 15min | 2 tasks | 5 files |
 | Phase 30 P03 | 34min | 3 tasks | 8 files |
+| Phase 30 P04 | 17min | 2 tasks | 6 files |
 
 ### Decisions
 
@@ -529,6 +531,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 30]: D-30-09 (LUE-05) : le filtre traite du moniteur ne masque qu'une session dont l'etat RETENU est une attente ; une session traitee qui travaille est visible Reflexion, son entree reste dans treated.json jusqu'au prochain episode (le filtre ne purge rien) ; Marquer traitee sur une session qui travaille ne la fait plus disparaitre
 - [Phase 30]: D-30-10 : le premier plan est lu a CHAQUE cycle, meme sans source app-bureau ; une sonde qui leve vaut Indisponible (type de l'exception) ; le detecteur ne recoit que ClaudeDepuis ; sans dossier de l'app le ContexteLecture est NUL (v1.6 exact)
 - [Phase 30]: 30-03 : pas de nouveau type de constat - la selection est sur LectureSessions.AppBureau.Selection, l'etat de la sonde sur LectureSessions.PremierPlan (OBS-01)
+- [Phase 30]: D-30-11 : heures du rapport locales à la seconde (HH:mm:ss) ; mots du verrou conservés (« lue : focus à … > attente à … », « sélectionnée au premier plan », « répondue »)
+- [Phase 30]: D-30-12 : le §3 du contrat des hooks est réécrit en phase 30 (trois façons de quitter le widget, la lecture, LUE-05), sous garde croisée ; docs/desktop-app-sessions.md (VAL-02) reste en phase 31
+- [Phase 30]: Rapport 30-04 : tout libellé issu de treated.json commence par « treated.json » ; sans cause connue, « marquée à la main, ou traitée avant le démarrage de l'overlay » ; premier plan non branché = « NON BRANCHÉ » (masculin)
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -585,7 +590,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-26T09:30:36.693Z
-Stopped at: Completed 30-03-PLAN.md
+Last session: 2026-09-26T09:48:06.408Z
+Stopped at: Completed 30-04-PLAN.md
 Resume file: None
 Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29
