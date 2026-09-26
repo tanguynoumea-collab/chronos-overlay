@@ -48,6 +48,8 @@ public sealed class SessionTreatmentTracker
     public SessionTreatmentTracker(TreatedStore store)
         => _store = store ?? throw new System.ArgumentNullException(nameof(store));
 
+    public CauseTraitement? CauseDe(string sessionId, long episodeTraite) => null;   // SQUELETTE RED
+
     // Trois valeurs disent « quelque chose m'attend ». L'attente DÉDUITE en fait partie depuis la phase 25 :
     // le bandeau la compte, le cadran la colore, et l'exclure ici faisait qu'une attente devenue déduite
     // était lue comme une réponse — c'est-à-dire masquée six heures. Une déduction reste une déduction ;

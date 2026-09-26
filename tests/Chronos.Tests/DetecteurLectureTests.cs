@@ -337,4 +337,147 @@ public sealed class DetecteurLectureTests : IDisposable
 
         Assert.Equal(1790361244328, Inscrit(store, B));
     }
+
+    // ------------------------------------------------------------------ LUE-03 : la cause retenue, jamais inventée
+
+    /// <summary>
+    /// L16 — une RÉPONSE est un fait nouveau : lue par focus, puis l'utilisateur répond (attente puis travail sur la
+    /// MÊME source) ⇒ la cause devient « répondue », pour le même épisode, et le magasin ne bouge pas.
+    /// </summary>
+    [Fact]
+    public void Repondue_remplace_la_cause_lue()
+    {
+        var (store, detecteur, _) = Neuf(Releve);
+        var contexte = Ctx(null, null, (Jarvis, FocusJarvis));
+
+        detecteur.Observe(Un(Sig(Jarvis, SessionActivity.WaitingTurn, FinJarvis)), Releve, contexte);
+        var lue = detecteur.CauseDe(Jarvis, 1790344745000);
+        Assert.NotNull(lue);
+        Assert.Equal(MotifMasquage.LueParFocus, lue!.Motif);
+        Assert.Equal(FinJarvis, lue.Attente);
+        Assert.Equal(FocusJarvis, lue.Focus);
+
+        detecteur.Observe(Un(Sig(Jarvis, SessionActivity.Working, Utc(14, 9, 0))), Utc(14, 9, 0), contexte);
+        var repondue = detecteur.CauseDe(Jarvis, 1790344745000);
+        Assert.NotNull(repondue);
+        Assert.Equal(MotifMasquage.Repondue, repondue!.Motif);
+        Assert.Equal(FinJarvis, repondue.Attente);
+        Assert.Equal(1790344745000, Inscrit(store, Jarvis));
+    }
+
+    /// <summary>
+    /// L17 — la cause « lue au premier plan » est celle du CONSTAT : l'utilisateur quitte ensuite claude (plus de
+    /// premier plan), la session reste lue pour cet épisode et sa cause ne change pas.
+    /// </summary>
+    [Fact]
+    public void La_cause_survit_au_depart_du_premier_plan()
+    {
+        var (store, detecteur, _) = Neuf(LueB);
+
+        GesteB(detecteur, LueB);
+        var attendue = new CauseTraitement(MotifMasquage.LueAuPremierPlan, FinB, FocusB, ClaudeDepuisB, LueB);
+        Assert.Equal(attendue, detecteur.CauseDe(B, 1790361244328));
+
+        detecteur.Observe(Un(Sig(B, SessionActivity.WaitingTurn, FinB)), Utc(18, 34, 10), Ctx(B, null, (B, FocusB)));
+
+        Assert.Equal(attendue, detecteur.CauseDe(B, 1790361244328));
+        Assert.Equal(1790361244328, Inscrit(store, B));
+    }
+
+    /// <summary>
+    /// L22 — la cause d'un épisode est FIGÉE à son premier constat : une minute plus tard, claude toujours au premier
+    /// plan, le constat reste 18:34:06.828Z — le rapport dira « depuis 39 s », jamais « depuis 99 s ».
+    /// </summary>
+    [Fact]
+    public void La_cause_est_figee_a_son_premier_constat()
+    {
+        var (_, detecteur, _) = Neuf(LueB);
+
+        GesteB(detecteur, LueB);
+        GesteB(detecteur, Utc(18, 35, 6, 828));
+
+        var cause = detecteur.CauseDe(B, 1790361244328);
+        Assert.NotNull(cause);
+        Assert.Equal(MotifMasquage.LueAuPremierPlan, cause!.Motif);
+        Assert.Equal(LueB, cause.Constat);
+        Assert.Equal(ClaudeDepuisB, cause.PremierPlanDepuis);
+    }
+
+    /// <summary>
+    /// L18 — après un redémarrage de l'overlay, le magasin porte déjà l'épisode ; un détecteur NEUF qui voit la même
+    /// attente antérieure au focus retrouve la cause (cas 6) SANS écrire — la sentinelle de date d'écriture le prouve.
+    /// </summary>
+    [Fact]
+    public void Apres_redemarrage_la_lecture_par_focus_retrouve_sa_cause_sans_ecrire()
+    {
+        var (store, detecteur, chemin) = Neuf(Releve);
+        store.Set(Jarvis, 1790344745000);                  // écrit par l'overlay d'avant le redémarrage
+        File.SetLastWriteTimeUtc(chemin, Sentinelle);
+
+        detecteur.Observe(Un(Sig(Jarvis, SessionActivity.WaitingTurn, FinJarvis)), Releve,
+                          Ctx(null, null, (Jarvis, FocusJarvis)));
+
+        var cause = detecteur.CauseDe(Jarvis, 1790344745000);
+        Assert.NotNull(cause);
+        Assert.Equal(MotifMasquage.LueParFocus, cause!.Motif);
+        Assert.Equal(Sentinelle, File.GetLastWriteTimeUtc(chemin));
+    }
+
+    /// <summary>
+    /// L19 — le résidu HONNÊTE : après un redémarrage, une inscription que le détecteur neuf ne relit pas comme une
+    /// lecture (focus antérieur à l'attente : ni lue, ni répondue sous ses yeux) n'a PAS de cause. Le moniteur
+    /// l'annoncera « traitée », sans prétendre savoir pourquoi (cas 2 : magasin inchangé).
+    /// </summary>
+    [Fact]
+    public void Apres_redemarrage_une_cause_non_revue_est_residuelle()
+    {
+        var (store, detecteur, chemin) = Neuf(Releve);
+        store.Set(Jarvis, 1790344745000);
+        File.SetLastWriteTimeUtc(chemin, Sentinelle);
+
+        detecteur.Observe(Un(Sig(Jarvis, SessionActivity.WaitingTurn, FinJarvis)), Releve,
+                          Ctx(null, null, (Jarvis, Utc(13, 50, 0))));
+
+        Assert.Null(detecteur.CauseDe(Jarvis, 1790344745000));
+        Assert.Equal(1790344745000, Inscrit(store, Jarvis));
+        Assert.Equal(Sentinelle, File.GetLastWriteTimeUtc(chemin));
+    }
+
+    /// <summary>
+    /// L23 — NET-03 purge la cause avec l'inscription : la session revenue (nouveau tour fini après le focus) n'a plus
+    /// de cause, ni pour l'ancien épisode ni pour le nouveau.
+    /// </summary>
+    [Fact]
+    public void Une_session_revenue_oublie_sa_cause()
+    {
+        var (store, detecteur, _) = Neuf(Utc(14, 6, 0));
+        var contexte = Ctx(null, null, (Jarvis, FocusJarvis));
+
+        detecteur.Observe(Un(Sig(Jarvis, SessionActivity.WaitingTurn, FinJarvis)), Utc(14, 1, 0), contexte);
+        Assert.NotNull(detecteur.CauseDe(Jarvis, 1790344745000));   // la cause existait : ce qui suit l'oublie
+
+        detecteur.Observe(Un(Sig(Jarvis, SessionActivity.WaitingTurn, Utc(14, 5, 0))), Utc(14, 6, 0), contexte);
+
+        Assert.Empty(store.Load());
+        Assert.Null(detecteur.CauseDe(Jarvis, 1790344745000));
+        Assert.Null(detecteur.CauseDe(Jarvis, 1790345100000));
+    }
+
+    /// <summary>
+    /// L24 — un GESTE (« Marquer traitée », écrit par le ViewModel directement dans le magasin) n'a pas de cause au
+    /// détecteur : il ne l'a pas constaté, il ne l'invente pas.
+    /// </summary>
+    [Fact]
+    public void Un_geste_n_a_pas_de_cause()
+    {
+        var (store, detecteur, _) = Neuf(Releve);
+        var signal = Un(Sig(Jarvis, SessionActivity.WaitingTurn, FinJarvis));
+
+        detecteur.Observe(signal, Releve);
+        store.Set(Jarvis, 1790344745000);                   // le geste du ViewModel
+        detecteur.Observe(signal, Releve.AddSeconds(2));
+
+        Assert.Null(detecteur.CauseDe(Jarvis, 1790344745000));
+        Assert.Equal(1790344745000, Inscrit(store, Jarvis));
+    }
 }
