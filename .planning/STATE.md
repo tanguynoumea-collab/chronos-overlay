@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
-status: verifying
-stopped_at: Completed 30-04-PLAN.md
-last_updated: "2026-09-26T09:55:47.080Z"
+status: executing
+stopped_at: Completed 31-01-PLAN.md
+last_updated: "2026-09-26T10:47:28.865Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 17
+  completed_plans: 15
 ---
 
 # Project State
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-09-25)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend.
-**Current focus:** Phase 30 — La lecture fait disparaître
+**Current focus:** Phase 31 — Écrit, publié, constaté
 
 ## Current Position
 
 Milestone: v1.7 — Lue ou non lue
-Phase: 31
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 31 (Écrit, publié, constaté) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-09-26
 
 Progress: [████████░░] 80 % (4 phases sur 5 : 27, 28, 29, 30 ; reste 31)
@@ -237,6 +237,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 30 P01 | 15min | 2 tasks | 5 files |
 | Phase 30 P03 | 34min | 3 tasks | 8 files |
 | Phase 30 P04 | 17min | 2 tasks | 6 files |
+| Phase 31 P01 | 17min | 2 tasks | 7 files |
 
 ### Decisions
 
@@ -534,6 +535,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 30]: D-30-11 : heures du rapport locales à la seconde (HH:mm:ss) ; mots du verrou conservés (« lue : focus à … > attente à … », « sélectionnée au premier plan », « répondue »)
 - [Phase 30]: D-30-12 : le §3 du contrat des hooks est réécrit en phase 30 (trois façons de quitter le widget, la lecture, LUE-05), sous garde croisée ; docs/desktop-app-sessions.md (VAL-02) reste en phase 31
 - [Phase 30]: Rapport 30-04 : tout libellé issu de treated.json commence par « treated.json » ; sans cause connue, « marquée à la main, ou traitée avant le démarrage de l'overlay » ; premier plan non branché = « NON BRANCHÉ » (masculin)
+- [Phase 31]: D-31-01 : « jonction » écrit NIÉ dans docs/desktop-app-sessions.md (%APPDATA%\Claude = virtualisation d'AppData du paquet MSIX), tenu par la garde D4
+- [Phase 31]: D-31-02 : la règle « lue » n'est écrite qu'au §3 de hooks-contract.md ; le contrat de l'app y renvoie, D6 rougit s'il cite HorizonsSessions.GraceLecture
+- [Phase 31]: D-31-03 : garde croisée par EXTRACTION du texte de LecteurAppBureau.cs (14 champs, 3 catégories), égalité dans les deux sens ; un changement de forme des appels rougit par l'anti-muet
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -590,7 +594,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-26T09:48:06.408Z
-Stopped at: Completed 30-04-PLAN.md
+Last session: 2026-09-26T10:47:28.859Z
+Stopped at: Completed 31-01-PLAN.md
 Resume file: None
 Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29

@@ -114,7 +114,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   écrit et des valeurs relevées : (1) `lastFocusedAt` est-il mis à jour au simple retour (alt-tab) sur la
   session déjà sélectionnée ? (2) que vaut-il quand un tour se termine pendant que l'utilisateur regarde ? La
   règle LUE-02 est ajustée d'après le relevé, pas d'après une supposition — et l'ajustement est écrit.
-- [ ] **VAL-02**: La source app-bureau est documentée dans `docs/desktop-app-sessions.md` (chemin, jonction,
+- [x] **VAL-02**: La source app-bureau est documentée dans `docs/desktop-app-sessions.md` (chemin, jonction,
   champs lus, ce qui n'est PAS garanti), au même titre que `docs/hooks-contract.md`.
 - [ ] **VAL-03**: L'exe est publié en **3.2.0** — version embarquée et dans le nom du fichier
   (`Chronos-v3.2.0.exe`) — et les hooks et la statusLine sont réconciliés vers ce nouvel exe au premier
@@ -162,7 +162,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LIB-04 | Phase 28 | Complete |
 | SIL-01 | Phase 28 | Complete |
 | VAL-01 | Phase 27 | Complete |
-| VAL-02 | Phase 31 | Pending |
+| VAL-02 | Phase 31 | Complete |
 | VAL-03 | Phase 31 | Pending |
 
 **Couverture :** 19 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
