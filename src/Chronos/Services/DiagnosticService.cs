@@ -557,7 +557,9 @@ public sealed class DiagnosticService
                 // Le critère n°2 de la phase. Une session écartée n'est pas absente : elle est écartée PAR
                 // QUELQUE CHOSE, et ce quelque chose a un nom et un fichier que l'utilisateur peut ouvrir.
                 // Cas fondateur, mesuré le 2026-09-12 : e465420e, session vivante en attente de permission
-                // depuis 10 h, écartée par treated.json — invisible du widget ET du rapport.
+                // depuis 10 h, écartée par treated.json — invisible du widget ET du rapport. Depuis la phase 30
+                // (LUE-03), écartée par treated.json ET la cause que le détecteur a constatée : lue par focus, lue
+                // au premier plan, répondue, ou marquée à la main (ou traitée avant le démarrage de l'overlay).
                 sb.AppendLine($"  Sessions MASQUÉES par un filtre : {lecture.Masquees.Count}");
                 foreach (var m in lecture.Masquees
                              .OrderBy(m => AffichageSessions.Urgence(m.Session.Activity))
@@ -587,6 +589,9 @@ public sealed class DiagnosticService
                 // lecteur, aucun second Inspecter. Le lecteur du moniteur n'est consulté que pour distinguer « non
                 // branchée » d'une lecture qui a levé à ce cycle : il n'est jamais relu ici.
                 DecrireSourceAppBureau(sb, lecture, lecteurBranche: _moniteurSessions.Lecteur is not null);
+
+                // LUE-01, LUE-02, LUE-04 — ce que la règle « lue » voit, lu dans la MÊME lecture (OBS-01).
+                DecrireRegleLue(sb, lecture);
             }
             catch (Exception ex) { sb.AppendLine("  (lecture du moniteur impossible : " + ex.GetType().Name + ")"); }
         }
@@ -619,13 +624,33 @@ public sealed class DiagnosticService
 
     // Le filtre qui écarte, NOMMÉ AVEC SON FICHIER : « absent » n'apprend rien, « écarté par treated.json »
     // dit quoi ouvrir. C'est toute la différence entre un défaut inélucidable et un défaut diagnosticable.
+    //
+    // Le filtre NOMMÉ AVEC SON FICHIER, et désormais avec SA CAUSE : treated.json ne porte que l'épisode ; la cause vient
+    // du détecteur, qui ne l'invente pas pour ce qu'il n'a pas vu — LUE-03. Sans cause connue (un geste, ou une
+    // inscription antérieure au démarrage de l'overlay), le libellé le dit tel quel : jamais « lue » ni « répondue ».
+    // Tout libellé issu de treated.json commence par « treated.json » : le fichier à ouvrir reste nommé. Les heures sont
+    // locales, à la seconde (D-30-11) ; « depuis N s » est figé au constat (Constat − PremierPlanDepuis), jamais
+    // recalculé à l'heure du rapport : lu une heure plus tard, il ne dira pas « depuis 3 600 s ». Interne : un test
+    // parcourt tous les motifs, et aucun ne doit tomber sur le repli « un filtre non nommé ».
     internal static string LibelleMasquage(MotifMasquage motif, CauseTraitement? cause) => motif switch
     {
         MotifMasquage.Archivee => "archived.json (archivage — geste explicite de l'utilisateur)",
-        MotifMasquage.Traitee  => "treated.json (« traité » — hystérésis automatique OU geste explicite ; réversible)",
+        MotifMasquage.Traitee => "treated.json (« traité » — marquée à la main, ou traitée avant le démarrage de l'overlay ; réversible)",
         MotifMasquage.Indeterminee => "état indéterminé (signal illisible) — aucune ligne dans le widget",
-        _                      => "un filtre non nommé",
+        MotifMasquage.LueParFocus => cause is { Focus: { } f }
+            ? $"treated.json — lue : focus à {Heure(f)} > attente à {Heure(cause.Attente)} (réversible : revient sur une nouvelle demande)"
+            : "treated.json — lue par le focus de l'app (instants non retenus ; réversible)",
+        MotifMasquage.LueAuPremierPlan => cause is { PremierPlanDepuis: { } d, Constat: { } c }
+            ? $"treated.json — sélectionnée au premier plan depuis {(int)(c - d).TotalSeconds} s (claude) — attente à {Heure(cause.Attente)} (réversible : revient sur une nouvelle demande)"
+            : "treated.json — sélectionnée au premier plan (instants non retenus ; réversible)",
+        MotifMasquage.Repondue => cause is not null
+            ? $"treated.json — répondue : attente à {Heure(cause.Attente)}, puis travail observé sur la même source (réversible)"
+            : "treated.json — répondue (réversible)",
+        _ => "un filtre non nommé",
     };
+
+    // Heure LOCALE à la seconde (D-30-11) : le relevé travaille à la seconde, « 16:00 > 16:00 » serait illisible.
+    private static string Heure(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss");
 
     // La source NOMMÉE AVEC SON DOSSIER, exactement comme un filtre est nommé avec son fichier : « hook »
     // n'apprend rien, « fichier de hook (%APPDATA%\Chronos\sessions) » dit où aller regarder quand une
@@ -708,6 +733,40 @@ public sealed class DiagnosticService
             var archivee = m.Archivee ? " · archivée dans l'app" : "";
             sb.AppendLine($"    · {Court(s.SessionId)} {titre} — {focus} — fin de tour : {LibelleClassification(m)}{archivee}");
         }
+    }
+
+    // LUE-01, LUE-02, LUE-04 — la règle « lue », dite à partir de la MÊME lecture que le widget (OBS-01) : la sélection
+    // vient de lecture.AppBureau, le premier plan de lecture.PremierPlan. Aucun second appel à la sonde ni au lecteur.
+    //
+    // Le rapport dit ce que le moniteur voit À L'INSTANT DU RAPPORT. Demandé depuis le menu de Chronos, le premier plan
+    // est alors Chronos ou l'éditeur, et la ligne le dit : c'est vrai à cet instant. Les causes déjà constatées, elles,
+    // restent lisibles sur les lignes masquées (« depuis N s » y est figé au constat).
+    //
+    // Quand la règle ne peut rien voir, elle le dit (LUE-04) : sans source app-bureau, la sélection est « inconnue » et
+    // aucun identifiant n'est écrit ; sans sonde, le premier plan est « NON BRANCHÉ » (le premier plan : masculin, à ne
+    // pas confondre avec la source « NON BRANCHÉE » de la section précédente). Aucune ligne ne commence par « · » : la
+    // liste par session de la section app-bureau s'arrête juste avant.
+    // Méthode d'INSTANCE : l'ancienneté du premier plan se mesure à l'horloge injectée, jamais à celle du système.
+    private void DecrireRegleLue(StringBuilder sb, LectureSessions lecture)
+    {
+        sb.AppendLine("  Règle « lue » (LUE-01, LUE-02) :");
+        var a = lecture.AppBureau;
+        var source = a is { DossierTrouve: true };
+        sb.AppendLine("    Session sélectionnée dans l'app : " + (!source
+            ? "inconnue — source app-bureau absente : règle « lue » inactive (comportement v1.6)"
+            : a!.Selection is not { } sel ? "aucune — aucun dernier focus lisible"
+            : sel.CliSessionId is not { } id ? $"aucune — le dernier focus ({Heure(sel.DernierFocus)}) est une session sans cliSessionId"
+            : $"{Court(id)} (focus {Heure(sel.DernierFocus)})"));
+        var p = lecture.PremierPlan ?? EtatPremierPlan.NonBranche;
+        sb.AppendLine("    Premier plan : " + p.Statut switch
+        {
+            StatutPremierPlan.Claude => $"claude depuis {(int)(_clock.UtcNow - (p.Depuis ?? _clock.UtcNow)).TotalSeconds} s — "
+                                        + (source ? "LUE-02 active" : "LUE-02 inactive (source app-bureau absente)"),
+            StatutPremierPlan.AutreProcessus => $"{p.Processus ?? "processus inconnu"} — LUE-02 inactive",
+            StatutPremierPlan.AucuneFenetre => "aucune fenêtre au premier plan — LUE-02 inactive",
+            StatutPremierPlan.Indisponible => $"indisponible ({p.Raison ?? "raison inconnue"}) — LUE-02 inactive, LUE-01 seule",
+            _ => "NON BRANCHÉ — LUE-02 inactive, LUE-01 seule",
+        });
     }
 
     // La classification de fin de tour, dite telle que l'app l'a écrite. Une catégorie que le lecteur ne connaît pas
