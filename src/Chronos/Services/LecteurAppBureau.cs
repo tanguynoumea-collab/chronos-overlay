@@ -66,6 +66,13 @@ public sealed record MetadonneesAppBureau(
     ClassificationFinDeTour ClassificationFinDeTour, string? CategorieBrute, string? MotifBlocage,
     string? ResumePour, System.DateTimeOffset? InstantClassification, IReadOnlyList<string> ChampsAbsents);
 
+/// <summary>LUE-02 — la session SÉLECTIONNÉE dans l'app : le lastFocusedAt le plus récent parmi TOUS les fichiers servis au cycle
+/// (valides, doublons écartés, fichiers sans cliSessionId). <see cref="CliSessionId"/> nul : le dernier focus appartient à une
+/// session que rien ne joint (une session neuve) — aucune session du widget n'est alors sélectionnée (D-30-04).</summary>
+/// <param name="CliSessionId">L'identifiant de la session sélectionnée ; nul si son fichier n'en porte pas.</param>
+/// <param name="DernierFocus">Son <c>lastFocusedAt</c> : le plus récent du cycle.</param>
+public sealed record SessionSelectionnee(string? CliSessionId, System.DateTimeOffset DernierFocus);
+
 /// <summary>
 /// Le résultat d'UN cycle de lecture : ce qui a été cherché, trouvé, lu, écarté — de quoi écrire le diagnostic
 /// sans jamais taire une source absente.
@@ -81,11 +88,13 @@ public sealed record MetadonneesAppBureau(
 /// <param name="Doublons">Fichiers écartés parce qu'un autre, plus récent, porte le même identifiant.</param>
 /// <param name="ChampsAbsents">Par nom de champ, le nombre de sessions retenues où il manque (clés triées).</param>
 /// <param name="ParSession">Les métadonnées retenues, par <c>cliSessionId</c> (comparaison sans casse).</param>
+/// <param name="Selection">La session sélectionnée dans l'app, ou nulle sans racine ou sans aucun focus lisible.</param>
 public sealed record LectureAppBureau(
     string? Racine, IReadOnlyList<string> RacinesCherchees,
     int Enumeres, int Recents, int Valides, int RelusSurDisque, int Illisibles, int SansCliSessionId, int Doublons,
     IReadOnlyDictionary<string, int> ChampsAbsents,
-    IReadOnlyDictionary<string, MetadonneesAppBureau> ParSession)
+    IReadOnlyDictionary<string, MetadonneesAppBureau> ParSession,
+    SessionSelectionnee? Selection = null)
 {
     /// <summary>Vrai si l'un des candidats existe.</summary>
     public bool DossierTrouve => Racine is not null;
@@ -376,8 +385,14 @@ public sealed class LecteurAppBureau
     /// résumé est présent ; son figement par épisode est l'affaire de <see cref="Lire"/>, qui seul a une mémoire.</para>
     /// </summary>
     internal static IssueLecture Interpreter(System.ReadOnlyMemory<byte> json, out MetadonneesAppBureau? meta)
+        => Interpreter(json, out meta, out _);
+
+    /// <summary>La même interprétation, qui rend aussi le dernier focus lu (<c>lastFocusedAt</c>) — pour la sélection.</summary>
+    internal static IssueLecture Interpreter(System.ReadOnlyMemory<byte> json, out MetadonneesAppBureau? meta,
+                                             out System.DateTimeOffset? focus)
     {
         meta = null;
+        focus = null;   // SQUELETTE (RED) : jamais lu
 
         var octets = json;
         var debut = octets.Span;

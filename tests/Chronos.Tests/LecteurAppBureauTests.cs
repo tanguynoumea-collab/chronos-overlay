@@ -505,4 +505,154 @@ public class LecteurAppBureauTests : IDisposable
         Assert.Equal("latestUserFrameAt", absent.Key);
         Assert.Equal(1, absent.Value);
     }
+
+    // ------------------------------------------------------------------ Phase 30 : la session sélectionnée (LUE-02, LUE-04)
+
+    /// <summary>Le dernier focus de la session du geste B (<c>1790361044976</c>) : 20:30:44.976 à Paris.</summary>
+    private static readonly DateTimeOffset FocusGesteB = new(2026, 9, 25, 18, 30, 44, 976, TimeSpan.Zero);
+
+    /// <summary>Un focus dérivé (<c>1790361100000</c>), plus récent que celui de toutes les fixtures.</summary>
+    private static readonly DateTimeOffset FocusDerive = new(2026, 9, 25, 18, 31, 40, TimeSpan.Zero);
+
+    /// <summary>La session du geste B, plus un fichier SANS <c>cliSessionId</c> focalisé plus récemment : une session
+    /// neuve que rien ne joint encore, et que l'utilisateur regarde.</summary>
+    private string RacineAvecUneSessionNeuveSelectionnee()
+    {
+        var racine = Racine(M, GesteB);
+        RacineAppBureau.Ecrire(racine, "local_sansid.json",
+                               RacineAppBureau.Deriver(SansId, ("1781190743865", "1790361100000")), M.AddMinutes(-1));
+        return racine;
+    }
+
+    /// <summary>S01 — la session sélectionnée est celle dont le <c>lastFocusedAt</c> est le plus récent.</summary>
+    [Fact]
+    public void La_selection_est_le_dernier_focus_de_tous_les_fichiers()
+    {
+        var racine = Racine(M, GesteB, PreteARevue, SansResume, Bloquee);
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.NotNull(l.Selection);
+        Assert.Equal(IdGesteB, l.Selection!.CliSessionId);
+        Assert.Equal(FocusGesteB, l.Selection.DernierFocus);
+    }
+
+    /// <summary>S02 — un doublon ÉCARTÉ (plus ancien par activité) peut porter le focus le plus récent : il compte pour
+    /// la sélection, sans changer le fichier retenu.</summary>
+    [Fact]
+    public void Le_focus_d_un_doublon_ecarte_compte_pour_la_selection()
+    {
+        var racine = RacineVide();
+        RacineAppBureau.EcrireOctets(racine, "local_a.json", RacineAppBureau.Fixture(GesteB), M.AddMinutes(-1));
+        RacineAppBureau.Ecrire(racine, "local_b.json",
+                               RacineAppBureau.Deriver(GesteB, ("1790361286677", "1790361000000"), ("1790361044976", "1790361100000")),
+                               M.AddMinutes(-1));
+        RacineAppBureau.EcrireOctets(racine, RacineAppBureau.NomFichier(PreteARevue), RacineAppBureau.Fixture(PreteARevue),
+                                     M.AddMinutes(-1));
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Equal(1, l.Doublons);
+        Assert.Equal(FocusGesteB, l.ParSession[IdGesteB].DernierFocus);   // le fichier RETENU ne change pas
+        Assert.NotNull(l.Selection);
+        Assert.Equal(IdGesteB, l.Selection!.CliSessionId);
+        Assert.Equal(FocusDerive, l.Selection.DernierFocus);
+    }
+
+    /// <summary>S03 — D-30-04 : si le dernier focus appartient à un fichier sans <c>cliSessionId</c>, la sélection existe
+    /// mais ne désigne AUCUNE session — sinon la session précédente serait déclarée lue pendant qu'on en regarde une
+    /// neuve.</summary>
+    [Fact]
+    public void Le_dernier_focus_sur_un_fichier_sans_cliSessionId_ne_selectionne_personne()
+    {
+        var l = new LecteurAppBureau(new[] { RacineAvecUneSessionNeuveSelectionnee() }).Lire(M);
+
+        Assert.NotNull(l.Selection);
+        Assert.Null(l.Selection!.CliSessionId);
+        Assert.Equal(FocusDerive, l.Selection.DernierFocus);
+        Assert.Equal(1, l.SansCliSessionId);
+        Assert.Equal(new[] { IdGesteB }, l.ParSession.Keys.ToArray());
+    }
+
+    /// <summary>S04 — LUE-04 : sans racine, pas de sélection.</summary>
+    [Fact]
+    public void Une_racine_absente_n_a_pas_de_selection()
+    {
+        Assert.Null(new LecteurAppBureau(new[] { Absente() }).Lire(M).Selection);
+    }
+
+    /// <summary>S05 — LUE-04 : sans aucun focus lisible, pas de sélection ; le champ se compte absent une seule fois.</summary>
+    [Fact]
+    public void Sans_aucun_focus_lisible_la_selection_est_nulle()
+    {
+        var racine = RacineVide();
+        RacineAppBureau.Ecrire(racine, RacineAppBureau.NomFichier(GesteB),
+                               RacineAppBureau.Deriver(GesteB, ("\"lastFocusedAt\": 1790361044976", "\"lastFocusedAt\": \"illisible\"")),
+                               M.AddMinutes(-1));
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+
+        Assert.Null(l.Selection);
+        Assert.Null(l.ParSession[IdGesteB].DernierFocus);
+        Assert.Equal(1, l.ChampsAbsents["lastFocusedAt"]);
+    }
+
+    /// <summary>S06 — à focus égal, le premier chemin dans l'ordre ordinal (la règle des doublons) : l'ordre
+    /// d'énumération ne décide pas.</summary>
+    [Fact]
+    public void A_focus_egal_la_selection_est_le_premier_chemin_ordinal()
+    {
+        var revueAuMemeFocus = RacineAppBureau.Deriver(PreteARevue, ("1790361032950", "1790361044976"));
+
+        var racine = RacineVide();
+        RacineAppBureau.Ecrire(racine, "local_a.json", revueAuMemeFocus, M.AddMinutes(-1));
+        RacineAppBureau.EcrireOctets(racine, "local_b.json", RacineAppBureau.Fixture(GesteB), M.AddMinutes(-1));
+
+        var l = new LecteurAppBureau(new[] { racine }).Lire(M);
+        Assert.Equal(IdPreteARevue, l.Selection?.CliSessionId);
+        Assert.Equal(FocusGesteB, l.Selection!.DernierFocus);
+
+        var inversee = RacineVide();
+        RacineAppBureau.EcrireOctets(inversee, "local_a.json", RacineAppBureau.Fixture(GesteB), M.AddMinutes(-1));
+        RacineAppBureau.Ecrire(inversee, "local_b.json", revueAuMemeFocus, M.AddMinutes(-1));
+
+        var li = new LecteurAppBureau(new[] { inversee }).Lire(M);
+        Assert.Equal(IdGesteB, li.Selection?.CliSessionId);
+        Assert.Equal(FocusGesteB, li.Selection!.DernierFocus);
+    }
+
+    /// <summary>S07 — le focus se lit AVANT l'identifiant : un fichier sans <c>cliSessionId</c> le rend quand même ;
+    /// sur un fichier valide, c'est le même que celui des métadonnées.</summary>
+    [Fact]
+    public void Interpreter_rend_le_focus_meme_sans_cliSessionId()
+    {
+        var issue = LecteurAppBureau.Interpreter(RacineAppBureau.Fixture(SansId), out var meta, out var focus);
+
+        Assert.Equal(IssueLecture.SansCliSessionId, issue);
+        Assert.Null(meta);
+        Assert.Equal(new DateTimeOffset(2026, 6, 11, 15, 12, 23, 865, TimeSpan.Zero), focus);
+
+        var issueB = LecteurAppBureau.Interpreter(RacineAppBureau.Fixture(GesteB), out var metaB, out var focusB);
+
+        Assert.Equal(IssueLecture.Valide, issueB);
+        Assert.Equal(FocusGesteB, focusB);
+        Assert.Equal(metaB!.DernierFocus, focusB);
+    }
+
+    /// <summary>S08 — le focus vit dans l'entrée du cache : un fichier non relu (même sans identifiant) garde sa place
+    /// dans la sélection.</summary>
+    [Fact]
+    public void Le_cache_garde_le_focus_pour_la_selection()
+    {
+        var lecteur = new LecteurAppBureau(new[] { RacineAvecUneSessionNeuveSelectionnee() });
+
+        var l1 = lecteur.Lire(M);
+        var l2 = lecteur.Lire(M.AddSeconds(2));
+
+        Assert.Equal(0, l2.RelusSurDisque);
+        Assert.NotNull(l2.Selection);
+        Assert.Equal(l1.Selection, l2.Selection);
+        Assert.Null(l2.Selection!.CliSessionId);
+        Assert.Equal(FocusDerive, l2.Selection.DernierFocus);
+    }
 }
