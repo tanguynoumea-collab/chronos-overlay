@@ -237,7 +237,7 @@ v1.6 ; et chaque disparition a une cause écrite dans le diagnostic.
 **Depends on**: Phase 29 (`lastFocusedAt` et la jointure par session), Phase 27 (la forme de LUE-02 est celle
 que le relevé a fixée) et Phase 28 (SIL-01 élargit la population à laquelle la règle s'applique : elle est
 vérifiée contre elle).
-**Requirements**: LUE-01, LUE-02, LUE-03, LUE-04
+**Requirements**: LUE-01, LUE-02, LUE-03, LUE-04, LUE-05
 **Success Criteria** (what must be TRUE):
   1. **Le relevé du 2026-09-25 à 16 h 08 ne se reproduit plus** : les deux sessions finies à 15:59 et 15:56,
      puis ouvertes à 16:00:39 et 16:00:59, ne sont plus affichées à 16:08 — le scénario est rejoué tel quel en
@@ -257,6 +257,9 @@ vérifiée contre elle).
   5. **Pas de faux masquage** : une session sans métadonnées app-bureau (terminal pur, fichier illisible,
      format changé) garde exactement le comportement v1.6 — elle reste « En attente » jusqu'à la réponse, au
      geste ou à 8 h (LUE-04).
+  6. **Une session qui travaille est toujours visible** (ajouté le 2026-09-26) : répondue, lue ou marquée
+     traitée, une session qui se remet à travailler affiche « Réflexion » ; le masquage ne s'applique qu'aux
+     attentes, et son prochain épisode d'attente la ramène « En attente » (LUE-05).
 **Plans**: TBD — à trancher explicitement au plan, et à écrire : LUE-01 énumère « tour fini, à toi, question
 posée » ; l'attente DÉDUITE (« En attente ? ») n'y figure pas. Une session muette depuis 25 min, ouverte
 ensuite par l'utilisateur, est-elle « lue » ? La réponse doit être une décision écrite, pas un effet de bord
@@ -304,13 +307,13 @@ la 28 peut passer devant sans rien casser.
 
 ### Couverture des exigences
 
-18 requirements v1.7, chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
+19 requirements v1.7, chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
 
 | Phase | Requirements | Nombre |
 |-------|--------------|--------|
 | 27 | VAL-01 | 1 |
 | 28 | LIB-01, LIB-02, LIB-03, LIB-04, SIL-01 | 5 |
 | 29 | APP-01, APP-02, APP-03, APP-04, APP-05, APP-06 | 6 |
-| 30 | LUE-01, LUE-02, LUE-03, LUE-04 | 4 |
+| 30 | LUE-01, LUE-02, LUE-03, LUE-04, LUE-05 | 5 |
 | 31 | VAL-02, VAL-03 | 2 |
-| **Total** | | **18 / 18** |
+| **Total** | | **19 / 19** |

@@ -28,16 +28,24 @@ n'apparaît pas ».
   - `dernierFocus` = `lastFocusedAt` de la session (phase 29), via `cliSessionId`.
 - Effet : `TreatedStore.Set(id, instantAttente)` — le magasin réversible EXISTANT, épisode daté par le signal
   (TRT-02). NET-03 inchangé : un signal d'attente plus récent que l'épisode traité fait revenir la session.
-- Pas d'écriture à chaque cycle : `Set` seulement si la session n'est pas déjà traitée pour cet épisode
-  (comparer à la valeur mémorisée avant d'écrire).
+- Pas d'écriture à chaque cycle : **l'instant comparé au dernier focus et l'instant écrit sont la MÊME valeur**,
+  l'épisode que le détecteur connaît déjà (`_attenteDepuis`, celui que NET-03 compare) — sinon `treated.json`
+  est effacé puis réécrit à chaque cycle. NET-03 et LUE-01 se décident en UN seul bloc (table à six cas de la
+  recherche) : au plus une écriture par épisode, prouvée par une date d'écriture sentinelle intacte.
 - Où : dans `SessionTreatmentTracker.Observe` (le détecteur possède déjà l'ajout et la purge), qui reçoit
   désormais aussi le dernier focus par session (dictionnaire `id → DateTimeOffset?`) et l'état du premier plan.
 
 ### La règle LUE-02 — CONFIRMÉE NÉCESSAIRE par le geste B, forme fixée
-- La session **sélectionnée** = celle dont `lastFocusedAt` est le plus récent parmi TOUS les fichiers de l'app
-  (pas seulement celles affichées).
+- La session **sélectionnée** = celle dont `lastFocusedAt` est le plus récent parmi TOUS les fichiers de l'app,
+  **y compris ceux sans `cliSessionId`** (une session neuve n'en a pas encore ; le lecteur actuel s'arrête dès
+  qu'un fichier n'a pas d'identifiant, `LecteurAppBureau.cs` `Interpreter`) : ajouter `LectureAppBureau.Selection`
+  calculée sur tous les fichiers. Si la sélection n'a pas d'identifiant, aucune session affichée n'est « au
+  premier plan ».
 - Elle compte comme lue tant que la fenêtre au premier plan appartient au processus **`claude`**, avec un
-  délai de grâce de **2,5 s** après `instantAttente` (le regard a le temps de se poser).
+  délai de grâce de **2,5 s** : `now − max(instantAttente, début du premier plan claude) ≥ 2,5 s` (constante
+  `HorizonsSessions.GraceLecture`). Vérifié sur la machine : `GetProcessById(88220).ProcessName` = `claude`,
+  depuis l'arbre de l'app comme depuis un processus WMI ; 17 processus portent ce nom (3 CLI) mais une seule
+  fenêtre principale ; machine verrouillée ⇒ premier plan `LockApp` ⇒ LUE-02 inactive d'elle-même.
 - Détection Win32 : `GetForegroundWindow()` → `GetWindowThreadProcessId()` → nom du processus (`Process
   .GetProcessById(pid).ProcessName`, comparaison ordinale insensible à la casse avec `claude`). Aucune UI
   Automation. Implémentation derrière une interface neutre (`IPremierPlan` / `PremierPlanWin32`), horloge
@@ -54,9 +62,17 @@ n'apparaît pas ».
   elle revient (NET-03).
 
 ### Le diagnostic (LUE-03)
-- `MotifMasquage` gagne `LueParFocus` (« lue : focus à HH:MM > attente à HH:MM ») et `LueAuPremierPlan`
+- `MotifMasquage` gagne `LueParFocus` (« lue : focus à HH:MM:SS > attente à HH:MM:SS ») et `LueAuPremierPlan`
   (« sélectionnée au premier plan depuis N s ») ; « répondue » (NET-01) et les motifs v1.6 (archivée, marquée
-  à la main) restent distincts. Le diagnostic imprime, par session masquée, le motif et les deux instants.
+  à la main) restent distincts. `treated.json` ne porte pas la cause : le détecteur la retient en mémoire au
+  moment où il agit ; ce qu'il n'a pas vu (geste, masquage d'avant le démarrage) garde le motif `Traitee` avec
+  un libellé honnête. Heures avec les secondes.
+
+### Une session qui travaille est toujours visible (LUE-05 — ajoutée le 2026-09-26)
+- Le filtre « traitée » de `SessionMonitor.Inspecter` ne masque une session que si son état retenu est une
+  attente (`EstUneAttente`). Une session répondue / lue qui travaille est visible « Réflexion » ; son prochain
+  épisode d'attente plus récent la ramène (NET-03). Test : session traitée à T, `Working` à T+1 min ⇒ visible ;
+  `end_turn` à T+5 min ⇒ « En attente » (épisode > traité) ; re-lue ⇒ masquée.
 
 ### Pas de faux masquage (LUE-04)
 - Sans `lastFocusedAt` pour une session (pas de fichier app, pas de `cliSessionId`, format changé) : LUE-01 et
@@ -64,8 +80,16 @@ n'apparaît pas ».
   `sans-cliSessionId.json`.
 - Sans détection de premier plan (échec Win32) : LUE-02 inactive, LUE-01 seule, et le diagnostic le dit.
 
+### Pièges de gardes (recherche, point 8)
+- Aucun `Claude_` dans les commentaires de `PremierPlanWin32` (garde n° 2 d'APP-05 : le chemin de l'app n'existe
+  que dans `RacinesEtat.cs`) ; aucune mention de `HorizonsSessions.Silence` hors du moniteur ; le paramètre
+  `premierPlan:` câblé par argument nommé dans `App.xaml.cs`, sous garde de source ; `docs/hooks-contract.md`
+  §3 dit « deux raisons seulement » de masquage — à réécrire.
+
 ### Claude's Discretion
-- Découpage en plans ; nom des types ; présentation exacte des lignes du diagnostic.
+- Découpage en plans (la recherche propose 4 plans en 3 vagues : 30-01 détecteur ∥ 30-02 premier plan et
+  sélection ; 30-03 moniteur et câblage ; 30-04 diagnostic et §3) ; nom des types ; présentation exacte des
+  lignes du diagnostic.
 
 </decisions>
 

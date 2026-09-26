@@ -85,7 +85,11 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 - [ ] **LUE-04**: Quand la source app-bureau est absente pour une session (terminal pur, fichier illisible,
   format changé), la règle « lue » ne s'applique pas à cette session : le comportement v1.6 est conservé, sans
   faux masquage.
-
+- [ ] **LUE-05** *(ajoutée le 2026-09-26, recherche de phase 30, point 9)* : le masquage « traitée » — qu'il vienne
+  d'une réponse (NET-01), d'une lecture (LUE-01/02) ou d'un geste — ne s'applique qu'à une session **en
+  attente**. Une session traitée qui se remet à **travailler** est visible « Réflexion » (ligne 1 du tableau de
+  l'utilisateur), et son prochain épisode d'attente la ramène « En attente » (NET-03 inchangé). Aujourd'hui le
+  filtre de `SessionMonitor` masque une session répondue tant qu'elle travaille.
 ### Deux libellés (LIB)
 
 - [x] **LIB-01**: Le widget n'affiche plus que deux libellés d'état : **« Réflexion »** (travail observé) et
@@ -152,6 +156,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LUE-02 | Phase 30 | Pending |
 | LUE-03 | Phase 30 | Pending |
 | LUE-04 | Phase 30 | Pending |
+| LUE-05 | Phase 30 | Pending |
 | LIB-01 | Phase 28 | Complete |
 | LIB-02 | Phase 28 | Complete |
 | LIB-03 | Phase 28 | Complete |
@@ -161,7 +166,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | VAL-02 | Phase 31 | Pending |
 | VAL-03 | Phase 31 | Pending |
 
-**Couverture :** 18 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
+**Couverture :** 19 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
 
 ---
-*Last updated: 2026-09-25 — APP-06 ajoutée (deux vues d'AppData), LUE-01/LUE-02 ajustées d'après la phase 27*
+*Last updated: 2026-09-26 — LUE-05 ajoutée (une session qui travaille est toujours visible) ; APP-06 et LUE-01/02 le 2026-09-25*
