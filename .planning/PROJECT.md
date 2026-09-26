@@ -50,6 +50,7 @@ chiffre exact.
 - ✓ « Traité » = transition observée sur la même source, persistant, geste explicite, archivage permanent (TRT-01..04) — Phase 26
 - ✓ Deux mots à l'écran (« Réflexion », « En attente », « En attente ? »), question `AskUserQuestion` classée attente, ordre découplé de l'arbitrage, horizons uniques 20 min / 8 h (LIB-01..04, SIL-01) — Phase 28
 - ✓ Source app-bureau par fichiers en lecture seule : titre, dernier focus, question `blocked` ; deux vues d'AppData (cache MSIX + réelle) lues par l'overlay, constaté hors de l'arbre (APP-01..06) — Phase 29
+- ✓ La lecture fait disparaître : attente antérieure au dernier focus ou session sélectionnée avec la fenêtre Claude au premier plan (grâce 2,5 s) ⇒ masquée, avec sa cause au diagnostic ; une session qui travaille reste visible (LUE-01..05) — Phase 30
 
 ### Active
 
@@ -90,7 +91,7 @@ tour fini sous les yeux le laisse antérieur ⇒ LUE-02 nécessaire) ; **phase 2
 de l'app, `29-SONDE-HORS-ARBRE.txt`) : AppData est VIRTUALISÉ par MSIX pour tout ce qui tourne sous l'app
 bureau — l'overlay n'a jamais vu un fichier d'état de hook (`%APPDATA%\Chronos\sessions` réel vide) ; APP-06
 (phase 29) lit les deux vues.
-**Phase 29 close** (1062 tests, vérification 6/6) : l'overlay lit enfin les fichiers d'état des hooks (dossier du paquet), affiche le titre de session et reconnaît une question posée par l'app. Reste : phase 30 (la lecture fait disparaître), phase 31 (doc, release 3.2.0, constat).
+**Phase 29 close** (1062 tests, vérification 6/6) : l'overlay lit enfin les fichiers d'état des hooks (dossier du paquet), affiche le titre de session et reconnaît une question posée par l'app. **Phase 30 close** (1143 tests, vérification 6/6) : une session lue disparaît sans clic, revient si elle redemande, et le diagnostic dit pourquoi. Reste : phase 31 (document, release 3.2.0, constat en production avec l'utilisateur).
 
 **Le cadran est réglé, et le widget observe.** v1.6 « Observer au lieu de déduire » est livré (exe **3.1.0**,
 6 phases, 18 exigences, 752 → 889 tests) et **vérifié en production le 2026-09-25** : les 8 groupes de hooks
@@ -205,4 +206,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 — phase 29 de v1.7 close (source app-bureau, deux vues d'AppData) ; LUE-05 ajoutée pour la phase 30*
+*Last updated: 2026-09-26 — phase 30 de v1.7 close (la lecture fait disparaître) ; reste la phase 31*
