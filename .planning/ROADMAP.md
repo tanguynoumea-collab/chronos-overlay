@@ -268,6 +268,33 @@ Plans:
 - [x] 30-03-PLAN.md — LUE-01, 02, 04, 05 : le moniteur branche le tout, le filtre « traitée » ne masque que les attentes (LUE-05), câblage de production (→ 1132)
 - [x] 30-04-PLAN.md — LUE-03, LUE-04 : cause et instants de chaque masquage au diagnostic, section « Règle « lue » », §3 du contrat réécrit (→ 1143)
 
+### Phase 30.1: Un sous-agent qui écrit est un travail de sa session (INSERTED)
+
+**Goal**: Une session dont un **sous-agent tourne en arrière-plan** affiche « Réflexion » et non « En attente » :
+les battements des sous-agents (hooks) et leurs transcripts (`subagents/*.jsonl`) deviennent un signal de
+travail de la session parente, sans jamais effacer une attente d'intervention ; le contrat le dit ; l'exe est
+republié en 3.2.1 et la phase 31 reprend son point (a). Écart E2 du constat (`31-CONSTAT.md` §3), signalé par
+l'utilisateur le 2026-09-26 à 14:44 sur la session « ADVANCED SHEET passation checkpoint 26.2-21 » (tour parent
+fini à 14:33:21, sous-agent encore écrit à 14:45:09).
+**Depends on**: Phase 30 (règles « lue », LUE-05 : une session `Working` est visible). Suspend la phase 31 au
+point (a).
+**Requirements**: SUB-01, SUB-02
+**Success Criteria** (what must be TRUE):
+  1. **Le relevé de 14:44 ne se reproduit plus** : parent `end_turn` 14:33:21 + hook `WaitingTurn` 14:33:23 +
+     sous-agent écrit à 14:45:09 ⇒ « Réflexion » (rejoué en test avec ces instants, sur fixtures réelles) ; le
+     `Stop` parent postérieur ⇒ « En attente » (SUB-01).
+  2. **Côté hooks** : un `PreToolUse`/`PostToolUse` avec `agent_id` écrit `Working` pour la session parente ;
+     sur un état `WaitingAttention`, il n'écrit RIEN (fichier identique octet pour octet) ; `SessionStart`,
+     `SessionEnd`, `Stop`, `UserPromptSubmit` d'un sous-agent restent ignorés (SUB-01).
+  3. **Côté transcripts** : seuls les `subagents/*.jsonl` plus récents que le dernier message du parent sont lus
+     (queue de 64 Ko) ; un sous-agent n'est jamais une ligne (SRC-03 intact) ; coût mesuré sur la vraie machine
+     sous 50 ms par cycle (SUB-01).
+  4. **Le contrat dit la règle** : §3 et le paragraphe du veto de `docs/hooks-contract.md`, `docs/data-sources.md`,
+     sous les gardes existantes (SUB-02).
+  5. **3.2.1 publiée** : csproj × 4, `Chronos-v3.2.1.exe` à la racine, contrôles et smoke `--hook` de la procédure
+     31-02, commit de release, aucun lancement par l'agent (SUB-02).
+**Plans**: TBD
+
 ### Phase 31: Écrit, publié, constaté
 **Goal**: La source app-bureau est documentée comme l'est le contrat des hooks, l'exe **3.2.0** est publié et
 réconcilié, et l'utilisateur constate **sur sa machine** que le widget répond enfin à sa phrase : « Réflexion »,
@@ -311,11 +338,12 @@ la 28 peut passer devant sans rien casser.
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
 | 30. La lecture fait disparaître | 4/4 | Complete    | 2026-09-26 |
+| 30.1. Un sous-agent qui écrit est un travail de sa session (INSERTED) | 0/? | Not started | - |
 | 31. Écrit, publié, constaté | 2/3 | In Progress|  |
 
 ### Couverture des exigences
 
-19 requirements v1.7, chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
+21 requirements v1.7 (dont 2 de la phase insérée 30.1), chacun mappé à exactement une phase, aucun orphelin, aucun doublon.
 
 | Phase | Requirements | Nombre |
 |-------|--------------|--------|
@@ -323,5 +351,6 @@ la 28 peut passer devant sans rien casser.
 | 28 | LIB-01, LIB-02, LIB-03, LIB-04, SIL-01 | 5 |
 | 29 | APP-01, APP-02, APP-03, APP-04, APP-05, APP-06 | 6 |
 | 30 | LUE-01, LUE-02, LUE-03, LUE-04, LUE-05 | 5 |
+| 30.1 (INSERTED) | SUB-01, SUB-02 | 2 |
 | 31 | VAL-02, VAL-03 | 2 |
-| **Total** | | **19 / 19** |
+| **Total** | | **21 / 21** |

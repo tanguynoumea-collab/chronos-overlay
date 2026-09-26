@@ -117,6 +117,10 @@ fichiers modifiés < 24 h, dégrader vers le comportement v1.6 si dossier/champs
 
 ## Accumulated Context
 
+### Roadmap Evolution
+- Phase 30.1 inserted after Phase 30: Un sous-agent qui écrit est un travail de sa session — écart E2 du constat de phase 31 (2026-09-26 14:44) : une session dont le tour parent est fini mais dont un sous-agent tourne en arrière-plan est affichée « En attente » au lieu de « Réflexion » (URGENT ; republication 3.2.1 avant la reprise du constat)
+
+
 ### Contexte technique v1.5 (diagnostic DÉJÀ ÉTABLI — ne pas re-enquêter)
 
 Diagnostic mené le 2026-09-09 sur la machine réelle. Cause racine des pourcentages faux après le passage

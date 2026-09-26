@@ -108,6 +108,17 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   que les sessions à fichier de hook : travail sans écriture depuis plus de 20 min ⇒ « En attente ? »,
   abandon à 8 h. Elle ne disparaît plus en silence 15 min après la dernière écriture.
 
+### Sous-agents en arrière-plan (SUB) — phase 30.1 insérée le 2026-09-26 (écart E2 du constat)
+
+- [ ] **SUB-01**: Une session dont un **sous-agent écrit** est **« Réflexion »**, datée du dernier battement du
+  sous-agent — côté hooks (`PreToolUse`/`PostToolUse` portant `agent_id`/`agent_type` ⇒ travail du parent) et
+  côté transcripts (dernier message des `subagents/*.jsonl` postérieur au dernier message du parent). Un
+  battement de sous-agent **n'efface jamais** une attente d'intervention (permission, question, `blocked`) ; le
+  `Stop` du parent postérieur au dernier battement rend « En attente » ; le silence de 20 min rend « En attente ? ».
+  Les événements de cycle de vie des sous-agents restent ignorés ; un sous-agent n'est jamais une ligne.
+- [ ] **SUB-02**: Le contrat des hooks (§3, veto) et `docs/data-sources.md` disent la nouvelle règle sous garde ;
+  l'exe est republié en **3.2.1** (procédure de 31-02, sans lancement) et la phase 31 reprend son point (a).
+
 ### Validation in vivo et livraison (VAL)
 
 - [x] **VAL-01**: Les deux points ouverts du relevé sont observés **sur la vraie machine**, avec un protocole
@@ -161,11 +172,13 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LIB-03 | Phase 28 | Complete |
 | LIB-04 | Phase 28 | Complete |
 | SIL-01 | Phase 28 | Complete |
+| SUB-01 | Phase 30.1 | Pending |
+| SUB-02 | Phase 30.1 | Pending |
 | VAL-01 | Phase 27 | Complete |
 | VAL-02 | Phase 31 | Complete |
 | VAL-03 | Phase 31 | Pending |
 
-**Couverture :** 19 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
+**Couverture :** 21 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
 
 ---
 *Last updated: 2026-09-26 — LUE-05 ajoutée (une session qui travaille est toujours visible) ; APP-06 et LUE-01/02 le 2026-09-25*
