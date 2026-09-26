@@ -570,4 +570,46 @@ public sealed class ContratHooksDocumenteTests
         Assert.Equal(new[] { SourceSession.Hook, SourceSession.AppBureau, SourceSession.Transcript },
                      Enum.GetValues<SourceSession>());
     }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (LUE-03, phase 30). Depuis la phase 30, une session en attente quitte le widget de
+    /// TROIS façons : un geste, une réponse observée sur la même source, ou une lecture. Le §3 disait « deux raisons
+    /// seulement » : il aurait menti dès que la règle « lue » tournait — une session lue aurait disparu sans que le
+    /// contrat dise pourquoi, la faute même que ce document existe pour empêcher. La garde exige les trois façons, la
+    /// règle « lue » nommée par son seuil, la parade qui la tient hors de l'UI Automation, et LUE-05 (le masquage
+    /// « traité » ne vaut que pour une attente).
+    ///
+    /// <para>Chaque fragment cherché tient sur UNE ligne du document. Et chaque affirmation a son siège dans le code : la
+    /// grâce vaut 2,5 s et le détecteur la lit ; le filtre du moniteur ne masque qu'une attente.</para>
+    /// </summary>
+    [Fact]
+    public void Le_paragraphe_3_dit_les_trois_facons_de_quitter_le_widget_et_la_regle_lue()
+    {
+        var texte = LireDocument();
+        Assert.DoesNotContain("deux raisons seulement", texte, StringComparison.Ordinal);
+
+        var section = SectionDe(texte, "## 3.");
+        foreach (var fragment in new[]
+                 {
+                     "quitte le widget de trois façons", "`HorizonsSessions.GraceLecture`",
+                     "jamais par UI Automation ni par titre de fenêtre", "ne s'applique qu'à une session en attente",
+                 })
+            Assert.Contains(fragment, section, StringComparison.Ordinal);
+
+        Assert.Equal(TimeSpan.FromMilliseconds(2500), HorizonsSessions.GraceLecture);
+
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas le code et ne croise donc rien.");
+
+        var services = Path.Combine(racineSources, "Services");
+        var moniteur = Path.Combine(services, "SessionMonitor.cs");
+        Assert.True(File.Exists(moniteur), $"Moniteur introuvable : {moniteur}");
+        Assert.Contains("AffichageSessions.EstUneAttente(s.Activity)", File.ReadAllText(moniteur), StringComparison.Ordinal);
+
+        var detecteur = Path.Combine(services, "SessionTreatmentTracker.cs");
+        Assert.True(File.Exists(detecteur), $"Détecteur introuvable : {detecteur}");
+        Assert.Contains("HorizonsSessions.GraceLecture", File.ReadAllText(detecteur), StringComparison.Ordinal);
+    }
 }
