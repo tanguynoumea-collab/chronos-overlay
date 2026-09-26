@@ -1,184 +1,196 @@
-# REQUIREMENTS.md — Chronos v1.7 « Lue ou non lue »
+# Requirements : Chronos — milestone v1.8 « Historique d'utilisation »
 
-## Contexte
+**Defined:** 2026-09-27
+**Core Value:** Voir instantanément, sans terminal ni `/usage`, combien de quota et de temps il reste — et ne jamais présenter
+une estimation comme un chiffre exact. v1.8 y ajoute : **comprendre sa façon d'utiliser Claude au cours du temps**, avec la même
+honnêteté.
 
-Le milestone v1.6 a rendu le widget de sessions **honnête** : « réfléchit » et « tour fini » sont observés
-(battements, `Stop`, `PermissionRequest`), les sources sont arbitrées par fraîcheur, et « traité » ne se déduit
-que d'une transition observée. Vérifié en production le 2026-09-25 : exe 3.1.0, 8 groupes de hooks actifs
-depuis l'app bureau.
+**Cadre :** conseil LLM du 2026-09-26 (`.zeus/reports/llm-council-2026-09-26.md`, 5 membres, 5 relecteurs à l'aveugle) ;
+plan de design validé par l'utilisateur le 2026-09-27 (`.zeus/DESIGN_PLAN.md`, maquettes Figma
+https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k, frames A à F). Décisions de l'utilisateur : forme A retenue, B et C
+codées aussi et sélectionnables ; vues Jour et 4 semaines conservées ; deux gestes d'ouverture ; **phase « compter juste +
+journal » publiée seule en 3.2.2 avant toute interface**.
 
-**Et pourtant le widget n'aide pas.** L'utilisateur le dit : « les widgets de sessions ne servent au final à
-rien ». Relevé du 2026-09-25 à 16 h 08 : quatre sessions actives, deux « en cours », deux « tour fini » en
-orange — et les deux avaient déjà été ouvertes et **lues** par l'utilisateur à 16 h 00 et 16 h 01. Le widget ne
-sait pas qu'une session a été lue : une session terminée reste en attente jusqu'au prochain prompt, à un clic
-droit, ou à l'expiration de 8 h. Ce n'est pas un défaut d'observation, c'est un **signal manquant**.
+**Doctrine (inchangée) :** exact ou rien ; deux séries de nature différente (relevés exacts du compte / tokens Claude Code) ne se
+fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais interpolé ; aucune projection ; XAML pur ; chemins sous
+`%APPDATA%\Chronos` ; lecture seule stricte de `~/.claude` et `%APPDATA%\Claude` ; aucun appel réseau supplémentaire.
 
-**Le signal existe.** L'app bureau Claude écrit un fichier JSON par session sous
-`%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_<id>.json` (142 fichiers, ~275 Ko, réécrits au
-changement de session et en fin de tour ; `%APPDATA%\Claude` n'est PAS une jonction : c'est l'AppData
-VIRTUALISÉ par le paquet MSIX, invisible de l'overlay — il lit le cache du paquet, voir APP-06, sonde hors arbre). Il porte `cliSessionId` (l'UUID des hooks et des transcripts),
-`title`, **`lastFocusedAt`** (dernier instant où la session a été sélectionnée dans l'app), et
-`postTurnSummary { status_category ∈ completed | blocked | review_ready, needs_action }` — la classification
-de fin de tour faite par l'app elle-même. Le relevé complet est dans `STATE.md`, section « Contexte technique
-v1.7 » ; il ne se ré-enquête pas.
+## v1 Requirements
 
-**Ce que l'utilisateur veut, en trois lignes :**
+### Compter juste (CPT) — prérequis de tout le milestone
 
-| Situation | Ce que le widget montre |
-|---|---|
-| session en train de réfléchir | **Réflexion** |
-| session qui a fini (ou qui pose une question) et que je n'ai pas encore lue | **En attente** |
-| session qui a fini et que j'ai lue | **rien** — elle n'apparaît pas |
+- [ ] **CPT-01**: Le parser de transcripts **déduplique par `message.id`** (repli `requestId`) avant toute somme de `usage` :
+  une ligne `assistant` par bloc de contenu recopie le même `usage` (facteur 2 à 2,75 mesuré le 2026-09-26). Un test épingle
+  une fixture RÉELLE multi-blocs (trois lignes identiques d'un même `msg_…`) et la correction par delta (`TokensDepuisReleve`)
+  en hérite ; aucun nouveau lecteur ne partage l'ancien helper sans cette dédup.
+- [ ] **CPT-02**: La cause du **gel de `last-exact.json`** (non écrit depuis le 2026-09-13 12:44 malgré des relevés exacts frais,
+  `Save` dans un `try/catch` muet) est établie, corrigée et couverte par un test ; **l'âge de la dernière écriture** de chaque
+  magasin persistant (dernier exact, journal des relevés, agrégats de tokens) apparaît au diagnostic, et une écriture qui échoue
+  n'est plus silencieuse (ligne d'événement + diagnostic).
+- [ ] **CPT-03**: **Une seule instance** : au démarrage, Chronos détecte une autre instance (mutex nommé) et refuse de tourner en
+  double en le disant à l'utilisateur (message + diagnostic « N processus Chronos »), sans jamais tuer l'autre ; les hooks
+  `--hook` et le mode CLI restent multi-instances par nature.
 
-**Doctrine inchangée (v1.5, v1.6) :** observé, jamais déduit ; une déduction porte son point d'interrogation ;
-une source non documentée se lit avec tolérance et se dégrade vers « je ne sais pas », jamais vers une invention.
+### Journal des relevés exacts (JRN)
 
-## v1.7 Requirements
+- [ ] **JRN-01**: Chaque relevé **exact distinct** (source `Exact`, `CapturedAt` strictement plus récent que le dernier écrit) est
+  ajouté à `%APPDATA%\Chronos\historique\releves-AAAA-MM.jsonl` : `{v, t, u5, r5, u7, r7, statut5, statut7, overage, source}` ;
+  un relevé rejoué par le cache (cadence 60 s contre sonde 300 s), un plancher ou une valeur de `LastExactStore` n'y entrent jamais.
+- [ ] **JRN-02**: Les **événements de couverture** sont journalisés dans le même fichier : `demarrage`, `arret` (propre),
+  `jeton_invalide`, `sonde_refusee` (429 / statut `rejected`), `reprise` — pour qu'un trou porte sa cause au lieu d'être tu.
+- [ ] **JRN-03**: Écriture **append atomique et idempotente** (clé = `CapturedAt` + source ; deux processus n'écrivent pas deux
+  fois le même relevé), lecture **tolérante** (ligne tronquée ou invalide ignorée, `v` inconnu sauté ligne par ligne), fichiers
+  mensuels, rétention 24 mois, aucune compaction ; le tout en types neutres (pas de WPF sous `Services/`).
+- [ ] **JRN-04**: L'**âge de la dernière écriture du journal** est exposé au diagnostic et dans les réglages ; si Chronos tourne
+  et qu'aucune écriture n'a eu lieu depuis plus de 15 min, une alerte visible le dit (pastille `Alerte` + texte).
+- [ ] **JRN-05**: Une **lecture par plage** (semaine de forfait, jour, 4 semaines) en classes pures et testées fournit : la série des
+  relevés, les trous (> 2 cadences), les resets 5 h et hebdo observés, les Δ de consommation entre relevés consécutifs de même
+  `resets_at` (jamais à travers un reset), et le saut « non localisé » de part et d'autre d'un trou.
+- [ ] **JRN-06**: **Release 3.2.2** publiée (exe mono-fichier, version embarquée aux quatre propriétés du csproj et dans le nom du
+  fichier, réconciliation hooks/statusLine au premier lancement constatée dans `~/.claude/settings.json`) contenant CPT + JRN,
+  **sans interface** ; `docs/data-sources.md` gagne une section « Journal d'historique » (schéma, dédup, événements, rétention,
+  hypothèses à vérifier : granularité des en-têtes, Δ = consommation, reset hebdo à l'heure locale au changement d'heure).
 
-### Source app-bureau par fichiers (APP)
+### Agrégats de tokens (TOK)
 
-- [x] **APP-01**: Chronos lit les métadonnées par session écrites par l'app bureau Claude
-  (`%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_*.json`) et les joint aux sessions du widget par
-  `cliSessionId`. Lecture tolérante (`FileShare.ReadWrite`, JSON invalide ignoré), limitée aux fichiers modifiés
-  depuis moins de 24 h. Les racines se résolvent par candidats, le cache du paquet MSIX en premier (APP-06). Format interne **non documenté** : dossier absent, champ absent ou renommé ⇒ la source se tait et le
-  widget garde le comportement v1.6 — jamais de crash, jamais d'invention.
-- [x] **APP-02**: Le widget affiche le **titre** de la session (`title`) à la place du nom de dossier quand il est
-  connu ; le dossier reste en repli quand il ne l'est pas, et reste lisible en info-bulle dans les deux cas.
-- [x] **APP-03**: La classification de fin de tour de l'app est reconnue : `status_category = blocked` avec
-  `needs_action` est une **attente observée** (question posée à l'utilisateur), et le motif (`needs_action`)
-  est lisible en détail ou en info-bulle. `completed` et `review_ready` ne fabriquent aucun état à eux seuls.
-- [x] **APP-04**: Le diagnostic rapporte l'état de la source app-bureau — dossier trouvé ou non, nombre de
-  fichiers lus, nombre de jointures réussies, champs manquants — et, pour chaque session affichée, le titre, le
-  dernier focus et la classification lus. Une source absente est annoncée « absente », pas passée sous silence.
-- [x] **APP-05**: Chronos n'écrit **jamais** dans `%APPDATA%\Claude` : la source est en lecture seule, et une
-  garde le tient par test.
-- [x] **APP-06** *(ajoutée le 2026-09-25, sonde hors de l'arbre de l'app — `29-SONDE-HORS-ARBRE.txt`)* :
-  l'overlay lit les fichiers d'état des hooks dans **toutes les vues d'AppData** — la vue réelle
-  (`%APPDATA%\Chronos\sessions`, vide en production) ET le cache du paquet MSIX de l'app bureau
-  (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Chronos\sessions`, où les hooks lancés sous l'app
-  écrivent réellement) — résolution des racines par candidats, fusion par `session_id` (l'arbitrage par
-  fraîcheur existe), balayage CYC-01 et diagnostic sur chaque racine. La racine de la source app-bureau
-  (`claude-code-sessions`) se résout de la même façon, le paquet en premier : `%APPDATA%\Claude` n'existe
-  pas vu de l'overlay. Sans cette exigence, rien de v1.6 ni de v1.7 n'atteint le widget en production.
-### La lecture fait disparaître (LUE)
+- [ ] **TOK-01**: Les tokens des transcripts (principal ET `subagents/`) sont agrégés par **tranche de 15 min UTC × modèle ×
+  principal/sous-agent** dans `historique\tokens-AAAA-MM.jsonl` : `{v, slot, model, sub, in, out, cache_w, cache_r, n}` — quatre
+  compteurs séparés, jamais la somme, jamais le message individuel, jamais le contenu.
+- [ ] **TOK-02**: La **reconstruction initiale** parcourt les transcripts existants en arrière-plan (thread `IsBackground`,
+  priorité `BelowNormal`, fichiers par mtime décroissant, lecture en flux `FileShare.ReadWrite`, pré-filtre texte avant parsing
+  JSON, dédup `message.id` par fichier, `Task.Yield` entre fichiers, annulable) ; la progression (N / M fichiers) est exposée au
+  ViewModel ; l'UI ne bloque jamais ; la semaine courante est disponible avant l'historique.
+- [ ] **TOK-03**: La mise à jour est **incrémentale par curseurs** (`curseurs.json` : chemin → offset de la dernière ligne
+  complète, taille, mtime) : seuls les fichiers dont (taille, mtime) ont changé sont relus depuis leur offset ; un fichier
+  raccourci ou renommé est réingéré de zéro et ses tranches réécrites (pas ajoutées) ; la reprise après arrêt est idempotente.
+- [ ] **TOK-04**: Les tranches UTC sont **rendues en heure locale** correctement aux changements d'heure (25 h le 25/10/2026,
+  23 h le 29/03/2027) — testé ; les tranches antérieures au plus vieux transcript sont « hors couverture », un mois purgé par
+  Claude Code est « transcripts absents », jamais « zéro token ».
+- [ ] **TOK-05**: **Aucun pourcentage dérivé de tokens** : une garde structurelle de test interdit à tout type de la couche
+  historique d'exposer un `double` de quota calculé à partir de tokens ; le périmètre partiel (Claude Code seul, hors Cowork et
+  claude.ai) est écrit dans le schéma et les docs.
 
-- [x] **LUE-01**: Une session en attente (tour fini, à toi, ou question posée) dont l'instant d'attente est
-  **antérieur** au dernier focus (`lastFocusedAt`) est marquée traitée automatiquement, via le magasin
-  réversible existant (`TreatedStore`, épisode daté par l'instant du signal) — elle disparaît **sans clic**.
-  Réversible comme aujourd'hui : un nouvel épisode d'attente plus récent la ramène (NET-03 inchangé).
-  *Précisé le 2026-09-25 d'après `27-RELEVE.md`* : l'instant d'attente est le **`timestamp` du dernier message
-  assistant `end_turn` (ou de la question posée) du transcript** — jamais le `mtime` du fichier (rafraîchi par
-  des lignes de métadonnées sans message), ni le seul fichier de hook (supprimé à la frontière des tours par
-  l'app bureau). Le `Stop` du hook, s'il existe, confirme ; il ne fait pas référence.
-- [x] **LUE-02**: La session **sélectionnée** dans l'app (celle dont `lastFocusedAt` est le plus récent, tous
-  fichiers confondus) compte comme lue tant que la fenêtre au **premier plan** appartient au processus
-  **`claude`**, avec un délai de grâce de 2,5 s après la fin du tour — c'est le cas du tour qui se termine
-  pendant qu'on le regarde, où `lastFocusedAt` précède la fin du tour. Détection Win32
-  (`GetForegroundWindow` → `GetWindowThreadProcessId` → nom du processus), **sans UI Automation**.
-  *Confirmée NÉCESSAIRE le 2026-09-25 par le geste B de `27-RELEVE.md`* : fin de tour 20:34:04 sous les yeux
-  de l'utilisateur, `lastFocusedAt` resté à 20:30:44. Et le geste A a montré qu'un retour alt-tab met
-  `lastFocusedAt` à jour : dès que le premier plan quitte `claude`, LUE-01 reprend seule.
-- [x] **LUE-03**: Le diagnostic distingue « lue » de « répondue » : pour une session masquée, il nomme le motif
-  (« lue : focus à HH:MM > attente à HH:MM », « sélectionnée au premier plan », ou « répondue »), et jamais un
-  masquage sans cause.
-- [x] **LUE-04**: Quand la source app-bureau est absente pour une session (terminal pur, fichier illisible,
-  format changé), la règle « lue » ne s'applique pas à cette session : le comportement v1.6 est conservé, sans
-  faux masquage.
-- [x] **LUE-05** *(ajoutée le 2026-09-26, recherche de phase 30, point 9)* : le masquage « traitée » — qu'il vienne
-  d'une réponse (NET-01), d'une lecture (LUE-01/02) ou d'un geste — ne s'applique qu'à une session **en
-  attente**. Une session traitée qui se remet à **travailler** est visible « Réflexion » (ligne 1 du tableau de
-  l'utilisateur), et son prochain épisode d'attente la ramène « En attente » (NET-03 inchangé). Aujourd'hui le
-  filtre de `SessionMonitor` masque une session répondue tant qu'elle travaille.
-### Deux libellés (LIB)
+### Fenêtre Historique (HIS)
 
-- [x] **LIB-01**: Le widget n'affiche plus que deux libellés d'état : **« Réflexion »** (travail observé) et
-  **« En attente »** (tour fini, permission, question posée). L'attente déduite du silence s'affiche
-  **« En attente ? »** — le point d'interrogation reste obligatoire. L'état « inconnu » n'est plus affiché.
-- [x] **LIB-02**: Une question `AskUserQuestion` en suspens (bloc `tool_use` sans `tool_result` dans le
-  transcript) est classée « En attente », pas « Réflexion ».
-- [x] **LIB-03**: Les libellés et l'ordre viennent d'un seul producteur (`AffichageSessions`) partagé par le
-  widget et le diagnostic ; aucun libellé ne dépasse seize caractères (garde existante) ; les huit styles
-  visuels et les neuf thèmes les affichent sans troncature.
-- [x] **LIB-04**: L'ordre du widget est conservé : « En attente » d'abord (permission ou question avant tour
-  fini avant déduit), puis « Réflexion », puis la fraîcheur.
+- [ ] **HIS-01**: Une fenêtre **`HistoriqueWindow`** séparée — `WindowStyle=None`, **`AllowsTransparency=False`**, `Topmost=False`,
+  `ShowInTaskbar=True`, redimensionnable (min 760 × 480, défaut 920 × 610), coins 16, position et taille mémorisées dans
+  `settings.json` — avec l'en-tête commun du plan de design : segment Jour / Semaine / 4 semaines, ‹ ›, « Cette semaine » /
+  « Aujourd'hui », ligne de fraîcheur (« dernier relevé il y a N min · source · N relevés · N interruptions · journal ouvert le … »),
+  Échap ferme.
+- [ ] **HIS-02**: La **vue « Semaine de forfait »** (X = samedi 00:00 → samedi 00:00 heure locale, bornes issues de `resets_at`
+  7 j du journal, repli `WeeklyAnchor`) en style **« Pistes »** (A) : piste NIVEAU (hebdo en escalier coloré par la rampe du
+  thème, dents de scie 5 h en trait fin `TickReset`, tirets de reset 5 h observés, semaine précédente en fantôme gris pointillé),
+  piste RYTHME (barres horaires du Δ 5 h, couleur = rampe au niveau atteint), piste TOKENS CLAUDE CODE (barres horaires
+  `HistoTokens` + part sous-agents `HistoSousAgent`, axe propre), bande COUVERTURE ; grille et libellés des jours ; réticule
+  vertical commun au survol avec infobulle (heure, valeur, source, âge).
+- [ ] **HIS-03**: Les styles **« Simplifié »** (B : Niveau 200 px + Tokens 90 px + Couverture, sans Rythme) et **« Tuiles »**
+  (C : hebdo seul en Niveau, piste FENÊTRES 5 H en tuiles bornées par les resets observés, hauteur = max % 5 h, grise si
+  épuisée, puis Rythme, Tokens, Couverture) sont **sélectionnables** (réglage `HistoriqueStyleSemaine`, sélecteur dans la
+  fenêtre et dans la carte des réglages), avec exactement les pistes et hauteurs du plan de design §2.2.
+- [ ] **HIS-04**: La **vue « Jour »** : X = 0 h → 24 h locale, grain 5 min (un relevé = un point) ; % 5 h au premier plan (2,4 px,
+  couleur = niveau, **gris à 100 %** avec libellé « épuisée à 100 % — le serveur refuse (statut rejected) »), % hebdo en trait
+  fin, trait et libellé « reset 5 h HH:MM » à chaque reset observé ; RYTHME par heure ; TOKENS par **quart d'heure empilés par
+  modèle** (`HistoModele1/2/3`, légende « opus · sonnet · haiku · sous-agents inclus ») ; COUVERTURE ; ligne « maintenant » si
+  le jour est aujourd'hui ; ligne de fraîcheur « 288 relevés attendus · N présents · N interruption(s) (cause, HH:MM → HH:MM) ».
+- [ ] **HIS-05**: La **vue « 4 semaines »** : quatre courbes hebdo superposées sur le même axe samedi → samedi, la courante en
+  couleur, S-1 / S-2 / S-3 en gris aux opacités 0,8 / 0,45 / 0,25 avec étiquettes à droite (libellé + valeur finale, ou « pas de
+  relevés (avant le journal) ») ; une semaine **épuisée** montre un plateau gris à 100 % annoté « épuisée <jour> HH:MM → bloquée
+  jusqu'au reset » ; bande COUVERTURE PAR SEMAINE (4 rangées) ; les semaines antérieures au journal sont vides et dites telles.
+- [ ] **HIS-06**: **Honnêteté testée** sur fixtures : un trou (> 2 cadences) interrompt la ligne et se dessine en rectangle `Line`
+  35 % à bordure pointillée (grise « Chronos arrêté », ambre « jeton invalide ») ; le saut de part et d'autre d'un trou est un bloc
+  plat gris annoté « +N % pendant l'absence (répartition inconnue) », jamais une barre au réveil ; une marche de % sans tokens Code
+  est encadrée en pointillé `Accent` et le pied de page l'explique (« consommé ailleurs (Cowork, claude.ai) ») ; marqueur « journal
+  ouvert le <date> » et zone antérieure vide ; libellé permanent des tokens (« par heure, comptés localement — hors Cowork et
+  claude.ai · bruts, non pondérés · ce n'est PAS un % du forfait ») ; pied de page fixe « Aucun trou n'est interpolé … » ; aucune
+  projection nulle part.
+- [ ] **HIS-07**: **Rendu** : un `FrameworkElement` par piste avec `OnRender` et `StreamGeometry` gelée, réduction min/max par colonne
+  de pixels au-delà de 4 000 points, redessin sur changement de données (5 min) ou de plage — jamais sur le tick 1 s ; toute la
+  géométrie (temps → x, valeur → y, binning, trous, tuiles, segments par bande de rampe) en classes pures de `Rendering/`
+  testées ; couleurs et tailles uniquement via `Resources/DesignTokens.xaml` (palette de `SettingsWindow` promue en tokens
+  partagés sans changer les valeurs ; nouveaux tokens `HistoTokens`, `HistoSousAgent`, `HistoModele1/2/3`, `HistoGris`) ;
+  `ServicesLayerPurityTests` reste vert.
+- [ ] **HIS-08**: Tant que la reconstruction des tokens court, la fenêtre affiche le **bandeau F2** (« Reconstruction des tokens
+  depuis vos transcripts Claude Code — N / M fichiers · la semaine courante est déjà complète », barre `Accent`, sous-texte sur
+  le non-recalcul des pourcentages) ; il disparaît à la fin.
 
-### Le trou de couverture §9.1 (SIL)
+### Accès, diagnostic, livraison (ACC)
 
-- [x] **SIL-01**: Une session connue par son transcript seul (sans fichier de hook) suit les **mêmes horizons**
-  que les sessions à fichier de hook : travail sans écriture depuis plus de 20 min ⇒ « En attente ? »,
-  abandon à 8 h. Elle ne disparaît plus en silence 15 min après la dernière écriture.
+- [ ] **ACC-01**: La fenêtre de réglages gagne, dans la section DONNÉES, la carte **« Historique d'utilisation »** (F1) : bouton
+  « Ouvrir », sous-texte « hebdo / 5 h / tokens · journal du <date> · dernière écriture il y a N min », sélecteur de style
+  Pistes / Simplifié / Tuiles, mention du double-clic, et la carte d'état « Dernière écriture du journal » avec l'alerte > 15 min.
+- [ ] **ACC-02**: Un **double-clic au centre du cadran** (`CentreHit`) ouvre ou ramène au premier plan la fenêtre Historique, sans
+  déclencher deux fois la bascule % / temps du simple clic (temporisation ou annulation) ; le drag et le clic droit sont inchangés.
+- [ ] **ACC-03**: Le diagnostic gagne une section **« Journal d'historique »** : chemin des fichiers, âge de la dernière écriture,
+  relevés du jour, événements récents, état de la reconstruction des tokens (N / M), taille des fichiers, nombre d'instances.
+- [ ] **ACC-04**: **Release 3.3.0** publiée (mêmes contrôles que JRN-06) avec HIS + ACC ; README et `docs/data-sources.md`
+  décrivent la fenêtre, les trois styles, les vues et les règles d'honnêteté avec les mots du plan de design §4.
 
-### Sous-agents en arrière-plan (SUB) — phase 30.1 insérée le 2026-09-26 (écart E2 du constat)
+### Constat en production (VAL)
 
-- [x] **SUB-01**: Une session dont un **sous-agent écrit** est **« Réflexion »**, datée du dernier battement du
-  sous-agent — côté hooks (`PreToolUse`/`PostToolUse` portant `agent_id`/`agent_type` ⇒ travail du parent) et
-  côté transcripts (dernier message des `subagents/*.jsonl` postérieur au dernier message du parent). Un
-  battement de sous-agent **n'efface jamais** une attente d'intervention (permission, question, `blocked`) ; le
-  `Stop` du parent postérieur au dernier battement rend « En attente » ; le silence de 20 min rend « En attente ? ».
-  Les événements de cycle de vie des sous-agents restent ignorés ; un sous-agent n'est jamais une ligne.
-- [x] **SUB-02**: Le contrat des hooks (§3, veto) et `docs/data-sources.md` disent la nouvelle règle sous garde ;
-  l'exe est republié en **3.2.1** (procédure de 31-02, sans lancement) et la phase 31 reprend son point (a).
+- [ ] **VAL-04**: Le **constat reporté de v1.7** est joué sur la 3.2.2, avec l'utilisateur, protocole de `31-CONSTAT.md` inchangé :
+  point (a) une seule instance (3.1.0 et 3.2.0 quittées, 3.2.2 lancée par l'Explorateur, CPT-03 constaté), réconciliation dans
+  le fichier, tableau des gestes (L1, L2, L2b, L3, L4, Q) et les 12 vérifications déférées — chacun avec un verdict écrit
+  (`32-CONSTAT.md`), écarts compris ; plus : le journal s'écrit (âge < 6 min après 10 min d'overlay).
+- [ ] **VAL-05**: Le **constat de la 3.3.0** : la fenêtre s'ouvre par les deux gestes ; la semaine courante affiche les relevés
+  depuis l'ouverture du journal et les tokens reconstruits ; les trois styles se sélectionnent ; un trou réel (PC éteint la nuit)
+  est hachuré et annoté ; l'utilisateur relit les libellés d'honnêteté et rend un verdict écrit (`35-CONSTAT.md`).
 
-### Validation in vivo et livraison (VAL)
+## v2 Requirements
 
-- [x] **VAL-01**: Les deux points ouverts du relevé sont observés **sur la vraie machine**, avec un protocole
-  écrit et des valeurs relevées : (1) `lastFocusedAt` est-il mis à jour au simple retour (alt-tab) sur la
-  session déjà sélectionnée ? (2) que vaut-il quand un tour se termine pendant que l'utilisateur regarde ? La
-  règle LUE-02 est ajustée d'après le relevé, pas d'après une supposition — et l'ajustement est écrit.
-- [x] **VAL-02**: La source app-bureau est documentée dans `docs/desktop-app-sessions.md` (chemin, jonction,
-  champs lus, ce qui n'est PAS garanti), au même titre que `docs/hooks-contract.md`.
-- [ ] **VAL-03**: L'exe est publié en **3.2.0** — version embarquée et dans le nom du fichier
-  (`Chronos-v3.2.0.exe`) — et les hooks et la statusLine sont réconciliés vers ce nouvel exe au premier
-  lancement, comme en v1.6.
+Reportés, tracés pour la roadmap (RETOUR ROADMAP du cycle ZEUS) :
 
-## Future Requirements (différés)
+- **HIS-09**: Heatmap jour × heure des rythmes (tokens et Δ %) sur 4 semaines glissantes.
+- **HIS-10**: Export CSV de la plage affichée.
+- **JRN-07**: Compaction du journal des relevés au-delà de 8 semaines (un relevé par heure).
+- **TOK-06**: Dimension projet (dossier) dans les agrégats de tokens, avec bascule modèle / projet.
+- **HIS-11**: Projection conditionnelle « au rythme des 3 dernières heures » — uniquement pointillée, distincte de tout relevé.
+- **CAD-XX**: `DayTimeline` sur les resets 5 h observés plutôt qu'une grille théorique de 5 h ; dérive de `WeeklyWindow` d'une
+  heure au changement d'heure (test d'acceptation le 25/10/2026 avec le journal).
 
-- Ventilation par modèle (opus/sonnet/cowork), survol/tooltip du cadran, icône tray, taille réglable.
-- Préavis avant saturation (~90 %) et notification au reset.
-- Exploiter `latestUserFrameAt` / `completedTurns` de l'app pour dater les tours sans hook.
-- Cowork VM distant : toujours indéterminé (aucune source locale).
+## Out of Scope
 
-## Out of Scope (v1.7)
-
-- **Réintroduire UI Automation** — retirée en v1.6 (entrées qui ne vieillissaient jamais, 1 294 lignes) ; les
-  gardes anti-retour restent. La source app-bureau de v1.7 est un **lecteur de fichiers**, pas un lecteur
-  d'arbre d'accessibilité.
-- **Lire le titre de fenêtre de l'app** — il vaut « Claude » sans nom de session (vérifié) ; la technique du
-  spinner de `claude-session-browser` ne s'applique qu'aux terminaux.
-- **Écrire dans `%APPDATA%\Claude`** (marquer « lu » côté app, modifier `isArchived`) — données d'une autre
-  application ; lecture seule stricte.
-- **Notifications Windows / toasts** — inchangé.
-- **Sessions de terminal sans app bureau** — elles gardent le comportement v1.6 (pas de focus connu) ; ce n'est
-  pas le cas d'usage de l'utilisateur, qui n'utilise que l'app bureau.
-- **R3 (écriture d'état monotone)** — cran 1 livré en v1.6, suite laissée ouverte ; ne pas rouvrir ici.
+| Feature | Reason |
+|---------|--------|
+| SQLite (`Microsoft.Data.Sqlite`, `System.Data.SQLite`) | embarque `e_sqlite3.dll` : dépendance native interdite, casse le mono-fichier |
+| Double axe Y (% et tokens sur le même repère) | invite à lire un rapport tokens/% qui n'existe pas ; deux natures, deux axes |
+| Spirale / horloge comme vue d'historique | illisible pour comparer des valeurs et des semaines ; l'identité passe par les tokens de design |
+| Toute projection « épuisé vers … » ou « à ce rythme » en v1.8 | une projection est une estimation présentée en chiffre (doctrine v1.5) |
+| Reconstitution des pourcentages avant l'ouverture du journal | impossible sans relevés ; `last-exact.json` et `usage.json` ne sont pas des points de courbe |
+| Tokens Cowork / claude.ai | aucune source locale ; le périmètre partiel est écrit, jamais comblé |
+| Sparkline ou historique sur le cadran lui-même | fenêtre layered, coût de composition permanent ; le cadran reste un mode coup d'œil |
+| Bibliothèque de graphiques tierce | XAML pur suffit pour des escaliers, des barres et des tuiles ; aucune dépendance |
 
 ## Traceability
 
-| REQ-ID | Phase | Statut |
-|--------|-------|--------|
-| APP-01 | Phase 29 | Complete |
-| APP-02 | Phase 29 | Complete |
-| APP-03 | Phase 29 | Complete |
-| APP-04 | Phase 29 | Complete |
-| APP-05 | Phase 29 | Complete |
-| APP-06 | Phase 29 | Complete |
-| LUE-01 | Phase 30 | Complete |
-| LUE-02 | Phase 30 | Complete |
-| LUE-03 | Phase 30 | Complete |
-| LUE-04 | Phase 30 | Complete |
-| LUE-05 | Phase 30 | Complete |
-| LIB-01 | Phase 28 | Complete |
-| LIB-02 | Phase 28 | Complete |
-| LIB-03 | Phase 28 | Complete |
-| LIB-04 | Phase 28 | Complete |
-| SIL-01 | Phase 28 | Complete |
-| SUB-01 | Phase 30.1 | Complete |
-| SUB-02 | Phase 30.1 | Complete |
-| VAL-01 | Phase 27 | Complete |
-| VAL-02 | Phase 31 | Complete |
-| VAL-03 | Phase 31 | Partial — exe 3.2.0 puis 3.2.1 publiés et réconciliés (constaté dans le fichier) ; constat en production avec l'utilisateur reporté en tête de la phase 32 (v1.8) |
+À remplir par le roadmapper (phases 32 à 35, numérotation continue après la 31 de v1.7).
 
-**Couverture :** 21 requirements, 17 mappés (phases 27 à 31), aucun orphelin, aucun doublon.
-
----
-*Last updated: 2026-09-26 — LUE-05 ajoutée (une session qui travaille est toujours visible) ; APP-06 et LUE-01/02 le 2026-09-25*
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CPT-01 | | Pending |
+| CPT-02 | | Pending |
+| CPT-03 | | Pending |
+| JRN-01 | | Pending |
+| JRN-02 | | Pending |
+| JRN-03 | | Pending |
+| JRN-04 | | Pending |
+| JRN-05 | | Pending |
+| JRN-06 | | Pending |
+| TOK-01 | | Pending |
+| TOK-02 | | Pending |
+| TOK-03 | | Pending |
+| TOK-04 | | Pending |
+| TOK-05 | | Pending |
+| HIS-01 | | Pending |
+| HIS-02 | | Pending |
+| HIS-03 | | Pending |
+| HIS-04 | | Pending |
+| HIS-05 | | Pending |
+| HIS-06 | | Pending |
+| HIS-07 | | Pending |
+| HIS-08 | | Pending |
+| ACC-01 | | Pending |
+| ACC-02 | | Pending |
+| ACC-03 | | Pending |
+| ACC-04 | | Pending |
+| VAL-04 | | Pending |
+| VAL-05 | | Pending |

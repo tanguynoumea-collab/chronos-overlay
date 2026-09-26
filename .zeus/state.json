@@ -1,0 +1,72 @@
+{
+  "$schema_note": "État du pipeline ZEUS — commité avec le projet. Mis à jour à chaque transition de phase.",
+  "projet": "Chronos",
+  "version_courante": "3.2.1",
+  "version_cible": "3.3.0",
+  "milestone_gsd": "v1.8",
+  "route": "full",
+  "phase": "GSD",
+  "phase_status": "en_cours",
+  "cycle": {
+    "numero": 1,
+    "demarre_le": "2026-09-26",
+    "idees": [
+      "Trackeur d'utilisation du forfait : journaliser l'usage au fil du temps et le visualiser (courbe/graphique) ; vue à l'échelle de la semaine de forfait (reset samedi 00:00 heure locale) avec la courbe hebdo superposée aux tranches de 5 h ; comprendre sa façon d'utiliser Claude au cours du temps."
+    ],
+    "impact_ui": true,
+    "mode_daedalus": "EVOLUTION",
+    "decisions_utilisateur": [
+      "2026-09-27 : forme A retenue ; B (Simplifie) et C (Tuiles) codees aussi et selectionnables (style de la vue Semaine)",
+      "2026-09-27 : vues Jour et 4 semaines conservees dans le milestone v1.8",
+      "2026-09-27 : deux gestes d'ouverture : bouton des reglages + double-clic au centre du cadran",
+      "2026-09-27 : phase 32 (dedup tokens + journal des releves, sans UI) publiee seule en 3.2.2 avant toute interface"
+    ]
+  },
+  "iterations": {
+    "design_review": 0,
+    "design_review_max": 3,
+    "dev_council": 0,
+    "dev_council_max": 3
+  },
+  "checkpoints": {
+    "plan_design_valide": true,
+    "triage_findings": false,
+    "go_publication": false,
+    "confirmation_roadmap": false
+  },
+  "pending": {
+    "findings_critiques": [
+      "Parser de tokens : lignes assistant dupliquées par bloc de contenu, meme usage recopie -> SumUsageTokens compte 2 a 2,75x trop ; la correction par delta (TokensDepuisReleve) est fausse en production. Dedup par message.id (repli requestId).",
+      "last-exact.json non ecrit depuis le 2026-09-13 12:44 malgre des releves exacts frais ; Save dans un try/catch muet. Cause a etablir avant le journal.",
+      "Trois exe Chronos (3.1.0, 3.2.0, 3.2.1) en marche simultanement : triple sonde, ecrivains concurrents."
+    ],
+    "pour_roadmap": [
+      "Heatmap jour x heure des rythmes (v1.9)",
+      "Export CSV de la plage affichee",
+      "Compaction du journal des releves au-dela de 8 semaines",
+      "Dimension projet dans les agregats de tokens",
+      "Projection conditionnelle 'a ce rythme' (seulement si visuellement distincte)",
+      "DayTimeline : grille 5 h theorique -> resets observes",
+      "WeeklyWindow : derive d'une heure au changement d'heure (test d'acceptation 25/10)"
+    ]
+  },
+  "artefacts": {
+    "design_plan": ".zeus/DESIGN_PLAN.md (maquettes : https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k)",
+    "rapports": [
+      ".zeus/reports/llm-council-2026-09-26.md"
+    ],
+    "dod": ".zeus/DOD.md",
+    "audit_points": "AUDIT_POINTS.md",
+    "brief_council": ".zeus/reports/llm-council-2026-09-26-brief.md"
+  },
+  "phases_sautees": [],
+  "historique": [
+    "2026-09-26 — Initialisation ZEUS sur projet mûr (Chronos 3.2.1, milestone GSD v1.7 en phase 31-03 : constat en production restant à faire, hors périmètre de ce cycle).",
+    "2026-09-26 — ROADMAP en mode dégradé : idée fournie et confirmée par l'utilisateur dans la session (pas de fichier roadmap OneDrive consulté). Route FULL : nouvelle fonctionnalité + UI visible.",
+    "2026-09-26 — → LLM-COUNCIL : question = quelle forme donner au trackeur (journal + visualisation) dans Chronos.",
+    "2026-09-26 — LLM-COUNCIL termine : 5 reponses, 5 relectures a l'aveugle, classement A Rigoriste 1,0 / D Red-teamer 2,4 / C Pragmatique 2,6 / E 4,0 / B 5,0. Approche arretee (rapport). Deux decouvertes bloquantes consignees en findings critiques.",
+    "2026-09-26 — → UX-DESIGN (DAEDALUS mode EVOLUTION), en attente : l'utilisateur a demande une proposition de forme ; la proposition du conseil lui est presentee avant le plan de design detaille.",
+    "2026-09-27 — UX-DESIGN : 6 maquettes Figma produites (A retenue, B simplifiee, C tuiles 5 h, D Jour, E 4 semaines, F point d'entree + bandeau de reconstruction). Fichier : https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k. CHECKPOINT 1 en attente : validation de la forme par l'utilisateur.",
+    "2026-09-27 — CHECKPOINT 1 VALIDE par l'utilisateur (« je te valide tout ») : DESIGN_PLAN.md ecrit (.zeus/DESIGN_PLAN.md). Toutes les variantes seront codees et selectionnables. → GSD : cloture v1.7 (constat partiel, reste reporte en phase 32) puis milestone v1.8."
+  ]
+}
