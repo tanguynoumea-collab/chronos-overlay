@@ -159,6 +159,16 @@ Consignes : ne jamais cliquer sur le widget pendant une mesure ; « invite longu
   message des `subagents/*.jsonl` comme signal de travail côté transcript), puis republication 3.2.1 et reprise
   du point (a).
 - **E1, suite (14:45)** : les deux overlays tournent toujours (40772 et 126160) ; la 3.1.0 reste à quitter.
+- **E1, suite (16:38) — TROIS overlays.** La 3.2.1 (PID 101708, parent explorer, 16:37:45) a été lancée sans que
+  la 3.1.0 (40772) ni la 3.2.0 (126160) soient quittées. Les trois réécrivent `chronos.log` et `treated.json` ;
+  le rapport lu à 16:38 est celui de la 3.2.0 (« Version : 3.2.0 »). Les mesures du point (b) sont impossibles
+  tant que la 3.2.1 n'est pas seule. À vérifier avec l'utilisateur : « Quitter Chronos » a-t-il été tenté et
+  a-t-il échoué (ce serait un écart de plus), ou le geste a-t-il été sauté ?
+- **Réconciliation vers la 3.2.1 (16:37:46) — CONFORME** : sauvegarde `claude-settings-20260926-163746.json`
+  dont le md5 (`3c68422466b8d62d15acf0dfcaf7e2c3`) est celui du fichier laissé par la 3.2.0 ; fichier courant
+  (md5 `de9e31438c90a067c59fc31c73d82919`) = sauvegarde + 9 remplacements `Chronos-v3.2.0.exe` →
+  `Chronos-v3.2.1.exe` (égalité structurelle True) ; 8 hooks 3.2.1, statusLine 3.2.1, 3 `gsd-` intacts, 0
+  occurrence de 3.2.0 ou 3.1.0. La ligne « Version : 3.2.1 » du rapport sera relue quand la 3.2.1 sera seule.
 - **E2, suite (2026-09-26 16:03)** — corrigé par la phase 30.1 (SUB-01, SUB-02) : `Chronos-v3.2.1.exe` publié
   (release `b981e41`, 77 385 116 o, md5 `3a1dc26f92f7547cb244538f0447779b`), jamais lancé par l'agent. Reprise du
   point (a) avec la 3.2.1 : quitter la 3.1.0 ET la 3.2.0 (réglages → « Quitter Chronos », sur chacun des deux
