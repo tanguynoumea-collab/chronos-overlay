@@ -43,7 +43,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
   depuis moins de 24 h. Le chemin est construit par `Path.Combine` (la jonction MSIX refuse les séparateurs
   mixtes). Format interne **non documenté** : dossier absent, champ absent ou renommé ⇒ la source se tait et le
   widget garde le comportement v1.6 — jamais de crash, jamais d'invention.
-- [ ] **APP-02**: Le widget affiche le **titre** de la session (`title`) à la place du nom de dossier quand il est
+- [x] **APP-02**: Le widget affiche le **titre** de la session (`title`) à la place du nom de dossier quand il est
   connu ; le dossier reste en repli quand il ne l'est pas, et reste lisible en info-bulle dans les deux cas.
 - [x] **APP-03**: La classification de fin de tour de l'app est reconnue : `status_category = blocked` avec
   `needs_action` est une **attente observée** (question posée à l'utilisateur), et le motif (`needs_action`)
@@ -143,7 +143,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | REQ-ID | Phase | Statut |
 |--------|-------|--------|
 | APP-01 | Phase 29 | Complete |
-| APP-02 | Phase 29 | Pending |
+| APP-02 | Phase 29 | Complete |
 | APP-03 | Phase 29 | Complete |
 | APP-04 | Phase 29 | Pending |
 | APP-05 | Phase 29 | Pending |
