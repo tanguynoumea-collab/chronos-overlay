@@ -159,6 +159,13 @@ Consignes : ne jamais cliquer sur le widget pendant une mesure ; « invite longu
   message des `subagents/*.jsonl` comme signal de travail côté transcript), puis republication 3.2.1 et reprise
   du point (a).
 - **E1, suite (14:45)** : les deux overlays tournent toujours (40772 et 126160) ; la 3.1.0 reste à quitter.
+- **E2, suite (2026-09-26 16:03)** — corrigé par la phase 30.1 (SUB-01, SUB-02) : `Chronos-v3.2.1.exe` publié
+  (release `b981e41`, 77 385 116 o, md5 `3a1dc26f92f7547cb244538f0447779b`), jamais lancé par l'agent. Reprise du
+  point (a) avec la 3.2.1 : quitter la 3.1.0 ET la 3.2.0 (réglages → « Quitter Chronos », sur chacun des deux
+  cadrans), puis lancer `Chronos-v3.2.1.exe` par l'Explorateur ; attendus : dans `~/.claude/settings.json`,
+  9 remplacements `Chronos-v3.2.0.exe` → `Chronos-v3.2.1.exe` (sauvegarde horodatée d'abord, de md5
+  `3c68422466b8d62d15acf0dfcaf7e2c3` s'il n'a pas bougé d'ici là — relevé à 16:02), « Version : 3.2.1 » au
+  diagnostic ; au point (b), une session dont un agent tourne en arrière-plan dit « Réflexion ».
 - **Autostart** : non activé (aucun `Chronos.lnk` dans le dossier Démarrage réel) — facultatif, pas un écart.
 
 ## 4. Verdict
