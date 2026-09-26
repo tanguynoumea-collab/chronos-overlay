@@ -91,7 +91,7 @@ public sealed class ContratHooksDocumenteTests
 
     /// <summary>Les lignes de DONNÉES d'une table balisée par deux marqueurs (§1 : événements câblés ; §3 :
     /// états affichés), en-tête et ligne de séparation retirées. Backticks retirés de chaque cellule.</summary>
-    private static IReadOnlyList<string[]> TableEntre(string texte, string marqueurDebut, string marqueurFin)
+    internal static IReadOnlyList<string[]> TableEntre(string texte, string marqueurDebut, string marqueurFin)
     {
         var debut = texte.IndexOf(marqueurDebut, StringComparison.Ordinal);
         var fin = texte.IndexOf(marqueurFin, StringComparison.Ordinal);
@@ -132,7 +132,7 @@ public sealed class ContratHooksDocumenteTests
 
     /// <summary>Le texte d'UNE section de niveau deux, de son titre (repéré par son préfixe, p. ex.
     /// « ## 3. ») au titre de niveau deux suivant.</summary>
-    private static string SectionDe(string texte, string titre)
+    internal static string SectionDe(string texte, string titre)
     {
         var lignes = texte.Replace("\r\n", "\n").Split('\n');
 
