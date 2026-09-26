@@ -18,6 +18,9 @@ namespace Chronos.Services;
 ///     pour un résultat jamais lu. Code mort PROUVÉ, pas soupçonné.
 ///   • NET-03 (réapparition/purge) : INCHANGÉE. Une session en attente dont l'épisode d'attente courant est
 ///     PLUS RÉCENT que le treatedWaitingTs mémorisé est RETIRÉE du magasin (elle réapparaît).
+///   • LUE (phase 30, LUE-01/LUE-02) : une attente que l'utilisateur a LUE est inscrite comme traitée, sans
+///     clic — son focus dans l'app est postérieur à l'épisode, ou elle est la session sélectionnée, fenêtre
+///     claude au premier plan au-delà de la grâce. NET-03 et LUE sont UNE décision : voir <see cref="Observe"/>.
 ///
 /// <para>« Épisode d'attente » = l'instant que le SIGNAL porte, jamais celui du guetteur — c'est TRT-02.
 /// Il reste STABLE tant que la source ne dit rien de plus récent, et n'avance que sur une demande neuve.
@@ -67,8 +70,32 @@ public sealed class SessionTreatmentTracker
         => System.Math.Min(v.Session.UpdatedAt.ToUnixTimeMilliseconds(), nowMs);
 
     /// <summary>
-    /// Observe un cycle de signaux retenus (avec leur source) + horloge, et met à jour
-    /// <see cref="TreatedStore"/> (ajout NET-01, purge NET-03).
+    /// Observe un cycle de signaux retenus (avec leur source) + horloge (+ ce que le moniteur sait de la LECTURE), et
+    /// met à jour <see cref="TreatedStore"/> (ajout NET-01, ajout LUE, purge NET-03).
+    ///
+    /// <para><b>La règle « lue » (phase 30).</b> Une session en attente est LUE, et inscrite comme traitée pour son
+    /// épisode, si :
+    /// <list type="bullet">
+    ///   <item>LUE-01 — son dernier focus dans l'app est STRICTEMENT postérieur à l'épisode d'attente (un focus égal
+    ///   n'est pas une lecture, D-30-03) ;</item>
+    ///   <item>LUE-02 — ou elle est la session sélectionnée dans l'app, le processus claude est au premier plan depuis
+    ///   un instant d, et il s'est écoulé au moins <see cref="HorizonsSessions.GraceLecture"/> (borne incluse) depuis le
+    ///   plus tardif de l'épisode et de d (D-30-02) : le tour qui finit sous les yeux.</item>
+    /// </list>
+    /// Sans contexte, ou sans focus connu pour CETTE session, la règle ne s'applique pas : comportement v1.6 exact
+    /// (LUE-04). Tous les appels à deux arguments restent donc ceux de la v1.6.</para>
+    ///
+    /// <para><b>D-30-01 — l'instant comparé ET inscrit est l'épisode du détecteur</b> (<c>_attenteDepuis</c>), égal à
+    /// l'instant du signal retenu en régime permanent. C'est la valeur que NET-03 compare : comparer une valeur et en
+    /// écrire une autre ferait purger au cycle suivant ce que la lecture vient d'écrire.</para>
+    ///
+    /// <para><b>D-30-07 — l'attente DÉDUITE est lue au même titre</b> : elle est une attente pour ce détecteur. Une
+    /// session qui s'est tue au-delà du seuil de silence APRÈS avoir été regardée travailler n'est donc jamais annoncée
+    /// « En attente ? » si ce regard est postérieur à son dernier signal ; redevenue une attente observée plus récente
+    /// que le focus, elle revient (NET-03).</para>
+    ///
+    /// <para>NET-03 et LUE se décident en UN bloc, sur le magasin lu UNE fois en tête de cycle : au plus une écriture par
+    /// session et par épisode.</para>
     /// </summary>
     public void Observe(IReadOnlyList<SignalSession> vainqueurs, System.DateTimeOffset now, ContexteLecture? lecture = null)
     {
@@ -101,13 +128,48 @@ public sealed class SessionTreatmentTracker
                 if (!_attenteDepuis.TryGetValue(id, out var deja) || ep > deja) _attenteDepuis[id] = ep;
             }
 
-            // NET-03 (réapparition/purge) : un épisode d'attente PLUS RÉCENT que le traitement mémorisé
-            // signifie que la session me redemande quelque chose — elle revient.
-            if (estAttente && traitees.TryGetValue(id, out var tts)
-                           && _attenteDepuis.TryGetValue(id, out var cur) && cur > tts)
-                _store.Remove(id);
+            // NET-03 ET LA RÈGLE « LUE » — UNE décision (30-RESEARCH Q1.c). Le magasin a été lu UNE fois en tête de
+            // cycle : deux blocs successifs purgeraient ce qui vient d'être écrit, ou écriraient deux fois. Au plus une
+            // écriture par session et par épisode. Table à six cas, pour une session en attente d'épisode `cur` :
+            //   1. non lue, absente du magasin      → rien
+            //   2. non lue, magasin ≥ cur           → rien (déjà traitée pour cet épisode ou au-delà)
+            //   3. non lue, magasin < cur           → Remove — NET-03 INCHANGÉ : la session redemande, elle revient
+            //   4. lue, absente du magasin          → Set(cur)
+            //   5. lue, magasin < cur               → Set(cur) — un nouvel épisode déjà lu : PAS de Remove préalable
+            //   6. lue, magasin ≥ cur               → rien : zéro écriture (c'est la preuve du « pas à chaque cycle »)
+            if (estAttente && _attenteDepuis.TryGetValue(id, out var cur))
+            {
+                var lue = Lue(id, cur, lecture, now);
+                var traitee = traitees.TryGetValue(id, out var tts);
+                if (lue is not null)
+                {
+                    if (!traitee || tts < cur) _store.Set(id, cur);   // cas 4 et 5 : un épisode pas encore inscrit
+                    // cas 6 (déjà inscrit pour cet épisode ou au-delà) : zéro écriture
+                }
+                else if (traitee && cur > tts)                          // cas 3 : NET-03 INCHANGÉ — la session redemande
+                    _store.Remove(id);
+            }
 
             _dernier[id] = (v.Source, etat);
         }
+    }
+
+    /// <summary>
+    /// La lecture, ou rien. Sans contexte, ou sans focus connu pour CETTE session, la règle ne s'applique pas
+    /// (LUE-04). LUE-01 d'abord (le focus postérieur à l'épisode, comparaison stricte), puis LUE-02 (la session
+    /// sélectionnée, claude au premier plan, grâce écoulée — borne incluse). L'épisode passe par le point unique de
+    /// conversion des epochs, jamais par une conversion locale.
+    /// </summary>
+    private static CauseTraitement? Lue(string id, long cur, ContexteLecture? l, System.DateTimeOffset now)
+    {
+        if (l is null || !l.DernierFocus.TryGetValue(id, out var f) || f is not { } focus) return null;
+        if (UsageNormalization.InstantDepuisEpochMillisecondes(cur) is not { } attente) return null;
+        if (attente < focus)                                                                     // LUE-01 — strict
+            return new CauseTraitement(MotifMasquage.LueParFocus, attente, Focus: focus, Constat: now);
+        if (l.ClaudeAuPremierPlanDepuis is { } depuis
+            && string.Equals(l.Selectionnee, id, System.StringComparison.OrdinalIgnoreCase)
+            && now - (attente > depuis ? attente : depuis) >= HorizonsSessions.GraceLecture)      // LUE-02 — borne incluse
+            return new CauseTraitement(MotifMasquage.LueAuPremierPlan, attente, focus, depuis, now);
+        return null;
     }
 }

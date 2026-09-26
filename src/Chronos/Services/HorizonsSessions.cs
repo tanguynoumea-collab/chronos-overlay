@@ -44,5 +44,5 @@ public static class HorizonsSessions
     /// <summary>LUE-02 — la GRÂCE de la lecture au premier plan : la session sélectionnée dans l'app, processus claude au
     /// premier plan, n'est « lue » que 2,5 s après le plus tardif de la fin du tour et du retour au premier plan — le
     /// regard a le temps de se poser. Bien en deçà de <see cref="Silence"/> : on lit bien avant de se taire.</summary>
-    public static readonly System.TimeSpan GraceLecture = System.TimeSpan.Zero;   // SQUELETTE RED
+    public static readonly System.TimeSpan GraceLecture = System.TimeSpan.FromMilliseconds(2500);
 }
