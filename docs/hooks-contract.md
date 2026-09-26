@@ -147,7 +147,7 @@ chacune. Un constat fait depuis une session Claude Code voit la vue virtualisée
 
 | `activity` | Libellé affiché | Ce que l'état AFFIRME | Observé ou déduit ? |
 |---|---|---|---|
-| `Working` | `Réflexion` | un signal d'activité est arrivé **à cet instant-là** — jamais « ça travaille encore maintenant » | **observé** |
+| `Working` | `Réflexion` | un signal d'activité est arrivé **à cet instant-là** — de la session ou de l'un de ses sous-agents (SUB-01) — jamais « ça travaille encore maintenant » | **observé** |
 | `WaitingTurn` | `En attente` | `Stop` est arrivé, ou le transcript s'arrête sur une réponse finie : le tour s'est réellement terminé | **observé** |
 | `WaitingAttention` | `En attente` | une permission a été demandée, le bus a porté une vraie demande, ou le transcript s'arrête sur une question `AskUserQuestion` sans réponse (LIB-02), ou l'app bureau a classé la fin du tour `blocked` avec un `needs_action` (APP-03) | **observé** |
 | `WaitingDeduced` | `En attente ?` | la session travaillait, et **plus aucun signal n'arrive** (battement de hook ou message de transcript) depuis le seuil de silence | **DÉDUIT — jamais observé** |
@@ -177,6 +177,15 @@ ajouté des lignes SANS horodatage (`bridge-session`, `last-prompt`, `cost-state
 dernier message datait de deux heures à deux jours. Datés par l'écriture, ils seraient revenus d'un bloc
 « En attente » ; et les mêmes lignes, écrites pendant qu'une question attend, feraient revenir une session
 marquée traitée sans qu'elle ait rien redemandé.
+
+**Le transcript d'un sous-agent est un signal de travail de sa session (SUB-01, phase 30.1).** Après la
+classification du parent, `TranscriptSessionSource` lit les `subagents/agent-*.jsonl` de la session dont la date
+d'écriture est postérieure au dernier message du parent, par leur queue de 64 Ko ; le plus récent de leurs derniers
+messages, s'il est postérieur à celui du parent, rend la session `Working`, datée de cet instant, avec le motif
+`transcript (sous-agent)` — même si le sous-agent a fini (`end_turn`) : le parent va reprendre, et le seuil de
+silence couvre le cas contraire. Seulement sur un parent `Working` ou `WaitingTurn` : une question posée par le
+parent ne s'efface pas. Sans horodatage lisible sur ce dernier message, aucun signal. Un sous-agent n'est jamais
+une ligne (SRC-03).
 
 **Les mêmes horizons pour tous (SIL-01).** `HorizonsSessions` porte les quatre seuils — silence 20 min < abandon
 8 h < rétention de `treated.json` 24 h (`HorizonsSessions.RetentionTraitees`) < balayage des fichiers d'état 72 h
@@ -260,9 +269,31 @@ Sur cette machine, **quatre-vingt-quatorze pour cent** des transcripts sont des 
 `agent-*.jsonl` sur 868). Sans filtre, une vague d'agents parallèles réaffirmerait « Réflexion » sur une
 session parente qui n'y est plus — et écraserait une attente encore ouverte.
 
-**La règle livrée :** un sous-agent ne parle **jamais** de l'activité ni du cycle de vie de son parent ; il
-peut seulement **réclamer une intervention**. Concrètement, tout événement portant l'un des deux marqueurs
-est ignoré, **sauf** `PermissionRequest` et `Notification`.
+**La règle livrée (phase 30.1, SUB-01) : un sous-agent qui écrit est un travail de sa session.** Il ne parle
+jamais du cycle de vie de son parent : `SessionStart`, `SessionEnd`, `Stop` et `UserPromptSubmit` portant l'un
+des deux marqueurs sont ignorés. Ses deux battements écrivent `Working` pour la session parente (le `session_id`
+que le hook reçoit), avec le motif `PreToolUse (sous-agent)` / `PostToolUse (sous-agent)`. Il peut toujours
+réclamer une intervention : `PermissionRequest` et `Notification` passent, avec leur motif ordinaire.
+
+**Un battement de sous-agent n'efface jamais une attente d'intervention.** Avant d'écrire, `EcritureEtatSession`
+relit l'état présent sous le même verrou : le battement ne réaffirme le travail que sur `Working` ou `WaitingTurn` ;
+sur `WaitingAttention`, un fichier absent, vide ou illisible, il n'écrit rien et ne crée rien (succès nommé
+`Ignoree`). La même règle vaut au point de fusion : un signal de sous-agent — battement de hook ou transcript —
+n'est pas déposé pour une session dont le verdict propre est une attente d'intervention
+(`TravailSousAgent.SansEffacerLesAttentes`, juste avant l'arbitrage, qui reste inchangé) : ni la permission, ni la
+question `AskUserQuestion`, ni la classification `blocked` de l'app ne s'effacent ainsi.
+
+**Pourquoi ce renversement (écart E2 du constat de phase 31, 2026-09-26 à 14:44).** Le veto de la phase 25 faisait
+taire aussi les battements : une session dont le tour parent était fini (`end_turn` à 14:33:21, `Stop` à 14:33:23)
+pendant qu'un agent travaillait en arrière-plan (transcript encore écrit à 14:45:09) s'affichait « En attente ». Le
+danger que le veto écartait — écraser une attente encore ouverte — est fermé ici à sa place, par la règle de
+non-effacement, et non plus par le silence.
+
+**Les limites, écrites.** Le `Stop` du parent postérieur au dernier battement rend « En attente » (FUS-01) ; un
+sous-agent muet depuis le seuil de silence rend « En attente ? ». Une permission accordée à un sous-agent laisse la
+session « En attente » (ou masquée si elle a été lue) jusqu'au prochain signal du parent : les battements du
+sous-agent ne l'effacent pas. `SubagentStart`, `SubagentStop`, `TaskCreated` et `TaskCompleted` ne sont pas
+câblés : les deux battements suffisent.
 
 Le **placement** du veto est essentiel, et c'est un choix, pas un hasard : il est posé **après** la garde
 `session_id` et **avant** le court-circuit `SessionEnd`. Un `SessionEnd` de sous-agent ne doit jamais
@@ -381,6 +412,11 @@ pas un oubli : après l'octroi d'une permission, **aucun `UserPromptSubmit` ne s
 resterait affichée « En attente » pendant qu'elle travaille. Ce serait **remplacer un mensonge par un autre**, ce
 que la doctrine de ce projet interdit.
 
+**Pour un battement de SOUS-AGENT, ce second cran est livré** (phase 30.1, SUB-01, §4) : il ne réaffirme le
+travail que sur `Working` ou `WaitingTurn`, et une permission accordée à un sous-agent reste donc « En attente »
+jusqu'au prochain signal du parent. Le chemin principal de R3 reste ouvert pour les battements de la session
+elle-même.
+
 **Donc : observation in vivo d'abord, correctif ensuite.** Trois signes à guetter, dans cet ordre :
 
 1. une session affichée « Réflexion » alors qu'un **prompt de permission est à l'écran** ;
@@ -410,6 +446,7 @@ Sans cette section, un successeur recâblerait ce que nous avons refusé.
 | `permission_prompt` du bus `Notification` | L'événement **dédié** `PermissionRequest` en a seul la charge : il est exact et immédiat. Deux chemins pour un même fait rendraient la source illisible. Le type est **absent du `matcher`** ET vetoé au routage. |
 | `idle_prompt` | Une alerte d'**ABSENCE** de l'utilisateur. Au mieux un indice sur lui, **jamais** une vérité sur ce que fait la session. Le seuil de 60 s qu'on lui prêtait n'est d'ailleurs **pas confirmé**. |
 | Un `timeout` **uniforme** de dix secondes | Voir ci-dessous. |
+| `SubagentStop`, `SubagentStart`, `TaskCreated`, `TaskCompleted` comme signaux de sous-agent | Inutiles (phase 30.1) : les deux battements, déjà reçus, disent le travail d'un sous-agent ; le seuil de silence couvre sa fin. Un neuvième groupe coûterait une réconciliation de plus pour rien. |
 | Les ~25 autres événements du catalogue (`StopFailure`, `PreCompact`, `TeammateIdle`, `SubagentStart`, `PostToolBatch`…) | Hors périmètre : cette phase câble ce que les cinq critères exigent, **pas le catalogue**. Ils restent dans la liste blanche (§8) pour qu'un câblage futur soit *validable*, pas parce qu'ils sont prévus. |
 | Une **sonde de capture** dans `~/.claude/settings.json` | Voir la question ouverte ci-dessous. |
 

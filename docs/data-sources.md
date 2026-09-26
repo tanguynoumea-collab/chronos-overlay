@@ -208,6 +208,10 @@ le transcript principal. Ils vivent dans un sous-dossier dédié :
 **À consigner comme piste V2-01, sans coder** : la future bande d'activité des sous-agents lira
 ce dossier `subagents/`, et non des blocs `Task` inline.
 
+**Lu par le widget de sessions depuis la phase 30.1 (SUB-01)** — seulement l'instant du dernier message
+de chaque `agent-<id>.jsonl`, comme signal de TRAVAIL de sa session, jamais comme ligne ni comme compte de
+tokens : voir `docs/hooks-contract.md` §3 et §4. La bande d'activité V2-01 reste différée.
+
 ### SourceReliability
 
 **`Estimé`** — plafonds non publiés ⇒ estimation par sommation de tokens, toujours marquée
@@ -321,6 +325,7 @@ code de provider** et **sans jamais modifier** un fichier sous `~/.claude` :
 | Hooks Claude Code (mode `--hook` de Chronos) | l'activité observée de chaque session : Réflexion, En attente | `docs/hooks-contract.md` |
 | Métadonnées de session de l'app bureau Claude | le titre, le dernier focus (`lastFocusedAt`), la classification de fin de tour | `docs/desktop-app-sessions.md` |
 | Transcripts JSONL (même emplacement qu'au §2) | la date du dernier message et l'état d'un tour sans fichier de hook | `docs/hooks-contract.md` §3 |
+| Transcripts des sous-agents (`subagents/agent-*.jsonl`, même emplacement) | la date du dernier message d'un sous-agent : un signal de TRAVAIL de sa session (SUB-01), jamais une ligne | `docs/hooks-contract.md` §3 et §4 |
 
 **Deux vues d'AppData.** Les hooks lancés sous l'app bureau écrivent dans le cache du paquet MSIX
 (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\…`), que l'overlay lit par candidats ; un relevé fait depuis une

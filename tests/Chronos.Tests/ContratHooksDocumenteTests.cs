@@ -612,4 +612,106 @@ public sealed class ContratHooksDocumenteTests
         Assert.True(File.Exists(detecteur), $"Détecteur introuvable : {detecteur}");
         Assert.Contains("HorizonsSessions.GraceLecture", File.ReadAllText(detecteur), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// GARDE CROISÉE DOCUMENT ↔ CODE (SUB-01, SUB-02 — phase 30.1). Le §4 disait qu'un sous-agent ne parle jamais de
+    /// l'activité de son parent, et que tout événement portant l'un des deux marqueurs était ignoré, sauf deux demandes : c'était
+    /// le veto de la phase 25, et l'écart E2 du constat de phase 31 l'a renversé pour les battements. Un contrat qui le dirait
+    /// encore décrirait un câblage qui n'existe plus — la faute même que ce document existe pour empêcher.
+    ///
+    /// <para>La garde exige, au §4, la règle livrée (un sous-agent qui écrit est un travail de sa session), le motif de ses
+    /// battements, la règle de non-effacement à ses deux sièges (l'écriture, le point de fusion), la limite écrite et les
+    /// événements non câblés ; au §3, le transcript d'un sous-agent comme signal de travail ; au §5, le second cran livré pour
+    /// les seuls sous-agents (la garde de la monotonie exige toujours qu'il reste ouvert pour la session elle-même). Chaque
+    /// fragment tient sur UNE ligne du document. Et chaque affirmation a son siège dans le code, lu sous <c>Services/</c> : le
+    /// veto réduit au cycle de vie, le suffixe, la liste blanche de réaffirmation, la lecture des transcripts de sous-agents,
+    /// le filtre du moniteur juste avant l'arbitrage.</para>
+    /// </summary>
+    [Fact]
+    public void Le_contrat_dit_qu_un_sous_agent_qui_ecrit_est_un_travail_de_sa_session()
+    {
+        var texte = LireDocument();
+
+        // 1. Le §4 dit la règle livrée ; l'ancienne phrase du veto a disparu du document ENTIER.
+        var section4 = SectionDe(texte, "## 4.");
+        foreach (var fragment in new[]
+                 {
+                     "un sous-agent qui écrit est un travail de sa session",
+                     "`PreToolUse (sous-agent)` / `PostToolUse (sous-agent)`",
+                     "Un battement de sous-agent n'efface jamais une attente d'intervention.",
+                     "ne réaffirme le travail que sur `Working` ou `WaitingTurn`",
+                     "`TravailSousAgent.SansEffacerLesAttentes`",
+                     "jusqu'au prochain signal du parent",
+                     "`SubagentStop`",
+                 })
+            Assert.Contains(fragment, section4, StringComparison.Ordinal);
+        Assert.DoesNotContain("est ignoré, **sauf** `PermissionRequest` et `Notification`", texte, StringComparison.Ordinal);
+
+        // 2. Le §3 dit que le transcript d'un sous-agent est un signal de travail de sa session — jamais une ligne.
+        var section3 = SectionDe(texte, "## 3.");
+        foreach (var fragment in new[]
+                 {
+                     "Le transcript d'un sous-agent est un signal de travail de sa session",
+                     "`subagents/agent-*.jsonl`",
+                     "`transcript (sous-agent)`",
+                 })
+            Assert.Contains(fragment, section3, StringComparison.Ordinal);
+
+        // 3. Le §5 dit que le second cran est livré pour un battement de SOUS-AGENT.
+        Assert.Contains("Pour un battement de SOUS-AGENT, ce second cran est livré", SectionNonGarantie(texte),
+            StringComparison.Ordinal);
+
+        // 4. Les sièges dans le code. ANTI-MUET : l'attribut d'abord, puis chaque fichier nommé.
+        var racineSources = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racineSources),
+            "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : sans lui, cette garde croisée "
+            + "ne lit pas le code et ne croise donc rien.");
+        var services = Path.Combine(racineSources, "Services");
+
+        string Lire(string nom)
+        {
+            var fichier = Path.Combine(services, nom);
+            Assert.True(File.Exists(fichier),
+                $"Siège de la règle des sous-agents introuvable : {fichier}. Le §4 décrirait un siège vide.");
+            return File.ReadAllText(fichier);
+        }
+
+        var processeur = Lire("SessionHookProcessor.cs");
+        Assert.Contains("public const string SuffixeSousAgent = \" (sous-agent)\";", processeur, StringComparison.Ordinal);
+        Assert.Contains("ev is not (\"PermissionRequest\" or \"Notification\" or \"PreToolUse\" or \"PostToolUse\")",
+            processeur, StringComparison.Ordinal);
+        Assert.Contains("activite is \"Working\" or \"WaitingTurn\"", Lire("EcritureEtatSession.cs"),
+            StringComparison.Ordinal);
+        Assert.Contains("EnumerateFiles(\"agent-*.jsonl\", SearchOption.TopDirectoryOnly)", Lire("TranscriptSessionSource.cs"),
+            StringComparison.Ordinal);
+        Assert.Contains("ArbitrageSessions.Trancher(TravailSousAgent.SansEffacerLesAttentes(signaux))", Lire("SessionMonitor.cs"),
+            StringComparison.Ordinal);
+
+        // 5. Le motif que le §3 nomme est celui que le code écrit.
+        Assert.Equal("transcript" + TravailSousAgent.Suffixe, TravailSousAgent.MotifTranscript);
+    }
+
+    /// <summary>
+    /// GARDE DOCUMENTAIRE (SUB-01, SUB-02 — phase 30.1). <c>docs/data-sources.md</c> disait des transcripts de sous-agents
+    /// « différé, ne pas coder » ; depuis la phase 30.1, le widget de sessions en lit le dernier message comme signal de
+    /// TRAVAIL de sa session. Le §2 et le §6 doivent le dire — sans quoi le document des sources contredirait le contrat des
+    /// hooks. Chaque fragment tient sur UNE ligne du document.
+    /// </summary>
+    [Fact]
+    public void Les_sources_disent_que_le_transcript_d_un_sous_agent_est_un_signal_de_travail()
+    {
+        var docs = CheminDocs();
+        Assert.False(string.IsNullOrWhiteSpace(docs),
+            "L'attribut AssemblyMetadata(\"CheminDocsChronos\") manque : sans lui, cette garde ne lit rien.");
+        var chemin = Path.Combine(docs, "data-sources.md");
+        Assert.True(File.Exists(chemin), $"docs/data-sources.md introuvable : {chemin}");
+        var sources = File.ReadAllText(chemin);
+
+        var section6 = SectionDe(sources, "## 6.");
+        foreach (var fragment in new[] { "`subagents/agent-*.jsonl`", "SUB-01", "jamais une ligne" })
+            Assert.Contains(fragment, section6, StringComparison.Ordinal);
+
+        Assert.Contains("Lu par le widget de sessions depuis la phase 30.1 (SUB-01)", SectionDe(sources, "## 2."),
+            StringComparison.Ordinal);
+    }
 }
