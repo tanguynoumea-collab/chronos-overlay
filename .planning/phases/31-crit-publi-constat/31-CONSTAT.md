@@ -104,11 +104,11 @@ Consignes : ne jamais cliquer sur le widget pendant une mesure ; « invite longu
 | `Chronos-v3.2.0.exe` | 77 377 466 o, md5 `2cffcec5…`, 3.2.0.0 / 3.2.0 | conforme |
 | App Claude | 2.9939.2.0 | 2.9939.2.0 |
 | Dossier de test `Documents\chronos-constat` | créé, vide | créé |
-| **Réconciliation** : sauvegarde horodatée | md5 = `9eab8a8ecdb7f1d541841dd1c6ea418b` | à relever |
-| **Réconciliation** : fichier courant | = sauvegarde + 9 remplacements `Chronos-v3.1.0.exe` → `Chronos-v3.2.0.exe` | à relever |
-| **Réconciliation** : groupes | 8 `--hook` + statusLine sur la 3.2.0, 3 `gsd-` intacts, aucun doublon | à relever |
-| Processus après lancement | un seul : la 3.2.0, parent explorer | à relever |
-| Rapport « Diagnostic… » | ligne 3 « Version : 3.2.0 » | à relever |
+| **Réconciliation** : sauvegarde horodatée | md5 = `9eab8a8ecdb7f1d541841dd1c6ea418b` | `claude-settings-20260926-141838.json`, md5 `9eab8a8ecdb7f1d541841dd1c6ea418b` ✅ |
+| **Réconciliation** : fichier courant | = sauvegarde + 9 remplacements `Chronos-v3.1.0.exe` → `Chronos-v3.2.0.exe` | égalité structurelle True ; 9 occurrences 3.2.0 / 0 de 3.1.0 ; écrit le 2026-09-26 14:18:38 (md5 `3c68422466b8d62d15acf0dfcaf7e2c3`) ✅ |
+| **Réconciliation** : groupes | 8 `--hook` + statusLine sur la 3.2.0, 3 `gsd-` intacts, aucun doublon | 8 hooks 3.2.0, statusLine 3.2.0, 3 `gsd-`, un seul groupe Chronos par clé (8 clés) ✅ |
+| Processus après lancement | un seul : la 3.2.0, parent explorer | ⚠ DEUX overlays à 14:32 : `Chronos-v3.2.0.exe` PID 126160 (parent explorer, 14:18:37) ET `Chronos-v3.1.0.exe` PID 40772 toujours en marche (la 3.1.0 n'a pas été quittée) — écart §3, à corriger avant le point (b) |
+| Rapport « Diagnostic… » | ligne 3 « Version : 3.2.0 » | `chronos.log` (vue réelle) : « Version : 3.2.0 », « Exe courant : …\Chronos-v3.2.0.exe », « Source app-bureau : trouvée — …Packages\Claude_…\claude-code-sessions », fichiers d'état : 5 (paquet) / absent (vue réelle), « Règle « lue » » présente ; « v3.2 » vu par l'utilisateur ✅ |
 
 ## 1. Les trois lignes
 
@@ -140,7 +140,14 @@ Consignes : ne jamais cliquer sur le widget pendant une mesure ; « invite longu
 
 ## 3. Écarts
 
-(vide au temps 0)
+- **E1 (point a, 14:32) — deux overlays.** L'utilisateur a lancé la 3.2.0 (PID 126160) sans que la 3.1.0 (PID 40772,
+  du 23.09) soit quittée ; aucun verrou mono-instance n'existe. Les deux écrivent `treated.json` (mtime 14:32:41).
+  Correction demandée avant le point (b) : quitter la 3.1.0 (réglages « v3.1 » → « Quitter Chronos », ou fin de tâche
+  sur `Chronos-v3.1.0.exe`). Ne change rien à la réconciliation (faite par la 3.2.0, constatée dans le fichier).
+- **Note (non écart)** : le rapport n'énumère que 5 des 8 événements câblés (« Hooks --hook installés : Notification,
+  Stop, UserPromptSubmit, SessionStart, SessionEnd ») — limite du rapport connue de la recherche de phase 31 ; la preuve
+  des 8 groupes est le fichier.
+- **Autostart** : non activé (aucun `Chronos.lnk` dans le dossier Démarrage réel) — facultatif, pas un écart.
 
 ## 4. Verdict
 
