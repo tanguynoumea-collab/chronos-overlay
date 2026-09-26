@@ -5,7 +5,7 @@ subsystem: widget-sessions
 tags: [csharp, win32, p-invoke, premier-plan, app-bureau, selection, lecture-seule, gardes, mutation, xunit, tdd]
 
 sha_entree_de_plan: af60f59
-one_liner: "Les deux faits dont LUE-02 a besoin existent, chacun derrière une interface neutre qui sait dire « je ne sais pas ». Côté OS, IPremierPlan / PremierPlanWin32 lit le NOM du processus de la fenêtre au premier plan (GetForegroundWindow → GetWindowThreadProcessId → ProcessName), le compare par égalité sans casse avec claude (jamais le titre, jamais un préfixe, pas d'UIA) et dit depuis quand, avec un cache de 1 s, un trou de 5 s et quatre issues nommées ; une sonde en échec rend « indisponible » avec la raison. Côté app, LectureAppBureau.Selection prend le lastFocusedAt le plus récent sur TOUS les fichiers servis, doublons écartés et fichiers sans cliSessionId compris ; sans identifiant, la sélection ne désigne personne. Mutations (m7) et (m3) jouées puis révoquées (sha256 identiques). 1062 → 1084 isolé (+22), deux exécutions ; 1103 / 0 combiné avec 30-01 à mi-parcours (1110 attendu quand 30-01 aura fini)"
+one_liner: "Les deux faits dont LUE-02 a besoin existent, chacun derrière une interface neutre qui sait dire « je ne sais pas ». Côté OS, IPremierPlan / PremierPlanWin32 lit le NOM du processus de la fenêtre au premier plan (GetForegroundWindow → GetWindowThreadProcessId → ProcessName), le compare par égalité sans casse avec claude (jamais le titre, jamais un préfixe, pas d'UIA) et dit depuis quand, avec un cache de 1 s, un trou de 5 s et quatre issues nommées ; une sonde en échec rend « indisponible » avec la raison. Côté app, LectureAppBureau.Selection prend le lastFocusedAt le plus récent sur TOUS les fichiers servis, doublons écartés et fichiers sans cliSessionId compris ; sans identifiant, la sélection ne désigne personne. Mutations (m7) et (m3) jouées puis révoquées (sha256 identiques). 1062 → 1084 isolé (+22), deux exécutions ; 1110 / 0 combiné en fin de vague 1 avec 30-01, deux exécutions"
 
 requires:
   - phase: 29-02
@@ -146,9 +146,9 @@ restauration. Les deux sha256 sont identiques avant et après.
   et aucun des 31 jetons `Interdits`.
 - **Total isolé : 1084 / 0**, deux exécutions consécutives. Mesure faite dans un worktree temporaire à `af60f59`,
   avec seulement les 4 commits de ce plan rejoués ; le worktree a été supprimé ensuite. Cela fait 1062 + 14 + 8.
-- **Total combiné avec 30-01 : 1103 / 0**, deux exécutions consécutives, à `b10620f`. À ce moment, 30-01 avait commité
-  sa tâche 1 (19 cas) et seulement le RED de sa tâche 2 (`26e93b8`, 7 cas encore en cours). Le total de fin de vague 1
-  attendu est **1110**. Comme 30-01 finit après ce plan, c'est à lui de le mesurer et de le consigner.
+- **Total combiné, fin de vague 1 : 1110 / 0**, deux exécutions consécutives (9 s, 8 s), à `284fcc7` (après
+  `f0ab69a`, dernier commit de code de 30-01). C'est exactement le total attendu : 1062 + 22 (30-02) + 26 (30-01). Une
+  mesure intermédiaire à `b10620f` donnait 1103 / 0 : 30-01 n'avait alors commité que sa tâche 1 (19 cas).
 - `git diff --stat af60f59..HEAD` limité aux commits de ce plan : seuls les 5 fichiers de `files_modified` sont
   touchés. `SessionMonitor.cs`, `SessionTreatmentTracker.cs` et `App.xaml.cs` ne le sont pas : le câblage revient à 30-03.
 - Aucun test ne lit le vrai `%APPDATA%`, `%LOCALAPPDATA%` ni `~/.claude`. Seule P08 touche l'OS, en lecture, sans
@@ -170,8 +170,7 @@ restauration. Les deux sha256 sont identiques avant et après.
 **Écarts de mesure (pas des corrections) :**
 - (m3) a fait rougir **quatre** tests : les deux exigés, plus S06 et S08. Sur `ParSession`, l'égalité se départage par
   identifiant et non par chemin, et le fichier sans identifiant, servi par le cache, disparaît de la sélection.
-- Le total combiné mesuré est de **1103** et non 1110, parce que la tâche 2 de 30-01 (7 cas) n'était pas finie. Ce
-  n'est pas un écart de ce plan : l'isolé tombe exactement sur 1084.
+- Aucun écart sur les totaux : 1084 isolé et 1110 combiné, comme prévu.
 
 **Outil :** le heredoc bash échoue sur le texte français (apostrophes) dans ce shell. Les fichiers neufs ont donc été
 écrits avec l'outil d'écriture, sans effet sur le contenu.
