@@ -19,7 +19,7 @@ machine les trois lignes de son tableau — « Réflexion », « En attente », 
 
 ### Le document (VAL-02)
 - `docs/desktop-app-sessions.md`, même structure que `docs/hooks-contract.md` : ce qui est lu (chemin,
-  jonction MSIX, champs), ce qui est produit (titre, dernier focus, `blocked`), ce qui n'est PAS garanti
+  virtualisation AppData par MSIX — PAS une jonction —, champs), ce qui est produit (titre, dernier focus, `blocked`), ce qui n'est PAS garanti
   (format interne non documenté, réécriture intégrale, `postTurnSummary` transitoire, `lastFocusedAt` tel
   que relevé en phase 27 : mis à jour par alt-tab et par re-sélection, PAS par la fin d'un tour), la date du
   relevé (2026-09-25, app 2.9939.2.0) et la réserve de la phase 27 (16:23 → 19:51 sans mise à jour).
@@ -34,8 +34,8 @@ machine les trois lignes de son tableau — « Réflexion », « En attente », 
   3.2.0.0, `AssemblyVersion` 3.2.0.0, `InformationalVersion` 3.2.0).
 - Publication : `dotnet publish src/Chronos -c Release -r win-x64 -p:PublishSingleFile=true
   --self-contained true` (détails `docs/publish.md`), puis copie de l'exe à la racine du dépôt sous le nom
-  **`Chronos-v3.2.0.exe`** (non versionné : le `.gitignore` ignore les exe ; `Chronos-v3.1.0.exe` est déjà
-  là, non suivi). Attendu : mono-fichier, ~77 Mo (< 120), 0 DLL à côté.
+  **`Chronos-v3.2.0.exe`** (NON suivi : le `.gitignore` n'ignorait PAS les exe — `/Chronos-v*.exe` y est ajouté le 2026-09-26 ;
+  ne jamais faire `git add -A`). Attendu : mono-fichier, ~77 Mo (< 120), 0 DLL à côté.
 - Smoke test AVANT toute réconciliation : `Chronos-v3.2.0.exe --hook SessionStart` avec stdin vide ⇒ code 0,
   aucune écriture, `~/.claude/settings.json` inchangé (md5 avant/après).
 - Réconciliation : au premier lancement de la 3.2.0, `SessionHookInstaller` et l'installateur de statusLine
@@ -43,8 +43,12 @@ machine les trois lignes de son tableau — « Réflexion », « En attente », 
   doublon, sans toucher aux groupes tiers (`gsd-*`). Constaté dans le fichier, pas supposé. **C'est
   l'utilisateur qui lance l'exe** (l'agent ne lance pas l'overlay : précédent 19-05).
 - L'ancien processus `Chronos-v3.1.0.exe` (PID 40772, démarré le 23.09) doit être fermé par l'utilisateur
-  avant de lancer la 3.2.0 (mono-instance ? à vérifier dans `App.xaml.cs`), et l'autostart `shell:startup`
-  doit pointer le nouvel exe (vérifier le raccourci).
+  avant de lancer la 3.2.0 : il n'existe AUCUN mutex mono-instance dans `src/` (recherche de phase 31). Aucun
+  raccourci Chronos dans le dossier Démarrage réel, ni clé `Run`, ni tâche planifiée : rien à repointer.
+- La réconciliation se constate dans `~/.claude/settings.json` (sauvegarde horodatée dont le md5 égale celui
+  relevé avant le lancement ; fichier courant = sauvegarde + 9 remplacements `Chronos-v3.1.0.exe` →
+  `Chronos-v3.2.0.exe`), PAS dans `chronos.log` (écrit avant l'appel à `Reconcile`).
+- Le diagnostic gagne une ligne `Version :` (une ligne, un test) avant la publication : le critère 2 la lit.
 - Commit `release: Chronos 3.2.0 - milestone v1.7 << Lue ou non lue >>` avec le compte de tests et la taille
   de l'exe ; tag local `milestone-v1.7` à la clôture du milestone (pas de push sans accord).
 
@@ -53,7 +57,9 @@ machine les trois lignes de son tableau — « Réflexion », « En attente », 
   1. lancer un tour dans une session ⇒ le widget affiche « Réflexion » ;
   2. laisser un tour se terminer dans une session NON regardée (autre session au premier plan) ⇒
      « En attente » ; l'ouvrir ⇒ elle disparaît sans clic ;
-  3. regarder un tour se terminer ⇒ la session n'apparaît jamais « En attente ».
+  3. regarder un tour se terminer ⇒ la session disparaît après la grâce (2,5 s après la fin du tour, jusqu'à
+     ~5,5 s selon le cycle de 2 s) : mesurer la durée, la faire juger par l'utilisateur, ne pas consigner en
+     échec une disparition dans ce délai.
   Plus : un titre de session à la place du dossier ; une question posée (AskUserQuestion ou `blocked`) ⇒
   « En attente » au premier rang.
 - Résultat consigné dans `31-CONSTAT.md`, écarts compris (y compris la réserve 16:23 → 19:51 de la phase 27

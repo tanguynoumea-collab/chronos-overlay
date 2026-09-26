@@ -15,8 +15,8 @@ droit, ou à l'expiration de 8 h. Ce n'est pas un défaut d'observation, c'est u
 
 **Le signal existe.** L'app bureau Claude écrit un fichier JSON par session sous
 `%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_<id>.json` (142 fichiers, ~275 Ko, réécrits au
-changement de session et en fin de tour ; `%APPDATA%\Claude` est une jonction vers le cache du paquet MSIX,
-lisible par un processus non packagé — vérifié). Il porte `cliSessionId` (l'UUID des hooks et des transcripts),
+changement de session et en fin de tour ; `%APPDATA%\Claude` n'est PAS une jonction : c'est l'AppData
+VIRTUALISÉ par le paquet MSIX, invisible de l'overlay — il lit le cache du paquet, voir APP-06, sonde hors arbre). Il porte `cliSessionId` (l'UUID des hooks et des transcripts),
 `title`, **`lastFocusedAt`** (dernier instant où la session a été sélectionnée dans l'app), et
 `postTurnSummary { status_category ∈ completed | blocked | review_ready, needs_action }` — la classification
 de fin de tour faite par l'app elle-même. Le relevé complet est dans `STATE.md`, section « Contexte technique
@@ -40,8 +40,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 - [x] **APP-01**: Chronos lit les métadonnées par session écrites par l'app bureau Claude
   (`%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_*.json`) et les joint aux sessions du widget par
   `cliSessionId`. Lecture tolérante (`FileShare.ReadWrite`, JSON invalide ignoré), limitée aux fichiers modifiés
-  depuis moins de 24 h. Le chemin est construit par `Path.Combine` (la jonction MSIX refuse les séparateurs
-  mixtes). Format interne **non documenté** : dossier absent, champ absent ou renommé ⇒ la source se tait et le
+  depuis moins de 24 h. Les racines se résolvent par candidats, le cache du paquet MSIX en premier (APP-06). Format interne **non documenté** : dossier absent, champ absent ou renommé ⇒ la source se tait et le
   widget garde le comportement v1.6 — jamais de crash, jamais d'invention.
 - [x] **APP-02**: Le widget affiche le **titre** de la session (`title`) à la place du nom de dossier quand il est
   connu ; le dossier reste en repli quand il ne l'est pas, et reste lisible en info-bulle dans les deux cas.
@@ -111,7 +110,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 ### Validation in vivo et livraison (VAL)
 
-- [ ] **VAL-01**: Les deux points ouverts du relevé sont observés **sur la vraie machine**, avec un protocole
+- [x] **VAL-01**: Les deux points ouverts du relevé sont observés **sur la vraie machine**, avec un protocole
   écrit et des valeurs relevées : (1) `lastFocusedAt` est-il mis à jour au simple retour (alt-tab) sur la
   session déjà sélectionnée ? (2) que vaut-il quand un tour se termine pendant que l'utilisateur regarde ? La
   règle LUE-02 est ajustée d'après le relevé, pas d'après une supposition — et l'ajustement est écrit.
@@ -162,7 +161,7 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LIB-03 | Phase 28 | Complete |
 | LIB-04 | Phase 28 | Complete |
 | SIL-01 | Phase 28 | Complete |
-| VAL-01 | Phase 27 | Pending |
+| VAL-01 | Phase 27 | Complete |
 | VAL-02 | Phase 31 | Pending |
 | VAL-03 | Phase 31 | Pending |
 

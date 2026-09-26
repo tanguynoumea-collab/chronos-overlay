@@ -17,3 +17,6 @@ publish/
 
 # Config/état outillage local (Claude Code)
 .claude/
+
+# Exe publiés à la racine (Chronos-vX.Y.Z.exe) : jamais versionnés
+/Chronos-v*.exe
