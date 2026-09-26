@@ -472,6 +472,37 @@ public class GardesPerimetreTests
         Assert.DoesNotContain("RacinesEtat", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE NON-RETOUR (OBS-01 étendu, LUE-03, LUE-04, phase 30). La cause de chaque masquage et la section « Règle
+    /// « lue » » du rapport se lisent dans la lecture que le moniteur a rendue au SEUL appel <c>Inspecter</c> : la cause
+    /// sur <c>SessionMasquee</c>, la sélection sur <c>LectureAppBureau</c>, le premier plan sur
+    /// <c>LectureSessions.PremierPlan</c>.
+    ///
+    /// <para>Un second appel à la sonde décrirait un autre échantillon que celui que le détecteur a reçu à ce cycle : le
+    /// rapport pourrait alors dire « claude au premier plan » à côté d'une session qui n'a pas été lue, ou l'inverse. Le
+    /// rapport ne connaît donc ni l'interface de la sonde ni son implémentation Win32 : il lit des valeurs.</para>
+    /// </summary>
+    [Fact]
+    public void Le_diagnostic_dit_la_regle_lue_dans_la_meme_lecture_que_le_widget()
+    {
+        var fichier = Path.Combine(CheminSources(), "Services", "DiagnosticService.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // Anti-muet : la section, sa lecture du premier plan et la cause des masquées existent, sinon les absences
+        // ci-dessous ne prouveraient rien.
+        Assert.Contains("Règle « lue »", texte, StringComparison.Ordinal);
+        Assert.Contains("lecture.PremierPlan", texte, StringComparison.Ordinal);
+        Assert.Contains("LibelleMasquage(m.Motif, m.Cause)", texte, StringComparison.Ordinal);
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("Inspecter(")));
+        Assert.DoesNotContain("IPremierPlan", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("PremierPlanWin32", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Lire(", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("new LecteurAppBureau", texte, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()

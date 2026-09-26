@@ -563,7 +563,7 @@ public sealed class DiagnosticService
                              .OrderBy(m => AffichageSessions.Urgence(m.Session.Activity))
                              .ThenByDescending(m => m.Session.UpdatedAt))
                     sb.AppendLine($"    · {Court(m.Session.SessionId)} {AffichageSessions.Nom(m.Session)} — {AffichageSessions.Etat(m.Session.Activity)}"
-                                + $" ({AffichageSessions.Age(_clock.UtcNow - m.Session.UpdatedAt)}) — masquée par {LibelleMotif(m.Motif)}");
+                                + $" ({AffichageSessions.Age(_clock.UtcNow - m.Session.UpdatedAt)}) — masquée par {LibelleMasquage(m.Motif, m.Cause)}");
                 if (lecture.Masquees.Count == 0)
                     sb.AppendLine("    (aucune — aucun filtre n'écarte de session en ce moment)");
 
@@ -619,7 +619,7 @@ public sealed class DiagnosticService
 
     // Le filtre qui écarte, NOMMÉ AVEC SON FICHIER : « absent » n'apprend rien, « écarté par treated.json »
     // dit quoi ouvrir. C'est toute la différence entre un défaut inélucidable et un défaut diagnosticable.
-    private static string LibelleMotif(MotifMasquage m) => m switch
+    internal static string LibelleMasquage(MotifMasquage motif, CauseTraitement? cause) => motif switch
     {
         MotifMasquage.Archivee => "archived.json (archivage — geste explicite de l'utilisateur)",
         MotifMasquage.Traitee  => "treated.json (« traité » — hystérésis automatique OU geste explicite ; réversible)",

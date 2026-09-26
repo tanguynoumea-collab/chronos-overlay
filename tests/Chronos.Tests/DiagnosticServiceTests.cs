@@ -1098,4 +1098,194 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("Source app-bureau : lecture impossible à ce cycle", report);
         Assert.Contains("Sessions AFFICHÉES par le widget : 4", report);   // l'écran, lui, est celui de la v1.6
     }
+
+    // --- Phase 30 (LUE-03, LUE-04) : aucun masquage sans cause, et la règle « lue » dite telle qu'elle voit ---
+    //
+    // Les heures attendues sont calculées ICI par ToLocalTime() (Piège 10) : le rapport écrit l'heure locale de la
+    // machine, et une heure écrite en dur ne serait vraie que dans un fuseau. Tout reste sous %TEMP% : racines de l'app
+    // (supprimées au Dispose), magasins, dossier d'état. La sonde du premier plan est un faux : aucun test ne lit la
+    // vraie fenêtre au premier plan de la machine.
+
+    /// <summary>Un instant du 2026-09-25, en UTC (heure de Paris = UTC+2 ce jour-là).</summary>
+    private static DateTimeOffset U30(int h, int m, int s = 0, int ms = 0) => new(2026, 9, 25, h, m, s, ms, TimeSpan.Zero);
+
+    /// <summary>L'heure LOCALE à la seconde, telle que le rapport l'écrit (D-30-11).</summary>
+    private static string Heure30(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss");
+
+    /// <summary>Le moniteur de production, aux racines près : le détecteur est construit sur le magasin, le lecteur de
+    /// l'app et la sonde du premier plan sont passés par argument nommé, comme dans App.xaml.cs.</summary>
+    private static SessionMonitor MoniteurLecture30(ISessionSource transcripts, TreatedStore treated, string racine, IPremierPlan sonde)
+        => new(TempDir22(), transcripts, new ArchiveStore(TempFichier22()), treated, new SessionTreatmentTracker(treated),
+               appBureau: new LecteurAppBureau(new[] { racine }), premierPlan: sonde);
+
+    /// <summary>Le geste B du relevé (27-RELEVE) : la fixture réelle (focus 18:30:44.976Z), la fin du tour à
+    /// 18:34:04.328Z, claude au premier plan depuis 18:33:27Z. Au rapport de 18:34:06.828Z, la grâce de 2,5 s est
+    /// écoulée, borne incluse : la session est lue au premier plan (LUE-02).</summary>
+    private (SessionMonitor Moniteur, FakePremierPlan Sonde) MontageGesteB30()
+    {
+        var racine = Suivre(RacineAppBureau.NouvelleRacine());
+        RacineAppBureau.EcrireOctets(racine, RacineAppBureau.NomFichier("session-courante-geste-b.json"),
+            RacineAppBureau.Fixture("session-courante-geste-b.json"), U30(18, 34));
+        var sonde = FakePremierPlan.Claude(U30(18, 33, 27));
+        var treated = new TreatedStore(TempFichier22(), new FakeClock(U30(18, 34)));
+        var moniteur = MoniteurLecture30(
+            new SourceFixe22(new SessionSnapshot(IdA29, "Projet-A", SessionActivity.WaitingTurn, null, U30(18, 34, 4, 328))),
+            treated, racine, sonde);
+        return (moniteur, sonde);
+    }
+
+    /// <summary>R01 — LUE-03, critère 4 : une session lue par le focus dit ses DEUX instants, à la seconde. Le relevé du
+    /// 2026-09-25 : JARVIS finie à 15:59:05, ouverte dans l'app à 16:00:39 (heure de Paris), rapport à 16:08, explorer
+    /// au premier plan (LUE-01 seule). Le fichier à ouvrir reste nommé : « masquée par treated.json ».</summary>
+    [Fact]
+    public async Task La_session_lue_par_focus_dit_ses_deux_instants()
+    {
+        var maintenant = U30(14, 8);
+        var racine = Suivre(RacineAppBureau.NouvelleRacine());
+        RacineAppBureau.Ecrire(racine, "local_jarvis.json",
+            RacineAppBureau.Deriver("fin-de-tour-review-ready.json", ("1790361032950", "1790344839000")), U30(14, 1));   // focus 14:00:39Z
+        var treated = new TreatedStore(TempFichier22(), new FakeClock(maintenant));
+        var moniteur = MoniteurLecture30(
+            new SourceFixe22(new SessionSnapshot(IdB29, "JARVIS", SessionActivity.WaitingTurn, null, U30(13, 59, 5))),
+            treated, racine, FakePremierPlan.Autre("explorer"));
+
+        var report = await RapportA(moniteur, maintenant);
+
+        var ligne = Assert.Single(report.Split('\n'), l => l.Contains("c17a1b03") && l.Contains("masquée par"));
+        Assert.Contains("masquée par treated.json", ligne);
+        Assert.Contains($"lue : focus à {Heure30(U30(14, 0, 39))} > attente à {Heure30(U30(13, 59, 5))}", ligne);
+        Assert.Contains("Premier plan : explorer — LUE-02 inactive", report);
+    }
+
+    /// <summary>R02 — LUE-03 : le geste B se lit au rapport. « depuis N s » est figé au constat (constat moins début du
+    /// premier plan claude = 39,828 s, tronqué) ; la section « Règle « lue » » dit la session sélectionnée et l'heure de
+    /// son focus, et le premier plan que la sonde a rendu à CE cycle.</summary>
+    [Fact]
+    public async Task La_session_lue_au_premier_plan_dit_depuis_combien_de_secondes()
+    {
+        var (moniteur, _) = MontageGesteB30();
+
+        var report = await RapportA(moniteur, U30(18, 34, 6, 828));
+
+        var ligne = Assert.Single(report.Split('\n'), l => l.Contains("11456cab") && l.Contains("masquée par"));
+        Assert.Contains("sélectionnée au premier plan depuis 39 s (claude)", ligne);
+        Assert.Contains($"attente à {Heure30(U30(18, 34, 4, 328))}", ligne);
+        Assert.Contains("Premier plan : claude depuis 39 s — LUE-02 active", report);
+        Assert.Contains($"Session sélectionnée dans l'app : 11456cab (focus {Heure30(U30(18, 30, 44, 976))})", report);
+    }
+
+    /// <summary>R03 — une réponse (NET-01) se dit « répondue », avec l'attente, et le fait qui l'a prouvée : un travail
+    /// observé sur la MÊME source. Le fichier reste nommé en tête.</summary>
+    [Fact]
+    public void Le_libelle_de_repondue_dit_l_attente_et_le_travail_observe()
+    {
+        var t = new DateTimeOffset(2026, 9, 25, 13, 59, 5, TimeSpan.Zero);
+
+        var libelle = DiagnosticService.LibelleMasquage(MotifMasquage.Repondue,
+            new CauseTraitement(MotifMasquage.Repondue, t, Constat: t.AddMinutes(1)));
+
+        Assert.StartsWith("treated.json — répondue", libelle);
+        Assert.Contains($"attente à {Heure30(t)}", libelle);
+        Assert.Contains("travail observé sur la même source", libelle);
+    }
+
+    /// <summary>R04 — LUE-03, le résidu honnête. Une inscription que le détecteur n'a pas constatée (un geste, ou une
+    /// entrée antérieure au démarrage de l'overlay) n'a pas de cause : le rapport le dit comme tel, jamais « lue » ni
+    /// « répondue ». Ici, aucun détecteur : le magasin est écrit à la main.</summary>
+    [Fact]
+    public async Task Un_masquage_sans_cause_connue_est_dit_marque_a_la_main_ou_avant_le_demarrage()
+    {
+        var treated = new TreatedStore(TempFichier22(), new FakeClock(T22));
+        treated.Set("resi-0001-xx", T22.ToUnixTimeMilliseconds());
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot("resi-0001-xx", "Residu", SessionActivity.WaitingTurn, null, T22)),
+            new ArchiveStore(TempFichier22()), treated);
+
+        var report = await Rapport(moniteur);
+
+        var ligne = Assert.Single(report.Split('\n'), l => l.Contains("resi-000"));
+        Assert.Contains("masquée par treated.json (« traité » — marquée à la main, ou traitée avant le démarrage de l'overlay ; réversible)", ligne);
+        Assert.DoesNotContain("lue", ligne);
+        Assert.DoesNotContain("répondue", ligne);
+    }
+
+    /// <summary>R05 — LUE-04 : la sonde du premier plan ne sait pas. Le rapport le dit, avec sa raison, et dit ce qui
+    /// reste actif : LUE-01 seule.</summary>
+    [Fact]
+    public async Task Premier_plan_indisponible_le_rapport_dit_LUE_01_seule()
+    {
+        var moniteur = new SessionMonitor(TempDir22(), TranscriptsS29(), new ArchiveStore(TempFichier22()),
+                                          appBureau: new LecteurAppBureau(new[] { RacineS29() }),
+                                          premierPlan: FakePremierPlan.Indisponible("GetWindowThreadProcessId a échoué"));
+
+        var report = await RapportA(moniteur, M29);
+
+        Assert.Contains("Premier plan : indisponible (GetWindowThreadProcessId a échoué) — LUE-02 inactive, LUE-01 seule", report);
+    }
+
+    /// <summary>R06 — la sélection de l'app est le focus le plus récent de TOUS les fichiers, y compris d'une session
+    /// neuve sans cliSessionId : le rapport dit alors qu'aucune session n'est sélectionnée, et pourquoi.</summary>
+    [Fact]
+    public async Task Le_dernier_focus_sans_cliSessionId_ne_selectionne_personne_au_rapport()
+    {
+        var racine = Suivre(RacineAppBureau.NouvelleRacine());
+        RacineAppBureau.EcrireOctets(racine, RacineAppBureau.NomFichier("session-courante-geste-b.json"),
+            RacineAppBureau.Fixture("session-courante-geste-b.json"), U30(18, 39));
+        RacineAppBureau.Ecrire(racine, "local_neuve.json",
+            RacineAppBureau.Deriver("sans-cliSessionId.json", ("1781190743865", "1790361100000")), U30(18, 39));   // focus 18:31:40Z
+
+        var report = await RapportA(MoniteurAppBureau29(racine), M29);
+
+        Assert.Contains($"Session sélectionnée dans l'app : aucune — le dernier focus ({Heure30(U30(18, 31, 40))}) est une session sans cliSessionId", report);
+    }
+
+    /// <summary>R07 — LUE-04 : sans source app-bureau ni sonde, la règle « lue » ne peut rien voir, et le rapport le dit
+    /// au lieu de se taire : sélection inconnue (comportement v1.6), premier plan NON BRANCHÉ.</summary>
+    [Fact]
+    public async Task Sans_source_app_bureau_la_regle_lue_est_dite_inactive()
+    {
+        var moniteur = new SessionMonitor(TempDir22(),
+            new SourceFixe22(new SessionSnapshot("solo-0001", "Projet", SessionActivity.WaitingTurn, null, T22)),
+            new ArchiveStore(TempFichier22()));
+
+        var report = await Rapport(moniteur);
+
+        Assert.Contains("Session sélectionnée dans l'app : inconnue — source app-bureau absente : règle « lue » inactive (comportement v1.6)", report);
+        Assert.Contains("Premier plan : NON BRANCHÉ — LUE-02 inactive, LUE-01 seule", report);
+    }
+
+    /// <summary>R08 — LUE-03, « aucun masquage sans cause » : chaque motif, avec ou sans cause, a un libellé NOMMÉ ; le
+    /// repli « un filtre non nommé » masquerait l'oubli d'un motif ajouté. Les six libellés sans cause sont distincts.</summary>
+    [Fact]
+    public void Aucun_motif_de_masquage_n_est_sans_libelle()
+    {
+        var motifs = System.Enum.GetValues<MotifMasquage>();
+        Assert.Equal(6, motifs.Length);   // garde anti-muette : archivée, traitée, indéterminée, lue par focus, lue au premier plan, répondue
+        var t = new DateTimeOffset(2026, 9, 25, 13, 59, 5, TimeSpan.Zero);
+
+        foreach (var m in motifs)
+            foreach (var libelle in new[] { DiagnosticService.LibelleMasquage(m, null),
+                                            DiagnosticService.LibelleMasquage(m, new CauseTraitement(m, t, t, t, t)) })
+            {
+                Assert.False(string.IsNullOrWhiteSpace(libelle), $"{m} : libellé blanc");
+                Assert.NotEqual("un filtre non nommé", libelle);
+            }
+
+        var sansCause = motifs.Select(m => DiagnosticService.LibelleMasquage(m, null)).ToList();
+        Assert.Equal(sansCause.Count, sansCause.Distinct(System.StringComparer.Ordinal).Count());
+    }
+
+    /// <summary>R09 — OBS-01, versant DYNAMIQUE : le rapport lit le premier plan dans la lecture du widget, jamais par un
+    /// second appel à la sonde. Le seul appel est celui du SEUL Inspecter du rapport, et la ligne « Premier plan » est
+    /// bien écrite (sans elle, un appel unique ne prouverait rien).</summary>
+    [Fact]
+    public async Task Le_rapport_ne_relit_pas_la_sonde()
+    {
+        var (moniteur, sonde) = MontageGesteB30();
+
+        var report = await RapportA(moniteur, U30(18, 34, 6, 828));
+
+        Assert.Single(sonde.Appels);
+        Assert.Contains("Premier plan : claude depuis", report);
+    }
 }
