@@ -440,4 +440,60 @@ public class BattementsCoeurTests
         }
         finally { Directory.Delete(dossier, true); }
     }
+
+    /// <summary>
+    /// SUB-01 (phase 30.1) — LA BRÈCHE R3 FERMÉE AU BON ENDROIT, en concurrence réelle. Le test précédent tient
+    /// la demande contre des battements PLUS ANCIENS qu'elle (monotonie). Celui-ci tient le cas que la monotonie
+    /// ne peut pas voir : huit écrivains de battements de SOUS-AGENT, tous PLUS RÉCENTS que la demande de
+    /// permission — l'agent en arrière-plan continue d'appeler des outils pendant que le prompt attend.
+    ///
+    /// <para>C'est exactement la vague que le veto de la phase 25 faisait taire. Ces battements passent
+    /// désormais le processeur, et c'est l'écriture qui les écarte, sous le verrou, sur le même descripteur
+    /// (D-30.1-03). Aucun ne doit échouer (un refus légitime est un succès) et « à toi » doit survivre, à
+    /// l'instant de la demande.</para>
+    /// </summary>
+    [Fact]
+    public void Huit_ecrivains_de_battements_de_sous_agent_n_effacent_jamais_une_permission()
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var demandeMs = BaseMs;
+            var demande = SessionHookProcessor.Process(
+                "PermissionRequest", "{\"session_id\":\"" + Sid + "\",\"cwd\":\"C:/dev/MonProjet\"}", demandeMs);
+            Assert.True(EcritureEtatSession.Appliquer(dossier, demande).Reussi);
+
+            SessionHookResult BattementDeSousAgent(long ms)
+                => SessionHookProcessor.Process("PostToolUse",
+                       "{\"session_id\":\"" + Sid + "\",\"cwd\":\"C:/dev/MonProjet\"," + MarqueurId + "}", ms);
+
+            // Anti-vacuité : ce sont bien des battements de SOUS-AGENT qui passent le processeur — un veto
+            // rétabli rendrait ce test vert sans rien prouver de l'écriture.
+            var echantillon = BattementDeSousAgent(BaseMs + 1);
+            Assert.False(echantillon.Ignore);
+            Assert.True(echantillon.BattementSousAgent);
+
+            var echecs = 0;
+            var causes = new ConcurrentBag<string>();
+            Parallel.For(0, 8, ecrivain =>
+            {
+                for (var i = 1; i <= 50; i++)
+                {
+                    // TOUS postérieurs à la demande : BaseMs + 1 001 au plus tôt.
+                    var r = EcritureEtatSession.Appliquer(dossier, BattementDeSousAgent(BaseMs + (ecrivain + 1) * 1000 + i));
+                    if (!r.Reussi) { Interlocked.Increment(ref echecs); causes.Add(r.Cause ?? "(sans cause)"); }
+                }
+            });
+
+            Assert.True(echecs == 0,
+                echecs + " écriture(s) refusée(s) sur 400. Causes distinctes : "
+                + string.Join(" | ", causes.Distinct().Take(3)));
+
+            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(dossier, Sid + ".json")));
+            Assert.Equal("WaitingAttention", doc.RootElement.GetProperty("activity").GetString());
+            Assert.Equal("PermissionRequest", doc.RootElement.GetProperty("reason").GetString());
+            Assert.Equal(demandeMs, doc.RootElement.GetProperty("updated_at").GetInt64());
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
 }

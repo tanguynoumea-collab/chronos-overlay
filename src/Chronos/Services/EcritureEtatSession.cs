@@ -13,6 +13,10 @@ namespace Chronos.Services;
 /// de l'appelant, c'est un succès : <see cref="Reussi"/> reste vrai, donc aucun message d'erreur ne remonte
 /// à l'utilisateur pour une écriture légitimement écartée. Confondre ce sort avec un échec afficherait un
 /// avertissement à chaque lot d'appels d'outil.</para>
+///
+/// <para>Depuis la phase 30.1 (SUB-01), ce même sort a DEUX causes nommées : un état plus récent
+/// (<see cref="IgnoreeCarPerimee"/>) ou un battement de sous-agent qui n'a rien à réaffirmer
+/// (<see cref="IgnoreeCarSousAgent"/>).</para>
 /// </summary>
 public sealed record ResultatEcritureEtat(bool Reussi, string? Cause, bool Ignoree = false)
 {
@@ -21,6 +25,10 @@ public sealed record ResultatEcritureEtat(bool Reussi, string? Cause, bool Ignor
 
     /// <summary>Écriture écartée parce qu'un état plus récent est déjà en place. Succès, pas échec.</summary>
     public static ResultatEcritureEtat IgnoreeCarPerimee(string cause) => new(true, cause, Ignoree: true);
+
+    /// <summary>SUB-01 — battement de sous-agent écarté : l'état présent n'est ni un travail ni un tour fini (attente
+    /// d'intervention, fichier absent ou illisible). Succès, pas échec : aucun message ne remonte à l'utilisateur.</summary>
+    public static ResultatEcritureEtat IgnoreeCarSousAgent(string cause) => new(true, cause, Ignoree: true);
 }
 
 /// <summary>
@@ -66,12 +74,15 @@ public static class EcritureEtatSession
             if (resultat.StateJson is null) return ResultatEcritureEtat.Reussie;
 
             var instant = InstantDeLEtat(resultat.StateJson);
-            var deja = EcrireAvecReprise(fichier, new System.Text.UTF8Encoding(false).GetBytes(resultat.StateJson), instant);
+            var refus = EcrireAvecReprise(fichier, new System.Text.UTF8Encoding(false).GetBytes(resultat.StateJson),
+                                          instant, resultat.BattementSousAgent);
 
-            return deja is null
-                ? ResultatEcritureEtat.Reussie
-                : ResultatEcritureEtat.IgnoreeCarPerimee(
-                      $"état antérieur à celui déjà présent ({instant} contre {deja}) : écriture écartée");
+            if (refus is null) return ResultatEcritureEtat.Reussie;
+            if (refus.ParSousAgent)
+                return ResultatEcritureEtat.IgnoreeCarSousAgent(
+                    $"battement de sous-agent sur un état « {refus.Activite ?? "absent ou illisible"} » : seul un travail ou un tour fini se réaffirme — écriture écartée");
+            return ResultatEcritureEtat.IgnoreeCarPerimee(
+                $"état antérieur à celui déjà présent ({instant} contre {refus.Instant}) : écriture écartée");
         }
         catch (System.Exception ex)
         {
@@ -90,6 +101,15 @@ public static class EcritureEtatSession
     /// pèse quelques centaines d'octets, et rien ne justifie de charger davantage pour y chercher un
     /// champ. Au-delà, la cible est traitée comme illisible — donc comme une absence de signal.</summary>
     private const int TailleRelueMax = 65_536;
+
+    /// <summary>Pourquoi une écriture n'a PAS eu lieu : l'état relu sous le verrou (horodatage, activité), et
+    /// laquelle des deux règles l'a écartée — la réaffirmation d'un sous-agent (SUB-01) ou la monotonie (MON-01).</summary>
+    private sealed record RefusEcriture(long? Instant, string? Activite, bool ParSousAgent);
+
+    /// <summary>SUB-01, D-30.1-03 — ce qu'un battement de SOUS-AGENT peut réaffirmer : un travail ou un tour fini, et rien
+    /// d'autre. Une attente d'intervention (permission, question) ne s'efface pas ainsi ; un état absent ou illisible n'est pas
+    /// un travail à réaffirmer. Comparaison exacte : ces valeurs sont celles que BuildStateJson écrit.</summary>
+    private static bool ReaffirmableParUnSousAgent(string? activite) => activite is "Working" or "WaitingTurn";
 
     /// <summary>
     /// EVT-03 — LA PARADE AUX ÉCRIVAINS CONCURRENTS, et la raison pour laquelle elle existe.
@@ -129,26 +149,50 @@ public static class EcritureEtatSession
     /// relire puis rouvrir ajouterait la course qu'on cherche à retirer. Et ce qui n'est PAS couvert doit
     /// être dit : la <b>suppression</b> (<c>SessionEnd</c>) reste inconditionnelle — elle ne porte pas
     /// d'état à comparer.</para>
+    ///
+    /// <para><b>SUB-01 (phase 30.1) — réaffirmer, jamais créer ni effacer.</b> Un sous-agent qui écrit est
+    /// un travail de sa session : ses battements passent désormais le processeur (le veto de la phase 25 se
+    /// réduit au cycle de vie). La brèche que ce veto fermait par le silence — une vague d'agents écrasant un
+    /// « à toi » (R3) — se ferme ICI : un battement de sous-agent n'écrit que si l'état présent porte
+    /// <c>activity</c> = <c>Working</c> ou <c>WaitingTurn</c>. Tout le reste — attente d'intervention,
+    /// fichier vide, fragment, activité illisible ou inconnue — ne reçoit rien, octet pour octet. La règle
+    /// siège au même endroit que la monotonie : l'état est relu sur le MÊME descripteur, sous le MÊME verrou
+    /// que l'écriture, et les deux règles se composent (un battement de sous-agent réaffirmable mais
+    /// antérieur reste écarté par MON-01). Le fichier ABSENT n'est pas créé : l'ouverture se fait en
+    /// <c>FileMode.Open</c> pour un sous-agent — naître est un fait du cycle de vie du parent, et un battement
+    /// arrivé après son <c>SessionEnd</c> ressusciterait sinon une session morte. C'est l'inverse assumé de
+    /// la doctrine de la phase 23 (« un fichier illisible est une absence : on écrit »), qui vaut pour les
+    /// battements du PARENT seulement et reste inchangée pour eux.</para>
     /// </summary>
     /// <param name="instant">Horodatage porté par l'état à écrire, ou <c>null</c> s'il est illisible.</param>
-    /// <returns><c>null</c> si l'écriture a eu lieu ; sinon l'horodatage de l'état déjà présent qui l'a
-    /// emporté.</returns>
-    private static long? EcrireAvecReprise(string fichier, byte[] octets, long? instant)
+    /// <param name="battementSousAgent">Vrai pour un battement émis par un sous-agent
+    /// (<see cref="SessionHookResult.BattementSousAgent"/>).</param>
+    /// <returns><c>null</c> si l'écriture a eu lieu ; sinon le refus : l'état relu qui l'a emporté, et la
+    /// règle qui l'a écartée.</returns>
+    private static RefusEcriture? EcrireAvecReprise(string fichier, byte[] octets, long? instant, bool battementSousAgent)
     {
         for (var essai = 1; ; essai++)
         {
             try
             {
-                using var flux = new FileStream(fichier, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+                using var flux = new FileStream(fichier, battementSousAgent ? FileMode.Open : FileMode.OpenOrCreate,
+                                                FileAccess.ReadWrite, FileShare.Read);   // SUB-01 : un sous-agent ne CRÉE jamais l'état
 
-                if (instant is long neuf && InstantDejaSurDisque(flux) is long present && neuf < present)
-                    return present;
+                var deja = EtatDejaSurDisque(flux);                                      // relu sous le MÊME verrou que l'écriture
+                if (battementSousAgent && !ReaffirmableParUnSousAgent(deja.Activite))
+                    return new RefusEcriture(deja.Instant, deja.Activite, ParSousAgent: true);
+                if (instant is long neuf && deja.Instant is long present && neuf < present)
+                    return new RefusEcriture(present, deja.Activite, ParSousAgent: false);
 
                 flux.Position = 0;
                 flux.Write(octets, 0, octets.Length);
                 flux.SetLength(octets.Length);   // la cible pouvait être plus longue : pas de queue orpheline
                 flux.Flush();
                 return null;
+            }
+            catch (FileNotFoundException) when (battementSousAgent)
+            {
+                return new RefusEcriture(null, null, ParSousAgent: true);   // absent : rien à réaffirmer, et rien à créer
             }
             catch (IOException) when (essai < EssaisMax)
             {
@@ -181,13 +225,15 @@ public static class EcritureEtatSession
     }
 
     /// <summary>Même lecture, mais sur le descripteur DÉJÀ OUVERT en écriture — c'est ce qui met la
-    /// comparaison et l'écriture sous un seul et même verrou.</summary>
-    private static long? InstantDejaSurDisque(FileStream flux)
+    /// comparaison et l'écriture sous un seul et même verrou. Un seul parse rend les deux champs que les
+    /// règles lisent : l'horodatage (MON-01) et l'activité (SUB-01), celle-ci seulement si c'est une chaîne.
+    /// Vide, aberrant, fragment, contenu étranger : <c>(null, null)</c> — une absence de signal.</summary>
+    private static (long? Instant, string? Activite) EtatDejaSurDisque(FileStream flux)
     {
         try
         {
             var taille = flux.Length;
-            if (taille <= 0 || taille > TailleRelueMax) return null;   // vide ou aberrant = absence
+            if (taille <= 0 || taille > TailleRelueMax) return (null, null);   // vide ou aberrant = absence
 
             var tampon = new byte[(int)taille];
             flux.Position = 0;
@@ -200,9 +246,15 @@ public static class EcritureEtatSession
             }
 
             using var doc = System.Text.Json.JsonDocument.Parse(new System.ReadOnlyMemory<byte>(tampon, 0, lus));
-            return Champ(doc.RootElement);
+            var racine = doc.RootElement;
+            var activite = racine.ValueKind == System.Text.Json.JsonValueKind.Object
+                           && racine.TryGetProperty("activity", out var a)
+                           && a.ValueKind == System.Text.Json.JsonValueKind.String
+                ? a.GetString()
+                : null;
+            return (Champ(racine), activite);
         }
-        catch { return null; }   // fragment, contenu étranger, lecture refusée : absence de signal
+        catch { return (null, null); }   // fragment, contenu étranger, lecture refusée : absence de signal
     }
 
     /// <summary>Le champ d'horodatage du schéma d'état, lu tel quel : aucune conversion d'unité ici, on

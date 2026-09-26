@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Chronos.Services;
 using Xunit;
@@ -263,5 +264,195 @@ public class EcritureEtatSessionTests
         Assert.True(res.Reussi);
         Assert.False(res.Ignoree);   // l'absence de signal n'est JAMAIS lue comme « un signal très récent »
         Assert.Equal(("Working", t), SurDisque(dossier));
+    }
+
+    // --- SUB-01 (phase 30.1) : un battement de SOUS-AGENT réaffirme, il n'efface ni ne crée ---
+
+    /// <summary>Le stdin d'un hook émis par un SOUS-AGENT de la session <paramref name="sid"/> : le même que
+    /// celui du parent, plus les deux marqueurs — valeurs du relevé de 14:44 (écart E2 du constat).</summary>
+    private static string StdinSousAgent(string sid)
+        => $$"""{"session_id":"{{sid}}","cwd":"C:/Users/x/PROJET OVERLAY","agent_id":"a7df37762e5ce2df4","agent_type":"gsd-executor"}""";
+
+    private static SessionHookResult OrdreSousAgent(string evenement, string sid, long ms)
+        => SessionHookProcessor.Process(evenement, StdinSousAgent(sid), ms);
+
+    /// <summary>L'empreinte des OCTETS du fichier d'état : « rien n'a été écrit » se prouve octet pour octet,
+    /// pas par une relecture qui pourrait retomber sur les mêmes valeurs.</summary>
+    private static string Md5(string dossier)
+        => Convert.ToHexString(MD5.HashData(File.ReadAllBytes(Path.Combine(dossier, Sid + ".json"))));
+
+    /// <summary>Le motif (<c>reason</c>) lu dans le fichier d'état, ou <c>null</c> s'il n'y en a pas.</summary>
+    private static string? Motif(string dossier)
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(dossier, Sid + ".json")));
+        return doc.RootElement.TryGetProperty("reason", out var r) ? r.GetString() : null;
+    }
+
+    /// <summary>
+    /// LA BRÈCHE R3, FERMÉE AU BON ENDROIT (30.1-CONTEXT, « Specific Ideas »). Une permission est demandée ; un
+    /// agent en arrière-plan continue d'appeler des outils, et son battement est PLUS RÉCENT que la demande — la
+    /// monotonie ne peut donc rien pour elle. Le veto de la phase 25 faisait taire ce battement ; il passe
+    /// désormais le processeur, et c'est l'écriture qui le refuse : « à toi » ne s'efface pas par un sous-agent.
+    /// La preuve est octet pour octet.
+    /// </summary>
+    [Fact]
+    public void Un_battement_de_sous_agent_n_efface_pas_une_permission_fichier_identique_octet_pour_octet()
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var t = Maintenant.ToUnixTimeMilliseconds();
+            Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("PermissionRequest", Sid, t)).Reussi);
+            var avant = Md5(dossier);
+
+            var res = EcritureEtatSession.Appliquer(
+                dossier, OrdreSousAgent("PreToolUse", Sid, Maintenant.AddSeconds(60).ToUnixTimeMilliseconds()));
+
+            // Un refus légitime n'est pas un échec : App.xaml.cs rend 0 et n'écrit rien sur la sortie d'erreur.
+            Assert.True(res.Reussi);
+            Assert.True(res.Ignoree);
+            Assert.Contains("sous-agent", res.Cause!, StringComparison.Ordinal);
+            Assert.Equal(avant, Md5(dossier));
+            Assert.Equal(("WaitingAttention", t), SurDisque(dossier));
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
+
+    /// <summary>
+    /// L'ANTI-BLOCAGE de la règle précédente : sans lui, elle serait verte en refusant TOUT battement de
+    /// sous-agent. Sur un tour fini (le cas du relevé de 14:44 : le parent a rendu la main, l'agent tourne
+    /// encore) comme sur un travail, le battement RÉAFFIRME le travail, daté de son instant, et le motif le
+    /// nomme.
+    /// </summary>
+    [Theory]
+    [InlineData("Stop", "WaitingTurn")]
+    [InlineData("UserPromptSubmit", "Working")]
+    public void Un_battement_de_sous_agent_reaffirme_le_travail_sur_un_travail_ou_un_tour_fini(string evenementParent, string etatParent)
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var t = Maintenant.ToUnixTimeMilliseconds();
+            Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre(evenementParent, Sid, t)).Reussi);
+            Assert.Equal((etatParent, t), SurDisque(dossier));
+
+            var plusTard = Maintenant.AddSeconds(1).ToUnixTimeMilliseconds();
+            var res = EcritureEtatSession.Appliquer(dossier, OrdreSousAgent("PostToolUse", Sid, plusTard));
+
+            Assert.True(res.Reussi);
+            Assert.False(res.Ignoree);
+            Assert.Equal(("Working", plusTard), SurDisque(dossier));
+            Assert.Equal("PostToolUse (sous-agent)", Motif(dossier));
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
+
+    /// <summary>
+    /// D-30.1-03 — RÉAFFIRMER, JAMAIS CRÉER. Naître est un fait du cycle de vie du PARENT : un battement de
+    /// sous-agent arrivé après le <c>SessionEnd</c> du parent ressusciterait sinon une session morte. Le dossier
+    /// doit rester VIDE — ni fichier d'état, ni fichier vide qu'une ouverture en création aurait laissé.
+    /// </summary>
+    [Fact]
+    public void Un_battement_de_sous_agent_ne_cree_jamais_le_fichier_d_etat()
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var res = EcritureEtatSession.Appliquer(
+                dossier, OrdreSousAgent("PreToolUse", Sid, Maintenant.ToUnixTimeMilliseconds()));
+
+            Assert.True(res.Reussi);
+            Assert.True(res.Ignoree);
+            Assert.Empty(Directory.GetFiles(dossier));
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
+
+    /// <summary>
+    /// D-30.1-03 — un état ILLISIBLE n'est pas un travail à réaffirmer. Les TROIS débris de
+    /// <see cref="Un_fichier_illisible_ou_sans_horodatage_n_empeche_pas_l_ecriture"/>, et le contraste est voulu :
+    /// pour un battement du PARENT, la doctrine de la phase 23 reste entière (« un fichier illisible est une
+    /// absence : on écrit ») ; pour un battement de SOUS-AGENT, l'absence de travail lisible ne reçoit rien.
+    /// Le fragment tronqué et l'objet sans horodatage disent même « WaitingAttention » : les réécrire effacerait
+    /// peut-être une attente.
+    /// </summary>
+    [Theory]
+    [InlineData("{\"activity\":\"WaitingAttention\",\"updated_at\":99999")]   // fragment tronqué
+    [InlineData("{\"activity\":\"WaitingAttention\"}")]                       // valide, mais sans horodatage
+    [InlineData("")]                                                          // vide
+    public void Un_battement_de_sous_agent_ne_reecrit_pas_un_etat_illisible(string debris)
+    {
+        var dossier = TempDossier();
+        try
+        {
+            File.WriteAllText(Path.Combine(dossier, Sid + ".json"), debris);
+            var avant = Md5(dossier);
+
+            var res = EcritureEtatSession.Appliquer(
+                dossier, OrdreSousAgent("PreToolUse", Sid, Maintenant.ToUnixTimeMilliseconds()));
+
+            Assert.True(res.Reussi);
+            Assert.True(res.Ignoree);
+            Assert.Equal(avant, Md5(dossier));
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
+
+    /// <summary>
+    /// MON-01 vaut aussi pour un sous-agent : sur un état qu'il PEUT réaffirmer, un battement STRICTEMENT
+    /// antérieur reste écarté par la monotonie, avec la cause de la monotonie — les deux règles se composent,
+    /// aucune ne remplace l'autre.
+    /// </summary>
+    [Fact]
+    public void Un_battement_de_sous_agent_ANTERIEUR_reste_ecarte_par_la_monotonie()
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var t = Maintenant.ToUnixTimeMilliseconds();
+            Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("Stop", Sid, t)).Reussi);
+
+            var res = EcritureEtatSession.Appliquer(
+                dossier, OrdreSousAgent("PreToolUse", Sid, Maintenant.AddSeconds(-5).ToUnixTimeMilliseconds()));
+
+            Assert.True(res.Reussi);
+            Assert.True(res.Ignoree);
+            Assert.Contains("antérieur", res.Cause!, StringComparison.Ordinal);
+            Assert.Equal(("WaitingTurn", t), SurDisque(dossier));
+        }
+        finally { Directory.Delete(dossier, true); }
+    }
+
+    /// <summary>
+    /// Une DEMANDE de sous-agent passe (phase 25) et s'écrit avec son motif ordinaire (D-30.1-02) ; ses
+    /// battements suivants ne l'effacent pas. C'est la LIMITE ÉCRITE de la phase, contrepartie verrouillée de
+    /// « n'efface jamais » : une permission demandée par un sous-agent puis accordée reste « En attente » (ou
+    /// masquée si elle a été lue) jusqu'au prochain signal du parent.
+    /// </summary>
+    [Fact]
+    public void La_permission_d_un_sous_agent_est_ecrite_et_ses_battements_ne_l_effacent_pas()
+    {
+        var dossier = TempDossier();
+        try
+        {
+            var t = Maintenant.ToUnixTimeMilliseconds();
+            Assert.True(EcritureEtatSession.Appliquer(dossier, Ordre("Stop", Sid, t)).Reussi);
+
+            var t1 = Maintenant.AddSeconds(1).ToUnixTimeMilliseconds();
+            var demande = EcritureEtatSession.Appliquer(dossier, OrdreSousAgent("PermissionRequest", Sid, t1));
+            Assert.True(demande.Reussi);
+            Assert.False(demande.Ignoree);
+            Assert.Equal(("WaitingAttention", t1), SurDisque(dossier));
+            Assert.Equal("PermissionRequest", Motif(dossier));
+            var avant = Md5(dossier);
+
+            var res = EcritureEtatSession.Appliquer(
+                dossier, OrdreSousAgent("PostToolUse", Sid, Maintenant.AddSeconds(2).ToUnixTimeMilliseconds()));
+
+            Assert.True(res.Reussi);
+            Assert.True(res.Ignoree);
+            Assert.Equal(avant, Md5(dossier));
+        }
+        finally { Directory.Delete(dossier, true); }
     }
 }
