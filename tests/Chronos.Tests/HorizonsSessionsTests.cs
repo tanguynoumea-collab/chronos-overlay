@@ -253,6 +253,29 @@ public class HorizonsSessionsTests : IDisposable
     }
 
     /// <summary>
+    /// LA GRÂCE DE LECTURE (LUE-02, phase 30) : la session sélectionnée, processus claude au premier plan, n'est lue
+    /// que 2,5 s après le plus tardif de la fin du tour et du retour au premier plan. Le seuil vit ICI, dans le type
+    /// unique, et le détecteur le LIT — il n'en déclare aucune copie. La grâce d'un regard n'a rien à voir avec la
+    /// durée d'un silence : elle lui reste très inférieure. Inégalités d'abord, valeur ensuite (même règle que la chaîne).
+    /// </summary>
+    [Fact]
+    public void La_grace_de_lecture_tient_sous_le_silence()
+    {
+        Assert.True(HorizonsSessions.GraceLecture > TimeSpan.Zero,
+            $"GraceLecture ({HorizonsSessions.GraceLecture}) n'est plus positive : le tour fini sous les yeux serait "
+            + "« lu » avant que le regard ait pu se poser.");
+        Assert.True(HorizonsSessions.GraceLecture < HorizonsSessions.Silence,
+            $"GraceLecture ({HorizonsSessions.GraceLecture}) < Silence ({HorizonsSessions.Silence}) défait : on attendrait "
+            + "plus longtemps pour lire que pour se taire.");
+        Assert.Equal(TimeSpan.FromMilliseconds(2500), HorizonsSessions.GraceLecture);
+
+        var detecteur = File.ReadAllText(Path.Combine(DossierServices(), "SessionTreatmentTracker.cs"));
+        Assert.True(detecteur.Length >= 500, "SessionTreatmentTracker.cs vide ou tronqué : la garde serait muette.");
+        Assert.Contains("HorizonsSessions.GraceLecture", detecteur, StringComparison.Ordinal);
+        Assert.DoesNotContain("TimeSpan.From", detecteur, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// LE CÂBLAGE. Sans lui, la chaîne serait vraie pendant qu'un fichier réintroduit un littéral privé : on
     /// testerait un type que plus personne ne lit. Chacun des quatre consommateurs lit <c>HorizonsSessions.</c>,
     /// ne porte plus aucun des anciens noms, et les trois premiers ne déclarent plus aucune durée.

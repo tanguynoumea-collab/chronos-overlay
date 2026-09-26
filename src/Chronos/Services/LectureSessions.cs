@@ -17,16 +17,59 @@ public enum MotifMasquage
     /// <summary>Écartée par <see cref="ArchiveStore"/> — geste explicite de l'utilisateur (clic droit).</summary>
     Archivee,
 
-    /// <summary>Écartée par <see cref="TreatedStore"/> — hystérésis « traité », posée par le détecteur.</summary>
+    /// <summary>Écartée par <see cref="TreatedStore"/> SANS cause connue du détecteur : marquée à la main (geste), ou
+    /// traitée avant le démarrage de l'overlay et non relue depuis. Réversible.</summary>
     Traitee,
 
     /// <summary>État INDÉTERMINÉ (signal illisible) : le widget n'a pas de ligne pour ce qu'il n'a pas pu lire
     /// (LIB-01). Ce n'est pas un geste de l'utilisateur ; le rapport la liste pour que son absence reste explicable.</summary>
     Indeterminee,
+
+    // Les trois valeurs suivantes sont AJOUTÉES EN FIN (phase 30, LUE-03) : rien ne se réordonne. Elles nomment la
+    // cause d'un masquage par TreatedStore quand le détecteur l'a CONSTATÉE lui-même.
+
+    /// <summary>Lue : le focus de la session dans l'app est postérieur à l'attente — LUE-01.</summary>
+    LueParFocus,
+
+    /// <summary>Lue : session sélectionnée, fenêtre claude au premier plan au-delà de la grâce — LUE-02.</summary>
+    LueAuPremierPlan,
+
+    /// <summary>Répondue : attente puis travail observé sur la MÊME source — NET-01.</summary>
+    Repondue,
 }
 
-/// <summary>Une session détectée que le widget n'affiche pas, et le filtre qui l'a écartée.</summary>
-public sealed record SessionMasquee(SessionSnapshot Session, MotifMasquage Motif);
+/// <summary>
+/// POURQUOI le détecteur a inscrit (ou constaté) une session traitée, et les instants qui le prouvent. treated.json
+/// ne porte que l'épisode : la cause vit en mémoire (D-30-05). <see cref="Constat"/> = l'instant du cycle qui a
+/// décidé, figé.
+/// </summary>
+/// <param name="Motif">La règle qui a conclu : <see cref="MotifMasquage.LueParFocus"/>,
+/// <see cref="MotifMasquage.LueAuPremierPlan"/> ou <see cref="MotifMasquage.Repondue"/>.</param>
+/// <param name="Attente">L'épisode d'attente traité (l'instant que le signal porte).</param>
+/// <param name="Focus">Le dernier focus de la session dans l'app, quand la lecture en dépend.</param>
+/// <param name="PremierPlanDepuis">L'instant depuis lequel le processus claude était au premier plan (LUE-02).</param>
+/// <param name="Constat">L'instant du cycle qui a décidé, figé au premier constat de l'épisode.</param>
+public sealed record CauseTraitement(
+    MotifMasquage Motif,
+    System.DateTimeOffset Attente,
+    System.DateTimeOffset? Focus = null,
+    System.DateTimeOffset? PremierPlanDepuis = null,
+    System.DateTimeOffset? Constat = null);
+
+/// <summary>
+/// Ce que le moniteur sait de la LECTURE à ce cycle : le dernier focus par session (clé insensible à la casse, bâti
+/// sur la lecture de l'app de CE cycle), la session sélectionnée dans l'app (nulle si inconnue ou sans cliSessionId)
+/// et l'instant depuis lequel le processus claude est au premier plan (nul sinon). Un contexte NUL rend la règle
+/// « lue » inactive : comportement v1.6 exact (LUE-04).
+/// </summary>
+public sealed record ContexteLecture(
+    IReadOnlyDictionary<string, System.DateTimeOffset?> DernierFocus,
+    string? Selectionnee,
+    System.DateTimeOffset? ClaudeAuPremierPlanDepuis);
+
+/// <summary>Une session détectée que le widget n'affiche pas, le filtre qui l'a écartée et, quand le détecteur l'a
+/// constatée, la cause de son traitement (nulle : cause inconnue — geste, ou traitement antérieur au démarrage).</summary>
+public sealed record SessionMasquee(SessionSnapshot Session, MotifMasquage Motif, CauseTraitement? Cause = null);
 
 /// <summary>
 /// Ce que le moniteur a VU à un instant donné : ce qu'il retient, ce qu'il masque (et par quel filtre),

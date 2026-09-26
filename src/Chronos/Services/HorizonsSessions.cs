@@ -11,7 +11,9 @@ namespace Chronos.Services;
 ///   <item><see cref="RetentionTraitees"/> &lt; <see cref="ExpirationEtat"/> : on ne balaie jamais un fichier d'état
 ///   que le widget ou le magasin des traitées pourraient encore lire ;</item>
 ///   <item><see cref="Abandon"/> ≤ <see cref="LectureAppBureau"/> : la fenêtre de LECTURE des métadonnées de l'app
-///   bureau couvre tout ce qui peut encore s'afficher — elle économise des lectures, elle ne cache aucun signal.</item>
+///   bureau couvre tout ce qui peut encore s'afficher — elle économise des lectures, elle ne cache aucun signal ;</item>
+///   <item><see cref="GraceLecture"/> &lt; <see cref="Silence"/> : la grâce d'un regard n'a rien à voir avec la durée
+///   d'un silence.</item>
 /// </list>
 /// Avant la phase 28, ces valeurs vivaient en littéraux privés dans quatre fichiers, et une cinquième — quinze
 /// minutes, la fenêtre des transcripts — faisait disparaître en silence toute session sans fichier de hook (trou
@@ -38,4 +40,9 @@ public static class HorizonsSessions
     /// (<see cref="Abandon"/>). Elle vaut au moins <see cref="Abandon"/> : l'app réécrit le fichier d'une session à
     /// chaque changement, donc un signal de moins de huit heures vient d'un fichier écrit depuis moins de huit heures.</summary>
     public static readonly System.TimeSpan LectureAppBureau = System.TimeSpan.FromHours(24);
+
+    /// <summary>LUE-02 — la GRÂCE de la lecture au premier plan : la session sélectionnée dans l'app, processus claude au
+    /// premier plan, n'est « lue » que 2,5 s après le plus tardif de la fin du tour et du retour au premier plan — le
+    /// regard a le temps de se poser. Bien en deçà de <see cref="Silence"/> : on lit bien avant de se taire.</summary>
+    public static readonly System.TimeSpan GraceLecture = System.TimeSpan.Zero;   // SQUELETTE RED
 }

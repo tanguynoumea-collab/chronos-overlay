@@ -70,7 +70,7 @@ public sealed class SessionTreatmentTracker
     /// Observe un cycle de signaux retenus (avec leur source) + horloge, et met à jour
     /// <see cref="TreatedStore"/> (ajout NET-01, purge NET-03).
     /// </summary>
-    public void Observe(IReadOnlyList<SignalSession> vainqueurs, System.DateTimeOffset now)
+    public void Observe(IReadOnlyList<SignalSession> vainqueurs, System.DateTimeOffset now, ContexteLecture? lecture = null)
     {
         var nowMs = now.ToUnixTimeMilliseconds();
         var traitees = _store.Load();   // une seule lecture par cycle (sert au test de réapparition NET-03)
