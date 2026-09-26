@@ -258,6 +258,35 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
+    /// GARDE DE CÂBLAGE (LUE-02, LUE-04, phase 30 — Piège 9 de la recherche). Le paramètre <c>premierPlan</c> du moniteur
+    /// est optionnel et nul par défaut : c'est ce qui garde les tests existants sans sonde, et c'est aussi ce qui
+    /// laisserait la PRODUCTION sans LUE-02 sans rien dire — la session regardée au premier plan ne serait jamais lue, et
+    /// aucun build ni démarrage n'échouerait. Contrôle de SOURCE (<c>OnStartup</c> n'est pas instanciable sous test) : la
+    /// sonde est enregistrée UNE fois, en singleton (son « depuis » vit avec l'app), et le moniteur du widget la reçoit
+    /// par argument NOMMÉ. Le fragment lu est l'enregistrement du moniteur (même motif que les deux gardes précédentes) :
+    /// il doit contenir la sonde ET toujours le lecteur de l'app, preuve que l'ajout n'a pas tronqué le fragment.
+    /// </summary>
+    [Fact]
+    public void Le_moniteur_de_production_recoit_le_premier_plan()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        Assert.Contains("services.AddSingleton<IPremierPlan>(_ => new PremierPlanWin32());", texte, StringComparison.Ordinal);
+
+        var debut = texte.IndexOf("new SessionMonitor(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "Enregistrement du SessionMonitor introuvable dans App.xaml.cs");
+        var fin = texte.IndexOf("));", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin de l'enregistrement du SessionMonitor introuvable");
+
+        var enregistrement = texte[debut..fin];
+        Assert.Contains("premierPlan: sp.GetRequiredService<IPremierPlan>()", enregistrement, StringComparison.Ordinal);
+        Assert.Contains("appBureau: sp.GetRequiredService<LecteurAppBureau>()", enregistrement, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// GARDE DE SOURCE (APP-02, phase 29). Le titre de l'app n'est pas un signal : posé AVANT l'arbitrage, il
     /// deviendrait un critère de départage caché (l'égalité de record l'inclut) ; posé par une source d'activité, il
     /// ferait de l'app une source de lignes. Il n'a donc qu'un siège : le moniteur, sur les RETENUS, après

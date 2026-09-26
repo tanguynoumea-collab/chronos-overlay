@@ -149,6 +149,10 @@ public class CompositionRootTests
     /// construit sur les <c>Dossiers</c> du moniteur. Les candidats sont résolus sur une arborescence TEMPORAIRE
     /// (<c>Local\Packages\Claude_test</c> + <c>Roaming</c>), jamais par <c>RacinesEtat.ParDefaut</c> : les deux
     /// racines rendues vivent sous le dossier temporaire, et aucune n'est celle de l'app bureau.</para>
+    ///
+    /// <para>Phase 30 (LUE-02) : la sonde du premier plan rejoint le graphe — <see cref="IPremierPlan"/> résolue en
+    /// <see cref="PremierPlanWin32"/>, singleton, passée au moniteur par l'argument NOMMÉ <c>premierPlan</c>. Ni
+    /// <c>Inspecter</c> ni <c>Lire</c> ne sont appelés : la sonde lirait le vrai premier plan de la machine.</para>
     /// </summary>
     [Fact]
     public void Le_graphe_DI_resout_la_chaine_de_sessions()
@@ -178,11 +182,16 @@ public class CompositionRootTests
         // moniteur miroir a la source de transcripts par défaut, qui lirait le vrai ~/.claude/projects.
         services.AddSingleton(sp => new LecteurAppBureau(sp.GetRequiredService<RacinesCandidates>().SessionsAppBureau));
 
+        // LUE-02 (phase 30) : la sonde du premier plan, singleton, passée au moniteur par argument NOMMÉ — exactement
+        // comme la production. Ce test n'appelle JAMAIS Lire : la sonde lirait le vrai premier plan de la machine.
+        services.AddSingleton<IPremierPlan>(_ => new PremierPlanWin32());
+
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
             sp.GetRequiredService<SessionTreatmentTracker>(),
             dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks,
-            appBureau: sp.GetRequiredService<LecteurAppBureau>()));
+            appBureau: sp.GetRequiredService<LecteurAppBureau>(),
+            premierPlan: sp.GetRequiredService<IPremierPlan>()));
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton(sp => new BalayageMagasinSessions(
@@ -211,6 +220,13 @@ public class CompositionRootTests
         Assert.NotEmpty(lecteur.Candidats);   // garde anti-muette
         Assert.All(lecteur.Candidats, c => Assert.StartsWith(System.IO.Path.GetTempPath(), c));
         Assert.Same(lecteur, moniteur.Lecteur);
+
+        // LUE-02 — UNE sonde du premier plan (un « depuis », un cache), la sonde Win32 réelle, et c'est CELLE-LÀ que le
+        // moniteur du widget a reçue : le rapport lit ce qu'elle a vu par la lecture du moniteur (OBS-01).
+        var sonde = provider.GetRequiredService<IPremierPlan>();
+        Assert.Same(sonde, provider.GetRequiredService<IPremierPlan>());
+        Assert.IsType<PremierPlanWin32>(sonde);
+        Assert.Same(sonde, moniteur.PremierPlan);
 
         // OBS-01 — le partage d'instance repose entièrement sur la portée : passer ce moniteur en transient
         // donnerait au diagnostic un exemplaire distinct de celui du widget, avec ses propres magasins
