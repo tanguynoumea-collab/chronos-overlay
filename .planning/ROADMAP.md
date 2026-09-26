@@ -260,10 +260,13 @@ vérifiée contre elle).
   6. **Une session qui travaille est toujours visible** (ajouté le 2026-09-26) : répondue, lue ou marquée
      traitée, une session qui se remet à travailler affiche « Réflexion » ; le masquage ne s'applique qu'aux
      attentes, et son prochain épisode d'attente la ramène « En attente » (LUE-05).
-**Plans**: TBD — à trancher explicitement au plan, et à écrire : LUE-01 énumère « tour fini, à toi, question
-posée » ; l'attente DÉDUITE (« En attente ? ») n'y figure pas. Une session muette depuis 25 min, ouverte
-ensuite par l'utilisateur, est-elle « lue » ? La réponse doit être une décision écrite, pas un effet de bord
-du prédicat d'attente du détecteur.
+**Plans**: 4 plans en 3 vagues (vague 1 : 30-01 ∥ 30-02 ; vague 2 : 30-03 ; vague 3 : 30-04)
+
+Plans:
+- [ ] 30-01-PLAN.md — LUE-01..04 côté détecteur : NET-03 et LUE-01/LUE-02 décidées en un seul bloc (six cas), une écriture par épisode, la cause de chaque masquage retenue (1062 → 1088 isolé)
+- [ ] 30-02-PLAN.md — LUE-02, LUE-04 : `IPremierPlan` / `PremierPlanWin32` (processus `claude`, cache 1 s) et `LectureAppBureau.Selection` sur tous les fichiers (→ 1110 en fin de vague 1)
+- [ ] 30-03-PLAN.md — LUE-01, 02, 04, 05 : le moniteur branche le tout, le filtre « traitée » ne masque que les attentes (LUE-05), câblage de production (→ 1132)
+- [ ] 30-04-PLAN.md — LUE-03, LUE-04 : cause et instants de chaque masquage au diagnostic, section « Règle « lue » », §3 du contrat réécrit (→ 1143)
 
 ### Phase 31: Écrit, publié, constaté
 **Goal**: La source app-bureau est documentée comme l'est le contrat des hooks, l'exe **3.2.0** est publié et
@@ -302,7 +305,7 @@ la 28 peut passer devant sans rien casser.
 | 27. Le relevé avant la règle | 1/1 | Complete   | 2026-09-25 |
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
-| 30. La lecture fait disparaître | 0/? | Not started | - |
+| 30. La lecture fait disparaître | 0/4 | Planned | - |
 | 31. Écrit, publié, constaté | 0/? | Not started | - |
 
 ### Couverture des exigences
