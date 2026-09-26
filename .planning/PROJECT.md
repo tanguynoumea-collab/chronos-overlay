@@ -49,6 +49,7 @@ chiffre exact.
 - ✓ Contrat d'événements : `PermissionRequest`, veto `Notification`, battements de cœur, attente déduite, `docs/hooks-contract.md` (EVT-01..05) — Phase 25
 - ✓ « Traité » = transition observée sur la même source, persistant, geste explicite, archivage permanent (TRT-01..04) — Phase 26
 - ✓ Deux mots à l'écran (« Réflexion », « En attente », « En attente ? »), question `AskUserQuestion` classée attente, ordre découplé de l'arbitrage, horizons uniques 20 min / 8 h (LIB-01..04, SIL-01) — Phase 28
+- ✓ Source app-bureau par fichiers en lecture seule : titre, dernier focus, question `blocked` ; deux vues d'AppData (cache MSIX + réelle) lues par l'overlay, constaté hors de l'arbre (APP-01..06) — Phase 29
 
 ### Active
 
@@ -89,6 +90,7 @@ tour fini sous les yeux le laisse antérieur ⇒ LUE-02 nécessaire) ; **phase 2
 de l'app, `29-SONDE-HORS-ARBRE.txt`) : AppData est VIRTUALISÉ par MSIX pour tout ce qui tourne sous l'app
 bureau — l'overlay n'a jamais vu un fichier d'état de hook (`%APPDATA%\Chronos\sessions` réel vide) ; APP-06
 (phase 29) lit les deux vues.
+**Phase 29 close** (1062 tests, vérification 6/6) : l'overlay lit enfin les fichiers d'état des hooks (dossier du paquet), affiche le titre de session et reconnaît une question posée par l'app. Reste : phase 30 (la lecture fait disparaître), phase 31 (doc, release 3.2.0, constat).
 
 **Le cadran est réglé, et le widget observe.** v1.6 « Observer au lieu de déduire » est livré (exe **3.1.0**,
 6 phases, 18 exigences, 752 → 889 tests) et **vérifié en production le 2026-09-25** : les 8 groupes de hooks
@@ -203,4 +205,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-25 — phases 27 et 28 de v1.7 closes ; APP-06 (AppData virtualisé) ajoutée*
+*Last updated: 2026-09-26 — phase 29 de v1.7 close (source app-bureau, deux vues d'AppData) ; LUE-05 ajoutée pour la phase 30*
