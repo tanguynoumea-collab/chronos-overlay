@@ -105,25 +105,34 @@ public sealed class PremierPlanWin32 : IPremierPlan
     /// <inheritdoc/>
     public EtatPremierPlan Lire(System.DateTimeOffset now)
     {
-        // SQUELETTE (RED) : personne ne regarde encore.
         lock (_verrou)
         {
-            _ = _sonde;
-            _ = _instant;
-            _ = DureeCache;
-            _ = TrouMaximal;
-            return _dernier;
+            // Le cache ne sert que si l'horloge n'a pas reculé : un instant antérieur au dernier échantillon resonde.
+            if (_instant is { } t && now >= t && now - t < DureeCache) return _dernier;
+
+            (StatutPremierPlan Statut, string? Processus, string? Raison) vu;
+            try { vu = _sonde(); }
+            catch (System.Exception e) { vu = (StatutPremierPlan.Indisponible, null, e.GetType().Name); }
+
+            // Le « depuis » ne tient que sur une suite ININTERROMPUE d'échantillons claude : même statut avant, écart
+            // d'au plus cinq secondes (borne incluse), horloge qui avance. Sinon il repart de maintenant.
+            System.DateTimeOffset? depuis = null;
+            if (vu.Statut == StatutPremierPlan.Claude)
+                depuis = _dernier.Statut == StatutPremierPlan.Claude && _dernier.Depuis is { } d
+                         && _instant is { } prec && now >= prec && now - prec <= TrouMaximal
+                    ? d : now;
+
+            _instant = now;
+            return _dernier = new EtatPremierPlan(vu.Statut, vu.Processus, depuis, vu.Raison);
         }
     }
 
     /// <summary>ÉGALITÉ ordinale insensible à la casse, jamais un préfixe : « claudette » n'est pas claude. Un nom
     /// vide n'est pas un processus : indisponible.</summary>
     internal static StatutPremierPlan Classer(string? nomProcessus)
-    {
-        // SQUELETTE (RED) : tout est un autre processus.
-        _ = string.Equals(nomProcessus, ProcessusClaude, System.StringComparison.OrdinalIgnoreCase);
-        return StatutPremierPlan.AutreProcessus;
-    }
+        => string.IsNullOrEmpty(nomProcessus) ? StatutPremierPlan.Indisponible
+         : string.Equals(nomProcessus, ProcessusClaude, System.StringComparison.OrdinalIgnoreCase) ? StatutPremierPlan.Claude
+         : StatutPremierPlan.AutreProcessus;
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
@@ -143,7 +152,10 @@ public sealed class PremierPlanWin32 : IPremierPlan
                 return (StatutPremierPlan.Indisponible, null, "GetWindowThreadProcessId a échoué");
             using var p = System.Diagnostics.Process.GetProcessById((int)pid);
             var nom = p.ProcessName;   // sans extension
-            return (Classer(nom), nom, null);
+            var statut = Classer(nom);
+            return statut == StatutPremierPlan.Indisponible
+                ? (statut, null, "nom de processus vide")   // « indisponible » dit toujours pourquoi (LUE-04)
+                : (statut, nom, null);
         }
         catch (System.Exception e) { return (StatutPremierPlan.Indisponible, null, e.GetType().Name); }
     }
