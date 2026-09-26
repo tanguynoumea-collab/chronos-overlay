@@ -51,6 +51,7 @@ chiffre exact.
 - ✓ Deux mots à l'écran (« Réflexion », « En attente », « En attente ? »), question `AskUserQuestion` classée attente, ordre découplé de l'arbitrage, horizons uniques 20 min / 8 h (LIB-01..04, SIL-01) — Phase 28
 - ✓ Source app-bureau par fichiers en lecture seule : titre, dernier focus, question `blocked` ; deux vues d'AppData (cache MSIX + réelle) lues par l'overlay, constaté hors de l'arbre (APP-01..06) — Phase 29
 - ✓ La lecture fait disparaître : attente antérieure au dernier focus ou session sélectionnée avec la fenêtre Claude au premier plan (grâce 2,5 s) ⇒ masquée, avec sa cause au diagnostic ; une session qui travaille reste visible (LUE-01..05) — Phase 30
+- ✓ Un sous-agent qui écrit est un travail de sa session : battements et transcripts des sous-agents ⇒ « Réflexion » du parent, sans jamais effacer une attente d'intervention ; contrat sous garde ; exe 3.2.1 (SUB-01, SUB-02) — Phase 30.1 (insérée, écart E2 du constat)
 
 ### Active
 
@@ -91,7 +92,7 @@ tour fini sous les yeux le laisse antérieur ⇒ LUE-02 nécessaire) ; **phase 2
 de l'app, `29-SONDE-HORS-ARBRE.txt`) : AppData est VIRTUALISÉ par MSIX pour tout ce qui tourne sous l'app
 bureau — l'overlay n'a jamais vu un fichier d'état de hook (`%APPDATA%\Chronos\sessions` réel vide) ; APP-06
 (phase 29) lit les deux vues.
-**Phase 29 close** (1062 tests, vérification 6/6) : l'overlay lit enfin les fichiers d'état des hooks (dossier du paquet), affiche le titre de session et reconnaît une question posée par l'app. **Phase 30 close** (1143 tests, vérification 6/6) : une session lue disparaît sans clic, revient si elle redemande, et le diagnostic dit pourquoi. Reste : phase 31 (document, release 3.2.0, constat en production avec l'utilisateur).
+**Phase 29 close** (1062 tests, vérification 6/6) : l'overlay lit enfin les fichiers d'état des hooks (dossier du paquet), affiche le titre de session et reconnaît une question posée par l'app. **Phase 30 close** (1143 tests, vérification 6/6) : une session lue disparaît sans clic, revient si elle redemande, et le diagnostic dit pourquoi. **Phase 30.1 close** (insérée le 2026-09-26 sur l'écart E2 signalé en direct par l'utilisateur : une session dont un agent tourne en arrière-plan s'affichait « En attente ») : 1200 tests, exe **3.2.1** publié. Reste : le constat de la phase 31 avec l'utilisateur (points a, b, c).
 
 **Le cadran est réglé, et le widget observe.** v1.6 « Observer au lieu de déduire » est livré (exe **3.1.0**,
 6 phases, 18 exigences, 752 → 889 tests) et **vérifié en production le 2026-09-25** : les 8 groupes de hooks
@@ -206,4 +207,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 — phase 30 de v1.7 close (la lecture fait disparaître) ; reste la phase 31*
+*Last updated: 2026-09-26 — phase 30.1 close (sous-agents en arrière-plan, exe 3.2.1) ; reste le constat de la phase 31*
