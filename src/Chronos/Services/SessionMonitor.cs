@@ -115,6 +115,9 @@ public sealed class SessionMonitor
     ///     transcript ou un hook, sous l'horizon d'abandon, non archivée dans l'app, datée par son épisode.
     /// Le TITRE de l'app n'est pas un signal : il est posé sur les retenus, APRÈS l'arbitrage, avant les filtres
     /// (les masquées le portent aussi) ; il ne départage rien (APP-02).
+    /// La LECTURE (phase 30) : le détecteur reçoit le dernier focus de chaque session, la session sélectionnée
+    /// et l'instant depuis lequel claude est au premier plan ; une session lue est inscrite dans treated.json et masquée
+    /// dès ce cycle (le magasin est relu APRÈS l'observation).
     /// Puis applique les filtres, EN RENDANT COMPTE de chacun au lieu de jeter en silence.
     /// </summary>
     public LectureSessions Inspecter(System.DateTimeOffset now)
@@ -185,10 +188,26 @@ public sealed class SessionMonitor
         var arbitrage = ArbitrageSessions.Trancher(signaux);
 
         // 2.b) Le détecteur de traitement observe les snapshots RETENUS (+ horloge) et met à jour
-        //      TreatedStore (ajout NET-01, purge NET-03). Best-effort : ne casse JAMAIS le pipeline. Sa
-        //      logique n'est pas touchée ici ; il observe simplement, désormais, un état arbitré — les
-        //      VAINQUEURS, sans titre : le titre n'est pas une information d'état.
-        try { _tracker?.Observe(arbitrage.Vainqueurs, now); } catch { }
+        //      TreatedStore (ajout NET-01, ajout LUE, purge NET-03). Best-effort : ne casse JAMAIS le pipeline.
+        //      Il observe un état arbitré — les VAINQUEURS, sans titre : le titre n'est pas une information d'état.
+        //      LA LECTURE (LUE-01, LUE-02). Le premier plan est lu à CHAQUE cycle, même sans source app-bureau — le
+        //      rapport doit pouvoir dire ce qu'il voit —, best-effort : une sonde qui lève vaut « indisponible », jamais
+        //      une panne (LUE-04). Le contexte est bâti sur la lecture de l'app de CE cycle (OBS-01 : aucun second appel
+        //      au lecteur) ; sans dossier de l'app il est NUL, et le détecteur est celui de la v1.6. Il ne reçoit du
+        //      premier plan que l'instant depuis lequel claude y est.
+        var premierPlan = EtatPremierPlan.NonBranche;
+        if (_premierPlan is not null)
+        {
+            try { premierPlan = _premierPlan.Lire(now); }
+            catch (System.Exception e) { premierPlan = new EtatPremierPlan(StatutPremierPlan.Indisponible, null, null, e.GetType().Name); }
+        }
+        ContexteLecture? contexte = appBureau is { DossierTrouve: true }
+            ? new ContexteLecture(
+                appBureau.ParSession.ToDictionary(kv => kv.Key, kv => kv.Value.DernierFocus, System.StringComparer.OrdinalIgnoreCase),
+                appBureau.Selection?.CliSessionId,
+                premierPlan.ClaudeDepuis)
+            : null;
+        try { _tracker?.Observe(arbitrage.Vainqueurs, now, contexte); } catch { }
 
         // 2.d) Le TITRE de l'app (APP-02) n'est pas un signal : posé sur les RETENUS, après l'arbitrage et avant les
         //      filtres — les masquées le portent aussi, le rapport les liste. Sans métadonnées, la liste est celle
@@ -229,7 +248,7 @@ public sealed class SessionMonitor
             if (!AffichageSessions.AUneLigne(s.Activity)) { masquees.Add(new SessionMasquee(s, MotifMasquage.Indeterminee)); continue; }
             visibles.Add(s);
         }
-        return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords, appBureau);
+        return new LectureSessions(visibles, masquees, ecartesParAnciennete, arbitrage.Desaccords, appBureau, premierPlan);
     }
 
     /// <summary>La question posée par l'app, ou rien (APP-03). Toutes les conditions sont nécessaires (29-CONTEXT,
