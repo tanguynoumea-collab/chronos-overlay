@@ -293,7 +293,7 @@ qu'EVT-05 en v1.6.
 
 Plans:
 - [x] 31-01-PLAN.md — VAL-02 : `docs/desktop-app-sessions.md` + garde croisée (14 champs extraits de `LecteurAppBureau.cs`, deux sens, 4 mutations) ; §3 du contrat, `data-sources.md`, README (1143 → 1149)
-- [ ] 31-02-PLAN.md — VAL-03 (avancement) : ligne `Version :` au diagnostic, csproj 3.2.0 × 4, `dotnet publish`, `Chronos-v3.2.0.exe` à la racine, contrôles, smoke test `--hook`, commit de release ; s'arrête avant tout lancement (→ 1152)
+- [x] 31-02-PLAN.md — VAL-03 (avancement) : ligne `Version :` au diagnostic, csproj 3.2.0 × 4, `dotnet publish`, `Chronos-v3.2.0.exe` à la racine, contrôles, smoke test `--hook`, commit de release ; s'arrête avant tout lancement (→ 1152)
 - [ ] 31-03-PLAN.md — VAL-03 + critère 4 : constat en production avec l'utilisateur en trois points de contrôle (réconciliation ; tableau en trois lignes, grâce mesurée ; 12 vérifications manuelles) → `31-CONSTAT.md`
 
 ### Progress
@@ -311,7 +311,7 @@ la 28 peut passer devant sans rien casser.
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
 | 30. La lecture fait disparaître | 4/4 | Complete    | 2026-09-26 |
-| 31. Écrit, publié, constaté | 1/3 | In Progress|  |
+| 31. Écrit, publié, constaté | 2/3 | In Progress|  |
 
 ### Couverture des exigences
 

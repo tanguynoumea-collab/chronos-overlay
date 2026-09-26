@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Completed 31-01-PLAN.md
-last_updated: "2026-09-26T10:47:28.865Z"
+stopped_at: Completed 31-02-PLAN.md
+last_updated: "2026-09-26T11:01:39.622Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -27,7 +27,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.7 — Lue ou non lue
 Phase: 31 (Écrit, publié, constaté) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-26
 
@@ -51,6 +51,7 @@ transcript, jamais par le mtime. Détail : `.planning/phases/27-le-relev-avant-l
 - Après 30-01 (LUE-01..04 au détecteur, `f0ab69a`) : 1062 + 19 + 7 = **1088 isolé** (1057 hors classes de 30-02 + 31 cas préexistants de LecteurAppBureauTests) ; fin de vague 1 avec 30-02 : **1110 / 0**, deux exécutions (8 s, 9 s) ; mutations (m1) L04, (m2) L05, (m4) L10+L13+L21 jouées et révoquées (sha256 44264408…).
 - Après 30-03 (LUE-01/02/05 au moniteur, câblage de production, `9ec7233`) : 1110 + 4 + 17 + 1 = **1132 verts / 0 échec**, deux exécutions (11 s, 11 s) ; 3 tests adaptés dont 1 renommé (LUE-05) ; mutations (m6), (m3 bis), (m5) jouées et révoquées (sha256) ; un test de la phase 04 instable sous charge consigné dans 30/deferred-items.md.
 - Après 30-04 (LUE-03/04 au rapport, §3 du contrat, `5995fa5`) : 1132 + 9 + 1 + 1 = **1143 verts / 0 échec**, deux exécutions (10 s, 10 s) — cible de fin de phase 30 atteinte exactement ; aucun test existant retouché ; mutation (m8) jouée et révoquée (sha256 77f2ff90…) ; LUE-01..LUE-05 cochés.
+- Après 31-02 (VAL-03 versant publication, release `f321180`) : 1149 + 3 = **1152 verts / 0 échec**, deux exécutions (9 s, 9 s) ; mutations (v1), (v2), (v3) jouées et révoquées (sha256) ; `Chronos-v3.2.0.exe` 77 377 466 o, 0 DLL, VersionInfo 3.2.0.0 / 3.2.0, md5 `2cffcec5…` ; smoke `--hook` code 0, `settings.json` inchangé (md5 `9eab8a8e…`).
 - Transcripts à 8 h (SIL-01), mesuré avec la DLL livrée : médiane **28,2 / 25,7 ms** par cycle de 2 s, 4 sessions visibles — pas de cache (seuil 50 ms). Détail : 28-VALIDATION.md.
 - v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
@@ -238,6 +239,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 30 P03 | 34min | 3 tasks | 8 files |
 | Phase 30 P04 | 17min | 2 tasks | 6 files |
 | Phase 31 P01 | 17min | 2 tasks | 7 files |
+| Phase 31 P02 | 10min | 2 tasks | 5 files |
 
 ### Decisions
 
@@ -538,6 +540,9 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 31]: D-31-01 : « jonction » écrit NIÉ dans docs/desktop-app-sessions.md (%APPDATA%\Claude = virtualisation d'AppData du paquet MSIX), tenu par la garde D4
 - [Phase 31]: D-31-02 : la règle « lue » n'est écrite qu'au §3 de hooks-contract.md ; le contrat de l'app y renvoie, D6 rougit s'il cite HorizonsSessions.GraceLecture
 - [Phase 31]: D-31-03 : garde croisée par EXTRACTION du texte de LecteurAppBureau.cs (14 champs, 3 catégories), égalité dans les deux sens ; un changement de forme des appels rougit par l'anti-muet
+- [Phase 31]: D-31-04 : la version se lit, elle ne s'écrit pas — le rapport lit AssemblyInformationalVersionAttribute (ligne « Version : » sous « Date : ») ; VersionPublieeTests tient la cohérence csproj ↔ assembly, aucun test n'épingle 3.2.0
+- [Phase 31]: D-31-05/06 : Chronos-v3.2.0.exe à la racine du dépôt principal (77 377 466 o, md5 2cffcec5…, VersionInfo 3.2.0.0 / 3.2.0), ignoré par /Chronos-v*.exe (vérifié, non modifié) ; Chronos-v3.1.0.exe conservé
+- [Phase 31]: Release 3.2.0 = f321180, sans étiquette ni push ; smoke --hook SessionStart stdin vide code 0, settings.json md5 9eab8a8e… inchangé ; overlay jamais lancé par l'agent (réconciliation par l'utilisateur en 31-03)
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -594,7 +599,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-26T10:47:28.859Z
-Stopped at: Completed 31-01-PLAN.md
+Last session: 2026-09-26T11:01:39.616Z
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
 Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29
