@@ -147,6 +147,18 @@ Consignes : ne jamais cliquer sur le widget pendant une mesure ; « invite longu
 - **Note (non écart)** : le rapport n'énumère que 5 des 8 événements câblés (« Hooks --hook installés : Notification,
   Stop, UserPromptSubmit, SessionStart, SessionEnd ») — limite du rapport connue de la recherche de phase 31 ; la preuve
   des 8 groupes est le fichier.
+- **E2 (signalé par l'utilisateur à 14:44) — une session qui travaille par un SOUS-AGENT EN ARRIÈRE-PLAN est
+  affichée « En attente ».** Session « ADVANCED SHEET passation checkpoint 26.2-21 » (88677186) : le tour parent
+  s'est terminé à 14:33:21 (`end_turn`, `Stop` à 14:33:23) juste après avoir lancé un agent en arrière-plan ; le
+  transcript `subagents/agent-a7df3776…jsonl` est encore écrit à 14:45:09 (310 lignes, dernier message un
+  `tool_result`). Pour l'utilisateur, la session « réfléchit et tourne » (l'app la marque en exécution) ; pour
+  Chronos, hooks et transcript disent « tour fini » : les événements des sous-agents sont VETOÉS (phase 25-02) et
+  les transcripts `subagents/` ignorés (phase 21). **Ligne 1 du tableau non tenue dans ce cas** — cause de
+  conception, pas de mesure. Correction : phase insérée 30.1 « un sous-agent qui écrit est un travail de sa
+  session » (battements de sous-agent → Réflexion sans jamais effacer une attente d'intervention ; dernier
+  message des `subagents/*.jsonl` comme signal de travail côté transcript), puis republication 3.2.1 et reprise
+  du point (a).
+- **E1, suite (14:45)** : les deux overlays tournent toujours (40772 et 126160) ; la 3.1.0 reste à quitter.
 - **Autostart** : non activé (aucun `Chronos.lnk` dans le dossier Démarrage réel) — facultatif, pas un écart.
 
 ## 4. Verdict
