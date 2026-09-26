@@ -39,6 +39,10 @@ public sealed class SessionMonitor
     // donne par argument nommé, et une garde de source le vérifie (Piège 9 : un défaut nul rend l'oubli silencieux).
     private readonly LecteurAppBureau? _appBureau;
 
+    // Ce que l'OS a au premier plan (LUE-02) : nul par défaut = LUE-02 inactive, LUE-01 seule. Même piège que le lecteur
+    // (Piège 9) : la production la donne par argument nommé, sous garde de source.
+    private readonly IPremierPlan? _premierPlan;
+
     /// <param name="sessionsDir">UNE racine d'état : le raccourci des tests, qui n'en ont qu'une.</param>
     /// <param name="dossiersEtat">La liste des racines d'état, dans l'ordre (APP-06) — celle que la production
     /// résout une fois par <see cref="RacinesEtat"/> : la vue du paquet de l'app bureau d'abord, la vue réelle
@@ -47,10 +51,13 @@ public sealed class SessionMonitor
     /// candidats de la machine.</param>
     /// <param name="appBureau">Le lecteur des métadonnées par session de l'app bureau (APP-01), en LECTURE SEULE. Nul :
     /// la lecture est exactement celle de la v1.6 — aucune question, aucun titre.</param>
+    /// <param name="premierPlan">La sonde du premier plan de l'OS (LUE-02), best-effort. Nulle : LUE-02 inactive, LUE-01
+    /// seule — la production la donne par argument nommé, et une garde de source le vérifie (Piège 9).</param>
     public SessionMonitor(string? sessionsDir = null, ISessionSource? transcripts = null,
         ArchiveStore? archive = null,
         TreatedStore? treated = null, SessionTreatmentTracker? tracker = null,
-        IReadOnlyList<string>? dossiersEtat = null, LecteurAppBureau? appBureau = null)
+        IReadOnlyList<string>? dossiersEtat = null, LecteurAppBureau? appBureau = null,
+        IPremierPlan? premierPlan = null)
     {
         if (sessionsDir is not null && dossiersEtat is not null)
             throw new System.ArgumentException("Les racines des fichiers d'état se donnent d'UNE façon : un dossier (sessionsDir) OU la liste des racines (dossiersEtat).", nameof(dossiersEtat));
@@ -63,11 +70,16 @@ public sealed class SessionMonitor
         _treated = treated;
         _tracker = tracker;
         _appBureau = appBureau;
+        _premierPlan = premierPlan;
     }
 
     /// <summary>Le lecteur de l'app bureau reçu à la construction — celui du conteneur en production, que le rapport
     /// lit par <see cref="LectureSessions.AppBureau"/> (une seule instance, un seul cache : OBS-01).</summary>
     internal LecteurAppBureau? Lecteur => _appBureau;
+
+    /// <summary>La sonde du premier plan reçue à la construction — celle du conteneur en production (miroir DI) ; le
+    /// rapport lit ce qu'elle a vu par <see cref="LectureSessions.PremierPlan"/>, jamais par un second appel (OBS-01).</summary>
+    internal IPremierPlan? PremierPlan => _premierPlan;
 
     /// <summary>Les racines d'état lues à chaque cycle, dans l'ordre. Une propriété SINGULIÈRE mentirait : le
     /// moniteur en lit plusieurs (APP-06). Le balayage CYC-01 et le rapport de diagnostic passent sur CES racines,

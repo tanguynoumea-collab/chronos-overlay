@@ -91,10 +91,15 @@ public sealed record SessionMasquee(SessionSnapshot Session, MotifMasquage Motif
 /// <para><see cref="AppBureau"/> (APP-01, phase 29) est la lecture de l'app bureau de CE cycle, la MÊME que celle
 /// qui a qualifié les lignes (OBS-01) : le rapport de diagnostic la lit ici, jamais par un second appel. Nul = moniteur
 /// sans lecteur (comportement v1.6, « NON BRANCHÉE » au rapport).</para>
+///
+/// <para><see cref="PremierPlan"/> (LUE-02, phase 30) est ce que la sonde du premier plan a vu à CE cycle — celle que le
+/// détecteur a reçue ; le rapport le lit ici, jamais par un second appel à la sonde (OBS-01). Nul = lecture construite
+/// hors du moniteur ; le moniteur rend <see cref="EtatPremierPlan.NonBranche"/> quand il n'a pas de sonde.</para>
 /// </summary>
 public sealed record LectureSessions(
     IReadOnlyList<SessionSnapshot> Visibles,
     IReadOnlyList<SessionMasquee> Masquees,
     int FichiersEcartesParAnciennete,
     IReadOnlyList<DesaccordSources> Desaccords,
-    LectureAppBureau? AppBureau = null);
+    LectureAppBureau? AppBureau = null,
+    EtatPremierPlan? PremierPlan = null);
