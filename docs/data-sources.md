@@ -311,5 +311,22 @@ code de provider** et **sans jamais modifier** un fichier sous `~/.claude` :
 
 ---
 
+## 6. Les sources du widget de sessions
+
+> Ajouté le 2026-09-26 (phase 31). Ce document reste celui des sources d'USAGE du cadran ; le widget de sessions a
+> les siennes, chacune décrite par son contrat.
+
+| Source | Ce qu'elle dit | Contrat |
+|---|---|---|
+| Hooks Claude Code (mode `--hook` de Chronos) | l'activité observée de chaque session : Réflexion, En attente | `docs/hooks-contract.md` |
+| Métadonnées de session de l'app bureau Claude | le titre, le dernier focus (`lastFocusedAt`), la classification de fin de tour | `docs/desktop-app-sessions.md` |
+| Transcripts JSONL (même emplacement qu'au §2) | la date du dernier message et l'état d'un tour sans fichier de hook | `docs/hooks-contract.md` §3 |
+
+**Deux vues d'AppData.** Les hooks lancés sous l'app bureau écrivent dans le cache du paquet MSIX
+(`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\…`), que l'overlay lit par candidats ; un relevé fait depuis une
+session Claude Code voit la vue virtualisée et ne vaut pas pour l'overlay (`docs/desktop-app-sessions.md`, §7).
+
+---
+
 *Fin du document — capturé le 2026-07-08, à revalider à chaque MAJ majeure de Claude Code
 (schéma = API privée de facto).*

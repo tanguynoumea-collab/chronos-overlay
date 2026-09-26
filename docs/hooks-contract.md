@@ -12,8 +12,9 @@
 > de permission (`permission_request` contre `permission_context`). **Ne rien construire sur ces noms-là.**
 
 Ce document décrit **ce qui est réellement câblé** par Chronos, ce qu'il lit, ce qu'il en produit — et,
-au moins autant, **ce qui n'est pas garanti**. Il est le pendant de `data-sources.md` pour la seconde
-source de Chronos : les hooks.
+au moins autant, **ce qui n'est pas garanti**. Il est le pendant de `data-sources.md` (les sources d'usage
+du cadran) et de `desktop-app-sessions.md` (les métadonnées de session de l'app bureau) pour la source que
+Chronos câble lui-même : les hooks.
 
 **Pourquoi il existe.** Son absence est précisément ce qui a laissé une sémantique fausse survivre des mois
 sans que personne ne puisse la contredire : un bus de notifications réduit à un seul état, un proxy préféré
@@ -205,6 +206,9 @@ L'app qualifie une ligne, elle n'en crée pas : le signal n'est déposé que pou
 ou d'un transcript, de moins de huit heures (`HorizonsSessions.Abandon`), non archivée dans l'app. Il est daté par
 l'instant d'activité lu à la première apparition du résumé (clé `postTurnSummaryFor`) : l'activité de fond qui
 continue après la fin du tour ne rajeunit pas la question. `completed` et `review_ready` ne déposent rien.
+
+**La source elle-même** — où l'app écrit, les quatorze champs que Chronos lit, ce qui n'en est pas garanti — est
+décrite dans `docs/desktop-app-sessions.md`. La règle « lue » n'est écrite qu'ici, ci-dessous.
 
 ### Ce que « traité » veut dire (phase 26 — TRT-01, TRT-02)
 
@@ -499,3 +503,6 @@ Si Claude Code renomme un événement, change la sémantique de `Stop` ou comble
 tous nos tests resteront verts et ce document deviendra faux en silence. Seule une **relecture humaine** de
 la référence officielle peut le voir — et c'est exactement pour cela que la **date du relevé figure en
 tête** de ce document, et dans le §5 lui-même.
+
+La source app-bureau a sa propre procédure de re-relevé (`docs/desktop-app-sessions.md`, §7) : son format n'est documenté
+nulle part, et sa dérive ne se voit qu'en relisant le disque, hors de l'arbre de l'app.

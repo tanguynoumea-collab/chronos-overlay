@@ -50,6 +50,38 @@ Pour la source **exacte**, Chronos doit lire ton token OAuth Claude, que l'app b
 
 L'endpoint `/api/oauth/usage` n'est pas documenté publiquement : il peut changer à une mise à jour de Claude. En cas d'échec, Chronos bascule proprement sur l'estimation (jamais de plantage).
 
+## Widget de sessions Claude Code
+
+Un second petit panneau, à côté du cadran, dit **quelle session Claude Code t'attend** — dans l'app bureau Claude
+comme en terminal. Active-le dans les réglages (clic droit sur le cadran) : **« Widget sessions Claude Code »**.
+Chronos inscrit alors 8 hooks dans `~/.claude/settings.json`, sans toucher à ceux des autres outils, et les tient à
+jour à chaque lancement (le fichier est sauvegardé avant toute réécriture) ; seules les sessions ouvertes ensuite sont
+suivies.
+
+Chaque session tient en un mot :
+
+- **« Réflexion »** — la session travaille.
+- **« En attente »** — elle a fini son tour, demande une permission ou te pose une question, et tu ne l'as pas encore lue.
+- **« En attente ? »** — plus rien n'arrive depuis 20 minutes alors qu'elle travaillait : l'attente est **déduite**,
+  d'où le point d'interrogation.
+
+Les questions et les permissions passent devant les tours finis, puis les attentes déduites, puis « Réflexion ».
+
+**Une session lue disparaît, sans clic.** Ouvre-la dans l'app après la fin de son tour, ou regarde-la finir (fenêtre
+Claude au premier plan) : elle quitte le widget au bout de quelques secondes. Elle revient si elle te redemande
+quelque chose, et une session qui se remet à travailler est toujours visible. **Le titre** que l'app donne à la
+session remplace le nom du dossier ; le dossier reste dans l'info-bulle.
+
+Clic droit sur une ligne : **« Marquer traitée »** (elle revient si elle te redemande) ou **« Archiver
+définitivement »**. Réglages → **« Diagnostic… »** dit, pour chaque session masquée, pourquoi.
+
+Limites connues : une session de terminal sans l'app bureau n'a pas de lecture automatique (elle reste « En attente »
+jusqu'à ta réponse, ton geste ou 8 h) ; une session Cowork dans sa machine virtuelle n'est pas détectée ; l'accueil ou
+une conversation Chat de l'app au premier plan compte comme « regardée ».
+
+Contrats : [`docs/hooks-contract.md`](docs/hooks-contract.md) (les hooks) et
+[`docs/desktop-app-sessions.md`](docs/desktop-app-sessions.md) (ce que l'app bureau écrit de chaque session).
+
 ## Prérequis
 
 - **Windows 10/11 (x64)**.
@@ -73,7 +105,7 @@ Détails de publication dans [`docs/publish.md`](docs/publish.md). Contrat des s
 
 ## Stack
 
-C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) · rendu du cadran en XAML pur (aucune dépendance native) · exe self-contained mono-fichier. 215 tests unitaires.
+C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) · rendu du cadran en XAML pur (aucune dépendance native) · exe self-contained mono-fichier. plus de 1 100 tests unitaires.
 
 ## Licence
 
