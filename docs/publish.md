@@ -38,7 +38,7 @@ src/Chronos/bin/Release/net8.0-windows/win-x64/publish/Chronos.exe
 ```
 
 Un **unique** `Chronos.exe` (+ éventuellement `Chronos.pdb`, à ne pas distribuer). Taille
-mesurée ~77 Mo (3.1.0, 3.2.0) ; garde-fou < 120 Mo.
+mesurée ~77 Mo (3.1.0, 3.2.0, 3.2.1) ; garde-fou < 120 Mo.
 
 Copier ensuite la sortie à la racine du dépôt sous le nom versionné `Chronos-v<X.Y.Z>.exe`
 (ignoré par `.gitignore` : `/Chronos-v*.exe`). La version vient des quatre propriétés du csproj
