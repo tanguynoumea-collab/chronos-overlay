@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: executing
-stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-09-26T08:49:31.905Z"
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-09-26T08:51:20.243Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -27,7 +27,7 @@ jamais présenter une estimation comme un chiffre exact. Et savoir quelle sessio
 
 Milestone: v1.7 — Lue ou non lue
 Phase: 30 (La lecture fait disparaître) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-26
 
@@ -48,6 +48,7 @@ transcript, jamais par le mtime. Détail : `.planning/phases/27-le-relev-avant-l
 - Après 29-04 (APP-02 écran, `21a144a`) : 1039 + 10 + 2 = **1051 isolé** ; combiné avec 29-05 à `415cd7d` : **1062 verts / 0 échec**, deux exécutions consécutives (10 s, 9 s) — 1060 attendus, +1 par plan (garde de traduction ici) ; mutation `MaxWidth` jouée et révoquée.
 - Après 29-05 (APP-04/05/06, `415cd7d`) : 1039 + 11 = **1050 isolé** ; fin de phase 29 avec 29-04 : **1062 verts / 0 échec**, deux exécutions (10 s, 11 s) ; mutation (c) jouée et révoquée ; sonde WMI hors arbre : Lire chaud 0,50 ms, Inspecter chaud 29,3 ms (29-SONDE-APP06.txt).
 - Après 30-02 (LUE-02/04 premier plan + sélection, `b10620f`) : 1062 + 14 + 8 = **1084 isolé**, deux exécutions (worktree temporaire à `af60f59` + les 4 commits du plan) ; fin de vague 1 avec 30-01 (à `284fcc7`) : **1110 verts / 0 échec**, deux exécutions (9 s, 8 s), le total attendu ; mutations (m7), (m3) jouées et révoquées (sha256).
+- Après 30-01 (LUE-01..04 au détecteur, `f0ab69a`) : 1062 + 19 + 7 = **1088 isolé** (1057 hors classes de 30-02 + 31 cas préexistants de LecteurAppBureauTests) ; fin de vague 1 avec 30-02 : **1110 / 0**, deux exécutions (8 s, 9 s) ; mutations (m1) L04, (m2) L05, (m4) L10+L13+L21 jouées et révoquées (sha256 44264408…).
 - Transcripts à 8 h (SIL-01), mesuré avec la DLL livrée : médiane **28,2 / 25,7 ms** par cycle de 2 s, 4 sessions visibles — pas de cache (seuil 50 ms). Détail : 28-VALIDATION.md.
 - v1.6 : 6 phases, 19 plans, 110 commits, 752 → 889 tests, 10 h 30 de mur (2026-09-12 15:47 → 2026-09-13 02:13).
 
@@ -231,6 +232,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 | Phase 29 P04 | 14min | 2 tasks | 7 files |
 | Phase 29 P05 | 17min | 3 tasks | 5 files |
 | Phase 30 P02 | 9min | 2 tasks | 5 files |
+| Phase 30 P01 | 15min | 2 tasks | 5 files |
 
 ### Decisions
 
@@ -518,6 +520,10 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 - [Phase 30]: D-30-04 (30-02) : la session selectionnee se calcule DANS le lecteur, sur tous les fichiers servis au cycle (valides, doublons ecartes, sans cliSessionId), avant le regroupement ; ex aequo : premier chemin ordinal ; CliSessionId nul => aucune session du widget selectionnee
 - [Phase 30]: Premier plan (30-02) : cinq statuts (NonBranche, Claude, AutreProcessus nomme, AucuneFenetre, Indisponible avec raison), jamais un booleen ; nom du processus par egalite ordinale sans casse avec claude, jamais le titre ni un prefixe, pas d'UIA ; le detecteur ne recoit que ClaudeDepuis
 - [Phase 30]: Depuis (30-02) : tenu sur une suite ininterrompue d'echantillons claude (ecart <= 5 s, horloge qui avance), sinon repart de maintenant ; cache 1 s jamais servi si l'horloge recule. Limites ecrites : CLI homonyme claude ; fichier de l'app > 24 h non selectionnable
+- [Phase 30]: D-30-01 (30-01) : l'instant compare au focus ET inscrit est l'episode du detecteur (_attenteDepuis), egal a UpdatedAt du signal retenu en regime permanent
+- [Phase 30]: D-30-02/03 (30-01) : LUE-01 strict (focus egal = pas une lecture) ; LUE-02 = focus connu + session selectionnee (OrdinalIgnoreCase) + claude au premier plan depuis d + now - max(episode, d) >= HorizonsSessions.GraceLecture (2,5 s, borne incluse)
+- [Phase 30]: D-30-05/06 (30-01) : NET-03 et LUE en UNE decision (table a six cas), au plus une ecriture de treated.json par session et par episode ; treated.json reste id -> ms, la cause vit en memoire du detecteur (CauseDe), figee a son premier constat, jamais inventee pour un geste ou une entree d'avant le demarrage
+- [Phase 30]: D-30-07/08 (30-01) : une attente deduite ouverte ensuite est lue ; une demande de permission vue est lue (quitte le widget, session toujours bloquee) - a constater en phase 31
 
 ### Contexte technique (déjà établi — ne pas re-rechercher)
 
@@ -574,7 +580,7 @@ plafond. Les transcripts ne peuvent répondre qu'à deux questions bornées : *a
 
 ## Session Continuity
 
-Last session: 2026-09-26T08:49:31.900Z
-Stopped at: Completed 30-02-PLAN.md
+Last session: 2026-09-26T08:51:20.238Z
+Stopped at: Completed 30-01-PLAN.md
 Resume file: None
 Next: vérification de la phase 28 (LIB-01..04, SIL-01 cochées), puis planification de la phase 29
