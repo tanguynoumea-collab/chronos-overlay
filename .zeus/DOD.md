@@ -33,4 +33,4 @@
 | Journal des tokens (transcripts) | L'historique des tokens par tranche est reconstruit depuis les transcripts existants, puis mis à jour incrémentalement ; une purge des transcripts par Claude Code ne fait pas disparaître l'historique déjà journalisé | ☐ |
 | Vue « semaine de forfait » | Une fenêtre affiche la semaine courante (samedi 00:00 → samedi 00:00) avec la courbe hebdo et les dents de scie 5 h superposées, navigation vers les semaines passées | ☐ |
 | Lecture des rythmes | L'utilisateur peut voir à quelles heures / quels jours il consomme le plus, sur plusieurs semaines | ☐ |
-| Accès | Ouverture depuis le menu contextuel de l'overlay, sans casser le cadran ni le widget de sessions | ☐ |
+| Accès | Ouverture par la carte des réglages ET par double-clic au centre du cadran (il n'y a plus de menu contextuel : clic droit = réglages), sans casser la bascule % / temps, le drag, ni le widget de sessions | ☐ |

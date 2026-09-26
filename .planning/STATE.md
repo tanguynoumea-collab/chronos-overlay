@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: — Historique d'utilisation
-status: defining requirements
-stopped_at: Milestone v1.8 started — requirements defined, roadmap to create
-last_updated: "2026-09-27T00:00:00.000Z"
+status: ready to plan
+stopped_at: Roadmap v1.8 created (phases 32 à 35, 26 plans proposés, 28 / 28 exigences) — ready to plan phase 32
+last_updated: "2026-09-27T12:00:00.000Z"
 last_activity: 2026-09-27
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -27,10 +27,10 @@ sa façon d'utiliser Claude au cours du temps, avec la même honnêteté.
 ## Current Position
 
 Milestone: v1.8 — Historique d'utilisation
-Phase: Not started (roadmap to create — phases 32 à 35, numérotation continue)
+Phase: 32 — Compter juste, puis journaliser — Not started (phases 32 à 35, numérotation continue après la 31 de v1.7)
 Plan: —
-Status: Defining requirements → roadmap
-Last activity: 2026-09-27 — Milestone v1.8 started
+Status: Ready to plan — `/gsd:plan-phase 32`
+Last activity: 2026-09-27 — Roadmap v1.8 créée : 4 phases (32 à 35), 26 plans proposés, 28 / 28 exigences couvertes
 
 Progress: [░░░░░░░░░░] 0 %
 

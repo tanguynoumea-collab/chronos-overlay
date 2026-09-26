@@ -162,35 +162,35 @@ Reportés, tracés pour la roadmap (RETOUR ROADMAP du cycle ZEUS) :
 
 ## Traceability
 
-À remplir par le roadmapper (phases 32 à 35, numérotation continue après la 31 de v1.7).
+Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue après la 31 de v1.7) — voir `.planning/ROADMAP.md`.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CPT-01 | | Pending |
-| CPT-02 | | Pending |
-| CPT-03 | | Pending |
-| JRN-01 | | Pending |
-| JRN-02 | | Pending |
-| JRN-03 | | Pending |
-| JRN-04 | | Pending |
-| JRN-05 | | Pending |
-| JRN-06 | | Pending |
-| TOK-01 | | Pending |
-| TOK-02 | | Pending |
-| TOK-03 | | Pending |
-| TOK-04 | | Pending |
-| TOK-05 | | Pending |
-| HIS-01 | | Pending |
-| HIS-02 | | Pending |
-| HIS-03 | | Pending |
-| HIS-04 | | Pending |
-| HIS-05 | | Pending |
-| HIS-06 | | Pending |
-| HIS-07 | | Pending |
-| HIS-08 | | Pending |
-| ACC-01 | | Pending |
-| ACC-02 | | Pending |
-| ACC-03 | | Pending |
-| ACC-04 | | Pending |
-| VAL-04 | | Pending |
-| VAL-05 | | Pending |
+| CPT-01 | Phase 32 | Pending |
+| CPT-02 | Phase 32 | Pending |
+| CPT-03 | Phase 32 | Pending |
+| JRN-01 | Phase 32 | Pending |
+| JRN-02 | Phase 32 | Pending |
+| JRN-03 | Phase 32 | Pending |
+| JRN-04 | Phase 32 | Pending |
+| JRN-05 | Phase 32 | Pending |
+| JRN-06 | Phase 32 | Pending |
+| TOK-01 | Phase 33 | Pending |
+| TOK-02 | Phase 33 | Pending |
+| TOK-03 | Phase 33 | Pending |
+| TOK-04 | Phase 33 | Pending |
+| TOK-05 | Phase 33 | Pending |
+| HIS-01 | Phase 34 | Pending |
+| HIS-02 | Phase 34 | Pending |
+| HIS-03 | Phase 34 | Pending |
+| HIS-04 | Phase 34 | Pending |
+| HIS-05 | Phase 35 | Pending |
+| HIS-06 | Phase 34 | Pending |
+| HIS-07 | Phase 34 | Pending |
+| HIS-08 | Phase 34 | Pending |
+| ACC-01 | Phase 35 | Pending |
+| ACC-02 | Phase 35 | Pending |
+| ACC-03 | Phase 35 | Pending |
+| ACC-04 | Phase 35 | Pending |
+| VAL-04 | Phase 32 | Pending |
+| VAL-05 | Phase 35 | Pending |
