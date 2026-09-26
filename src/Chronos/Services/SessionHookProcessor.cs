@@ -4,8 +4,11 @@ using System.Text.Json;
 namespace Chronos.Services;
 
 /// <summary>Résultat du traitement d'un événement de hook : soit un upsert (contenu du fichier d'état),
-/// soit une suppression (fin de session), soit rien (événement ignoré).</summary>
-public sealed record SessionHookResult(string? SessionId, bool Delete, string? StateJson, bool Ignore)
+/// soit une suppression (fin de session), soit rien (événement ignoré).
+/// <para><c>BattementSousAgent</c> : battement (<c>PreToolUse</c> / <c>PostToolUse</c>) émis par un SOUS-AGENT —
+/// l'écriture ne réaffirme alors le travail que sur <c>Working</c> ou <c>WaitingTurn</c> (SUB-01, D-30.1-03).
+/// Paramètre optionnel : les constructions existantes compilent sans retouche.</para></summary>
+public sealed record SessionHookResult(string? SessionId, bool Delete, string? StateJson, bool Ignore, bool BattementSousAgent = false)
 {
     public static SessionHookResult Ignored { get; } = new(null, false, null, true);
 }
@@ -20,11 +23,14 @@ public sealed record SessionHookResult(string? SessionId, bool Delete, string? S
 ///   Notification (3 types de demande) → WaitingAttention (filtré par matcher ; veto sur les neuf autres)
 ///   Stop                              → WaitingTurn (le tour s'est terminé, c'est OBSERVÉ)
 ///   UserPromptSubmit / SessionStart   → Working
-///   PreToolUse / PostToolUse          → Working (battement de cœur ; jamais émis par un sous-agent,
-///                                       voir le veto plus bas)
+///   PreToolUse / PostToolUse          → Working (battement de cœur)
 ///   SessionEnd                        → suppression du fichier
 ///   sous-agent (agent_id / agent_type présent)
-///                                     → ignoré, SAUF demande de permission ou demande du bus
+///                                     → cycle de vie (SessionStart, SessionEnd, Stop, UserPromptSubmit)
+///                                       ignoré ; battement → Working pour la session parente, motif suffixé
+///                                       « (sous-agent) », qui ne réaffirme que Working ou WaitingTurn
+///                                       (EcritureEtatSession) ; demande de permission ou du bus →
+///                                       WaitingAttention, motif ordinaire
 ///   inconnu                           → ignoré
 ///
 /// <para><b>La doctrine des battements, en une phrase :</b> un battement dit « ça travaillait à cet
@@ -51,6 +57,12 @@ public static class SessionHookProcessor
         "elicitation_complete", "elicitation_response", "agent_completed",
         "quota_auto_resume_fired", "quota_auto_resume_stale", "quota_auto_resume_disabled",
     };
+
+    /// <summary>SUB-01 — le suffixe qui marque, dans le motif du fichier d'état, un battement émis par un SOUS-AGENT :
+    /// « PreToolUse (sous-agent) », « PostToolUse (sous-agent) ». Le moniteur reconnaît ce suffixe (TravailSousAgent, plan
+    /// 30.1-02) ; une garde croisée tient l'égalité des deux constantes (plan 30.1-03). Une DEMANDE de sous-agent
+    /// (PermissionRequest, Notification) ne le porte jamais : c'est une attente, pas un travail.</summary>
+    public const string SuffixeSousAgent = " (sous-agent)";
 
     public static SessionHookResult Process(string? eventName, string? stdinJson, long nowMs)
     {
@@ -84,17 +96,26 @@ public static class SessionHookProcessor
 
         // PIÈGE SRC-03 CÔTÉ HOOKS. Un sous-agent porte le MÊME identifiant de session que son parent
         // (relevé du 2026-09-12) et ne s'en distingue QUE par la présence de ces deux champs. Sur cette
-        // machine, quatre-vingt-quatorze pour cent des transcripts sont des sous-agents : sans ce veto, une
-        // vague d'agents parallèles réaffirmerait « en cours » sur une session parente qui n'y est plus, et
-        // écraserait un « à toi » encore en attente. Deux événements échappent au veto, et deux seulement :
-        // ceux qui réclament MON intervention. Un sous-agent ne peut pas parler de l'activité ni du cycle de
-        // vie de son parent, mais il peut parfaitement avoir besoin de moi.
+        // machine, quatre-vingt-quatorze pour cent des transcripts sont des sous-agents.
         //
-        // Le placement est ESSENTIEL : après le garde session_id, et AVANT le court-circuit SessionEnd —
-        // un SessionEnd de sous-agent ne doit jamais supprimer le fichier d'état de son parent.
+        // SUB-01 (phase 30.1) — LA DOCTRINE, en deux phrases. Un sous-agent ne parle jamais du CYCLE DE VIE
+        // de son parent : SessionStart, SessionEnd, Stop et UserPromptSubmit émis par lui restent ignorés
+        // (D-30.1-01). Mais son ACTIVITÉ EST celle de la session : une session dont le tour est fini et dont
+        // un agent tourne en arrière-plan « réfléchit » (écart E2 du constat de phase 31, relevé de 14:44).
+        // Ses deux battements passent donc, comme ses deux demandes (permission, bus) qui réclament MON
+        // intervention depuis la phase 25.
+        //
+        // La brèche que le veto de la phase 25 fermait par le silence — une vague d'agents écrasant un
+        // « à toi » encore en attente (R3) — se ferme désormais AU BON ENDROIT : dans l'écriture, sous le
+        // verrou, où un battement de sous-agent ne réaffirme qu'un travail ou un tour fini
+        // (EcritureEtatSession, D-30.1-03). C'est le drapeau BattementSousAgent qui l'y porte.
+        //
+        // Le placement est ESSENTIEL et inchangé : après le garde session_id, et AVANT le court-circuit
+        // SessionEnd — un SessionEnd de sous-agent ne doit jamais supprimer le fichier d'état de son parent.
         var estSousAgent = agentId.Length > 0 || agentType.Length > 0;
-        if (estSousAgent && ev is not ("PermissionRequest" or "Notification"))
+        if (estSousAgent && ev is not ("PermissionRequest" or "Notification" or "PreToolUse" or "PostToolUse"))
             return SessionHookResult.Ignored;
+        var battementSousAgent = estSousAgent && ev is ("PreToolUse" or "PostToolUse");
 
         if (ev is "SessionEnd") return new SessionHookResult(sid, Delete: true, null, false);
 
@@ -124,16 +145,19 @@ public static class SessionHookProcessor
         // PermissionRequest et les deux battements, le NOM DE L'ÉVÉNEMENT. Deux lectures du relevé se sont
         // contredites sur le nom du champ de contexte de permission : rien ne doit s'y appuyer, et aucun
         // champ spécifique à un battement n'est confirmable non plus. Le nom de l'événement, lui, est un
-        // fait observé — c'est nous qui l'avons câblé.
+        // fait observé — c'est nous qui l'avons câblé. Un battement de SOUS-AGENT porte en plus le suffixe
+        // SuffixeSousAgent (D-30.1-02) : le moniteur et le diagnostic savent d'où vient ce travail. Une
+        // DEMANDE de sous-agent garde son motif ordinaire : c'est une attente, pas un travail.
         var motif = ev switch
         {
             "Notification" => notifType,
+            "PreToolUse" or "PostToolUse" when battementSousAgent => ev + SuffixeSousAgent,
             "PermissionRequest" or "PreToolUse" or "PostToolUse" => ev,
             _ => null,
         };
 
         var json = BuildStateJson(sid, ProjectFromCwd(cwd), activity.Value, motif, nowMs);
-        return new SessionHookResult(sid, Delete: false, json, false);
+        return new SessionHookResult(sid, Delete: false, json, false, BattementSousAgent: battementSousAgent);
     }
 
     /// <summary>Contenu du fichier d'état (schéma lu par <see cref="SessionMonitor"/>).</summary>

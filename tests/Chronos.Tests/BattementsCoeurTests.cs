@@ -10,13 +10,20 @@ namespace Chronos.Tests;
 
 /// <summary>
 /// EVT-03 — « en cours » cesse d'être deviné par un seuil d'expiration : il est RÉAFFIRMÉ par des
-/// battements de cœur, et le veto sous-agent est ce qui rend ces battements honnêtes.
+/// battements de cœur.
+///
+/// <para><b>SUB-01 (phase 30.1) — un sous-agent qui écrit est un travail de sa session.</b> Ses battements
+/// réaffirment « en cours » pour la session parente : une session dont le tour est fini mais dont un agent
+/// tourne en arrière-plan « réfléchit » (écart E2 du constat de phase 31). Ce qui rend ces battements
+/// honnêtes, ce n'est plus le silence du veto : c'est qu'ils ne réaffirment qu'un travail ou un tour fini —
+/// jamais une attente d'intervention, jamais un état absent (<c>EcritureEtatSession</c>, sous le verrou).</para>
 ///
 /// <para><b>Le piège que ce fichier garde.</b> Les hooks d'un sous-agent portent le MÊME
 /// <c>session_id</c> que la session parente et ne s'en distinguent QUE par la présence de
 /// <c>agent_id</c> / <c>agent_type</c> (relevé du 2026-09-12). Sur cette machine, quatre-vingt-quatorze
-/// pour cent des transcripts sont des sous-agents : sans veto, une vague d'agents parallèles
-/// réaffirmerait « en cours » sur un parent qui n'y est plus, et écraserait un « à toi » en attente.</para>
+/// pour cent des transcripts sont des sous-agents : une vague d'agents parallèles ne doit ni parler du
+/// CYCLE DE VIE de son parent (naître, recevoir un prompt, finir un tour, mourir), ni écraser un « à toi »
+/// en attente — la brèche R3, fermée désormais au bon endroit.</para>
 ///
 /// <para>Le cœur testé ici est PUR : <c>Process</c> ne prend qu'une chaîne. Aucun test de cette section
 /// n'ouvre de fichier, ne lit le vrai <c>~/.claude/</c> ni le vrai <c>%APPDATA%\Chronos\</c>.</para>
@@ -46,22 +53,53 @@ public class BattementsCoeurTests
     // --- Le VETO sous-agent ---
 
     /// <summary>
-    /// Un sous-agent ne parle jamais de l'ACTIVITÉ ni du CYCLE DE VIE de son parent : ni pour dire qu'il
-    /// travaille, ni pour dire que son tour est fini. Les deux marqueurs sont éprouvés, car un seul
-    /// des deux suffit à trahir un sous-agent.
+    /// D-30.1-01 — le veto se réduit au CYCLE DE VIE. Un sous-agent ne parle jamais du cycle de vie de son
+    /// parent : ni pour dire qu'une session naît, ni qu'un prompt arrive, ni que le tour est fini (le
+    /// <c>SessionEnd</c> a son propre test, plus bas : c'est le cas le plus grave). Les deux marqueurs sont
+    /// éprouvés, car un seul des deux suffit à trahir un sous-agent.
     /// </summary>
     [Theory]
-    [InlineData("PostToolUse", MarqueurId)]
-    [InlineData("PostToolUse", MarqueurType)]
+    [InlineData("SessionStart", MarqueurId)]
+    [InlineData("SessionStart", MarqueurType)]
     [InlineData("UserPromptSubmit", MarqueurId)]
+    [InlineData("UserPromptSubmit", MarqueurType)]
     [InlineData("Stop", MarqueurId)]
-    public void Un_evenement_d_activite_ou_de_fin_de_tour_emis_par_un_sous_agent_est_ignore(string ev, string marqueur)
+    [InlineData("Stop", MarqueurType)]
+    public void Un_evenement_de_cycle_de_vie_emis_par_un_sous_agent_est_ignore(string ev, string marqueur)
     {
         var r = SessionHookProcessor.Process(ev, Stdin(marqueur), 0);
 
         Assert.True(r.Ignore);
         Assert.Null(r.StateJson);
         Assert.False(r.Delete);
+        Assert.False(r.BattementSousAgent);
+    }
+
+    /// <summary>
+    /// SUB-01 (phase 30.1) — LE RENVERSEMENT, sur les battements seulement. Un sous-agent qui appelle un outil
+    /// travaille POUR sa session : le battement écrit « en cours » pour la session PARENTE (le
+    /// <c>session_id</c> que le hook reçoit), daté de son instant, et son motif le NOMME (« … (sous-agent) »),
+    /// pour que le moniteur et le diagnostic sachent d'où vient ce travail. Le drapeau porté par le résultat
+    /// est ce que l'écriture lit pour ne réaffirmer qu'un travail ou un tour fini (D-30.1-03).
+    /// </summary>
+    [Theory]
+    [InlineData("PreToolUse", MarqueurId)]
+    [InlineData("PreToolUse", MarqueurType)]
+    [InlineData("PostToolUse", MarqueurId)]
+    [InlineData("PostToolUse", MarqueurType)]
+    public void Un_battement_de_sous_agent_ecrit_Reflexion_pour_la_session_parente(string ev, string marqueur)
+    {
+        var r = SessionHookProcessor.Process(ev, Stdin(marqueur), 4242);
+
+        Assert.False(r.Ignore);
+        Assert.False(r.Delete);
+        Assert.True(r.BattementSousAgent);
+        Assert.Equal("s", r.SessionId);
+        using var doc = JsonDocument.Parse(r.StateJson!);
+        Assert.Equal("Working", doc.RootElement.GetProperty("activity").GetString());
+        Assert.Equal(ev + " (sous-agent)", doc.RootElement.GetProperty("reason").GetString());
+        Assert.Equal(4242L, doc.RootElement.GetProperty("updated_at").GetInt64());
+        Assert.Equal("MonProjet", doc.RootElement.GetProperty("project").GetString());
     }
 
     /// <summary>
@@ -79,9 +117,11 @@ public class BattementsCoeurTests
     }
 
     /// <summary>
-    /// Les DEUX seules exceptions au veto, et elles ne s'élargissent pas : un sous-agent peut
-    /// parfaitement réclamer MON intervention, et c'est la seule chose qu'il dise de vrai pour la session
-    /// parente. Vetoer ces deux-là ferait perdre de VRAIES demandes.
+    /// Les deux DEMANDES échappent au veto depuis la phase 25 : un sous-agent peut parfaitement réclamer MON
+    /// intervention. Vetoer ces deux-là ferait perdre de VRAIES demandes. Depuis la phase 30.1 (D-30.1-02),
+    /// elles gardent leur motif ORDINAIRE, sans suffixe, et ne portent pas le drapeau de battement : une
+    /// demande est une attente, pas un travail — le moniteur ne doit jamais la confondre avec un signal de
+    /// sous-agent.
     /// </summary>
     [Theory]
     [InlineData("PermissionRequest", MarqueurId)]
@@ -91,6 +131,9 @@ public class BattementsCoeurTests
         var r = SessionHookProcessor.Process(ev, Stdin(fragment), 0);
 
         Assert.Equal("WaitingAttention", Activite(r));
+        Assert.False(r.BattementSousAgent);
+        using var doc = JsonDocument.Parse(r.StateJson!);
+        Assert.DoesNotContain(" (sous-agent)", doc.RootElement.GetProperty("reason").GetString()!, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -125,6 +168,13 @@ public class BattementsCoeurTests
             Activite(SessionHookProcessor.Process("UserPromptSubmit", Stdin("\"agent_id\":\"\""), 0)));
         Assert.Equal("Working",
             Activite(SessionHookProcessor.Process("UserPromptSubmit", Stdin("\"agent_id\":42"), 0)));
+
+        // SUB-01 : un marqueur vide ne fabrique pas davantage un battement de sous-agent — le motif reste celui
+        // du parent, sans suffixe, et l'écriture garde pour lui la doctrine du parent.
+        var battement = SessionHookProcessor.Process("PostToolUse", Stdin("\"agent_id\":\"\""), 0);
+        Assert.False(battement.BattementSousAgent);
+        using var doc = JsonDocument.Parse(battement.StateJson!);
+        Assert.Equal("PostToolUse", doc.RootElement.GetProperty("reason").GetString());
     }
 
     // --- Les deux battements de cœur, routés ---
@@ -146,11 +196,72 @@ public class BattementsCoeurTests
 
         Assert.False(r.Ignore);
         Assert.False(r.Delete);
+        Assert.False(r.BattementSousAgent);   // le battement de la session ELLE-MÊME : doctrine inchangée
         using var doc = JsonDocument.Parse(r.StateJson!);
         Assert.Equal("Working", doc.RootElement.GetProperty("activity").GetString());
         Assert.Equal(ev, doc.RootElement.GetProperty("reason").GetString());
         Assert.Equal("MonProjet", doc.RootElement.GetProperty("project").GetString());
         Assert.Equal(ms, doc.RootElement.GetProperty("updated_at").GetInt64());
+    }
+
+    // --- Le relevé de 14:44 (écart E2 du constat de phase 31), côté hooks ---
+
+    /// <summary>
+    /// SUB-01, critère 1 côté hooks — LE RELEVÉ QUI A OUVERT LA PHASE 30.1, rejoué avec ses instants réels (UTC ;
+    /// 14:33 locale = 12:33Z). Le tour parent de la session 88677186 s'est terminé (<c>Stop</c> à 12:33:23Z) juste
+    /// après avoir lancé un agent en arrière-plan ; l'agent <c>a7df37762e5ce2df4</c> écrivait encore à
+    /// 12:45:09.853Z. Chronos affichait « En attente » : le battement du sous-agent était vetoé. Il doit désormais
+    /// dire « Réflexion », daté du battement — puis le <c>Stop</c> suivant du parent (12:50:00Z), plus récent,
+    /// rend « En attente ».
+    ///
+    /// <para>Relecture HERMÉTIQUE par le moniteur réel, à ses propres instants figés : le <see cref="Relire"/> de
+    /// ce fichier est figé au 2026-09-12 et ne convient pas ici.</para>
+    /// </summary>
+    [Fact]
+    public void Le_releve_de_14h44_cote_hooks_Reflexion_puis_En_attente_au_Stop()
+    {
+        const string sid = "88677186-8690-44dc-ac77-7a319a0aa5cb";
+        var parent = "{\"session_id\":\"" + sid + "\",\"cwd\":\"C:/Projets/Projet-A\"}";
+        var sousAgent = "{\"session_id\":\"" + sid + "\",\"cwd\":\"C:/Projets/Projet-A\","
+                        + "\"agent_id\":\"a7df37762e5ce2df4\",\"agent_type\":\"gsd-executor\"}";
+
+        var stopParent = new DateTimeOffset(2026, 9, 26, 12, 33, 23, TimeSpan.Zero);
+        var battementAgent = new DateTimeOffset(2026, 9, 26, 12, 45, 9, 853, TimeSpan.Zero);
+        var lecture1 = new DateTimeOffset(2026, 9, 26, 12, 45, 30, TimeSpan.Zero);
+        var stopSuivant = new DateTimeOffset(2026, 9, 26, 12, 50, 0, TimeSpan.Zero);
+        var lecture2 = new DateTimeOffset(2026, 9, 26, 12, 50, 5, TimeSpan.Zero);
+
+        var dossier = TempDossier();
+        var vide = TempDossier();
+        try
+        {
+            IReadOnlyList<SessionSnapshot> Lire(DateTimeOffset instant)
+                => new SessionMonitor(dossier,
+                                      new TranscriptSessionSource(vide),
+                                      new ArchiveStore(Path.Combine(vide, "a.json")))
+                    .Read(instant);
+
+            Assert.True(EcritureEtatSession.Appliquer(dossier,
+                SessionHookProcessor.Process("Stop", parent, stopParent.ToUnixTimeMilliseconds())).Reussi);
+            Assert.True(EcritureEtatSession.Appliquer(dossier,
+                SessionHookProcessor.Process("PostToolUse", sousAgent, battementAgent.ToUnixTimeMilliseconds())).Reussi);
+
+            var s = Assert.Single(Lire(lecture1));
+            Assert.Equal(SessionActivity.Working, s.Activity);
+            Assert.Equal(battementAgent, s.UpdatedAt);
+            Assert.Equal("PostToolUse (sous-agent)", s.Reason);
+            Assert.Equal("Réflexion", AffichageSessions.Etat(s.Activity));
+            Assert.Equal("Projet-A", s.Project);
+
+            Assert.True(EcritureEtatSession.Appliquer(dossier,
+                SessionHookProcessor.Process("Stop", parent, stopSuivant.ToUnixTimeMilliseconds())).Reussi);
+
+            var fin = Assert.Single(Lire(lecture2));
+            Assert.Equal(SessionActivity.WaitingTurn, fin.Activity);
+            Assert.Equal(stopSuivant, fin.UpdatedAt);
+            Assert.Equal("En attente", AffichageSessions.Etat(fin.Activity));
+        }
+        finally { Directory.Delete(dossier, true); Directory.Delete(vide, true); }
     }
 
     // --- La CADENCE : ce que les battements imposent au fichier d'état ---
