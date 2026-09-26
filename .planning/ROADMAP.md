@@ -298,7 +298,7 @@ point (a).
 Plans:
 - [x] 30.1-01-PLAN.md — SUB-01 côté hooks : battements de sous-agent → `Working` du parent, jamais sur `WaitingAttention`, jamais de création ni d'effacement (1152 → 1169 seul)
 - [x] 30.1-02-PLAN.md — SUB-01 côté transcripts et fusion : `TravailSousAgent`, `subagents/*.jsonl` plus récents que le parent, non-effacement à la fusion, fixtures réelles, coût mesuré (→ 1178 seul ; 1195 en fin de vague 1)
-- [ ] 30.1-03-PLAN.md — SUB-02, SUB-01 : contrat des hooks et `data-sources.md` sous garde, test de bout en bout, release 3.2.1 sans lancement, ligne « E2, suite » du constat (→ 1200)
+- [x] 30.1-03-PLAN.md — SUB-02, SUB-01 : contrat des hooks et `data-sources.md` sous garde, test de bout en bout, release 3.2.1 sans lancement, ligne « E2, suite » du constat (→ 1200)
 
 ### Phase 31: Écrit, publié, constaté
 **Goal**: La source app-bureau est documentée comme l'est le contrat des hooks, l'exe **3.2.0** est publié et
@@ -343,7 +343,7 @@ la 28 peut passer devant sans rien casser.
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
 | 30. La lecture fait disparaître | 4/4 | Complete    | 2026-09-26 |
-| 30.1. Un sous-agent qui écrit est un travail de sa session (INSERTED) | 2/3 | In Progress|  |
+| 30.1. Un sous-agent qui écrit est un travail de sa session (INSERTED) | 3/3 | Complete   | 2026-09-26 |
 | 31. Écrit, publié, constaté | 2/3 | In Progress|  |
 
 ### Couverture des exigences

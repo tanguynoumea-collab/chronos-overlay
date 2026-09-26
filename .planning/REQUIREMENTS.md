@@ -110,13 +110,13 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 
 ### Sous-agents en arrière-plan (SUB) — phase 30.1 insérée le 2026-09-26 (écart E2 du constat)
 
-- [ ] **SUB-01**: Une session dont un **sous-agent écrit** est **« Réflexion »**, datée du dernier battement du
+- [x] **SUB-01**: Une session dont un **sous-agent écrit** est **« Réflexion »**, datée du dernier battement du
   sous-agent — côté hooks (`PreToolUse`/`PostToolUse` portant `agent_id`/`agent_type` ⇒ travail du parent) et
   côté transcripts (dernier message des `subagents/*.jsonl` postérieur au dernier message du parent). Un
   battement de sous-agent **n'efface jamais** une attente d'intervention (permission, question, `blocked`) ; le
   `Stop` du parent postérieur au dernier battement rend « En attente » ; le silence de 20 min rend « En attente ? ».
   Les événements de cycle de vie des sous-agents restent ignorés ; un sous-agent n'est jamais une ligne.
-- [ ] **SUB-02**: Le contrat des hooks (§3, veto) et `docs/data-sources.md` disent la nouvelle règle sous garde ;
+- [x] **SUB-02**: Le contrat des hooks (§3, veto) et `docs/data-sources.md` disent la nouvelle règle sous garde ;
   l'exe est republié en **3.2.1** (procédure de 31-02, sans lancement) et la phase 31 reprend son point (a).
 
 ### Validation in vivo et livraison (VAL)
@@ -172,8 +172,8 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | LIB-03 | Phase 28 | Complete |
 | LIB-04 | Phase 28 | Complete |
 | SIL-01 | Phase 28 | Complete |
-| SUB-01 | Phase 30.1 | Pending |
-| SUB-02 | Phase 30.1 | Pending |
+| SUB-01 | Phase 30.1 | Complete |
+| SUB-02 | Phase 30.1 | Complete |
 | VAL-01 | Phase 27 | Complete |
 | VAL-02 | Phase 31 | Complete |
 | VAL-03 | Phase 31 | Pending |
