@@ -38,7 +38,12 @@ src/Chronos/bin/Release/net8.0-windows/win-x64/publish/Chronos.exe
 ```
 
 Un **unique** `Chronos.exe` (+ éventuellement `Chronos.pdb`, à ne pas distribuer). Taille
-attendue ~60-70 Mo compressé (garde-fou < 120 Mo).
+mesurée ~77 Mo (3.1.0, 3.2.0) ; garde-fou < 120 Mo.
+
+Copier ensuite la sortie à la racine du dépôt sous le nom versionné `Chronos-v<X.Y.Z>.exe`
+(ignoré par `.gitignore` : `/Chronos-v*.exe`). La version vient des quatre propriétés du csproj
+(`Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion`), tenues cohérentes par
+`VersionPublieeTests`, et le rapport de diagnostic l'affiche (ligne `Version :`).
 
 ---
 
@@ -79,9 +84,10 @@ mirrorées dans `Properties/PublishProfiles/win-x64.pubxml`.
 
 ## 5. Autostart — chemin stable et limite
 
-Le toggle « Lancer au démarrage » (menu contextuel) crée un raccourci `Chronos.lnk` dans
-`shell:startup` (per-user, sans droit admin). Le raccourci cible **`Environment.ProcessPath`**,
-c'est-à-dire **l'exe qui l'a créé** (voir `src/Chronos/Services/AutostartService.cs`).
+Le toggle « Lancer au démarrage » (fenêtre de réglages, clic droit sur le cadran) crée un
+raccourci `Chronos.lnk` dans `shell:startup` (per-user, sans droit admin). Le raccourci cible
+**`Environment.ProcessPath`**, c'est-à-dire **l'exe qui l'a créé** (voir
+`src/Chronos/Services/AutostartService.cs`).
 
 `Environment.ProcessPath` est **single-file-safe** — contrairement à `Assembly.Location` qui est
 **vide en mono-fichier**. Le raccourci pointe donc toujours vers le bon exe au moment de l'activation.
@@ -98,10 +104,13 @@ c'est-à-dire **l'exe qui l'a créé** (voir `src/Chronos/Services/AutostartServ
 Vérifications **automatisables** (rappel — faites lors du build de release) :
 
 1. `publish/` ne contient **que** `Chronos.exe` (+ `.pdb`) — **zéro** `.dll` à côté.
-2. Taille de `Chronos.exe` < 120 Mo (attendu ~60-70 Mo).
-3. **Smoke** : lancer l'exe **publié** (pas le build debug), le laisser vivre ~8 s (extraction
-   native au 1er run), confirmer qu'il n'a **pas** quitté prématurément, puis le tuer proprement.
-4. Non-régression : `dotnet test Chronos.sln -c Debug` → 106/106 verts.
+2. Taille de `Chronos.exe` < 120 Mo (mesuré ~77 Mo).
+3. **Smoke sans lancer l'overlay** : `Chronos-v<X.Y.Z>.exe --hook SessionStart` avec une entrée
+   standard vide ⇒ code 0, aucune écriture, md5 de `~/.claude/settings.json` identique avant/après.
+   L'agent ne lance jamais l'overlay : lancé depuis une session Claude Code, il verrait la vue
+   virtualisée d'AppData (autres réglages, autre `treated.json`).
+4. Non-régression : `dotnet test Chronos.sln -c Debug` → suite complète verte (0 échec), deux
+   exécutions.
 
 Vérifications **humaines (UAT)** — hors périmètre automatisé (voir `07-VALIDATION.md`) :
 
@@ -110,3 +119,21 @@ Vérifications **humaines (UAT)** — hors périmètre automatisé (voir `07-VAL
 - **Machine réellement propre** sans .NET : copier l'exe sur une VM/machine sans SDK et lancer.
 - **Autostart après reboot** : activer le toggle depuis l'exe publié, redémarrer Windows,
   confirmer le lancement automatique.
+
+---
+
+## 7. Premier lancement et réconciliation
+
+C'est l'utilisateur qui lance le nouvel exe, par l'Explorateur (double-clic) ou Win+R — jamais
+depuis un terminal ouvert dans l'app Claude. Quitter d'abord l'ancienne version (réglages →
+« Quitter Chronos ») : il n'existe aucun verrou mono-instance.
+
+Au premier lancement en mode overlay, `ClaudeSettingsReconciler` repointe les huit groupes de hooks
+(widget de sessions activé ; désactivé, il les retire) et la statusLine vers le nouvel exe, après
+une sauvegarde `%APPDATA%\Chronos\backups\claude-settings-<horodatage>.json`. Le constater dans le
+FICHIER — la sauvegarde est l'état avant ; le fichier courant est la sauvegarde où l'ancien nom
+d'exe devient le nouveau — et non dans `chronos.log`, écrit avant la réconciliation.
+
+Garder l'ancien exe sur le disque tant que des sessions ouvertes avant la réconciliation tournent :
+elles l'appellent encore. Activer « Lancer au démarrage » DEPUIS le nouvel exe : le raccourci vise
+l'exe qui l'a créé.
