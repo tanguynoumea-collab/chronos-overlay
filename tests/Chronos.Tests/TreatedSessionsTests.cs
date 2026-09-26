@@ -128,8 +128,11 @@ public class TreatedSessionsTests
         SessionTreatmentTracker tracker, ArchiveStore? archive = null)
         => new SessionMonitor(TempDir(), source, archive ?? new ArchiveStore(TempFile()), treated, tracker);
 
+    // Renommé en phase 30 (était NET01_le_monitor_masque_apres_reponse) : la v1.6 masquait une session répondue
+    // PENDANT qu'elle travaillait, c'est exactement ce que LUE-05 corrige. La réponse est toujours inscrite (NET-01),
+    // mais une session qui travaille s'affiche « Réflexion » : le filtre « traitée » ne masque qu'une attente.
     [Fact]
-    public void NET01_le_monitor_masque_apres_reponse()
+    public void NET01_la_reponse_est_inscrite_et_la_session_montre_son_travail()
     {
         var store = new TreatedStore(TempFile(), new FakeClock(T));
         var tracker = new SessionTreatmentTracker(store);
@@ -142,7 +145,8 @@ public class TreatedSessionsTests
 
         var t1 = t0.AddSeconds(5);
         source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.Working, t1) };
-        Assert.DoesNotContain(monitor.Read(t1), s => s.SessionId == "s"); // répondu → masquée
+        Assert.Contains(monitor.Read(t1), s => s.SessionId == "s" && s.Activity == SessionActivity.Working); // répondue, elle travaille → « Réflexion » (LUE-05)
+        Assert.True(store.Load().ContainsKey("s"));                                                          // …et la réponse est inscrite (NET-01)
     }
 
     [Fact]
@@ -155,11 +159,12 @@ public class TreatedSessionsTests
         var t0 = T;
         var t1 = t0.AddSeconds(5);
 
-        // Attente puis répondu → masquée.
+        // Attente puis répondu → inscrite ; elle travaille, donc elle est visible « Réflexion » (LUE-05, phase 30 : la
+        // v1.6 la masquait pendant son travail).
         source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.WaitingTurn, t0) };
         monitor.Read(t0);
         source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.Working, t1) };
-        Assert.DoesNotContain(monitor.Read(t1), s => s.SessionId == "s");
+        Assert.Contains(monitor.Read(t1), s => s.SessionId == "s" && s.Activity == SessionActivity.Working);
 
         // Nouvel épisode d'attente PLUS RÉCENT → réapparaît + entrée purgée.
         var t2 = t1.AddSeconds(5);

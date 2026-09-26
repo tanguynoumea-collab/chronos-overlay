@@ -121,11 +121,13 @@ public class InspectionSessionsTests
 
         var lecture = monitor.Inspecter(Maintenant);
 
-        Assert.Empty(lecture.Visibles);                                  // le widget ne montre RIEN
+        // Depuis LUE-05 (phase 30), une session qui travaille n'est jamais masquée par treated.json : le cas fondateur
+        // s'affiche « Réflexion ». La v1.6 la masquait (motif Traitee) — c'est exactement ce que LUE-05 corrige.
+        var visible = Assert.Single(lecture.Visibles);
+        Assert.Equal(Id, visible.SessionId);
+        Assert.Equal(SessionActivity.Working, visible.Activity);
+        Assert.Empty(lecture.Masquees);
         Assert.Equal(1, lecture.FichiersEcartesParAnciennete);           // le hook de 625 min est tombé
-        var masquee = Assert.Single(lecture.Masquees);
-        Assert.Equal(Id, masquee.Session.SessionId);
-        Assert.Equal(MotifMasquage.Traitee, masquee.Motif);              // …et on sait enfin POURQUOI
     }
 
     [Fact]
