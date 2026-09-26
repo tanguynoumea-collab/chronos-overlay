@@ -262,11 +262,16 @@ public partial class App : Application
         // lit la MÊME instance que le widget, par le moniteur — OBS-01).
         services.AddSingleton(sp => new LecteurAppBureau(sp.GetRequiredService<RacinesCandidates>().SessionsAppBureau));
 
+        // LUE-02 — ce que l'OS a au premier plan : le PROCESSUS de la fenêtre (jamais son titre, jamais l'UI Automation retirée en phase 21).
+        // Singleton : son état « depuis » vit avec l'app, et le rapport lit ce que le moniteur en a vu (OBS-01).
+        services.AddSingleton<IPremierPlan>(_ => new PremierPlanWin32());
+
         services.AddSingleton(sp => new SessionMonitor(null, null, sp.GetRequiredService<ArchiveStore>(),
             sp.GetRequiredService<TreatedStore>(),
             sp.GetRequiredService<SessionTreatmentTracker>(),
             dossiersEtat: sp.GetRequiredService<RacinesCandidates>().EtatsHooks,
-            appBureau: sp.GetRequiredService<LecteurAppBureau>()));
+            appBureau: sp.GetRequiredService<LecteurAppBureau>(),
+            premierPlan: sp.GetRequiredService<IPremierPlan>()));
 
         // CYC-01 — balayage du magasin d'états au démarrage. Les racines balayées sont celles DU MONITEUR du
         // widget, toutes (vue du paquet de l'app bureau ET vue réelle), jamais un second chemin déduit : deux
