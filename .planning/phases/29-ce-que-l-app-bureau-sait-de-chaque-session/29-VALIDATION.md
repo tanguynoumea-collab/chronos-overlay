@@ -41,7 +41,7 @@ created: 2026-09-25
 | **Total mesuré après la vague 1** | |
 | **Total mesuré après 29-03** | |
 | **Total mesuré après 29-04** | |
-| **Total mesuré après 29-05 (deux exécutions)** | |
+| **Total mesuré après 29-05 (deux exécutions)** | **1062 / 0** avec 29-04, deux exécutions (10 s, 11 s ; relancé à la reprise du 2026-09-26 : 1062 / 0 deux fois, 11 s, 10 s). 29-05 seul : 1039 + 11 = **1050** (+1 sur l'attendu 1049 : cas « lecteur branché dont la lecture lève », écart n° 1 de 29-05-SUMMARY) ; par classe : DiagnosticServiceTests 31 → 39, GardesPerimetreTests 15 → 16, LectureSeuleAppBureauTests 4 → 6 |
 
 ---
 
@@ -71,9 +71,9 @@ created: 2026-09-25
 | 29-03-03 | 03 | 2 | APP-01, APP-03 | miroir DI + gardes texte (câblage `appBureau:`, titre après l'arbitrage) | `dotnet test Chronos.sln -c Debug --nologo -v q` | ✅ classes existantes étendues | ⬜ pending |
 | 29-04-01 | 04 | 3 | APP-02 | unit (producteur : nom, info-bulle, motif) + ViewModel + galerie | `dotnet test … --filter "FullyQualifiedName~AffichageSessionsTests\|FullyQualifiedName~LibellesSessionsTests\|FullyQualifiedName~SessionStylesBindingTests"` | ✅ classes existantes étendues | ✅ green (`daffd83` RED 11/56 → `62482cb`, 56/56) |
 | 29-04-02 | 04 | 3 | APP-02 | WPF 8 styles × 9 thèmes (titre long, largeur +1 DIP, 160 DIP) + garde texte + **mutation `MaxWidth`** | `dotnet test Chronos.sln -c Debug --nologo -v q` | ✅ classes existantes étendues | ✅ green (`d8ac222` RED 2 → `21a144a` ; « +1 DIP » compté avec la latitude de l'ellipse, référence PROJET OLYMPE DATAMIND 161,3 DIP ; mutation `MaxWidth` : 2 rouges, sha256 identique ; 1062 / 0 ×2 en fin de phase) |
-| 29-05-01 | 05 | 3 | APP-04 | intégration rapport (trouvée / absente / non branchée, lignes par session) + garde OBS-01 étendue | `dotnet test … --filter "FullyQualifiedName~DiagnosticServiceTests\|FullyQualifiedName~GardesPerimetreTests\|FullyQualifiedName~NormalisationUniqueTests\|FullyQualifiedName~ServicesLayerPurityTests"` | ✅ classes existantes étendues | ⬜ pending |
-| 29-05-02 | 05 | 3 | APP-05 | garde texte (chemin de l'app en un seul fichier, résolveur sans écriture) + **mutation (c)** | `dotnet test … --filter "FullyQualifiedName~LectureSeuleAppBureauTests"` | ✅ (créée en 29-02) | ⬜ pending |
-| 29-05-03 | 05 | 3 | APP-06 | constat RÉEL hors de l'arbre de l'app (processus WMI, DLL du commit livré), lecture seule | `test -s .planning/phases/29-ce-que-l-app-bureau-sait-de-chaque-session/29-SONDE-APP06.txt && grep -c "Claude existe : False" .planning/phases/29-ce-que-l-app-bureau-sait-de-chaque-session/29-SONDE-APP06.txt` | ❌ créé (`29-SONDE-APP06.txt`) | ⬜ pending |
+| 29-05-01 | 05 | 3 | APP-04 | intégration rapport (trouvée / absente / non branchée, lignes par session) + garde OBS-01 étendue | `dotnet test … --filter "FullyQualifiedName~DiagnosticServiceTests\|FullyQualifiedName~GardesPerimetreTests\|FullyQualifiedName~NormalisationUniqueTests\|FullyQualifiedName~ServicesLayerPurityTests"` | ✅ classes existantes étendues | ✅ green — RED 9/60 (`fc2c834`), GREEN 60/60 (`7d21a11`) |
+| 29-05-02 | 05 | 3 | APP-05 | garde texte (chemin de l'app en un seul fichier, résolveur sans écriture) + **mutation (c)** | `dotnet test … --filter "FullyQualifiedName~LectureSeuleAppBureauTests"` | ✅ (créée en 29-02) | ✅ green — 6/6 dès l'arrivée, rouge par la mutation (c) (`dd974f1`) |
+| 29-05-03 | 05 | 3 | APP-06 | constat RÉEL hors de l'arbre de l'app (processus WMI, DLL du commit livré), lecture seule | `test -s .planning/phases/29-ce-que-l-app-bureau-sait-de-chaque-session/29-SONDE-APP06.txt && grep -c "Claude existe : False" .planning/phases/29-ce-que-l-app-bureau-sait-de-chaque-session/29-SONDE-APP06.txt` | ❌ créé (`29-SONDE-APP06.txt`) | ✅ constaté — fichier présent, « Claude existe : False » 1 fois (`415cd7d`) |
 
 *Status : ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -89,20 +89,20 @@ created: 2026-09-25
 | (e) | 29-03 / T2 | question datée par la `lastActivityAt` COURANTE | `Une_question_marquee_traitee_ne_revient_pas_quand_l_activite_de_fond_avance` | |
 | (f) | 29-03 / T2 | dépôt sans la condition « connue d'une autre source » | `C7_sans_autre_source_la_question_de_l_app_ne_cree_aucune_ligne` | |
 | MaxWidth | 29-04 / T2 | `MaxWidth="160"` retiré de Pastilles | `Un_titre_long_est_coupe_sans_elargir_le_widget…`, `Le_nom_est_borne_a_160_dans_Pastilles_et_Marge` | |
-| (c) | 29-05 / T2 | le littéral `claude-code-sessions` dans DiagnosticService.cs | `Le_chemin_de_l_app_bureau_n_existe_que_dans_le_resolveur_de_racines` | |
+| (c) | 29-05 / T2 | le littéral `claude-code-sessions` dans DiagnosticService.cs | `Le_chemin_de_l_app_bureau_n_existe_que_dans_le_resolveur_de_racines` | **1 / 61** : `Le_chemin_de_l_app_bureau_n_existe_que_dans_le_resolveur_de_racines`, porteurs « Services/DiagnosticService.cs, Services/RacinesEtat.cs » ; révoquée, sha256 `3b87c84e…69d7` identique, `git diff` vide |
 
 ### Mesures réelles (29-05 T3, sonde hors de l'arbre)
 
 | Grandeur | Attendu (recherche) | Mesuré |
 |---|---|---|
-| `%APPDATA%\Claude existe` vu par la sonde | False | |
-| Racine d'état du paquet : présente, nombre de fichiers | présente, ≥ 0 | |
-| `PremiereExistante(SessionsAppBureau)` | `…\Packages\Claude_…\LocalCache\Roaming\Claude\claude-code-sessions` | |
-| Fichiers énumérés / récents / avec métadonnées | ~138-142 / ~18 / ~18 | |
-| `Lire` froid ; chaud médiane / p90 / max | ~96 ms ; 0,73 / 0,90 / 1,06 ms (seuil 5 ms) | |
-| `Inspecter` chaud médiane / p90 | ≈ 26-28 ms (phase 28, seuil 50 ms) | |
-| Sessions visibles / jointes à un titre | — | |
-| Dates d'écriture `archived.json`, `treated.json`, `settings.json` avant / après | identiques | |
+| `%APPDATA%\Claude existe` vu par la sonde | False | **False** (parent WmiPrvSE ; `%APPDATA%\Chronos\sessions` absent aussi) |
+| Racine d'état du paquet : présente, nombre de fichiers | présente, ≥ 0 | **présente, 5** `*.json` ; vue réelle `…\Roaming\Chronos\sessions` absente |
+| `PremiereExistante(SessionsAppBureau)` | `…\Packages\Claude_…\LocalCache\Roaming\Claude\claude-code-sessions` | `%USERPROFILE%\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code-sessions` |
+| Fichiers énumérés / récents / avec métadonnées | ~138-142 / ~18 / ~18 | **138 / 18 / 18** (0 illisible, 0 sans cliSessionId, 0 doublon ; champs absents : latestUserFrameAt 5) |
+| `Lire` froid ; chaud médiane / p90 / max | ~96 ms ; 0,73 / 0,90 / 1,06 ms (seuil 5 ms) | **345,81 ms** (JIT de Chronos.dll + 1re lecture, voir 29-05-SUMMARY) ; **0,502 / 0,559 / 0,720 ms** |
+| `Inspecter` chaud médiane / p90 | ≈ 26-28 ms (phase 28, seuil 50 ms) | **29,31 / 33,26 ms** (max 38,45 ; 1er appel 271,60 ms) |
+| Sessions visibles / jointes à un titre | — | **4 / 4** (4 avec métadonnées ; 1 question de l'app retenue, 2 désaccords, 1 fichier de hook écarté) |
+| Dates d'écriture `archived.json`, `treated.json`, `settings.json` avant / après | identiques | **identiques** dans trois vues (ce shell, Python hors arbre, la sonde) |
 
 ---
 

@@ -48,12 +48,12 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 - [x] **APP-03**: La classification de fin de tour de l'app est reconnue : `status_category = blocked` avec
   `needs_action` est une **attente observée** (question posée à l'utilisateur), et le motif (`needs_action`)
   est lisible en détail ou en info-bulle. `completed` et `review_ready` ne fabriquent aucun état à eux seuls.
-- [ ] **APP-04**: Le diagnostic rapporte l'état de la source app-bureau — dossier trouvé ou non, nombre de
+- [x] **APP-04**: Le diagnostic rapporte l'état de la source app-bureau — dossier trouvé ou non, nombre de
   fichiers lus, nombre de jointures réussies, champs manquants — et, pour chaque session affichée, le titre, le
   dernier focus et la classification lus. Une source absente est annoncée « absente », pas passée sous silence.
-- [ ] **APP-05**: Chronos n'écrit **jamais** dans `%APPDATA%\Claude` : la source est en lecture seule, et une
+- [x] **APP-05**: Chronos n'écrit **jamais** dans `%APPDATA%\Claude` : la source est en lecture seule, et une
   garde le tient par test.
-- [ ] **APP-06** *(ajoutée le 2026-09-25, sonde hors de l'arbre de l'app — `29-SONDE-HORS-ARBRE.txt`)* :
+- [x] **APP-06** *(ajoutée le 2026-09-25, sonde hors de l'arbre de l'app — `29-SONDE-HORS-ARBRE.txt`)* :
   l'overlay lit les fichiers d'état des hooks dans **toutes les vues d'AppData** — la vue réelle
   (`%APPDATA%\Chronos\sessions`, vide en production) ET le cache du paquet MSIX de l'app bureau
   (`%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Chronos\sessions`, où les hooks lancés sous l'app
@@ -145,9 +145,9 @@ une source non documentée se lit avec tolérance et se dégrade vers « je ne s
 | APP-01 | Phase 29 | Complete |
 | APP-02 | Phase 29 | Complete |
 | APP-03 | Phase 29 | Complete |
-| APP-04 | Phase 29 | Pending |
-| APP-05 | Phase 29 | Pending |
-| APP-06 | Phase 29 | Pending |
+| APP-04 | Phase 29 | Complete |
+| APP-05 | Phase 29 | Complete |
+| APP-06 | Phase 29 | Complete |
 | LUE-01 | Phase 30 | Pending |
 | LUE-02 | Phase 30 | Pending |
 | LUE-03 | Phase 30 | Pending |
