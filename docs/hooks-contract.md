@@ -208,10 +208,11 @@ continue après la fin du tour ne rajeunit pas la question. `completed` et `revi
 
 ### Ce que « traité » veut dire (phase 26 — TRT-01, TRT-02)
 
-Une session quitte le widget pour deux raisons seulement : un geste de l'utilisateur, ou une
-**transition observée sur la MÊME source**. Concrètement, `SessionTreatmentTracker` n'inscrit une
-session comme traitée que si la source qui a parlé au cycle précédent disait une attente, que c'est
-**la même** qui parle maintenant, et qu'elle dit `Working`.
+Une session en attente quitte le widget de trois façons : un geste de l'utilisateur, une
+**transition observée sur la MÊME source** (la réponse), ou une **lecture** (phase 30, ci-dessous).
+Pour la réponse, `SessionTreatmentTracker` n'inscrit une session comme traitée que si la source qui a
+parlé au cycle précédent disait une attente, que c'est **la même** qui parle maintenant, et qu'elle
+dit `Working`.
 
 - **`WaitingDeduced` est une attente pour le détecteur.** L'exclure revenait à lire « l'attente est
   devenue déduite » comme « l'utilisateur a répondu ». La divergence signalée par la vérification de
@@ -227,6 +228,22 @@ session comme traitée que si la source qui a parlé au cycle précédent disait
 - **L'épisode d'attente est daté par l'instant que le SIGNAL porte**, jamais par l'horloge du
   guetteur, et il n'avance que lorsque la source affirme quelque chose de plus récent. C'est ce qui
   fait survivre le « traité » à un redémarrage de l'overlay sans lui interdire de revenir.
+
+**La lecture (phase 30 — LUE-01 à LUE-04).** Une attente dont l'épisode est antérieur au dernier focus de
+la session dans l'app bureau (`lastFocusedAt`, joint par `cliSessionId`) est lue : le détecteur l'inscrit
+dans `treated.json`, daté par l'épisode, sans clic, une seule fois par épisode. La session sélectionnée
+dans l'app (le `lastFocusedAt` le plus récent, tous fichiers confondus, ceux sans `cliSessionId` compris)
+est lue aussi quand la fenêtre au premier plan appartient au processus `claude` depuis au moins
+`HorizonsSessions.GraceLecture` (2,5 s) après la fin du tour. Le premier plan se lit par nom de processus,
+jamais par UI Automation ni par titre de fenêtre. Sans métadonnées de l'app pour une session, la règle ne
+s'applique pas à elle : comportement v1.6. Une lecture est réversible comme une réponse : un épisode
+d'attente plus récent fait revenir la session. L'attente déduite et la demande de permission se lisent
+comme les autres attentes.
+
+**Le masquage « traité » ne s'applique qu'à une session en attente (LUE-05).** Répondue, lue ou marquée à
+la main, une session qui se remet à travailler s'affiche « Réflexion » ; son prochain épisode d'attente la
+ramène « En attente ». Le rapport de diagnostic nomme la cause de chaque masquage : lue par le focus, lue au
+premier plan, répondue, ou marquée à la main (ou traitée avant le démarrage de l'overlay).
 
 ---
 
