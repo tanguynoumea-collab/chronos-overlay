@@ -4,13 +4,13 @@ milestone: v1.7
 milestone_name: — Lue ou non lue (widget de sessions)
 status: verifying
 stopped_at: Completed 30.1-03-PLAN.md
-last_updated: "2026-09-26T14:15:52.699Z"
+last_updated: "2026-09-26T23:27:13.843Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State

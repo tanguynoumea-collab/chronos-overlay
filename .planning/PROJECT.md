@@ -52,20 +52,25 @@ chiffre exact.
 - ✓ Source app-bureau par fichiers en lecture seule : titre, dernier focus, question `blocked` ; deux vues d'AppData (cache MSIX + réelle) lues par l'overlay, constaté hors de l'arbre (APP-01..06) — Phase 29
 - ✓ La lecture fait disparaître : attente antérieure au dernier focus ou session sélectionnée avec la fenêtre Claude au premier plan (grâce 2,5 s) ⇒ masquée, avec sa cause au diagnostic ; une session qui travaille reste visible (LUE-01..05) — Phase 30
 - ✓ Un sous-agent qui écrit est un travail de sa session : battements et transcripts des sous-agents ⇒ « Réflexion » du parent, sans jamais effacer une attente d'intervention ; contrat sous garde ; exe 3.2.1 (SUB-01, SUB-02) — Phase 30.1 (insérée, écart E2 du constat)
+- ✓ Relevé in vivo AVANT la règle : le retour alt-tab met `lastFocusedAt` à jour, le tour fini sous les yeux non (VAL-01) — Phase 27
+- ✓ Contrat de la source app-bureau sous garde croisée (14 champs) ; exe 3.2.0 puis 3.2.1 publiés, version embarquée, réconciliation constatée dans le fichier (VAL-02 ; VAL-03 partielle : constat en production reporté en phase 32) — Phase 31 — v1.7
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-Milestone v1.7 — « Lue ou non lue » : le widget de sessions ne montre que ce qui mérite un regard.
-- **Source app-bureau par fichiers (APP)** : lire les métadonnées par session que l'app bureau Claude écrit
-  (`%APPDATA%\Claude\claude-code-sessions\<org>\<user>\local_*.json` : `cliSessionId`, `title`,
-  `lastFocusedAt`, `postTurnSummary`), joindre par UUID, dégrader vers le comportement v1.6 si absentes.
-- **« Lue » (LUE)** : une session en attente dont la fin de tour est antérieure au dernier focus disparaît ;
-  la session sélectionnée pendant que la fenêtre Claude est au premier plan compte comme lue.
-- **Deux libellés (LIB)** : « Réflexion » et « En attente » (+ « En attente ? » pour la déduction) ; le titre de
-  session remplace le nom de dossier ; une question `AskUserQuestion` en suspens est une attente, pas un travail.
-- **Trou §9.1 (SIL)** : une session sans fichier de hook ne disparaît plus à 15 min sans un mot.
+Milestone v1.8 — « Historique d'utilisation » (cycle ZEUS n°1, exe cible 3.3.0) : comprendre sa façon d'utiliser Claude au
+cours du temps, sans jamais présenter une estimation comme un chiffre exact.
+- **Compter juste (CPT)** : dédupliquer les lignes `assistant` par `message.id` (une ligne par bloc de contenu, même `usage`
+  recopié : le parser compte 2 à 2,75× trop) ; comprendre pourquoi `last-exact.json` n'est plus écrit depuis le 13/09 ;
+  une seule instance de Chronos à la fois.
+- **Journal des relevés exacts (JRN)** : un relevé exact toutes les 5 min (5 h, hebdo, resets, statut serveur), dédupliqué,
+  idempotent, avec événements de couverture ; âge de la dernière écriture exposé partout ; publié seul en **3.2.2**.
+- **Agrégats de tokens (TOK)** : tranches de 15 min UTC × modèle × sous-agent, quatre compteurs séparés, reconstruction de
+  fond depuis les transcripts existants puis incrémental par curseurs ; jamais convertis en pourcentage.
+- **Fenêtre Historique (HIS)** : vue « Semaine de forfait » en trois styles sélectionnables (Pistes, Simplifié, Tuiles), vues
+  « Jour » et « 4 semaines », pistes Niveau / Rythme / Tokens / Couverture, trous jamais interpolés, aucune projection.
+- **Accès (ACC)** : carte dans les réglages + double-clic au centre du cadran ; section du diagnostic ; release 3.3.0.
 
 ### Out of Scope
 
@@ -84,7 +89,18 @@ Milestone v1.7 — « Lue ou non lue » : le widget de sessions ne montre que ce
 - **Source app-bureau via UI Automation pour le widget de sessions** — retirée en v1.6 : le widget ne couvre que Claude Code. Ses entrées `desktop:foreground:*` ne vieillissaient jamais et ne pouvaient donc jamais expirer ; l'utilisateur a dû les archiver à la main.
 - **Hystérésis « traité » par focus de fenêtre** — supprimée avec l'UIA : elle exigeait `Origin == Desktop` et n'atteignait donc JAMAIS une session Claude Code. Remplacée par une transition observée et un geste explicite.
 
-## Current State (entrée en v1.7 — 2026-09-25)
+## Current State (entrée en v1.8 — 2026-09-27)
+
+**v1.7 clos le 2026-09-27** (exe 3.2.1, 1200 tests) avec un écart connu : le constat en production est PARTIEL (trois exécutables
+en marche, tableau des gestes non joué) et se rejoue en tête de la phase 32 sur la 3.2.2. **Deux défauts découverts à la clôture**
+par le conseil LLM du 26/09 (cinq relecteurs les ont vérifiés sur la machine) : le parser de tokens compte 2 à 2,75× trop (lignes
+`assistant` dupliquées par bloc de contenu, même `usage`) — la correction par delta v1.5 est fausse en production ; et
+`last-exact.json` n'est plus écrit depuis le 2026-09-13 12:44 malgré des relevés exacts frais (Save dans un try/catch muet).
+Sonde d'en-têtes : fonctionnelle, 1 relevé / 5 min (12 % 5 h et 33 % hebdo le 26/09 22:34). Transcripts : 1 565 fichiers, 2,2 Go,
+depuis juin (juillet purgé), 1 480 de sous-agents. Reset hebdo : samedi 00:00 heure locale (confirmé par `resets_at`).
+
+<details><summary>État à l'entrée en v1.7 (2026-09-25)</summary>
+
 
 **Avancement v1.7 (2026-09-25, soir) :** phase 27 close (relevé in vivo : alt-tab met `lastFocusedAt` à jour ;
 tour fini sous les yeux le laisse antérieur ⇒ LUE-02 nécessaire) ; **phase 28 close** (947 tests, vérification
@@ -113,29 +129,33 @@ hooks et des transcripts), `title`, `lastFocusedAt`, `lastActivityAt`, `latestUs
 Le titre `ai-title` des transcripts CLI n'existe pas dans ceux de l'app bureau (vérifié sur 4 sessions).
 Format interne NON documenté : lecture tolérante, dégradation, jamais d'invention.
 
-## Current Milestone: v1.7 — Lue ou non lue
+</details>
 
-**Goal :** le widget ne montre que les sessions qui méritent un regard — « Réflexion » ou « En attente » — et
-une session lue disparaît d'elle-même, sans clic.
+## Current Milestone: v1.8 — Historique d'utilisation
+
+**Goal :** garder la trace de l'usage du forfait au fil du temps et la montrer — semaine de forfait (samedi → samedi), jour,
+quatre semaines — pour que l'utilisateur comprenne quand et comment il consomme, sans qu'un seul chiffre soit inventé.
 
 **Target features :**
-- **Source app-bureau par fichiers** — un `ISessionSource` qui lit les métadonnées par session, joint par
-  `cliSessionId`, expose titre, dernier focus et classification de fin de tour ; tolérant et dégradable.
-- **Règle « lue »** — attente antérieure au dernier focus ⇒ traitée (via le magasin réversible existant) ;
-  session sélectionnée + fenêtre Claude au premier plan ⇒ lue. Deux points à valider in vivo : le retour
-  alt-tab sur la même session met-il `lastFocusedAt` à jour ? et le tour qui finit pendant qu'on regarde.
-- **Deux libellés et le titre** — « Réflexion » / « En attente » (+ « En attente ? » pour la déduction),
-  titre de session à la place du dossier, `AskUserQuestion` en suspens classée attente, `blocked` de l'app
-  reconnu comme question posée.
-- **Trou §9.1 refermé** — une session sans fichier de hook ne disparaît plus en silence à 15 min.
+- **Compter juste d'abord** — dédup `message.id` du parser, cause du gel de `last-exact.json`, une seule instance.
+- **Journal des relevés exacts** (JSONL mensuel, dédup `CapturedAt`, événements de couverture, âge de dernière écriture) —
+  publié seul en 3.2.2 : chaque jour sans journal est perdu à jamais.
+- **Agrégats de tokens** (15 min UTC × modèle × sous-agent, quatre compteurs, reconstruction de fond, curseurs).
+- **Fenêtre Historique** — Semaine (styles Pistes / Simplifié / Tuiles), Jour, 4 semaines ; pistes Niveau, Rythme, Tokens,
+  Couverture ; trous hachurés et annotés, saut « répartition inconnue », divergence « consommé ailleurs ».
+- **Accès** — carte des réglages + double-clic au centre du cadran ; section du diagnostic.
 
-**Doctrine inchangée :** observé, jamais déduit ; une déduction porte son point d'interrogation.
+**Cadre :** conseil LLM du 2026-09-26 (`.zeus/reports/llm-council-2026-09-26.md`), plan de design validé le 2026-09-27
+(`.zeus/DESIGN_PLAN.md`, maquettes Figma https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k). Doctrine inchangée : exact
+ou rien ; deux séries de nature différente ne se fusionnent jamais ; XAML pur ; lecture seule stricte de `~/.claude`.
 
-## Next Milestone Goals (après v1.7)
+## Next Milestone Goals (après v1.8)
 
-Sous-fenêtres opus/sonnet/cowork, survol/tooltip, tray, taille réglable, préavis avant saturation du quota et
-notification au reset. Piste d'économie à trancher : si `/api/oauth/usage` sert un jour la famille
-`anthropic-ratelimit-unified-*`, les ≈ 288 micro-requêtes/jour de la sonde deviennent supprimables.
+Heatmap jour × heure des rythmes ; export CSV de la plage affichée ; compaction du journal au-delà de 8 semaines ; dimension
+projet dans les agrégats ; projection conditionnelle « à ce rythme » (seulement si visuellement distincte d'un relevé) ;
+`DayTimeline` sur les resets observés plutôt qu'une grille théorique de 5 h ; dérive d'une heure de `WeeklyWindow` au
+changement d'heure (test d'acceptation le 25/10/2026). Reliquat : sous-fenêtres opus/sonnet/cowork, tray, taille réglable,
+préavis avant saturation, notification au reset ; économie de la sonde si `/api/oauth/usage` sert un jour les en-têtes unifiés.
 
 ## Context
 
@@ -187,7 +207,11 @@ notification au reset. Piste d'économie à trancher : si `/api/oauth/usage` ser
 | Les états de session sont OBSERVÉS, jamais déduits par expiration (v1.6) | Un état dont la source a expiré n'est pas « terminé », il est INCONNU. Même doctrine que « exact ou rien » appliquée au cadran en v1.5 | ✓ Good — v1.6, 889 tests, hooks vérifiés actifs en app bureau le 2026-09-25 |
 | La fusion des sources arbitre par FRAÎCHEUR (v1.6) | L'ordre d'insertion laissait un signal de 7 h écraser un signal de 10 s — mesuré contre les classes réelles | ✓ Good — v1.6 |
 | « Traité » = transition observée sur la MÊME source + geste explicite (v1.6) | Une expiration de source n'est pas une réponse ; le focus n'existe pas en terminal | ⚠️ Revisit — insuffisant seul : rien ne dit si l'utilisateur a LU (v1.7) |
-| « Lue » lu dans les métadonnées par session de l'app bureau (v1.7) | `lastFocusedAt` est le seul signal de lecture qui existe ; format interne non documenté → tolérance + dégradation | — Pending |
+| « Lue » lu dans les métadonnées par session de l'app bureau (v1.7) | `lastFocusedAt` est le seul signal de lecture qui existe ; format interne non documenté → tolérance + dégradation | ✓ Good — v1.7, 1200 tests ; constat geste par geste reporté en phase 32 |
+| Deux journaux de nature différente, jamais fusionnés : relevés exacts (magnitude, compte entier) et agrégats de tokens (attribution, Claude Code seul) (v1.8) | Les tokens ne sont pas convertibles en % (plafonds pondérés, non publiés, périmètre partiel) ; le Δ entre deux relevés exacts est la seule mesure de consommation vraie | — Pending (conseil LLM 2026-09-26, 5/5 unanimes) |
+| JSONL mensuel tolérant, pas SQLite (v1.8) | `e_sqlite3.dll` est une dépendance native, exclue ; 25 Mo/an tiennent en mémoire | — Pending |
+| Fenêtre Historique séparée, opaque, non topmost (v1.8) | Le cadran est un mode coup d'œil (layered, coûteux) ; l'historique un mode consultation | — Pending (plan de design validé 2026-09-27) |
+| Dédup des tokens par `message.id` avant toute somme (v1.8) | Une ligne `assistant` par bloc de contenu, même `usage` recopié : facteur 2 à 2,75 mesuré | — Pending (correctif à publier en 3.2.2) |
 
 ## Evolution
 
@@ -207,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 — phase 30.1 close (sous-agents en arrière-plan, exe 3.2.1) ; reste le constat de la phase 31*
+*Last updated: 2026-09-27 — v1.7 clos (écart connu : constat partiel) ; entrée en v1.8 « Historique d'utilisation »*

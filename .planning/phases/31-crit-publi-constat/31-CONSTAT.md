@@ -180,4 +180,25 @@ Consignes : ne jamais cliquer sur le widget pendant une mesure ; « invite longu
 
 ## 4. Verdict
 
-à rendre
+**Verdict du 2026-09-27 : PARTIEL — reporté, pas tu.**
+
+Constaté et conforme :
+- **Réconciliation (critère 3)** : deux fois constatée dans le fichier `~/.claude/settings.json` (3.1.0 → 3.2.0 le 26/09 à 13:xx,
+  puis 3.2.0 → 3.2.1 à 16:37:46) : sauvegarde horodatée de md5 égal à l'état précédent, 9 remplacements, 8 hooks + statusLine,
+  3 groupes `gsd-*` intacts, 0 reste d'ancienne version.
+- **Version embarquée et publiée (critère 2)** : `Chronos-v3.2.1.exe` (release `b981e41`), « Version : 3.2.1 » au diagnostic
+  (rapport du 26/09 22:34, lu hors de l'arbre de l'app).
+- **E2 (sous-agent en arrière-plan affiché « En attente »)** : cause de conception, corrigée par la phase insérée 30.1 (SUB-01,
+  SUB-02) et republiée en 3.2.1 ; le rapport du 26/09 22:34 montre trois sessions « Réflexion » dont deux portées par des
+  sous-agents — cohérent, mais pas encore constaté GESTE PAR GESTE avec l'utilisateur.
+
+Non constaté (reste dû) :
+- **Point (a)** : la 3.2.1 n'a jamais été SEULE. Les trois exécutables (3.1.0 PID 40772, 3.2.0 PID 126160, 3.2.1 PID 121900)
+  tournaient encore le 27/09 à 00:45 (`tasklist`). Tant que les deux anciens ne sont pas quittés par l'utilisateur, les mesures du
+  point (b) sont impossibles (trois écrivains sur `treated.json` et `chronos.log`, trois sondes).
+- **Point (b), les trois lignes du tableau (L1, L2, L2b, L3, L4, Q)** et **les 12 vérifications déférées** : non jouées.
+
+Décision : le milestone v1.7 est clos avec cet écart CONNU et TRACÉ (voir `MILESTONES.md` › Known Gaps). Le reste du constat
+devient le **premier point de contrôle humain du milestone v1.8, phase 32** (« une seule instance ») : quitter 3.1.0 et 3.2.0,
+lancer l'exe publié par l'Explorateur, puis jouer le tableau — sur la 3.2.2, qui embarque en plus la déduplication des tokens et
+le journal des relevés. Le protocole ci-dessus reste valable mot pour mot.

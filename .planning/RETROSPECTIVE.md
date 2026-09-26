@@ -57,6 +57,42 @@
 
 ---
 
+## Milestone : v1.7 — Lue ou non lue (widget de sessions)
+
+**Livré :** 2026-09-26 (exe 3.2.1) — clos le 2026-09-27 avec un écart connu (constat en production partiel).
+**Phases :** 6 (27, 28, 29, 30, 30.1 insérée, 31) | **Plans :** 20 | **Tests :** 896 → 1200 | **Commits :** 125 (2026-09-25 16:39 → 2026-09-26)
+
+### Ce qui a été construit
+- Le relevé in vivo AVANT la règle (phase 27) : deux gestes joués par l'utilisateur ont fixé la sémantique de `lastFocusedAt`.
+- Deux mots à l'écran (« Réflexion », « En attente », « En attente ? »), la question `AskUserQuestion` classée attente, horizons uniques 20 min / 8 h (phase 28).
+- La source app-bureau par fichiers, en lecture seule, avec la découverte de la virtualisation AppData de MSIX et la lecture des deux vues par candidats (phase 29).
+- La règle « lue » : attente antérieure au dernier focus, ou session sélectionnée avec la fenêtre Claude au premier plan ⇒ masquée, cause écrite au diagnostic (phase 30).
+- Un sous-agent qui écrit est un travail de sa session (phase insérée 30.1, née d'un écart du constat E2).
+- Contrat de la source app-bureau sous garde, exe 3.2.0 puis 3.2.1 publiés et réconciliés (phase 31).
+
+### Ce qui a marché
+- **Le relevé avant la règle** : phase 27 a coûté un plan et a évité de coder une règle fausse (le retour alt-tab met bien `lastFocusedAt` à jour, le tour fini sous les yeux non).
+- **La sonde hors de l'arbre de l'app** (WMI) : sans elle, la virtualisation MSIX serait restée invisible et l'overlay aurait continué à ne rien voir des hooks.
+- **La phase insérée 30.1** déclenchée par un écart du constat : le constat a servi à quelque chose avant même d'être fini.
+
+### Ce qui a été inefficace
+- **Le constat en production n'a pas été mené au bout** : trois exécutables en marche simultanément (3.1.0, 3.2.0, 3.2.1) parce qu'aucun verrou mono-instance n'existe et que le geste « Quitter Chronos » n'a pas été fait ; les mesures du point (b) sont restées impossibles. Écart connu, reporté en tête de v1.8.
+- **Une panne silencieuse de plus** découverte à la clôture : `last-exact.json` n'est plus écrit depuis le 2026-09-13 malgré des relevés exacts frais (Save dans un try/catch muet). Le projet a déjà payé deux fois ce motif (jeton expiré, usage.json figé).
+- **Le parser de tokens compte 2 à 2,75 fois trop** (une ligne `assistant` par bloc de contenu, même `usage` recopié) — découvert par le conseil du 26/09, pas par les tests : aucune fixture réelle multi-blocs n'existait.
+
+### Patterns établis
+- Toute source de fichiers de l'app bureau se lit par candidats (cache du paquet MSIX puis vue réelle) et se constate hors de l'arbre de l'app.
+- Un constat en production est une phase avec protocole écrit avant d'être joué ; « non observé » est une réponse valable ; un verdict PARTIEL est écrit, jamais tu.
+
+### Leçons
+- **Un verrou mono-instance** (ou au minimum une détection « une autre instance tourne ») est un prérequis de tout constat et de tout journal : à livrer en v1.8 phase 32.
+- **Toute persistance doit exposer l'âge de sa dernière écriture** au diagnostic ; un try/catch muet autour d'un `Save` est une panne silencieuse en attente.
+- **Les fixtures de transcripts doivent être réelles** (multi-blocs, sous-agents) : les fixtures synthétiques à une ligne par message ont caché un facteur 2.
+
+### Observations de coût
+- Modèles : profil `quality` (opus pour planners/executors). Sessions : 3 (25/09 soir, 26/09 journée, 26–27/09 nuit).
+- Notable : le conseil LLM (10 agents, ≈ 1,2 M tokens) a trouvé en 20 min deux défauts que 1 200 tests verts n'avaient pas vus.
+
 ## Tendances inter-milestones
 
 ### Évolution du processus
