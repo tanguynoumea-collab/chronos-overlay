@@ -126,6 +126,14 @@ public sealed record LectureAppBureau(
 ///
 /// <para><b>Concurrence.</b> Le minuteur de l'interface et le rapport de diagnostic appellent <see cref="Lire"/> :
 /// un verrou protège le cache et la mémoire des épisodes (coût nul, question fermée).</para>
+///
+/// <para><b>La sélection (LUE-02).</b> La session que l'utilisateur a sélectionnée dans l'app est le
+/// <c>lastFocusedAt</c> le plus récent parmi TOUS les fichiers servis au cycle — valides, doublons écartés, fichiers
+/// sans <c>cliSessionId</c> : un maximum pris sur les seules sessions retenues désignerait la session PRÉCÉDENTE pendant
+/// que l'utilisateur regarde une session neuve, pas encore jointe, et la règle la déclarerait lue (30-RESEARCH, fait
+/// n° 1). <b>Limite écrite</b> (LOW) : un fichier écrit il y a plus de 24 h n'est pas ouvert, donc ne peut pas être
+/// sélectionné — cela exige une session restée sélectionnée 24 h sans une réécriture, pendant qu'une autre travaille
+/// seule.</para>
 /// </summary>
 public sealed class LecteurAppBureau
 {
@@ -144,8 +152,9 @@ public sealed class LecteurAppBureau
 
     /// <summary>Par chemin : la clé (date d'écriture UTC, taille) de la dernière lecture RÉUSSIE, et ce qu'elle a donné.
     /// Une relecture illisible ne la remplace pas : la dernière métadonnée valide reste servie, et la clé inchangée
-    /// fait retenter le fichier au cycle suivant.</summary>
-    private readonly Dictionary<string, (System.DateTime Ecriture, long Taille, IssueLecture Issue, MetadonneesAppBureau? Meta)> _cache
+    /// fait retenter le fichier au cycle suivant. Le dernier focus y est gardé pour TOUT fichier lu, identifiant ou non :
+    /// la sélection se calcule aussi sur les fichiers que le cache sert.</summary>
+    private readonly Dictionary<string, (System.DateTime Ecriture, long Taille, IssueLecture Issue, MetadonneesAppBureau? Meta, System.DateTimeOffset? Focus)> _cache
         = new(System.StringComparer.OrdinalIgnoreCase);
 
     /// <summary>TRT-02 : par (cliSessionId, postTurnSummaryFor), l'instant de l'épisode lu à sa PREMIÈRE apparition.</summary>
@@ -178,6 +187,8 @@ public sealed class LecteurAppBureau
     ///   (+3 min 10 s mesurés) ne rajeunit donc pas une question — sinon une session marquée traitée reviendrait sans
     ///   rien avoir redemandé (NET-03). Sans <c>postTurnSummaryFor</c>, la valeur courante. Les épisodes qui ne sont
     ///   plus présents sont oubliés (mémoire bornée).</item>
+    ///   <item>La sélection est le dernier focus de TOUS les fichiers servis, pris avant le regroupement par
+    ///   identifiant (ex aequo : le premier chemin ordinal) ; aucun focus lisible ⇒ aucune sélection.</item>
     /// </list>
     /// <para><b>Limite assumée :</b> la mémoire des épisodes vit dans le processus. Un redémarrage de l'overlay pendant
     /// une activité de fond re-mémorise, une fois, une valeur plus récente que la vraie fin du tour.</para>
@@ -211,6 +222,7 @@ public sealed class LecteurAppBureau
             var illisibles = 0;
             var sansId = 0;
             var retenus = new List<(string Chemin, MetadonneesAppBureau Meta)>();
+            var focusServis = new List<(string Chemin, string? Id, System.DateTimeOffset Focus)>();
             var vus = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
 
             foreach (var (chemin, ecriture, taille) in fichiers)
@@ -225,7 +237,7 @@ public sealed class LecteurAppBureau
                 if (!connue || entree.Ecriture != ecriture || entree.Taille != taille)
                 {
                     relus++;
-                    var issue = LireEtInterpreter(chemin, out var meta);
+                    var issue = LireEtInterpreter(chemin, out var meta, out var focus);
                     if (issue == IssueLecture.Illisible)
                     {
                         // Réécriture en cours, fichier supprimé entre-temps… : la dernière lecture valide est gardée
@@ -234,13 +246,16 @@ public sealed class LecteurAppBureau
                     }
                     else
                     {
-                        entree = (ecriture, taille, issue, meta);
+                        entree = (ecriture, taille, issue, meta, focus);
                         _cache[chemin] = entree;
                         connue = true;
                     }
                 }
 
                 if (!connue) continue;   // première lecture ratée : rien à servir pour ce fichier
+                // AVANT le regroupement par identifiant : les doublons écartés et les fichiers sans identifiant comptent.
+                if (entree.Focus is { } f)
+                    focusServis.Add((chemin, entree.Issue == IssueLecture.Valide ? entree.Meta?.CliSessionId : null, f));
                 if (entree.Issue == IssueLecture.SansCliSessionId) sansId++;
                 else if (entree.Meta is { } retenue) retenus.Add((chemin, retenue));
             }
@@ -268,10 +283,17 @@ public sealed class LecteurAppBureau
                 foreach (var champ in meta.ChampsAbsents)
                     champsAbsents[champ] = champsAbsents.TryGetValue(champ, out var n) ? n + 1 : 1;
 
+            // D-30-04 — la sélection, sur tout ce qui a été servi ; ex aequo : le premier chemin ordinal (même règle que les doublons).
+            var selection = focusServis
+                .OrderByDescending(c => c.Focus)
+                .ThenBy(c => c.Chemin, System.StringComparer.Ordinal)
+                .Select(c => new SessionSelectionnee(c.Id, c.Focus))
+                .FirstOrDefault();
+
             var lecture = new LectureAppBureau(
                 racine, Candidats,
                 fichiers.Count, recents, parSession.Count + doublons, relus, illisibles, sansId, doublons,
-                champsAbsents, parSession);
+                champsAbsents, parSession, selection);
             _derniere = lecture;
             return lecture;
         }
@@ -341,17 +363,19 @@ public sealed class LecteurAppBureau
 
     /// <summary>Copie puis interprète ; toute erreur d'accès (fichier supprimé ou renommé entre l'énumération et
     /// l'ouverture, accès refusé, erreur d'entrée-sortie) vaut « illisible ».</summary>
-    private static IssueLecture LireEtInterpreter(string chemin, out MetadonneesAppBureau? meta)
+    private static IssueLecture LireEtInterpreter(string chemin, out MetadonneesAppBureau? meta, out System.DateTimeOffset? focus)
     {
         meta = null;
+        focus = null;
         try
         {
             var octets = LireOctets(chemin);
-            return octets is null ? IssueLecture.Illisible : Interpreter(octets, out meta);
+            return octets is null ? IssueLecture.Illisible : Interpreter(octets, out meta, out focus);
         }
         catch (System.Exception)
         {
             meta = null;
+            focus = null;
             return IssueLecture.Illisible;
         }
     }
@@ -387,12 +411,14 @@ public sealed class LecteurAppBureau
     internal static IssueLecture Interpreter(System.ReadOnlyMemory<byte> json, out MetadonneesAppBureau? meta)
         => Interpreter(json, out meta, out _);
 
-    /// <summary>La même interprétation, qui rend aussi le dernier focus lu (<c>lastFocusedAt</c>) — pour la sélection.</summary>
+    /// <summary>La même interprétation, qui rend AUSSI le dernier focus (<c>lastFocusedAt</c>) du fichier — lu avant
+    /// l'identifiant, donc rendu même pour un fichier <see cref="IssueLecture.SansCliSessionId"/> (D-30-04). Nul s'il
+    /// est absent, d'un autre type, hors du plancher de sanité, ou si le contenu est illisible.</summary>
     internal static IssueLecture Interpreter(System.ReadOnlyMemory<byte> json, out MetadonneesAppBureau? meta,
                                              out System.DateTimeOffset? focus)
     {
         meta = null;
-        focus = null;   // SQUELETTE (RED) : jamais lu
+        focus = null;
 
         var octets = json;
         var debut = octets.Span;
@@ -404,6 +430,10 @@ public sealed class LecteurAppBureau
             using var document = JsonDocument.Parse(octets, OptionsJson);
             var racine = document.RootElement;
             if (racine.ValueKind != JsonValueKind.Object) return IssueLecture.Illisible;
+
+            // Le dernier focus se lit AVANT l'identifiant : une session neuve, pas encore jointe, est peut-être celle
+            // qu'on regarde. Sans liste d'absents ici : son absence se compte plus bas, avec les métadonnées, une fois.
+            focus = Instant(racine, "lastFocusedAt", absents: null);
 
             var id = Texte(racine, "cliSessionId", absents: null);
             if (id is null) return IssueLecture.SansCliSessionId;
@@ -453,6 +483,7 @@ public sealed class LecteurAppBureau
         {
             // JSON invalide ou tronqué, texte UTF-8 invalide : illisible, jamais une exception.
             meta = null;
+            focus = null;
             return IssueLecture.Illisible;
         }
     }
@@ -488,13 +519,14 @@ public sealed class LecteurAppBureau
     }
 
     /// <summary>Un epoch en millisecondes, converti par le point unique. Absent, d'un autre type ou hors du
-    /// plancher de sanité ⇒ nul ET compté absent (une valeur qu'on ne sait pas interpréter n'est pas une valeur).</summary>
-    private static System.DateTimeOffset? Instant(JsonElement objet, string champ, List<string> absents)
+    /// plancher de sanité ⇒ nul ET compté absent si une liste est donnée (une valeur qu'on ne sait pas interpréter n'est
+    /// pas une valeur).</summary>
+    private static System.DateTimeOffset? Instant(JsonElement objet, string champ, List<string>? absents)
     {
         if (objet.TryGetProperty(champ, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var ms)
             && UsageNormalization.InstantDepuisEpochMillisecondes(ms) is { } instant)
             return instant;
-        absents.Add(champ);
+        absents?.Add(champ);
         return null;
     }
 
