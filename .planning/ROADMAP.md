@@ -343,7 +343,7 @@ la 28 peut passer devant sans rien casser.
 | 28. Deux mots, une question, les mêmes horizons | 4/4 | Complete    | 2026-09-25 |
 | 29. Ce que l'app bureau sait de chaque session | 5/5 | Complete    | 2026-09-26 |
 | 30. La lecture fait disparaître | 4/4 | Complete    | 2026-09-26 |
-| 30.1. Un sous-agent qui écrit est un travail de sa session (INSERTED) | 3/3 | Complete   | 2026-09-26 |
+| 30.1. Un sous-agent qui écrit est un travail de sa session (INSERTED) | 3/3 | Complete    | 2026-09-26 |
 | 31. Écrit, publié, constaté | 2/3 | In Progress|  |
 
 ### Couverture des exigences
