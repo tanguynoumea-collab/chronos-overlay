@@ -96,7 +96,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   couleur, S-1 / S-2 / S-3 en gris aux opacités 0,8 / 0,45 / 0,25 avec étiquettes à droite (libellé + valeur finale, ou « pas de
   relevés (avant le journal) ») ; une semaine **épuisée** montre un plateau gris à 100 % annoté « épuisée <jour> HH:MM → bloquée
   jusqu'au reset » ; bande COUVERTURE PAR SEMAINE (4 rangées) ; les semaines antérieures au journal sont vides et dites telles.
-- [ ] **HIS-06**: **Honnêteté testée** sur fixtures : un trou (> 2 cadences) interrompt la ligne et se dessine en rectangle `Line`
+- [x] **HIS-06**: **Honnêteté testée** sur fixtures : un trou (> 2 cadences) interrompt la ligne et se dessine en rectangle `Line`
   35 % à bordure pointillée (grise « Chronos arrêté », ambre « jeton invalide ») ; le saut de part et d'autre d'un trou est un bloc
   plat gris annoté « +N % pendant l'absence (répartition inconnue) », jamais une barre au réveil ; une marche de % sans tokens Code
   est encadrée en pointillé `Accent` et le pied de page l'explique (« consommé ailleurs (Cowork, claude.ai) ») ; marqueur « journal
@@ -185,7 +185,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | HIS-03 | Phase 34 | Complete |
 | HIS-04 | Phase 34 | Complete |
 | HIS-05 | Phase 35 | Pending |
-| HIS-06 | Phase 34 | Pending |
+| HIS-06 | Phase 34 | Complete |
 | HIS-07 | Phase 34 | Complete |
 | HIS-08 | Phase 34 | Complete |
 | ACC-01 | Phase 35 | Pending |
