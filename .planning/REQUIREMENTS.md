@@ -77,13 +77,13 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   `settings.json` — avec l'en-tête commun du plan de design : segment Jour / Semaine / 4 semaines, ‹ ›, « Cette semaine » /
   « Aujourd'hui », ligne de fraîcheur (« dernier relevé il y a N min · source · N relevés · N interruptions · journal ouvert le … »),
   Échap ferme.
-- [ ] **HIS-02**: La **vue « Semaine de forfait »** (X = samedi 00:00 → samedi 00:00 heure locale, bornes issues de `resets_at`
+- [x] **HIS-02**: La **vue « Semaine de forfait »** (X = samedi 00:00 → samedi 00:00 heure locale, bornes issues de `resets_at`
   7 j du journal, repli `WeeklyAnchor`) en style **« Pistes »** (A) : piste NIVEAU (hebdo en escalier coloré par la rampe du
   thème, dents de scie 5 h en trait fin `TickReset`, tirets de reset 5 h observés, semaine précédente en fantôme gris pointillé),
   piste RYTHME (barres horaires du Δ 5 h, couleur = rampe au niveau atteint), piste TOKENS CLAUDE CODE (barres horaires
   `HistoTokens` + part sous-agents `HistoSousAgent`, axe propre), bande COUVERTURE ; grille et libellés des jours ; réticule
   vertical commun au survol avec infobulle (heure, valeur, source, âge).
-- [ ] **HIS-03**: Les styles **« Simplifié »** (B : Niveau 200 px + Tokens 90 px + Couverture, sans Rythme) et **« Tuiles »**
+- [x] **HIS-03**: Les styles **« Simplifié »** (B : Niveau 200 px + Tokens 90 px + Couverture, sans Rythme) et **« Tuiles »**
   (C : hebdo seul en Niveau, piste FENÊTRES 5 H en tuiles bornées par les resets observés, hauteur = max % 5 h, grise si
   épuisée, puis Rythme, Tokens, Couverture) sont **sélectionnables** (réglage `HistoriqueStyleSemaine`, sélecteur dans la
   fenêtre et dans la carte des réglages), avec exactement les pistes et hauteurs du plan de design §2.2.
@@ -181,8 +181,8 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | TOK-04 | Phase 33 | Complete |
 | TOK-05 | Phase 33 | Complete |
 | HIS-01 | Phase 34 | Complete |
-| HIS-02 | Phase 34 | Pending |
-| HIS-03 | Phase 34 | Pending |
+| HIS-02 | Phase 34 | Complete |
+| HIS-03 | Phase 34 | Complete |
 | HIS-04 | Phase 34 | Pending |
 | HIS-05 | Phase 35 | Pending |
 | HIS-06 | Phase 34 | Pending |
