@@ -2,14 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: — Historique d'utilisation
-status: ready to plan
-stopped_at: Roadmap v1.8 created (phases 32 à 35, 26 plans proposés, 28 / 28 exigences) — ready to plan phase 32
-last_updated: "2026-09-27T12:00:00.000Z"
-last_activity: 2026-09-27
+status: executing
+last_updated: "2026-09-27T00:58:16.167Z"
+last_activity: 2026-09-27 -- Phase 32 execution started
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 8
   completed_plans: 0
 ---
 
@@ -22,33 +21,37 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend. v1.8 : comprendre
 sa façon d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Milestone v1.8 — Historique d'utilisation (cycle ZEUS n°1, `.zeus/state.json`)
+**Current focus:** Phase 32 — Compter juste, puis journaliser
 
 ## Current Position
 
 Milestone: v1.8 — Historique d'utilisation
-Phase: 32 — Compter juste, puis journaliser — Not started (phases 32 à 35, numérotation continue après la 31 de v1.7)
-Plan: —
-Status: Ready to plan — `/gsd:plan-phase 32`
-Last activity: 2026-09-27 — Roadmap v1.8 créée : 4 phases (32 à 35), 26 plans proposés, 28 / 28 exigences couvertes
+Phase: 32 (Compter juste, puis journaliser) — EXECUTING
+Plan: 1 of 8
+Status: Executing Phase 32
+Last activity: 2026-09-27 -- Phase 32 execution started
 
 Progress: [░░░░░░░░░░] 0 %
 
 ## Accumulated Context
 
 ### Décisions de l'utilisateur (2026-09-27, checkpoint humain 1 du cycle ZEUS)
+
 - Forme A (Pistes) retenue ; B (Simplifié) et C (Tuiles) codées aussi et sélectionnables.
 - Vues Jour et 4 semaines conservées dans v1.8.
 - Deux gestes d'ouverture : bouton des réglages + double-clic au centre du cadran.
 - La phase « compter juste + journal des relevés » se publie SEULE en 3.2.2 avant toute interface.
 
 ### Blockers / dettes ouvertes
+
 - **Constat en production v1.7 PARTIEL** (VAL-03) : trois exécutables en marche (3.1.0, 3.2.0, 3.2.1), tableau des gestes non
   joué → repris en tête de la phase 32 (VAL-04) sur la 3.2.2. L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
+
 - **`last-exact.json` — le « gel » n'a jamais existé (établi le 2026-09-27, sondes WMI hors arbre du 25/09 21:17 et du 27/09 01:56 ; corrigé en 32-02).** Le fichier réel est réécrit chaque minute (mtime 01:55:37 pour une capture 23:53:37Z) ; la copie datée du 2026-09-13 12:44:59 est la vue virtualisée (copy-on-write) du paquet MSIX que toute session Claude Code lit — un overlay avait tourné SOUS l'arbre de l'app ce jour-là de 07:36 à 12:44. Le `try/catch` de `LastExactUsageProvider` n'a rien avalé. Livré : `IEtatMagasin`, `DerniereEcriture`/`DerniereErreur`/`EcritureRatee` sur `LastExactStore`, section `[Magasins persistants]` et ligne « Vue AppData » au diagnostic. Règle : ne jamais juger l'overlay depuis une session.
 - **Parser de tokens ×2 à 2,75** (lignes `assistant` dupliquées par bloc, même `usage`) → CPT-01.
 
 ### Sécurité — contrainte qui prime sur tout
+
 Ne JAMAIS appeler l'endpoint de refresh OAuth avec le refresh token réel de `%APPDATA%\Chronos\oauth.dat`. Ne JAMAIS écrire
 dans `%APPDATA%\Claude\` ni dans `~/.claude/projects`. Lecture seule stricte.
 
