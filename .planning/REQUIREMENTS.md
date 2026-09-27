@@ -120,7 +120,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   Pistes / Simplifié / Tuiles, mention du double-clic, et la carte d'état « Dernière écriture du journal » avec l'alerte > 15 min.
 - [x] **ACC-02**: Un **double-clic au centre du cadran** (`CentreHit`) ouvre ou ramène au premier plan la fenêtre Historique, sans
   déclencher deux fois la bascule % / temps du simple clic (temporisation ou annulation) ; le drag et le clic droit sont inchangés.
-- [ ] **ACC-03**: Le diagnostic gagne une section **« Journal d'historique »** : chemin des fichiers, âge de la dernière écriture,
+- [x] **ACC-03**: Le diagnostic gagne une section **« Journal d'historique »** : chemin des fichiers, âge de la dernière écriture,
   relevés du jour, événements récents, état de la reconstruction des tokens (N / M), taille des fichiers, nombre d'instances.
 - [ ] **ACC-04**: **Release 3.3.0** publiée (mêmes contrôles que JRN-06) avec HIS + ACC ; README et `docs/data-sources.md`
   décrivent la fenêtre, les trois styles, les vues et les règles d'honnêteté avec les mots du plan de design §4.
@@ -190,7 +190,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | HIS-08 | Phase 34 | Complete |
 | ACC-01 | Phase 35 | Complete |
 | ACC-02 | Phase 35 | Complete |
-| ACC-03 | Phase 35 | Pending |
+| ACC-03 | Phase 35 | Complete |
 | ACC-04 | Phase 35 | Pending |
 | VAL-04 | Phase 32 | Pending |
 | VAL-05 | Phase 35 | Pending |
