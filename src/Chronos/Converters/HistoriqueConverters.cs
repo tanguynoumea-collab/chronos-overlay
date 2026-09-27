@@ -71,3 +71,25 @@ public sealed class FractionVersLargeurConverter : IMultiValueConverter
     public object[]? ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
         => throw new NotSupportedException("Une largeur ne redevient pas une fraction par binding.");
 }
+
+/// <summary>
+/// 35-04 (D-35-17) — <c>[double x, double largeurInfobulle, double largeurCanvas]</c> → <c>clamp(x, 0, max(0, W − w))</c> :
+/// l'infobulle du réticule reste posée sur le relevé survolé, sauf au bord droit où elle recule juste assez pour rester DANS sa
+/// piste (jamais à gauche de la piste). Tolérant comme les autres : <c>x</c> invalide (<c>UnsetValue</c>, <c>null</c>, <c>NaN</c>) → 0 ;
+/// largeurs pas encore mesurées (infobulle repliée, canvas non arrangé) → l'abscisse brute bornée à gauche, corrigée à la passe
+/// de mise en page suivante.
+/// </summary>
+public sealed class BorneInfobulleConverter : IMultiValueConverter
+{
+    public object? Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values is not { Length: >= 3 } || values[0] is not double x || double.IsNaN(x))
+            return 0.0;
+        if (values[1] is not double w || values[2] is not double largeur || double.IsNaN(w) || double.IsNaN(largeur) || largeur <= 0)
+            return Math.Max(0.0, x);
+        return Math.Clamp(x, 0.0, Math.Max(0.0, largeur - w));
+    }
+
+    public object[]? ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException("Une abscisse d'infobulle ne redevient pas un relevé par binding.");
+}

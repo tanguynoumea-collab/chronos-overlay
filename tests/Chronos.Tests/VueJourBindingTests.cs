@@ -336,7 +336,10 @@ public class VueJourBindingTests
             Assert.True(gauche >= 0, $"infobulle à gauche de la piste : {gauche}");
             Assert.True(gauche + infobulle.ActualWidth <= canvas.ActualWidth + 0.5,
                 $"l'infobulle sort de la piste : {gauche} + {infobulle.ActualWidth} > {canvas.ActualWidth} (jour −{joursEnArriere})");
-            Assert.True(gauche < surcouche.XReticule, "au bord droit, l'infobulle recule");
+            if (joursEnArriere == 1)   // la veille, dernier relevé 23:55 : le cas éprouve le bord droit
+                Assert.True(surcouche.XReticule + infobulle.ActualWidth > canvas.ActualWidth, "le cas n'éprouve pas le bord droit");
+            // Posée sur le réticule, sauf si elle déborde : elle recule alors JUSTE de ce qui dépasse.
+            Assert.Equal(Math.Max(0, Math.Min(surcouche.XReticule, canvas.ActualWidth - infobulle.ActualWidth)), gauche, 0.5);
 
             // Au milieu de la piste, elle reste posée sur le réticule.
             surcouche.Survoler(surcouche.ActualWidth * 0.3);

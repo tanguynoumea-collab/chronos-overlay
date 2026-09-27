@@ -10,7 +10,7 @@
     <!--
         HIS-04 — vue « Jour » (DESIGN_PLAN §2.3) : X = 0 h → 24 h locale (grille toutes les 3 h), grain 5 min.
         D-34-31 : UNE seule grille (pas de styles en Jour), trois colonnes libellés / pistes / légende droite, rangées
-        [axe des heures] [annotations : resets + trous + épuisée] [NIVEAU 190] [annotations : sauts 5 h] [RYTHME 64] [TOKENS 64]
+        [axe des heures] [annotations : resets + épuisée] [annotations : trous] [NIVEAU 190] [annotations : sauts 5 h] [RYTHME 64] [TOKENS 64]
         [légende des modèles + libellé permanent] [COUVERTURE 12] ; le corps défile (D-34-28), l'axe et le pied de page restent fixes.
         Aucune logique ici : les hauteurs sont des tokens, les mots viennent du VM / TextesHistorique, les positions des
         annotations viennent des convertisseurs de 34-04. DataContext : HistoriqueViewModel, hérité de HistoriqueWindow.
@@ -25,6 +25,7 @@
 
             <conv:InstantVersXConverter x:Key="InstantVersX"/>
             <conv:LargeurIntervalleConverter x:Key="LargeurIntervalle"/>
+            <conv:BorneInfobulleConverter x:Key="BorneInfobulle"/>
 
             <!-- Bordure et décalage de l'infobulle : ressources locales nommées (le dictionnaire commun est fermé, motif 34-05). -->
             <Thickness x:Key="HistoBordureInfobulle">1</Thickness>
@@ -125,40 +126,27 @@
                     <ColumnDefinition Width="Auto"/>   <!-- largeur portée par l'espaceur : HistoLargeurLegendeDroite -->
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>   <!-- 0 : annotations resets / trous / épuisée -->
-                    <RowDefinition Height="Auto"/>   <!-- 1 : NIVEAU 190 -->
-                    <RowDefinition Height="Auto"/>   <!-- 2 : annotations sauts 5 h -->
-                    <RowDefinition Height="Auto"/>   <!-- 3 : RYTHME 64 -->
-                    <RowDefinition Height="Auto"/>   <!-- 4 : TOKENS 64 -->
-                    <RowDefinition Height="Auto"/>   <!-- 5 : légende des modèles + libellé permanent -->
-                    <RowDefinition Height="Auto"/>   <!-- 6 : COUVERTURE 12 -->
+                    <RowDefinition Height="Auto"/>   <!-- 0 : annotations resets / épuisée -->
+                    <RowDefinition Height="Auto"/>   <!-- 1 : annotations trous (35-04 : leur propre rangée) -->
+                    <RowDefinition Height="Auto"/>   <!-- 2 : NIVEAU 190 -->
+                    <RowDefinition Height="Auto"/>   <!-- 3 : annotations sauts 5 h -->
+                    <RowDefinition Height="Auto"/>   <!-- 4 : RYTHME 64 -->
+                    <RowDefinition Height="Auto"/>   <!-- 5 : TOKENS 64 -->
+                    <RowDefinition Height="Auto"/>   <!-- 6 : légende des modèles + libellé permanent -->
+                    <RowDefinition Height="Auto"/>   <!-- 7 : COUVERTURE 12 -->
                 </Grid.RowDefinitions>
 
                 <!-- Les colonnes Auto prennent la largeur des tokens par leurs cellules (un sys:Double ne devient pas un GridLength). -->
                 <Border Grid.Row="0" Grid.Column="2" Width="{StaticResource HistoLargeurLegendeDroite}"/>
 
                 <!-- Rangée 0 : annotations du haut — « reset 5 h HH:MM » à chaque reset observé (D-34-32 : même donnée que le trait de la
-                     piste), causes des trous (ambre pour « jeton » / « sonde »), « épuisée … » au début du plateau, tronquée à sa largeur (D-34-33). -->
+                     piste), « épuisée … » au début du plateau, tronquée à sa largeur (D-34-33). Les causes des trous ont leur propre rangée
+                     (rangée 1, 35-04) : un reset et un trou proches ne se recouvrent plus. -->
                 <Grid x:Name="RangeeAnnotationsHaut" Grid.Row="0" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False">
                     <ItemsControl ItemsSource="{Binding AnnotationsResets}" ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseeAuDebut}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Style="{StaticResource Annotation}" Text="{Binding Texte}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <ItemsControl ItemsSource="{Binding AnnotationsTrous}" ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseeAuDebut}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock x:Name="Cause" Style="{StaticResource Annotation}" Text="{Binding Texte}"/>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding Cause}" Value="{x:Static mh:CauseTrou.JetonInvalide}">
-                                        <Setter TargetName="Cause" Property="Style" Value="{StaticResource AnnotationAmbre}"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Cause}" Value="{x:Static mh:CauseTrou.SondeRefusee}">
-                                        <Setter TargetName="Cause" Property="Style" Value="{StaticResource AnnotationAmbre}"/>
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -180,20 +168,39 @@
                     </ItemsControl>
                 </Grid>
 
-                <!-- Rangée 1 : NIVEAU — le % 5 h au premier plan (gris quand épuisée / refusée), l'hebdo en trait fin, un trait par reset observé. -->
-                <Grid Grid.Row="1" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}">
+                <!-- Rangée 1 : causes des trous (ambre pour « jeton » / « sonde »), sous les resets. -->
+                <Grid x:Name="RangeeAnnotationsTrous" Grid.Row="1" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False">
+                    <ItemsControl ItemsSource="{Binding AnnotationsTrous}" ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseeAuDebut}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock x:Name="Cause" Style="{StaticResource Annotation}" Text="{Binding Texte}"/>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Cause}" Value="{x:Static mh:CauseTrou.JetonInvalide}">
+                                        <Setter TargetName="Cause" Property="Style" Value="{StaticResource AnnotationAmbre}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Cause}" Value="{x:Static mh:CauseTrou.SondeRefusee}">
+                                        <Setter TargetName="Cause" Property="Style" Value="{StaticResource AnnotationAmbre}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+
+                <!-- Rangée 2 : NIVEAU — le % 5 h au premier plan (gris quand épuisée / refusée), l'hebdo en trait fin, un trait par reset observé. -->
+                <Grid Grid.Row="2" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereCent}" VerticalAlignment="Top"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereZero}" VerticalAlignment="Bottom"/>
                 </Grid>
-                <hc:PisteNiveau Grid.Row="1" Grid.Column="1" Height="{StaticResource HistoHauteurNiveauJour}" Variante="Jour"
+                <hc:PisteNiveau Grid.Row="2" Grid.Column="1" Height="{StaticResource HistoHauteurNiveauJour}" Variante="Jour"
                                 Plage="{Binding DonneesJour.Plage}" Analyse="{Binding DonneesJour.Analyse}" InstantLecture="{Binding DonneesJour.LueA}"
                                 Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}" Gris="{StaticResource HistoGris}"
                                 FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}" BordTrouJeton="{DynamicResource Alerte}" Grille="{StaticResource Line}"
                                 EpaisseurPremierPlan="{StaticResource HistoEpaisseurPremierPlan}" EpaisseurFine="{StaticResource HistoEpaisseurFin}" OpaciteTrou="{StaticResource HistoOpaciteTrou}"/>
 
-                <!-- Rangée 2 : sauts 5 h non localisés (« +N % pendant l'absence (répartition inconnue) », « au moins un reset … »). -->
-                <Grid x:Name="RangeeSauts" Grid.Row="2" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False">
+                <!-- Rangée 3 : sauts 5 h non localisés (« +N % pendant l'absence (répartition inconnue) », « au moins un reset … »). -->
+                <Grid x:Name="RangeeSauts" Grid.Row="3" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False">
                     <ItemsControl ItemsSource="{Binding AnnotationsSauts}" ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseeAuDebut}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -203,55 +210,62 @@
                     </ItemsControl>
                 </Grid>
 
-                <!-- Rangée 3 : RYTHME — Δ 5 h par heure, échelle fixe « 0 – 25 % ». -->
-                <Grid Grid.Row="3" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Margin="0,8,0,0">
+                <!-- Rangée 4 : RYTHME — Δ 5 h par heure, échelle fixe « 0 – 25 % ». -->
+                <Grid Grid.Row="4" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Margin="0,8,0,0">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteRythme}"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleRythme}" VerticalAlignment="Bottom"/>
                 </Grid>
-                <hc:PisteRythme Grid.Row="3" Grid.Column="1" Height="{StaticResource HistoHauteurRythmeJour}" Margin="0,8,0,0"
+                <hc:PisteRythme Grid.Row="4" Grid.Column="1" Height="{StaticResource HistoHauteurRythmeJour}" Margin="0,8,0,0"
                                 Plage="{Binding DonneesJour.Plage}" Deltas="{Binding DonneesJour.Analyse.Deltas5h}" Serie="{Binding DonneesJour.Analyse.Serie}"
                                 Rampe="{Binding Theme}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
 
-                <!-- Rangée 4 : TOKENS CLAUDE CODE — par quart d'heure, empilés par modèle (trois tokens de modèle), sur LEUR axe (D-34-21). -->
-                <Grid Grid.Row="4" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Margin="0,8,0,0">
+                <!-- Rangée 5 : TOKENS CLAUDE CODE — par quart d'heure, empilés par modèle (trois tokens de modèle), sur LEUR axe (D-34-21). -->
+                <Grid Grid.Row="5" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Margin="0,8,0,0">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteTokens}"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleTokens}" VerticalAlignment="Bottom"/>
                 </Grid>
-                <hc:PisteTokens Grid.Row="4" Grid.Column="1" Height="{StaticResource HistoHauteurTokensJour}" Margin="0,8,0,0"
+                <hc:PisteTokens Grid.Row="5" Grid.Column="1" Height="{StaticResource HistoHauteurTokensJour}" Margin="0,8,0,0"
                                 Plage="{Binding DonneesJour.Plage}" Colonnes="{Binding DonneesJour.Colonnes}" Plafond="{Binding PlafondTokens}" InstantLecture="{Binding DonneesJour.LueA}"
                                 Modele1="{StaticResource HistoModele1}"
                                 Modele2="{StaticResource HistoModele2}"
                                 Modele3="{StaticResource HistoModele3}"
                                 Hachure="{StaticResource HistoHachure}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
 
-                <!-- Rangée 5 : légende des modèles (D-34-34, ordre global du jour) + libellé permanent « par quart d'heure, … » (D-34-14). -->
-                <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,3,0,0">
+                <!-- Rangée 6 : légende des modèles (D-34-34, ordre global du jour) + libellé permanent « par quart d'heure, … » (D-34-14). -->
+                <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,3,0,0">
                     <TextBlock Style="{StaticResource Annotation}" Text="{Binding LegendeModeles}"/>
                     <TextBlock Style="{StaticResource Pied}" Text="{Binding LibellePermanentTokens}"/>
                 </StackPanel>
 
-                <!-- Rangée 6 : COUVERTURE — présent (Ok), trous par cause (gris / ambre). -->
-                <TextBlock Grid.Row="6" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteCouverture}" Margin="0,6,0,0"/>
-                <hc:PisteCouverture Grid.Row="6" Grid.Column="1" Height="{StaticResource HistoHauteurCouverture}" Margin="0,6,0,0"
+                <!-- Rangée 7 : COUVERTURE — présent (Ok), trous par cause (gris / ambre). -->
+                <TextBlock Grid.Row="7" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteCouverture}" Margin="0,6,0,0"/>
+                <hc:PisteCouverture Grid.Row="7" Grid.Column="1" Height="{StaticResource HistoHauteurCouverture}" Margin="0,6,0,0"
                                     Plage="{Binding DonneesJour.Plage}" Serie="{Binding DonneesJour.Analyse.Serie}" Trous="{Binding DonneesJour.Analyse.Trous}"
                                     InstantLecture="{Binding DonneesJour.LueA}" Present="{StaticResource Ok}" OpacitePresent="{StaticResource HistoOpaciteCouverture}"
                                     Arrete="{StaticResource Line}" Jeton="{DynamicResource Alerte}"/>
 
                 <!-- Surcouche commune (réticule, infobulle, ligne « maintenant » — Ink à 60 % seulement si le jour affiché est aujourd'hui :
                      AfficherMaintenant = IsVueJour && EstAuPresent, côté VM). La seule à bouger au survol et au tick (HIS-07). -->
-                <hc:SurcoucheReticule x:Name="Surcouche" Grid.Row="1" Grid.RowSpan="6" Grid.Column="1"
+                <hc:SurcoucheReticule x:Name="Surcouche" Grid.Row="2" Grid.RowSpan="6" Grid.Column="1"
                                       Plage="{Binding DonneesJour.Plage}" Serie="{Binding DonneesJour.Analyse.Serie}"
                                       Maintenant="{Binding Maintenant}" AfficherMaintenant="{Binding AfficherMaintenant}"
                                       InstantLecture="{Binding DonneesJour.LueA}" Fuseau="{Binding Fuseau}"
                                       TraitReticule="{StaticResource Ink2}" TraitMaintenant="{StaticResource Ink}"
                                       OpaciteMaintenant="{StaticResource HistoOpaciteMaintenant}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-                <Canvas Grid.Row="1" Grid.RowSpan="6" Grid.Column="1" IsHitTestVisible="False">
+                <Canvas Grid.Row="2" Grid.RowSpan="6" Grid.Column="1" IsHitTestVisible="False">
                     <!-- Infobulle §2.3 : « HH:MM · relevé exact / 5 h : N % — reset à HH:MM / hebdo : N % / source · âge » (mots de la surcouche).
-                         Posée à l'abscisse du relevé survolé ; le bord droit n'est pas borné en phase 34 (note pour la revue). -->
+                         Posée à l'abscisse du relevé survolé ; au bord droit elle recule pour rester dans la piste (D-35-17, BorneInfobulle). -->
                     <Border x:Name="Infobulle" Background="{StaticResource Panel2}" BorderBrush="{StaticResource Line}"
                             BorderThickness="{StaticResource HistoBordureInfobulle}" CornerRadius="6" Padding="8,6"
-                            Canvas.Left="{Binding XReticule, ElementName=Surcouche}" Canvas.Top="{StaticResource HistoDecalageInfobulle}"
+                            Canvas.Top="{StaticResource HistoDecalageInfobulle}"
                             Visibility="{Binding InfobulleVisible, ElementName=Surcouche, Converter={StaticResource BoolToVis}}">
+                        <Canvas.Left>
+                            <MultiBinding Converter="{StaticResource BorneInfobulle}">
+                                <Binding Path="XReticule" ElementName="Surcouche"/>
+                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
+                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                            </MultiBinding>
+                        </Canvas.Left>
                         <TextBlock Text="{Binding TexteInfobulle, ElementName=Surcouche}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsPetit}"/>
                     </Border>
                 </Canvas>

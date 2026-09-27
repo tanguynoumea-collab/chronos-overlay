@@ -318,7 +318,8 @@ public class VueSemaineBindingTests
             Assert.True(gauche >= 0, $"{style} : infobulle à gauche de la piste ({gauche})");
             Assert.True(gauche + infobulle.ActualWidth <= canvas.ActualWidth + 0.5,
                 $"{style} : l'infobulle sort de la piste : {gauche} + {infobulle.ActualWidth} > {canvas.ActualWidth}");
-            Assert.True(gauche < surcouche.XReticule, $"{style} : au bord droit, l'infobulle recule");
+            Assert.True(surcouche.XReticule + infobulle.ActualWidth > canvas.ActualWidth, $"{style} : le cas n'éprouve pas le bord droit");
+            Assert.Equal(canvas.ActualWidth - infobulle.ActualWidth, gauche, 0.5);   // recule JUSTE de ce qui dépasse
 
             surcouche.Survoler(surcouche.ActualWidth * 0.3);
             Idle(vue);

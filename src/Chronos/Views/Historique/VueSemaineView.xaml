@@ -19,7 +19,8 @@
         D-34-30 : zone antérieure au journal = Rectangle HistoHachure derrière NIVEAU, de Plage.Debut à AnnotationJournalOuvert.Debut
                   (LargeurIntervalleConverter), visible seulement quand l'annotation existe ; le mot « journal ouvert le … » est l'annotation.
         Surcouche : une SurcoucheReticule par grille (RowSpan sur toutes les pistes) ; l'infobulle est un Border bindé à ses DP en lecture
-                  seule (XReticule / TexteInfobulle / InfobulleVisible) — non bornée au bord droit en phase 34 (noté pour la revue).
+                  seule (XReticule / TexteInfobulle / InfobulleVisible) ; au bord droit elle recule pour rester dans sa piste (D-35-17,
+                  BorneInfobulle : [XReticule de SA surcouche, sa largeur, largeur du Canvas]).
         DataContext : HistoriqueViewModel (hérité de HistoriqueWindow). Le dictionnaire des tokens est fusionné ICI aussi : la vue se
         monte seule dans les tests (VueSemaineBindingTests mesure l'arbre visuel réel). Pitfall 5 : TickReset / Alerte en DynamicResource.
     -->
@@ -31,6 +32,7 @@
 
             <conv:InstantVersXConverter x:Key="InstantVersX"/>
             <conv:LargeurIntervalleConverter x:Key="LargeurIntervalle"/>
+            <conv:BorneInfobulleConverter x:Key="BorneInfobulle"/>
 
             <!-- Espacement vertical entre deux pistes (marge, pas une hauteur : les ActualHeight des pistes restent celles des tokens). -->
             <Thickness x:Key="HistoMargePiste">0,0,0,6</Thickness>
@@ -353,8 +355,15 @@
                                           AfficherMaintenant="False" InstantLecture="{Binding DonneesSemaine.LueA}" Fuseau="{Binding Fuseau}"
                                           TraitReticule="{StaticResource Ink2}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
                     <Canvas Grid.Column="1" Grid.Row="1" Grid.RowSpan="6" IsHitTestVisible="False">
-                        <Border x:Name="InfobullePistes" Style="{StaticResource Infobulle}" Canvas.Left="{Binding XReticule, ElementName=SurcouchePistes}"
+                        <Border x:Name="InfobullePistes" Style="{StaticResource Infobulle}"
                                 Visibility="{Binding InfobulleVisible, ElementName=SurcouchePistes, Converter={StaticResource BoolToVis}}">
+                            <Canvas.Left>
+                                <MultiBinding Converter="{StaticResource BorneInfobulle}">
+                                    <Binding Path="XReticule" ElementName="SurcouchePistes"/>
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                                </MultiBinding>
+                            </Canvas.Left>
                             <TextBlock Style="{StaticResource TexteInfobulle}" Text="{Binding TexteInfobulle, ElementName=SurcouchePistes}"/>
                         </Border>
                     </Canvas>
@@ -452,8 +461,15 @@
                                           AfficherMaintenant="False" InstantLecture="{Binding DonneesSemaine.LueA}" Fuseau="{Binding Fuseau}"
                                           TraitReticule="{StaticResource Ink2}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
                     <Canvas Grid.Column="1" Grid.Row="1" Grid.RowSpan="5" IsHitTestVisible="False">
-                        <Border x:Name="InfobulleSimplifie" Style="{StaticResource Infobulle}" Canvas.Left="{Binding XReticule, ElementName=SurcoucheSimplifie}"
+                        <Border x:Name="InfobulleSimplifie" Style="{StaticResource Infobulle}"
                                 Visibility="{Binding InfobulleVisible, ElementName=SurcoucheSimplifie, Converter={StaticResource BoolToVis}}">
+                            <Canvas.Left>
+                                <MultiBinding Converter="{StaticResource BorneInfobulle}">
+                                    <Binding Path="XReticule" ElementName="SurcoucheSimplifie"/>
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                                </MultiBinding>
+                            </Canvas.Left>
                             <TextBlock Style="{StaticResource TexteInfobulle}" Text="{Binding TexteInfobulle, ElementName=SurcoucheSimplifie}"/>
                         </Border>
                     </Canvas>
@@ -571,8 +587,15 @@
                                           AfficherMaintenant="False" InstantLecture="{Binding DonneesSemaine.LueA}" Fuseau="{Binding Fuseau}"
                                           TraitReticule="{StaticResource Ink2}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
                     <Canvas Grid.Column="1" Grid.Row="1" Grid.RowSpan="7" IsHitTestVisible="False">
-                        <Border x:Name="InfobulleTuiles" Style="{StaticResource Infobulle}" Canvas.Left="{Binding XReticule, ElementName=SurcoucheTuiles}"
+                        <Border x:Name="InfobulleTuiles" Style="{StaticResource Infobulle}"
                                 Visibility="{Binding InfobulleVisible, ElementName=SurcoucheTuiles, Converter={StaticResource BoolToVis}}">
+                            <Canvas.Left>
+                                <MultiBinding Converter="{StaticResource BorneInfobulle}">
+                                    <Binding Path="XReticule" ElementName="SurcoucheTuiles"/>
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                                </MultiBinding>
+                            </Canvas.Left>
                             <TextBlock Style="{StaticResource TexteInfobulle}" Text="{Binding TexteInfobulle, ElementName=SurcoucheTuiles}"/>
                         </Border>
                     </Canvas>
