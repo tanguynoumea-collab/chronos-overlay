@@ -41,9 +41,9 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 - [x] **JRN-03**: Écriture **append atomique et idempotente** (clé = `CapturedAt` + source ; deux processus n'écrivent pas deux
   fois le même relevé), lecture **tolérante** (ligne tronquée ou invalide ignorée, `v` inconnu sauté ligne par ligne), fichiers
   mensuels, rétention 24 mois, aucune compaction ; le tout en types neutres (pas de WPF sous `Services/`).
-- [ ] **JRN-04**: L'**âge de la dernière écriture du journal** est exposé au diagnostic et dans les réglages ; si Chronos tourne
+- [x] **JRN-04**: L'**âge de la dernière écriture du journal** est exposé au diagnostic et dans les réglages ; si Chronos tourne
   et qu'aucune écriture n'a eu lieu depuis plus de 15 min, une alerte visible le dit (pastille `Alerte` + texte).
-- [ ] **JRN-05**: Une **lecture par plage** (semaine de forfait, jour, 4 semaines) en classes pures et testées fournit : la série des
+- [x] **JRN-05**: Une **lecture par plage** (semaine de forfait, jour, 4 semaines) en classes pures et testées fournit : la série des
   relevés, les trous (> 2 cadences), les resets 5 h et hebdo observés, les Δ de consommation entre relevés consécutifs de même
   `resets_at` (jamais à travers un reset), et le saut « non localisé » de part et d'autre d'un trou.
 - [ ] **JRN-06**: **Release 3.2.2** publiée (exe mono-fichier, version embarquée aux quatre propriétés du csproj et dans le nom du
@@ -172,8 +172,8 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | JRN-01 | Phase 32 | Complete |
 | JRN-02 | Phase 32 | Complete |
 | JRN-03 | Phase 32 | Complete |
-| JRN-04 | Phase 32 | Pending |
-| JRN-05 | Phase 32 | Pending |
+| JRN-04 | Phase 32 | Complete |
+| JRN-05 | Phase 32 | Complete |
 | JRN-06 | Phase 32 | Pending |
 | TOK-01 | Phase 33 | Pending |
 | TOK-02 | Phase 33 | Pending |
