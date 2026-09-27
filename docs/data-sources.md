@@ -569,5 +569,58 @@ idempotente. Le premier lancement à froid peut prendre une quinzaine de seconde
 
 ---
 
+## 9. Lecture par la fenêtre Historique
+
+La fenêtre Historique (phases 34-35) ne lit jamais le journal elle-même : elle passe par une façade neutre,
+`ISourceHistorique`, qui rend des données déjà analysées pour une plage déjà calculée. Deux implémentations :
+`SourceHistoriqueDisque` (les fichiers du §7 et du §8, en production) et `SourceHistoriqueDemonstration` (les scénarios de la
+galerie `--historique`, sans aucun fichier).
+
+### Plages
+
+`BornesPlage` calcule la plage AVANT la lecture, dans le fuseau injecté par la racine de composition :
+
+- **Semaine de forfait** : alignée sur le `resets_at` 7 j observé dans le journal (`r7` du dernier relevé) ; repli
+  `WeeklyAnchor` des réglages ; repli le samedi du calendrier.
+- **Jour** : de minuit local à minuit local (23 h, 24 h ou 25 h selon le changement d'heure).
+- **4 semaines** : `BornesPlage.QuatreSemaines`, la semaine de forfait courante et les trois précédentes.
+
+### Règles de lecture
+
+- **Instant d'analyse** : chaque plage est analysée à `InstantDAnalyse` = min(maintenant, fin de la plage). Une plage révolue
+  analysée au vrai « maintenant » finirait par un faux trou ouvert entre sa fin et aujourd'hui.
+- **Quatre semaines, une seule lecture** : `LireQuatreSemaines` lit le journal une fois sur [S-3 début, S fin[ et rend
+  quatre analyses, chacune à son `InstantDAnalyse` ; les semaines passées sont reportées sur l'axe de la semaine courante par
+  fraction de leur durée (`EchelleTemps.Reporter` : une semaine de 169 h ou de 167 h au changement d'heure tient sur le même
+  axe). Aucun agrégat de tokens n'est lu pour cette vue.
+- **Une source par vue** (D-32-25) : l'analyse retient la source demandée, sinon la plus fréquente de la plage ; deux sources ne
+  sont jamais mélangées sur une même ligne.
+- **Veille de minuit, vue Jour seulement** : pour nommer un trou qui chevauche minuit, la façade lit aussi la veille — le dernier
+  relevé de la même source dans les sept jours précédents et les événements qui le suivent. L'analyse voit le trou et sa cause
+  (« Chronos arrêté, mar. 23:00 → 07:00 ») ; la série RENDUE est ensuite restreinte au jour : rien n'est dessiné ni compté avant
+  minuit. La Semaine et les 4 semaines ne lisent pas la veille.
+- **Divergence « consommé ailleurs »** : une marche du % hebdo d'au moins 0,01 (`Divergences.SeuilDelta`, la granularité
+  constatée des en-têtes) sur une heure dont les transcripts sont couverts mais sans aucune tranche de tokens Claude Code. Une
+  heure non couverte n'accuse jamais Cowork.
+- **Le diagnostic lit par la MÊME façade** : la section « Journal d'historique » de « Diagnostic… » dit la journée par
+  `SourceHistoriqueDisque.LireJour` et par les mots de la vue Jour, jamais par un second chemin de lecture.
+
+### Écarts connus des maquettes
+
+Écarts assumés entre les maquettes Figma (frames A à F) et la fenêtre livrée en 3.3.0 :
+
+- Coins arrondis par DWM (rayon système ≈ 8 px au lieu de 16) sous Windows 11, coins droits sous Windows 10 : la fenêtre n'est
+  pas layered (`AllowsTransparency=False`), elle ne peut pas dessiner ses propres coins ni son ombre.
+- Badge de version de l'en-tête omis.
+- Segoe UI au lieu d'Inter, aux mêmes corps.
+- Tirets de reset 5 h dessinés dans un trou quand le serveur avait annoncé l'instant du reset avant le trou.
+- Pas de réticule ni d'infobulle en vue 4 semaines (le §2.4 du plan de design n'en prévoit pas).
+- La semaine épuisée de la vue 4 semaines n'existe qu'en fixture de test : la galerie `--historique` ne la montre pas.
+- Rangées de la couverture par semaine au pas de 16 px (lecture de « espacées de 16 px » de la frame E).
+- Simple clic au centre du cadran retardé du délai de double-clic de Windows (≈ 0,5 s) pour que le double-clic ouvre
+  l'Historique sans déclencher de bascule.
+
+---
+
 *Fin du document — capturé le 2026-07-08, à revalider à chaque MAJ majeure de Claude Code (schéma = API privée de facto) ;
-complété le 2026-09-27 (§7, note CPT-01 du §2 ; §8 agrégats de tokens).*
+complété le 2026-09-27 (§7, note CPT-01 du §2 ; §8 agrégats de tokens ; §9 lecture par la fenêtre Historique).*

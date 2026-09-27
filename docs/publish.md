@@ -142,3 +142,16 @@ d'exe devient le nouveau — et non dans `chronos.log`, écrit avant la réconci
 Garder l'ancien exe sur le disque tant que des sessions ouvertes avant la réconciliation tournent :
 elles l'appellent encore. Activer « Lancer au démarrage » DEPUIS le nouvel exe : le raccourci vise
 l'exe qui l'a créé.
+
+### Premier lancement de la 3.3.0
+
+- **Avant** : quitter à la main tous les anciens exe (3.1.0 … 3.2.2), par réglages → « Quitter Chronos ». Les exe antérieurs
+  à la 3.2.2 ne connaissent pas le verrou ; une 3.2.2 encore lancée le connaît, elle, et ferait se retirer la 3.3.0
+  (« Chronos tourne déjà… »).
+- **Réconciliation inchangée** : sauvegarde de `~/.claude/settings.json` sous `%APPDATA%\Chronos\backups\`, puis 9
+  remplacements du chemin de l'exe (les huit groupes de hooks et la statusLine).
+- **Reconstruction des tokens** : elle démarre en arrière-plan dès le lancement, à priorité basse — ≈ 15 s à froid la
+  première fois, quelques dizaines de millisecondes ensuite. L'overlay ne l'attend pas ; la fenêtre Historique affiche un
+  bandeau de progression tant qu'elle tourne.
+- **Historique** : il s'ouvre par un double-clic au centre du cadran ou par Réglages → Historique d'utilisation → Ouvrir.
+  Les pourcentages ne se reconstruisent pas : ils commencent à la première ligne du journal.
