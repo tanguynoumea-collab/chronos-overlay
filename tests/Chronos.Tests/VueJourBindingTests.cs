@@ -1,9 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Chronos.Controls.Historique;
 using Chronos.Models.Historique;
+using Chronos.Rendering.Historique;
 using Chronos.Services.Historique;
 using Chronos.Text;
 using Chronos.ViewModels.Historique;
@@ -88,6 +90,25 @@ public class VueJourBindingTests
 
     /// <summary>Abscisse du coin haut-gauche de <paramref name="e"/> dans le repère de son ancêtre (le Canvas.Left est posé sur le conteneur d'item).</summary>
     private static double XDans(FrameworkElement e, Visual ancetre) => e.TransformToAncestor(ancetre).Transform(new Point(0, 0)).X;
+
+    /// <summary>Rend une piste hors écran (RenderTargetBitmap) pour lire sa trace de rendu ; la trace n'est activée que le temps du rendu.</summary>
+    private static List<string> Trace(PisteBase piste)
+    {
+        PisteBase.TracerPourTests = true;
+        try
+        {
+            piste.InvalidateVisual();
+            var bmp = new RenderTargetBitmap(Math.Max(1, (int)Math.Ceiling(piste.ActualWidth)), Math.Max(1, (int)Math.Ceiling(piste.ActualHeight)), 96, 96, PixelFormats.Pbgra32);
+            bmp.Render(piste);
+            return piste.TraceRendu.ToList();
+        }
+        finally
+        {
+            PisteBase.TracerPourTests = false;
+        }
+    }
+
+    private static DateTimeOffset Utc(string iso) => DateTimeOffset.Parse(iso, System.Globalization.CultureInfo.InvariantCulture);
 
     // ------------------------------------------------------------------ Task 1 : grille, hauteurs, axe, légendes
 
@@ -196,5 +217,138 @@ public class VueJourBindingTests
         MettreEnPage(vue, 1400, 900);
         Assert.True(PistesVisibles(vue).OfType<PisteNiveau>().Single().ActualWidth > 1000);
         Assert.Equal(0, defilement.ScrollableHeight);
+    }
+
+    // ------------------------------------------------------------------ Task 2 : annotations, « maintenant », infobulle, pied fixe
+
+    [WpfFact]
+    public void Les_resets_observes_et_l_epuisee_sont_annonces_le_mercredi()
+    {
+        var (vm, vue) = Monter(joursEnArriere: 1);   // mer. 23 sept. : resets 04:00 / 09:00 / 14:00 / 19:00, plateau épuisé 20:00 → 00:00, trou « Chronos arrêté » fermé à 07:00
+        var plage = vm.DonneesJour!.Plage;
+        var textes = TextesVisibles(vue);
+
+        // D-34-32 : le mot « reset 5 h HH:MM » vient du VM (AnnotationsResets), posé à l'instant du reset observé.
+        Assert.True(vm.AnnotationsResets.Count >= 3, $"resets annotés : {vm.AnnotationsResets.Count}");
+        Assert.Equal(new[] { "reset 5 h 04:00", "reset 5 h 09:00", "reset 5 h 14:00", "reset 5 h 19:00" }, vm.AnnotationsResets.Select(a => a.Texte).ToArray());
+        Assert.Equal(vm.AnnotationsResets.Select(a => a.Texte).OrderBy(t => t, StringComparer.Ordinal),
+                     textes.Where(t => t.StartsWith("reset 5 h ", StringComparison.Ordinal)).OrderBy(t => t, StringComparer.Ordinal));
+
+        // D-34-33 : « épuisée » posée au DÉBUT du plateau, largeur maximale = la largeur du plateau.
+        var plateau = Assert.Single(vm.AnnotationsEpuisee);
+        Assert.Equal(Utc("2026-09-23T18:00:00Z"), plateau.Debut);
+        Assert.Equal(Utc("2026-09-23T22:00:00Z"), plateau.Fin);
+        var epuisee = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == TextesHistorique.Epuisee);
+        var canvas = Ancetre<Canvas>(epuisee);
+        var xPlateau = EchelleTemps.X(plateau.Debut, plage, canvas.ActualWidth);
+        Assert.InRange(XDans(epuisee, canvas), xPlateau - 1, xPlateau + 1);
+        var largeurPlateau = EchelleTemps.Largeur(plateau.Debut, plateau.Fin!.Value, plage, canvas.ActualWidth);
+        Assert.InRange(epuisee.MaxWidth, largeurPlateau - 1, largeurPlateau + 1);
+        Assert.Equal(TextTrimming.CharacterEllipsis, epuisee.TextTrimming);
+        Assert.Equal(Hex("A9A6C4"), CouleurDe(epuisee.Foreground));   // Ink2, pas l'ambre : le gris du plateau dit déjà l'état
+
+        // Le trou « Chronos arrêté » a commencé la veille (mar. 23:00) : borné à 0 par le convertisseur.
+        var arret = Assert.Single(vm.AnnotationsTrous, a => a.Texte == "Chronos arrêté");
+        Assert.True(arret.Debut < plage.Debut, $"le trou doit commencer avant la plage ({arret.Debut:O} vs {plage.Debut:O})");
+        var texteArret = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == "Chronos arrêté");
+        Assert.InRange(XDans(texteArret, Ancetre<Canvas>(texteArret)), -0.5, 0.5);
+
+        // La piste dessine ce que le VM annonce : ≥ 1 palier gris (plateau) et un trait par reset observé dans la plage.
+        var niveau = PistesVisibles(vue).OfType<PisteNiveau>().Single();
+        var trace = Trace(niveau);
+        Assert.Contains(trace, l => l.StartsWith("palier ", StringComparison.Ordinal) && l.EndsWith(" gris", StringComparison.Ordinal));
+        var traits = trace.Count(l => l.StartsWith("trait ", StringComparison.Ordinal));
+        Assert.Equal(vm.DonneesJour.Analyse.Resets5h.Count(r => plage.Contient(r.Instant)), traits);
+        Assert.Equal(vm.AnnotationsResets.Count, traits);
+    }
+
+    [WpfFact]
+    public void La_ligne_maintenant_n_existe_qu_aujourd_hui()
+    {
+        var (vm, vue) = Monter();   // jeu. 24, 17:12
+        var surcouche = Assert.Single(Visibles<SurcoucheReticule>(vue));
+
+        Assert.True(vm.AfficherMaintenant);
+        Assert.True(surcouche.AfficherMaintenant);
+        Assert.Equal(vm.Maintenant, surcouche.Maintenant);
+        Assert.Equal(Hex("F2F0FB"), CouleurDe(surcouche.TraitMaintenant));   // Ink
+        Assert.Equal(0.6, surcouche.OpaciteMaintenant);                        // HistoOpaciteMaintenant
+        Assert.Equal(Hex("A9A6C4"), CouleurDe(surcouche.TraitReticule));      // Ink2
+        Assert.Same(vm.Fuseau, surcouche.Fuseau);
+        var maintenant = Assert.Single(Trace(surcouche), l => l.StartsWith("maintenant ", StringComparison.Ordinal));
+        Assert.InRange(double.Parse(maintenant.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture), 17.2 / 24 - 0.001, 17.2 / 24 + 0.001);
+
+        var (hier, vueHier) = Monter(joursEnArriere: 1);   // mer. 23 : pas de « maintenant »
+        var surcoucheHier = Assert.Single(Visibles<SurcoucheReticule>(vueHier));
+        Assert.False(hier.AfficherMaintenant);
+        Assert.False(surcoucheHier.AfficherMaintenant);
+        Assert.DoesNotContain(Trace(surcoucheHier), l => l.StartsWith("maintenant ", StringComparison.Ordinal));
+
+        // « Aujourd'hui » ramène au présent : la ligne revient.
+        Assert.Equal("Aujourd'hui", hier.TexteRetourPresent);
+        hier.RetourPresentCommand.Execute(null);
+        hier.AttendreLecture().GetAwaiter().GetResult();
+        Idle(vueHier);
+        Assert.True(hier.AfficherMaintenant);
+        Assert.True(surcoucheHier.AfficherMaintenant);
+        Assert.Contains(Trace(surcoucheHier), l => l.StartsWith("maintenant ", StringComparison.Ordinal));
+    }
+
+    [WpfFact]
+    public void Le_trou_jeton_invalide_et_son_saut_5h_sont_annotes_aujourd_hui()
+    {
+        var (vm, vue) = Monter();
+        var textes = TextesVisibles(vue);
+
+        var jeton = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == "jeton invalide");
+        Assert.Equal(CouleurDe(vm.Theme.BrushTokens()["Alerte"]), CouleurDe(jeton.Foreground));   // ambre : cause « jeton »
+        Assert.DoesNotContain("Chronos arrêté", textes);
+
+        // Jour : sauts 5 h seulement ; la grille 5 h passe par 15:00 pendant l'absence 14:00 → 16:00 (34-03) → « au moins un reset ».
+        var saut = Assert.Single(vm.AnnotationsSauts);
+        Assert.EndsWith("pendant l'absence (répartition inconnue)", saut.Texte, StringComparison.Ordinal);
+        Assert.Equal(Utc("2026-09-24T12:00:00Z"), saut.Debut);
+        var texteSaut = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == saut.Texte);
+        Assert.Equal(Hex("A9A6C4"), CouleurDe(texteSaut.Foreground));
+        var canvas = Ancetre<Canvas>(texteSaut);
+        Assert.InRange(XDans(texteSaut, canvas), canvas.ActualWidth * 14 / 24 - 1, canvas.ActualWidth * 14 / 24 + 1);
+
+        var couverture = PistesVisibles(vue).OfType<PisteCouverture>().Single();
+        Assert.Single(couverture.Trous!);
+        Assert.Equal(CouleurDe(vm.Theme.BrushTokens()["Alerte"]), CouleurDe(couverture.Jeton));
+        Assert.Contains(Trace(couverture), l => l.StartsWith("trou ", StringComparison.Ordinal) && l.EndsWith(" jeton", StringComparison.Ordinal));
+    }
+
+    [WpfFact]
+    public void L_infobulle_du_jour_a_quatre_lignes_et_le_pied_de_page_est_fixe()
+    {
+        var (vm, vue) = Monter();
+        var surcouche = Assert.Single(Visibles<SurcoucheReticule>(vue));
+        Assert.True(surcouche.ActualHeight >= 190 + 64 + 64 + 12, $"la surcouche couvre toutes les pistes (ActualHeight={surcouche.ActualHeight})");
+        Assert.Same(vm.DonneesJour!.Analyse.Serie, surcouche.Serie);
+
+        var infobulle = Assert.IsType<Border>(vue.FindName("Infobulle"));
+        Assert.Equal(Visibility.Collapsed, infobulle.Visibility);
+
+        surcouche.Survoler(surcouche.ActualWidth * 0.6);
+        Idle(vue);
+        Assert.Equal(Visibility.Visible, infobulle.Visibility);
+        var texte = Assert.Single(Visibles<TextBlock>(infobulle)).Text;
+        Assert.Equal(surcouche.TexteInfobulle, texte);
+        Assert.Equal(4, texte.Split('\n').Length);
+        foreach (var attendu in new[] { "relevé exact", "5 h : ", "hebdo : ", "sonde d'en-têtes de rate-limit" })
+            Assert.Contains(attendu, texte, StringComparison.Ordinal);
+        Assert.Equal(surcouche.XReticule, Canvas.GetLeft(infobulle));
+        Assert.Equal(Hex("1E1B30"), CouleurDe(infobulle.Background));   // Panel2
+
+        surcouche.Quitter();
+        Idle(vue);
+        Assert.Equal(Visibility.Collapsed, infobulle.Visibility);
+
+        // Le pied de page est HORS du défilement (D-34-31) ; pas de pied « divergence » en Jour.
+        var pied = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == TextesHistorique.PiedDePage);
+        for (DependencyObject? p = pied; p is not null; p = VisualTreeHelper.GetParent(p))
+            Assert.IsNotType<ScrollViewer>(p);
+        Assert.DoesNotContain(TextesHistorique.PiedDivergence, TextesVisibles(vue));
     }
 }
