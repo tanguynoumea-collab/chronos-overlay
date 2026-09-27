@@ -72,7 +72,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 
 ### Fenêtre Historique (HIS)
 
-- [ ] **HIS-01**: Une fenêtre **`HistoriqueWindow`** séparée — `WindowStyle=None`, **`AllowsTransparency=False`**, `Topmost=False`,
+- [x] **HIS-01**: Une fenêtre **`HistoriqueWindow`** séparée — `WindowStyle=None`, **`AllowsTransparency=False`**, `Topmost=False`,
   `ShowInTaskbar=True`, redimensionnable (min 760 × 480, défaut 920 × 610), coins 16, position et taille mémorisées dans
   `settings.json` — avec l'en-tête commun du plan de design : segment Jour / Semaine / 4 semaines, ‹ ›, « Cette semaine » /
   « Aujourd'hui », ligne de fraîcheur (« dernier relevé il y a N min · source · N relevés · N interruptions · journal ouvert le … »),
@@ -103,7 +103,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   ouvert le <date> » et zone antérieure vide ; libellé permanent des tokens (« par heure, comptés localement — hors Cowork et
   claude.ai · bruts, non pondérés · ce n'est PAS un % du forfait ») ; pied de page fixe « Aucun trou n'est interpolé … » ; aucune
   projection nulle part.
-- [ ] **HIS-07**: **Rendu** : un `FrameworkElement` par piste avec `OnRender` et `StreamGeometry` gelée, réduction min/max par colonne
+- [x] **HIS-07**: **Rendu** : un `FrameworkElement` par piste avec `OnRender` et `StreamGeometry` gelée, réduction min/max par colonne
   de pixels au-delà de 4 000 points, redessin sur changement de données (5 min) ou de plage — jamais sur le tick 1 s ; toute la
   géométrie (temps → x, valeur → y, binning, trous, tuiles, segments par bande de rampe) en classes pures de `Rendering/`
   testées ; couleurs et tailles uniquement via `Resources/DesignTokens.xaml` (palette de `SettingsWindow` promue en tokens
@@ -180,13 +180,13 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | TOK-03 | Phase 33 | Complete |
 | TOK-04 | Phase 33 | Complete |
 | TOK-05 | Phase 33 | Complete |
-| HIS-01 | Phase 34 | Pending |
+| HIS-01 | Phase 34 | Complete |
 | HIS-02 | Phase 34 | Pending |
 | HIS-03 | Phase 34 | Pending |
 | HIS-04 | Phase 34 | Pending |
 | HIS-05 | Phase 35 | Pending |
 | HIS-06 | Phase 34 | Pending |
-| HIS-07 | Phase 34 | Pending |
+| HIS-07 | Phase 34 | Complete |
 | HIS-08 | Phase 34 | Complete |
 | ACC-01 | Phase 35 | Pending |
 | ACC-02 | Phase 35 | Pending |
