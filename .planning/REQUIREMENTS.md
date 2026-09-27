@@ -27,7 +27,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   `Save` dans un `try/catch` muet) est établie, corrigée et couverte par un test ; **l'âge de la dernière écriture** de chaque
   magasin persistant (dernier exact, journal des relevés, agrégats de tokens) apparaît au diagnostic, et une écriture qui échoue
   n'est plus silencieuse (ligne d'événement + diagnostic).
-- [ ] **CPT-03**: **Une seule instance** : au démarrage, Chronos détecte une autre instance (mutex nommé) et refuse de tourner en
+- [x] **CPT-03**: **Une seule instance** : au démarrage, Chronos détecte une autre instance (mutex nommé) et refuse de tourner en
   double en le disant à l'utilisateur (message + diagnostic « N processus Chronos »), sans jamais tuer l'autre ; les hooks
   `--hook` et le mode CLI restent multi-instances par nature.
 
@@ -168,7 +168,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 |-------------|-------|--------|
 | CPT-01 | Phase 32 | Pending |
 | CPT-02 | Phase 32 | Pending |
-| CPT-03 | Phase 32 | Pending |
+| CPT-03 | Phase 32 | Complete |
 | JRN-01 | Phase 32 | Complete |
 | JRN-02 | Phase 32 | Complete |
 | JRN-03 | Phase 32 | Complete |
