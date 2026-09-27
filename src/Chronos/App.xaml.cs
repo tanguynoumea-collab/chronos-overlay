@@ -10,7 +10,8 @@ namespace Chronos;
 
 public partial class App : Application
 {
-    private IHost _host = null!;
+    private IHost? _host;                    // null tant que le Host n'est pas construit (seconde instance retirée avant lui, CPT-03)
+    private static ResultatVerrou? _verrou;   // STATIQUE (D-32-13) : le GC ne doit jamais libérer le mutex pendant la vie de l'overlay
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -57,6 +58,22 @@ public partial class App : Application
         }
 
         base.OnStartup(e);
+
+        // CPT-03 — UNE SEULE INSTANCE de l'overlay par session Windows. Posé ici, APRÈS les court-circuits --statusline, --hook,
+        // --cadrans et --sessions (multi-instances par construction : Claude Code lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
+        // le second exe n'a démarré aucun service, n'a pas réconcilié ~/.claude/settings.json et n'a pas écrasé chronos.log.
+        // Il se retire en le DISANT et ne tue jamais l'autre : le 2026-09-27, trois exe tournaient ensemble et écrivaient les mêmes fichiers.
+        // Mutex nommé Local\ (pas Global\ : aucun droit, un autre utilisateur a le sien) ; un abandon (instance morte sans libérer) = acquis.
+        var verrou = VerrouInstanceUnique.Acquerir(VerrouInstanceUnique.NomOverlay);
+        if (!verrou.Obtenu)
+        {
+            MessageBox.Show("Chronos tourne déjà (une seule instance à la fois). Cette copie se retire ; l'autre continue.\n\n"
+                            + "Pour changer de version : clic droit sur le cadran → réglages → « Quitter Chronos », puis relance.",
+                            "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+        _verrou = verrou;
 
         var builder = Host.CreateApplicationBuilder();
         ConfigureServices(builder.Services);
@@ -210,10 +227,14 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        // Blocage volontaire : dispose déterministe des Singletons IDisposable
-        // (évite le piège async-void qui n'attend pas StopAsync).
-        _host.StopAsync().GetAwaiter().GetResult();
-        _host.Dispose();
+        // Blocage volontaire : dispose déterministe des Singletons IDisposable (évite le piège async-void qui n'attend pas StopAsync).
+        // CPT-03 : le Host peut n'avoir JAMAIS été construit (seconde instance retirée avant lui) — _host est alors null.
+        if (_host is not null)
+        {
+            _host.StopAsync().GetAwaiter().GetResult();
+            _host.Dispose();
+        }
+        _verrou?.Liberer();   // sur le thread UI, celui qui a acquis (ReleaseMutex l'exige) ; l'OS le ferait à la mort du processus, on le fait proprement
         base.OnExit(e);
     }
 

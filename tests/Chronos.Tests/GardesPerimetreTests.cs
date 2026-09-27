@@ -503,6 +503,74 @@ public class GardesPerimetreTests
         Assert.DoesNotContain("new LecteurAppBureau", texte, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE PLACEMENT (CPT-03, phase 32). Le verrou mono-instance ne vaut que par sa POSITION dans <c>OnStartup</c> :
+    /// posé avant les court-circuits, il ferait échouer les hooks <c>--hook</c> (Claude Code en lance jusqu'à 5 en parallèle)
+    /// et le mode <c>--statusline</c> ; posé après le Host, la seconde instance aurait déjà démarré ses services, réconcilié
+    /// <c>~/.claude/settings.json</c> et écrasé <c>chronos.log</c> — exactement ce qui s'est produit le 2026-09-27 avec trois exe.
+    /// Contrôle de SOURCE (<c>OnStartup</c> monte un host WPF, il n'est pas instanciable sous test) : l'acquisition est unique,
+    /// vient après le DERNIER court-circuit et avant <c>Host.CreateApplicationBuilder()</c>, et entre les deux la seconde
+    /// instance le dit (« tourne déjà ») et se retire (<c>Shutdown();</c>) sans jamais tuer l'autre.
+    /// </summary>
+    [Fact]
+    public void Le_verrou_mono_instance_est_pose_apres_les_court_circuits_et_avant_le_Host()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        const string acquisition = "VerrouInstanceUnique.Acquerir(VerrouInstanceUnique.NomOverlay)";
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape(acquisition)));
+
+        var iVerrou   = texte.IndexOf(acquisition, StringComparison.Ordinal);
+        var iHost     = texte.IndexOf("Host.CreateApplicationBuilder()", StringComparison.Ordinal);
+        var iStatus   = texte.LastIndexOf("\"--statusline\"", StringComparison.Ordinal);
+        var iHook     = texte.LastIndexOf("\"--hook\"", StringComparison.Ordinal);
+        var iCadrans  = texte.LastIndexOf("\"--cadrans\"", StringComparison.Ordinal);
+        var iSessions = texte.LastIndexOf("\"--sessions\"", StringComparison.Ordinal);
+
+        Assert.True(iVerrou >= 0, "Acquisition du verrou introuvable dans App.xaml.cs");
+        Assert.True(iHost >= 0, "Construction du Host introuvable dans App.xaml.cs");
+        Assert.True(iStatus >= 0 && iHook >= 0 && iCadrans >= 0 && iSessions >= 0, "Un court-circuit CLI a disparu d'App.xaml.cs");
+
+        Assert.True(iStatus < iVerrou, "Le verrou doit venir APRÈS le court-circuit --statusline");
+        Assert.True(iHook < iVerrou, "Le verrou doit venir APRÈS le court-circuit --hook (les hooks restent multi-instances)");
+        Assert.True(iCadrans < iVerrou, "Le verrou doit venir APRÈS le court-circuit --cadrans");
+        Assert.True(iSessions < iVerrou, "Le verrou doit venir APRÈS le court-circuit --sessions");
+        Assert.True(iVerrou < iHost, "Le verrou doit venir AVANT Host.CreateApplicationBuilder()");
+
+        // Entre l'acquisition et le Host : la seconde instance le DIT et se retire, sans tuer l'autre.
+        var entre = texte[iVerrou..iHost];
+        Assert.Contains("tourne déjà", entre, StringComparison.Ordinal);
+        Assert.Contains("Shutdown();", entre, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Kill(", entre, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE DE SORTIE (CPT-03, phase 32). Quand la seconde instance se retire AVANT le Host, <c>OnExit</c> s'exécute quand
+    /// même : un <c>_host.StopAsync()</c> inconditionnel y lèverait une <c>NullReferenceException</c> — le message « tourne
+    /// déjà » serait suivi d'un plantage, et l'utilisateur en conclurait que la nouvelle version est cassée. La sortie doit
+    /// donc tester le Host, puis libérer le verrou sur le thread UI (celui qui l'a acquis : <c>ReleaseMutex</c> l'exige).
+    /// </summary>
+    [Fact]
+    public void La_sortie_tolere_un_Host_jamais_construit_et_libere_le_verrou()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        var debut = texte.IndexOf("protected override void OnExit(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "OnExit introuvable dans App.xaml.cs");
+        var fin = texte.IndexOf("base.OnExit(e);", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin d'OnExit (base.OnExit) introuvable");
+
+        var onExit = texte[debut..fin];
+        Assert.Contains("_host is not null", onExit, StringComparison.Ordinal);
+        Assert.Contains("_verrou?.Liberer()", onExit, StringComparison.Ordinal);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()
