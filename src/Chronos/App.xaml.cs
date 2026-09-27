@@ -244,6 +244,8 @@ public partial class App : Application
     {
         services.AddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(Current.Dispatcher));
         services.AddSingleton<TopmostGuard>();
+        // Le VM est construit par le conteneur : ses paramètres optionnels IEtatJournal (32-05) et IEtatReconstruction (33-05, TOK-02)
+        // sont injectés parce qu'ils sont inscrits plus bas — mêmes instances que le journal et que le service hébergé de reconstruction.
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 

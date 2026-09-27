@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using Chronos.Models;
+using Chronos.Models.Historique.Tokens;
 using Chronos.Services;
 using Chronos.Services.Historique;
+using Chronos.Services.Historique.Tokens;
 using Chronos.Text;
 using Chronos.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -36,6 +38,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IAuthStatus _authStatus;
     private readonly IEtatServeur? _etatServeur;
     private readonly IEtatJournal? _journal;       // JRN-04 : ce que le journal des relevés dit de lui-même (optionnel)
+    private readonly IEtatReconstruction? _reconstruction;   // TOK-02 : ce que la reconstruction des agrégats dit d'elle-même (optionnel, bandeau F2 en phase 34)
     private readonly DateTimeOffset _demarrage;    // JRN-04 / D-32-21 : référence basse de « muet » (instant de construction du VM)
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
@@ -127,6 +130,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Pilote la visibilité de la carte « Journal des relevés » (motif AfficherEtatSonde) : masquée sans journal injecté.</summary>
     [ObservableProperty] private bool _afficherEtatJournal;
+
+    /// <summary>TOK-02 / D-33-22 — la progression de la reconstruction des agrégats de tokens, en une ligne : « N / M fichiers »,
+    /// suivie de la mention de la semaine courante dès qu'elle est sur le disque ; ou « ÉCHEC — cause ». VIDE quand tout est à jour
+    /// (incrémental) ou sans état injecté : des ENTIERS formatés, jamais une fraction ni un pourcentage.</summary>
+    [ObservableProperty] private string _texteReconstruction = "";
+
+    /// <summary>Pilote la visibilité du texte de reconstruction : vrai pendant la passe initiale et en échec, faux sinon.</summary>
+    [ObservableProperty] private bool _afficherReconstruction;
 
     // État reflété dans l'item « Sessions Claude Code » : le widget de sessions est-il activé ?
     [ObservableProperty] private bool _isSessionsWidgetEnabled;
@@ -248,7 +259,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// style : les sites de construction préexistants (2 en tests, la production passant par la DI)
     /// compilent sans une retouche. Même protocole d'extension qu'au plan 17-05 pour <c>IAuthStatus</c>,
     /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
-    /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position.
+    /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position, puis
+    /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui.
     /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
@@ -257,7 +269,8 @@ public sealed partial class MainViewModel : ObservableObject
         DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
         ISessionsController sessions, IAuthStatus authStatus,
         IEtatServeur? etatServeur = null,
-        IEtatJournal? journal = null)
+        IEtatJournal? journal = null,
+        IEtatReconstruction? reconstruction = null)
     {
         _ui = ui;
         _clock = clock;
@@ -335,6 +348,12 @@ public sealed partial class MainViewModel : ObservableObject
         // tick (ApplySnapshot) : 60 s suffisent pour un seuil de 15 min ; aucun événement, aucun timer supplémentaire.
         _journal = journal;
         MajTexteEtatJournal();
+
+        // TOK-02 : la progression de la reconstruction des agrégats. Optionnelle — absente, rien n'est affiché. Relue à chaque tick
+        // comme l'état du journal : l'événement Changement (levé sur le thread de fond, ≈ une fois par fichier) n'est PAS écouté ici —
+        // la coalescence est le tick lui-même, et la frontière de thread reste unique (RAF-04).
+        _reconstruction = reconstruction;
+        MajTexteReconstruction();
     }
 
     // FRONTIÈRE DE THREAD — franchie UNE seule fois (RAF-04). Aucune mutation d'ObservableProperty hors d'ici.
@@ -408,6 +427,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         MajTexteEtatSonde();        // HDR-03 : le statut déclaré suit les fenêtres, tick par tick
         MajTexteEtatJournal();      // JRN-04 : l'âge de la dernière écriture du journal, tick par tick (D-32-21)
+        MajTexteReconstruction();   // TOK-02 : la progression de la reconstruction des agrégats, tick par tick (D-33-22)
         MajInfobulleReleve();       // EXA-06 : et l'infobulle nomme QUI les alimente, et depuis quand
         Interpolate(_clock.UtcNow); // premier rendu immédiat (pas d'overlay vide entre deux ticks)
     }
@@ -481,6 +501,39 @@ public sealed partial class MainViewModel : ObservableObject
 
         TexteEtatJournal = string.Join(" · ", morceaux);
         AfficherEtatJournal = true;
+    }
+
+    /// <summary>
+    /// TOK-02 / D-33-22 — la progression en ENTIERS, formatée ici en texte ; jamais une fraction ni un pourcentage (garde TOK-05 sur
+    /// la couche historique, doctrine ici). Relue au tick comme l'état du journal (D-32-21) : pas d'abonnement à
+    /// <c>Changement</c> dans le VM du cadran — la fenêtre Historique (phase 34) consommera <see cref="IEtatReconstruction"/>
+    /// directement pour son bandeau et sa barre. Mêmes mots que le bandeau F2 du plan de design.
+    /// </summary>
+    private void MajTexteReconstruction()
+    {
+        if (_reconstruction is null)
+        {
+            TexteReconstruction = "";
+            AfficherReconstruction = false;
+            return;
+        }
+
+        switch (_reconstruction.Phase)
+        {
+            case PhaseReconstruction.Reconstruction:
+                TexteReconstruction = "reconstruction des tokens — " + _reconstruction.FichiersTraites + " / " + _reconstruction.FichiersTotal + " fichiers"
+                                      + (_reconstruction.SemaineCouranteDisponible ? " · la semaine courante est déjà complète" : "");
+                AfficherReconstruction = true;
+                break;
+            case PhaseReconstruction.EnEchec:
+                TexteReconstruction = "agrégats de tokens : ÉCHEC — " + (_reconstruction.DerniereErreur ?? "cause inconnue");
+                AfficherReconstruction = true;
+                break;
+            default:   // JamaisLancee, Incremental, Arretee : rien à dire au cadran
+                TexteReconstruction = "";
+                AfficherReconstruction = false;
+                break;
+        }
     }
 
     /// <summary>

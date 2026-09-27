@@ -103,6 +103,9 @@ public class CompositionRootTests
         // Widget de sessions : le ctor de MainViewModel dépend d'ISessionsController.
         services.AddSingleton<ISessionsController>(_ => new FakeSessionsController());
 
+        // 33-05 (TOK-02) : le VM est inscrit SANS fabrique en production — c'est le conteneur qui injecte IEtatReconstruction
+        // (paramètre optionnel, dernière position). Un faux en phase Reconstruction prouve l'injection : le texte s'affiche.
+        services.AddSingleton<IEtatReconstruction>(_ => new FakeEtatReconstruction { Phase = PhaseReconstruction.Reconstruction, FichiersTotal = 3 });
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition
@@ -112,6 +115,9 @@ public class CompositionRootTests
         // Résolution sans exception → preuve que le graphe DI est câblé (partie « lance »).
         Assert.NotNull(provider.GetRequiredService<MainWindow>());
         Assert.NotNull(provider.GetRequiredService<MainViewModel>());
+        // TOK-02 : IEtatReconstruction a bien été injecté dans le VM par le conteneur (pas de fabrique, pas d'argument nommé).
+        Assert.True(provider.GetRequiredService<MainViewModel>().AfficherReconstruction, "le conteneur doit injecter IEtatReconstruction dans MainViewModel");
+        Assert.Equal("reconstruction des tokens — 0 / 3 fichiers", provider.GetRequiredService<MainViewModel>().TexteReconstruction);
 
         // EXA-01 : le décorateur de persistance est bien en TÊTE de chaîne, pas enterré au milieu.
         Assert.NotNull(provider.GetRequiredService<IUsageProvider>());
