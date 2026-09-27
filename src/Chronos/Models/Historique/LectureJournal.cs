@@ -9,7 +9,7 @@ namespace Chronos.Models.Historique;
 /// <c>resets_at</c> ; le saut de part et d'autre d'un trou est « non localisé » (<b>répartition inconnue</b>) ;
 /// « <b>journal ouvert le</b> … » date la première ligne du journal — avant, rien.
 ///
-/// <para><b>Doctrine</b> : aucun trou n'est interpolé ; aucune projection ; aucun pourcentage dérivé de
+/// <para><b>Doctrine</b> : aucun trou n'est interpolé ; rien n'annonce l'avenir ; aucun pourcentage dérivé de
 /// tokens ici (les tokens sont la phase 33, sur leur propre axe). Ces records ne disent que ce que les
 /// relevés disent. Types NEUTRES (aucun WPF), sous la garde de <c>ServicesLayerPurityTests</c>.</para>
 /// </summary>
