@@ -154,19 +154,20 @@ s'écrit toutes les 5 min avec ses événements de couverture, se lit par plage 
      tableau des gestes L1, L2, L2b, L3, L4, Q ; les 12 vérifications déférées ; et **le journal s'écrit** (âge < 6 min
      après 10 min d'overlay, relevé par sonde WMI hors de l'arbre, jamais depuis une session) (VAL-04).
 **Plans**: 8 plans en 4 vagues (vague 1 : 32-01 ∥ 32-02 ∥ 32-03 ∥ 32-04 — fichiers disjoints ; vague 2 : 32-05 ∥ 32-06 ;
-vague 3 : 32-07 ; vague 4 : 32-08, point de contrôle humain, `autonomous: false`). Point d'attention pour le plan : la
-cause du gel de `last-exact.json` se **cherche** (32-02, tâche 1 : lecture du code de câblage et de `LastExactStore`,
-reproduction en test) avant de se corriger ; on ne suppose pas.
+vague 3 : 32-07 ; vague 4 : 32-08, point de contrôle humain, `autonomous: false`). Planifié le 2026-09-27 : la recherche de phase a établi
+que le « gel » de `last-exact.json` est un artefact de la vue virtualisée MSIX (CPT-02 = observabilité + « Vue AppData » au diagnostic),
+que la dédup est « max par champ par `message.id` » (streaming `output_tokens`) et que `FileMode.Append` n'est pas atomique (append sous
+`FileShare.None` + relecture de queue). Le décorateur de journalisation et ses événements sont construits NON BRANCHÉS en 32-04 ; 32-05 câble.
 
 Plans:
-- [ ] 32-01-PLAN.md — CPT-01 : dédup `message.id` (repli `requestId`) dans le helper de somme des `usage`, fixture réelle multi-blocs, `TokensDepuisReleve` en héritage, garde « aucun lecteur sans dédup »
-- [ ] 32-02-PLAN.md — CPT-02 : cause du gel de `last-exact.json` reproduite et corrigée ; écriture ratée = événement + diagnostic ; âge de la dernière écriture des trois magasins au diagnostic
-- [ ] 32-03-PLAN.md — CPT-03 : mutex nommé mono-instance au démarrage, message à l'utilisateur, « N processus Chronos » au diagnostic, `--hook` et CLI exemptés, tests
-- [ ] 32-04-PLAN.md — JRN-01, JRN-03 : `JournalReleves` seul, non branché — types neutres, append atomique idempotent (clé `CapturedAt` + source), lecture tolérante, fichiers mensuels, rétention 24 mois, test à deux écrivains
-- [ ] 32-05-PLAN.md — JRN-01, JRN-02, JRN-04 : câblage au flux des relevés exacts (dédup `CapturedAt` strictement croissant, exclusion planchers et `LastExactStore`), événements de couverture, âge de dernière écriture aux réglages et au diagnostic, alerte > 15 min
-- [ ] 32-06-PLAN.md — JRN-05 : lecture par plage en classes pures (`Historique/` sous `Services/`) : série, trous > 2 cadences, resets observés, Δ de même `resets_at`, saut non localisé ; fixtures de journal
-- [ ] 32-07-PLAN.md — JRN-06 : `docs/data-sources.md` « Journal d'historique » (trois hypothèses), csproj 3.2.2 × 4, `dotnet publish`, `Chronos-v3.2.2.exe`, contrôles, smoke `--hook`, commit de release ; s'arrête avant tout lancement
-- [ ] 32-08-PLAN.md — VAL-04 : constat en production avec l'utilisateur (point (a) une seule instance, réconciliation, tableau des gestes, 12 vérifications, journal âge < 6 min) → `32-CONSTAT.md` — `autonomous: false`
+- [ ] 32-01-PLAN.md — CPT-01 : `DedupUsage` (max par champ par `message.id`, repli `requestId`, dictionnaire global à la passe), fixture réelle multi-blocs (8/8/256), `TokensDepuisReleve` en héritage, garde « aucun lecteur de `usage` hors du helper »
+- [ ] 32-02-PLAN.md — CPT-02 : le « gel » était la vue virtualisée MSIX (cause datée dans STATE.md et le SUMMARY) ; `IEtatMagasin`, `LastExactStore` observable (`DerniereEcriture`, `DerniereErreur`, `EcritureRatee`), `ChronosPaths.HistoriqueDir`, section `[Magasins persistants]` + « Vue AppData : réelle | virtualisée » au diagnostic, test qui reproduit la panne
+- [ ] 32-03-PLAN.md — CPT-03 : `VerrouInstanceUnique` (mutex `Local\Chronos-overlay`, abandon = acquis), `InventaireProcessus` (« N processus Chronos » par préfixe), mutex avant le Host dans `App.xaml.cs`, message et retrait, `OnExit` tolérant, garde textuelle ; `--hook` et CLI exemptés
+- [ ] 32-04-PLAN.md — JRN-01, JRN-02, JRN-03 : types neutres `Models/Historique`, `LigneJournal`, `JournalReleves` (append exclusif idempotent `(t, source)`, mois UTC, rétention 24 mois, test à deux écrivains), `LecteurJournal.LireFichier` tolérant, `JournalisationUsageProvider` (décorateur + hosted service : dédup `CapturedAt` strictement croissant, exclusions, `demarrage`/`arret`/`jeton_invalide`/`sonde_refusee`/`reprise`/`ecriture_ratee`) — NON BRANCHÉ ; quatre gardes élargies aux sous-dossiers
+- [ ] 32-05-PLAN.md — JRN-04 (+ câblage) : DI — décorateur entre `LastExactUsageProvider` et le composite, hosted service avant l'orchestrateur, `EcritureRatee` → `ecriture_ratee`, magasins au diagnostic ; « journal muet depuis N min » (15 min depuis max(démarrage, dernière écriture)), processus et verrou au diagnostic ; carte « Journal des relevés » + pastille `Alerte` dans les réglages
+- [ ] 32-06-PLAN.md — JRN-05 : `LecteurJournal.Lire` par plage (mois chevauchants, `JournalOuvertLe`), `BornesPlage` (semaine de forfait samedi 00:00 local via `resets_at` 7 j / `WeeklyAnchor`, jour, quatre semaines, DST 169 h / 167 h), `AnalyseReleves` pur (série, trous > 2 cadences avec cause, resets observés, Δ de même `resets_at`, saut non localisé) ; 7 fixtures de journal
+- [ ] 32-07-PLAN.md — JRN-06 : `docs/data-sources.md` §7 « Journal d'historique » (schéma, dédup, événements, rétention, deux vues, HYP-1/2/3) sous garde documentaire, `docs/publish.md` §7 verrou ; csproj 3.2.2 × 4, `dotnet publish`, `Chronos-v3.2.2.exe`, contrôles, smoke `--hook`, commit de release — s'arrête avant tout lancement
+- [ ] 32-08-PLAN.md — VAL-04 : constat en production avec l'utilisateur (trois anciennes quittées, 3.2.2 lancée par l'Explorateur, second lancement refusé, réconciliation, tableau L1…Q, V01…V12, journal T+10 âge < 6 min et T+60 ≈ 12 relevés par sonde WMI hors arbre) → `32-CONSTAT.md`, `32-VALIDATION.md` signée — `autonomous: false`
 
 ### Phase 33: Agrégats de tokens
 **Goal**: La seconde série — **les tokens de Claude Code, sur leur propre axe** — existe : chaque transcript (principal
