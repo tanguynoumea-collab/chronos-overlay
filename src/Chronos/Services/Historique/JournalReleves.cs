@@ -16,7 +16,7 @@ public sealed record BilanRetention(int FichiersSupprimes, int Echecs, int Ignor
 /// <summary>
 /// JRN-01 / JRN-03 — l'écrivain du journal des relevés exacts.
 ///
-/// <para><b>POURQUOI pas <c>FileMode.Append</c></b> : sous Windows il fait un <c>Seek(End)</c> à l'OUVERTURE, pas un
+/// <para><b>POURQUOI pas le mode d'ouverture « ajout » de <c>FileStream</c></b> : sous Windows il fait un <c>Seek(End)</c> à l'OUVERTURE, pas un
 /// <c>O_APPEND</c> ; deux appenders concurrents ont produit une seule ligne (mesuré le 2026-09-27, .NET 8.0.25).
 /// <b>POURQUOI pas temp + <c>Move</c></b> : c'est un fichier à AJOUT, pas à réécriture, et le <c>Move</c> perd face à un
 /// lecteur (290 pertes sur 500, phase 23). Donc : partage EXCLUSIF + reprises bornées (motif
