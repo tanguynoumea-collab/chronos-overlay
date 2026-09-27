@@ -222,4 +222,48 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(OverlayCorner.BottomRight, s.Corner);
     }
+
+    // ---------------------------------------------------------------------------------------
+    // Phase 34 (HIS-08) — style de la vue Semaine et géométrie de la fenêtre Historique.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>Un settings.json d'AVANT la fenêtre Historique s'ouvre avec les défauts sûrs : style Pistes (A) et
+    /// aucune géométrie mémorisée (null = 920 × 610 centré) — aucune migration.</summary>
+    [Fact]
+    public void Le_style_de_la_vue_semaine_et_la_geometrie_de_l_historique_ont_des_defauts_surs()
+    {
+        EcrireSettings(FixtureLegacy());
+
+        var s = _service.Load();
+
+        Assert.Equal(HistoriqueStyleSemaine.Pistes, s.HistoriqueStyleSemaine);
+        Assert.Null(s.HistoriqueX);
+        Assert.Null(s.HistoriqueY);
+        Assert.Null(s.HistoriqueWidth);
+        Assert.Null(s.HistoriqueHeight);
+    }
+
+    /// <summary>Le style est sérialisé en TEXTE (lisible, robuste au réordonnancement de l'enum) et la géométrie fait
+    /// l'aller-retour à l'identique.</summary>
+    [Fact]
+    public void Le_style_et_la_geometrie_de_l_historique_font_l_aller_retour()
+    {
+        var original = _service.Load() with
+        {
+            HistoriqueStyleSemaine = HistoriqueStyleSemaine.Tuiles,
+            HistoriqueX = 100,
+            HistoriqueY = 50,
+            HistoriqueWidth = 900,
+            HistoriqueHeight = 600,
+        };
+
+        _service.Save(original);
+        var relu = _service.Load();
+
+        Assert.Equal(original, relu);
+        Assert.Equal(HistoriqueStyleSemaine.Tuiles, relu.HistoriqueStyleSemaine);
+        Assert.Equal(100, relu.HistoriqueX);
+        Assert.Equal(600, relu.HistoriqueHeight);
+        Assert.Contains("\"HistoriqueStyleSemaine\": \"Tuiles\"", File.ReadAllText(_paths.SettingsFile), StringComparison.Ordinal);
+    }
 }

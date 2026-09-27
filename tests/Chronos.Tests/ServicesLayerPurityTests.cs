@@ -104,6 +104,25 @@ public class ServicesLayerPurityTests
     }
 
     /// <summary>
+    /// HIS-01 / D-34-05 (phase 34) — la façade de lecture de la fenêtre Historique et les records qu'elle rend sont des
+    /// types NEUTRES sous la garde : <c>ISourceHistorique</c> vit dans <c>Chronos.Services.Historique</c> (pas dans les
+    /// ViewModels), <c>DonneesSemaine</c> / <c>DonneesJour</c> dans <c>Chronos.Models.Historique</c> (hors <c>.Tokens</c> :
+    /// ils portent des <c>double</c> de l'analyse). Si l'un d'eux déménageait vers un namespace hors garde, ce test rougit.
+    /// </summary>
+    [Fact]
+    public void La_facade_de_l_historique_et_ses_records_sont_neutres()
+    {
+        Assert.True(EstTypeNeutre(typeof(Chronos.Services.Historique.ISourceHistorique)));
+        Assert.True(EstTypeNeutre(typeof(Chronos.Services.Historique.SourceHistoriqueDisque)));
+        Assert.True(EstTypeNeutre(typeof(Chronos.Services.Historique.Divergences)));
+        Assert.True(EstTypeNeutre(typeof(Chronos.Services.Historique.IReglagesHistorique)));
+        Assert.True(EstTypeNeutre(typeof(Chronos.Models.Historique.DonneesSemaine)));
+        Assert.True(EstTypeNeutre(typeof(Chronos.Models.Historique.DonneesJour)));
+        Assert.Equal("Chronos.Services.Historique", typeof(Chronos.Services.Historique.ISourceHistorique).Namespace);
+        Assert.Equal("Chronos.Models.Historique", typeof(Chronos.Models.Historique.DonneesSemaine).Namespace);
+    }
+
+    /// <summary>
     /// GARDE DE NON-RETOUR (DEL-05, phase 16). Le sous-système de plafonds — cause racine des
     /// pourcentages faux après le passage Max x5 → Max x20 — a été entièrement supprimé. Les limites
     /// Anthropic pondèrent par modèle : « tokens / plafond » reste faux même avec le bon plafond, la
