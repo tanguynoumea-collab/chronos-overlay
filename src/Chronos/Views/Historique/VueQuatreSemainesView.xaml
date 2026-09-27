@@ -1,0 +1,283 @@
+<UserControl x:Class="Chronos.Views.Historique.VueQuatreSemainesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="clr-namespace:Chronos.Controls.Historique"
+             xmlns:conv="clr-namespace:Chronos.Converters"
+             xmlns:txt="clr-namespace:Chronos.Text"
+             UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <!--
+        HIS-05 — vue « 4 semaines » (DESIGN_PLAN §2.4) : X = samedi → samedi de la semaine courante S (sept colonnes « sam. … ven. »),
+        quatre courbes hebdo superposées sur ce même axe, chacune projetée par fraction de SA plage.
+        D-35-13 : une piste dédiée (PisteQuatreSemaines) — S-3 / S-2 / S-1 en HistoGris aux opacités HistoOpaciteSemaine3/2/1, S par
+                  bandes de la rampe du thème actif, plateau épuisé en gris ; une grille, un ordre de peinture.
+        D-35-14 : hauteurs, largeurs et opacités = tokens (NIVEAU 250, étiquettes 140, rangées de couverture 10 au pas de 16).
+        D-35-15 : étiquettes EMPILÉES à droite (S, S-1, S-2, S-3), entières (retour à la ligne, jamais tronquées), trait repère gris à
+                  l'opacité de sa semaine.
+        D-35-16 : pas de réticule ni d'infobulle ici (§2.4 n'en prévoit pas) ; pas de piste tokens (v1.8).
+        Chaque bande (annotations, NIVEAU, rangées de couverture) est SA propre grille Auto / * / Auto dont les colonnes Auto prennent la
+        largeur des tokens par leurs cellules (un sys:Double ne devient pas un GridLength) : la colonne * a la même largeur partout, sans
+        colonne partagée. Aucune logique ici : les mots viennent du VM / TextesHistorique, les positions des convertisseurs de 34-04.
+        DataContext : HistoriqueViewModel, hérité de HistoriqueWindow.
+    -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- La vue se monte seule dans les tests : fusion locale du dictionnaire commun (tokens Histo*, palette, BoolToVis). La fenêtre
+                     injecte les pinceaux du thème dans Resources pour que ce repli statique n'ombre pas le thème actif (34-08). -->
+                <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:InstantVersXConverter x:Key="InstantVersX"/>
+            <conv:LargeurIntervalleConverter x:Key="LargeurIntervalle"/>
+
+            <!-- Marges locales nommées (motif 34-05) : étiquette dans sa colonne, trait repère, titre de la bande de couverture, pied. -->
+            <Thickness x:Key="HistoMargeEtiquette">8,0,0,6</Thickness>
+            <Thickness x:Key="HistoMargeTraitEtiquette">0,6,6,0</Thickness>
+            <Thickness x:Key="HistoMargeTitreCouverture">0,10,0,4</Thickness>
+            <Thickness x:Key="HistoMargeTexteRangee">4,0,0,0</Thickness>
+            <Thickness x:Key="HistoMargePied">0,6,0,0</Thickness>
+
+            <!-- Nom d'une piste : Ink2, corps légende. -->
+            <Style x:Key="LibellePiste" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsLegende}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <!-- Repère d'échelle et libellé de rangée (« 100 % », « 0 », « S-1 ») : à droite de la colonne des libellés. -->
+            <Style x:Key="Repere" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsInfime}"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+            <!-- Annotation d'honnêteté posée à son instant (Ink2). -->
+            <Style x:Key="Annotation" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsInfime}"/>
+            </Style>
+            <Style x:Key="Pied" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsMini}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <!-- D-35-15 : étiquette de semaine, entière (retour à la ligne, jamais d'ellipse) ; la courante en Ink semi-gras. -->
+            <Style x:Key="Etiquette" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsLegende}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="EtiquetteCourante" TargetType="TextBlock" BasedOn="{StaticResource Etiquette}">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+
+            <!-- Éléments posés sur un Canvas à l'abscisse de leur instant, sur l'axe de la semaine COURANTE S. -->
+            <Style x:Key="PoseeAuDebut" TargetType="ContentPresenter">
+                <Setter Property="Canvas.Left">
+                    <Setter.Value>
+                        <MultiBinding Converter="{StaticResource InstantVersX}">
+                            <Binding Path="Debut"/>
+                            <Binding Path="DataContext.DonneesQuatreSemaines.Courante.Plage" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                            <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                        </MultiBinding>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="PoseeALInstant" TargetType="ContentPresenter">
+                <Setter Property="Canvas.Left">
+                    <Setter.Value>
+                        <MultiBinding Converter="{StaticResource InstantVersX}">
+                            <Binding Path="Instant"/>
+                            <Binding Path="DataContext.DonneesQuatreSemaines.Courante.Plage" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                            <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                        </MultiBinding>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <ItemsPanelTemplate x:Key="PanneauCanvas">
+                <Canvas/>
+            </ItemsPanelTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid x:Name="Racine">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ================= [0] Axe (fixe, hors défilement) : « sam. » … « ven. » aux minuits locaux de S, « reset hebdo → » ================= -->
+        <Grid Grid.Row="0" Height="{StaticResource HistoHauteurAnnotations}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>   <!-- largeur portée par la cellule : HistoLargeurLibelles -->
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>   <!-- largeur portée par la cellule : HistoLargeurEtiquettesSemaines -->
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}"/>
+            <!-- Largeur = celle de la piste DANS le défilement : les jours restent alignés quand la barre verticale apparaît. -->
+            <ItemsControl Grid.Column="1" HorizontalAlignment="Left" IsHitTestVisible="False"
+                          Width="{Binding ActualWidth, ElementName=PisteQuatreSemaines}"
+                          ItemsSource="{Binding LibellesJoursCourts}" ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseeALInstant}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Style="{StaticResource Annotation}" Text="{Binding Texte}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Grid.Column="2" Width="{StaticResource HistoLargeurEtiquettesSemaines}">
+                <TextBlock Style="{StaticResource Annotation}" Text="{x:Static txt:TextesHistorique.ResetHebdo}" Margin="{StaticResource HistoMargeTexteRangee}"/>
+            </Border>
+        </Grid>
+
+        <!-- ================= [1] Corps défilant : annotations, NIVEAU + étiquettes, COUVERTURE PAR SEMAINE ================= -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <StackPanel x:Name="Corps">
+
+                <!-- Annotations « épuisée <jour> HH:MM → bloquée jusqu'au reset », reportées sur l'axe de S (D-35-02), tronquées à leur plateau. -->
+                <Grid Height="{StaticResource HistoHauteurAnnotations}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}"/>
+                    <ItemsControl Grid.Column="1" IsHitTestVisible="False" ItemsSource="{Binding AnnotationsEpuiseeSemaines}"
+                                  ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseeAuDebut}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Style="{StaticResource Annotation}" Text="{Binding Texte}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Texte}">
+                                    <TextBlock.MaxWidth>
+                                        <MultiBinding Converter="{StaticResource LargeurIntervalle}">
+                                            <Binding Path="Debut"/>
+                                            <Binding Path="Fin"/>
+                                            <Binding Path="DataContext.DonneesQuatreSemaines.Courante.Plage" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                            <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
+                                        </MultiBinding>
+                                    </TextBlock.MaxWidth>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Grid.Column="2" Width="{StaticResource HistoLargeurEtiquettesSemaines}"/>
+                </Grid>
+
+                <!-- NIVEAU : les quatre semaines sur un même axe ; étiquettes empilées à droite. -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}">
+                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
+                        <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereCent}" VerticalAlignment="Top"/>
+                        <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereZero}" VerticalAlignment="Bottom"/>
+                    </Grid>
+                    <hc:PisteQuatreSemaines x:Name="PisteQuatreSemaines" Grid.Column="1" Height="{StaticResource HistoHauteurNiveauQuatreSemaines}"
+                                            Plage="{Binding DonneesQuatreSemaines.Courante.Plage}" Semaines="{Binding DonneesQuatreSemaines.Semaines}"
+                                            Rampe="{Binding Theme}" Gris="{StaticResource HistoGris}" Grille="{StaticResource Line}"
+                                            EpaisseurEscalier="{StaticResource HistoEpaisseurEscalier}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"
+                                            OpaciteS1="{StaticResource HistoOpaciteSemaine1}"
+                                            OpaciteS2="{StaticResource HistoOpaciteSemaine2}"
+                                            OpaciteS3="{StaticResource HistoOpaciteSemaine3}"/>
+                    <!-- D-35-15 : S, S-1, S-2, S-3 (rang 0 d'abord) ; trait repère HistoGris à l'opacité de sa semaine (masqué pour S, en couleur). -->
+                    <ItemsControl x:Name="Etiquettes" Grid.Column="2" Width="{StaticResource HistoLargeurEtiquettesSemaines}" VerticalAlignment="Top"
+                                  IsHitTestVisible="False" ItemsSource="{Binding EtiquettesSemaines}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="{StaticResource HistoMargeEtiquette}">
+                                    <Rectangle x:Name="Trait" DockPanel.Dock="Left" VerticalAlignment="Top" Margin="{StaticResource HistoMargeTraitEtiquette}"
+                                               Width="{StaticResource HistoLongueurTiretReset}" Height="{StaticResource HistoEpaisseurEscalier}" Fill="{StaticResource HistoGris}"/>
+                                    <TextBlock x:Name="Texte" Style="{StaticResource Etiquette}" Text="{Binding Texte}"/>
+                                </DockPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Rang}" Value="0">
+                                        <Setter TargetName="Trait" Property="Visibility" Value="Hidden"/>
+                                        <Setter TargetName="Texte" Property="Style" Value="{StaticResource EtiquetteCourante}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Rang}" Value="1">
+                                        <Setter TargetName="Trait" Property="Opacity" Value="{StaticResource HistoOpaciteSemaine1}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Rang}" Value="2">
+                                        <Setter TargetName="Trait" Property="Opacity" Value="{StaticResource HistoOpaciteSemaine2}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Rang}" Value="3">
+                                        <Setter TargetName="Trait" Property="Opacity" Value="{StaticResource HistoOpaciteSemaine3}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+
+                <!-- COUVERTURE PAR SEMAINE : quatre rangées (S, S-1, S-2, S-3), chacune sur SA plage, mêmes couleurs que la couverture ;
+                     « avant le journal — aucun relevé » sur une zone hachurée ; « journal ouvert le <date> » sur la semaine d'ouverture. -->
+                <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.CouvertureParSemaine}" Margin="{StaticResource HistoMargeTitreCouverture}"/>
+                <ItemsControl x:Name="RangeesCouverture" IsHitTestVisible="False" ItemsSource="{Binding RangeesCouverture}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Height="{StaticResource HistoPasCouvertureSemaines}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}">
+                                    <TextBlock Style="{StaticResource Repere}" Text="{Binding Libelle}" VerticalAlignment="Top"/>
+                                </Grid>
+                                <Grid x:Name="CelluleCouverture" Grid.Column="1">
+                                    <Rectangle x:Name="ZoneAvantJournal" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                               Height="{StaticResource HistoHauteurCouvertureSemaine}" Fill="{StaticResource HistoHachure}" Opacity="{StaticResource HistoOpaciteTrou}">
+                                        <Rectangle.Width>
+                                            <MultiBinding Converter="{StaticResource LargeurIntervalle}">
+                                                <Binding Path="ZoneAvantJournal.Debut"/>
+                                                <Binding Path="ZoneAvantJournal.Fin"/>
+                                                <Binding Path="Plage"/>
+                                                <Binding Path="ActualWidth" ElementName="CelluleCouverture"/>
+                                            </MultiBinding>
+                                        </Rectangle.Width>
+                                    </Rectangle>
+                                    <hc:PisteCouverture Height="{StaticResource HistoHauteurCouvertureSemaine}" VerticalAlignment="Top"
+                                                        Plage="{Binding Plage}" Serie="{Binding Serie}" Trous="{Binding Trous}" InstantLecture="{Binding InstantLecture}"
+                                                        Present="{StaticResource Ok}" OpacitePresent="{StaticResource HistoOpaciteCouverture}"
+                                                        Arrete="{StaticResource Line}" Jeton="{DynamicResource Alerte}"/>
+                                    <TextBlock x:Name="TexteRangee" Style="{StaticResource Annotation}" Text="{Binding Texte}" VerticalAlignment="Top"
+                                               HorizontalAlignment="Left" Margin="{StaticResource HistoMargeTexteRangee}"/>
+                                    <Canvas x:Name="Marqueur">
+                                        <TextBlock Style="{StaticResource Annotation}" Text="{Binding JournalOuvert.Texte}">
+                                            <Canvas.Left>
+                                                <MultiBinding Converter="{StaticResource InstantVersX}">
+                                                    <Binding Path="JournalOuvert.Debut"/>
+                                                    <Binding Path="Plage"/>
+                                                    <Binding Path="ActualWidth" ElementName="Marqueur"/>
+                                                </MultiBinding>
+                                            </Canvas.Left>
+                                        </TextBlock>
+                                    </Canvas>
+                                </Grid>
+                                <Border Grid.Column="2" Width="{StaticResource HistoLargeurEtiquettesSemaines}"/>
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding ZoneAvantJournal}" Value="{x:Null}">
+                                    <Setter TargetName="ZoneAvantJournal" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Texte}" Value="">
+                                    <Setter TargetName="TexteRangee" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding JournalOuvert}" Value="{x:Null}">
+                                    <Setter TargetName="Marqueur" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ================= [2] Pied fixe (hors défilement) ================= -->
+        <TextBlock Grid.Row="2" Style="{StaticResource Pied}" Text="{Binding PiedQuatreSemaines}" Margin="{StaticResource HistoMargePied}"/>
+    </Grid>
+</UserControl>

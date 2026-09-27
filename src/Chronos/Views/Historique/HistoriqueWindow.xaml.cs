@@ -42,6 +42,7 @@ public partial class HistoriqueWindow : Window
             Resources[kv.Key] = kv.Value;
             VueSemaine.Resources[kv.Key] = kv.Value;
             VueJour.Resources[kv.Key] = kv.Value;
+            VueQuatreSemaines.Resources[kv.Key] = kv.Value;
         }
 
         RestaurerGeometrie();

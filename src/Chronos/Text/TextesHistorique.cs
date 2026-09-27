@@ -23,7 +23,6 @@ public static class TextesHistorique
     public const string SegmentJour = "Jour";
     public const string SegmentSemaine = "Semaine";
     public const string SegmentQuatreSemaines = "4 semaines";
-    public const string InfobulleBientot = "bientôt (phase 35)";
     public const string CetteSemaine = "Cette semaine";
     public const string Aujourdhui = "Aujourd'hui";
     public const string SemaineDeForfait = "Semaine de forfait";

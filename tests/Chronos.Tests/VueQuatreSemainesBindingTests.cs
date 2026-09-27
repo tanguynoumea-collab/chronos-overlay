@@ -114,14 +114,18 @@ public class VueQuatreSemainesBindingTests
     {
         var (_, vue) = BancQuatreSemaines.Monter();
 
+        // Le token → la DP Height, exacte ; l'ActualHeight est arrondie au pixel physique (UseLayoutRounding, 125 % DPI : 250 → 249,6),
+        // d'où ± 0,5 (précédent VueJourBindingTests).
         var piste = BancQuatreSemaines.Piste(vue);
-        Assert.Equal(250, piste.ActualHeight);
+        Assert.Equal(250, piste.Height);
+        Assert.InRange(piste.ActualHeight, 249.5, 250.5);
 
         var couvertures = BancQuatreSemaines.Visibles<PisteCouverture>(vue).ToList();
         Assert.Equal(4, couvertures.Count);
-        Assert.All(couvertures, c => Assert.Equal(10, c.ActualHeight));
+        Assert.All(couvertures, c => Assert.Equal(10, c.Height));
+        Assert.All(couvertures, c => Assert.InRange(c.ActualHeight, 9.5, 10.5));
         for (var i = 1; i < 4; i++)
-            Assert.Equal(16, BancQuatreSemaines.YDans(couvertures[i], vue) - BancQuatreSemaines.YDans(couvertures[i - 1], vue), 3);
+            Assert.InRange(BancQuatreSemaines.YDans(couvertures[i], vue) - BancQuatreSemaines.YDans(couvertures[i - 1], vue), 15.5, 16.5);
 
         // Les rangées de couverture sont alignées sur la piste NIVEAU (même colonne, même axe).
         foreach (var c in couvertures)

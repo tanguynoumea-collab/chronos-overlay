@@ -108,6 +108,13 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
+            <Style x:Key="SegmentQuatreSemaines" TargetType="Button" BasedOn="{StaticResource Segment}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsVueQuatreSemaines}" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
 
             <!-- Puce du sélecteur de style (§2.2) : Ink2, sélection = Ink + bordure Accent. -->
             <Style x:Key="Puce" TargetType="Button">
@@ -220,9 +227,9 @@
                                 Command="{Binding ChoisirVueCommand}" CommandParameter="{x:Static mh:VueHistorique.Jour}"/>
                         <Button Style="{StaticResource SegmentSemaine}" Content="{x:Static txt:TextesHistorique.SegmentSemaine}"
                                 Command="{Binding ChoisirVueCommand}" CommandParameter="{x:Static mh:VueHistorique.Semaine}"/>
-                        <!-- D-34-24 : présent mais désactivé tant que la vue n'existe pas (phase 35) — jamais un clic inerte. -->
-                        <Button Style="{StaticResource Segment}" Content="{x:Static txt:TextesHistorique.SegmentQuatreSemaines}"
-                                IsEnabled="False" ToolTip="{x:Static txt:TextesHistorique.InfobulleBientot}" ToolTipService.ShowOnDisabled="True"/>
+                        <!-- Phase 35 : vue active (HIS-05, 35-04). -->
+                        <Button Style="{StaticResource SegmentQuatreSemaines}" Content="{x:Static txt:TextesHistorique.SegmentQuatreSemaines}"
+                                Command="{Binding ChoisirVueCommand}" CommandParameter="{x:Static mh:VueHistorique.QuatreSemaines}"/>
 
                         <Button Style="{StaticResource Plat}" Content="‹" Command="{Binding PrecedentCommand}" Margin="12,0,0,0"/>
                         <TextBlock Text="{Binding LibellePeriode}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsGrand}"
@@ -290,6 +297,7 @@
             <Grid Grid.Row="2" Margin="16,6,16,12">
                 <hv:VueSemaineView x:Name="VueSemaine" Visibility="{Binding IsVueSemaine, Converter={StaticResource BoolToVis}}"/>
                 <hv:VueJourView x:Name="VueJour" Visibility="{Binding IsVueJour, Converter={StaticResource BoolToVis}}"/>
+                <hv:VueQuatreSemainesView x:Name="VueQuatreSemaines" Visibility="{Binding IsVueQuatreSemaines, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Grid>
     </Border>
