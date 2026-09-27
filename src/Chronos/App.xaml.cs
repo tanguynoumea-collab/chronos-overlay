@@ -527,6 +527,9 @@ public partial class App : Application
             // dernière erreur, « journal muet depuis N min » dans [Magasins persistants] ; le troisième est celui des agrégats (TOK-01).
             magasins: new IEtatMagasin[] { sp.GetRequiredService<LastExactStore>(), sp.GetRequiredService<JournalReleves>(), sp.GetRequiredService<MagasinAgregats>() },
             // TOK-02 — l'état de la reconstruction (même instance que le service hébergé) : N / M fichiers, phase, dernier fichier, périmètre.
-            reconstruction: sp.GetRequiredService<IEtatReconstruction>()));
+            reconstruction: sp.GetRequiredService<IEtatReconstruction>(),
+            // Décision 5 (phase 35) : heures de la section « Journal d'historique » dans le fuseau injecté (celui de la fenêtre
+            // Historique), jamais le fuseau local deviné dans le code neutre.
+            fuseau: sp.GetRequiredService<TimeZoneInfo>()));
     }
 }
