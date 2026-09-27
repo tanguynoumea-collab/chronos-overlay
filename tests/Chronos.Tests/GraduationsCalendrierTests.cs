@@ -8,7 +8,7 @@ namespace Chronos.Tests;
 /// les graduations d'axe de la fenêtre Historique sont des instants du CALENDRIER LOCAL (minuits locaux, heures locales
 /// rondes), obtenus par <see cref="BornesPlage.Jour"/> itéré et par le fuseau injecté. Semaine de 169 h → toujours 7 minuits
 /// dont un écart de 25 h ; jour de 25 h → toujours 8 graduations de 3 h ; 28/03 → l'heure 02:00 n'existe pas et n'est pas
-/// gradée. Pur, <c>[Fact]</c>, fuseau de Paris injecté.
+/// gradée. Tests purs, sans STA, fuseau de Paris injecté.
 /// </summary>
 public class GraduationsCalendrierTests
 {

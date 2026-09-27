@@ -11,7 +11,7 @@ namespace Chronos.Tests;
 /// du % hebdo (Σ des Δ positifs d'une case d'une heure ≥ <see cref="Divergences.SeuilDelta"/>) sur une heure SANS tranche de
 /// tokens Claude Code ET dont les transcripts sont COUVERTS. Une heure « hors couverture » ou « transcripts absents » ne peut
 /// jamais accuser Cowork : on ne sait pas ce que Claude Code y a fait. Les heures adjacentes retenues fusionnent en une seule
-/// divergence qui porte la somme des Δ. Tests en <c>[Fact]</c> pur : barres construites à la main, aucun fichier.
+/// divergence qui porte la somme des Δ. Tests purs, sans STA : barres construites à la main, aucun fichier.
 /// </summary>
 public class DivergencesTests
 {

@@ -184,7 +184,8 @@ public static class TextesHistorique
 
     // --- Bandeau F2 (§3) ---
 
-    /// <summary>« Reconstruction des tokens depuis vos transcripts Claude Code — 886 / 1603 fichiers · la semaine courante est déjà complète ».</summary>
+    /// <summary>Le texte du bandeau F2 (DESIGN_PLAN §3) : « … — N / M fichiers », suivi de « · la semaine courante est déjà complète »
+    /// dès que tous les transcripts de la semaine courante ont été lus.</summary>
     public static string BandeauF2(int traites, int total, bool semaineCouranteDisponible)
         => "Reconstruction des tokens depuis vos transcripts Claude Code — "
            + traites.ToString(CultureInfo.InvariantCulture) + " / " + total.ToString(CultureInfo.InvariantCulture) + " fichiers"

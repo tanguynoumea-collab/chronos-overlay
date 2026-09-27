@@ -15,18 +15,18 @@ namespace Chronos.ViewModels.Historique;
 /// <summary>
 /// HIS-08 / HIS-01 / HIS-07 — le SEUL ViewModel de la fenêtre Historique (D-34-05) : un point de marshaling, une persistance, un
 /// abonnement à la reconstruction. Les vues (34-06 / 34-07) sont des <c>UserControl</c> sans logique bindés sur
-/// <see cref="DonneesSemaine"/> / <see cref="DonneesJour"/> (records immuables) et sur les dérivés calculés ici.
+/// <c>DonneesSemaine</c> / <c>DonneesJour</c> (records immuables) et sur les dérivés calculés ici.
 ///
 /// <para><b>Ce qu'il fait</b> : calcule la période (semaine de forfait depuis le repère hebdo du journal — D-34-13 —, repli
-/// <c>WeeklyAnchor</c>, puis calendrier ; jour local), lit HORS du thread UI par <see cref="ISourceHistorique"/> (<c>Task.Run</c>),
-/// applique par <see cref="IUiDispatcher.Post"/> la lecture la plus RÉCENTE seulement (numéro de requête), porte le style persisté,
+/// <c>WeeklyAnchor</c>, puis calendrier ; jour local), lit HORS du thread UI par <c>ISourceHistorique</c> (<c>Task.Run</c>),
+/// applique par <c>IUiDispatcher.Post</c> la lecture la plus RÉCENTE seulement (numéro de requête), porte le style persisté,
 /// la ligne de fraîcheur, l'alerte « journal muet » (D-32-21), le bandeau F2 coalescé (Pattern 6 bis), les annotations d'honnêteté
-/// (mots de <see cref="TextesHistorique"/> uniquement) et la géométrie de fenêtre.</para>
+/// (mots de <c>TextesHistorique</c> uniquement) et la géométrie de fenêtre.</para>
 ///
 /// <para><b>JAMAIS de tick 1 s ici</b> : la fenêtre ne reçoit rien du cadran ; 60 s suffisent à « il y a N min ». Le tick ne touche
 /// que les textes de fraîcheur, « maintenant » et le bandeau ; les pistes ne voient une NOUVELLE référence de données que sur une
 /// lecture appliquée (HIS-07), et une lecture n'est demandée au tick que si un magasin a bougé (dernière écriture du journal,
-/// dernière reconstruction terminée). Le <see cref="DispatcherTimer"/> n'est créé que par <see cref="DemarrerHorloge"/>, jamais dans
+/// dernière reconstruction terminée). Le <c>DispatcherTimer</c> n'est créé que par <c>DemarrerHorloge</c>, jamais dans
 /// le constructeur (les tests sont en <c>[Fact]</c> simple).</para>
 /// </summary>
 public sealed partial class HistoriqueViewModel : ObservableObject
@@ -92,7 +92,7 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     /// <summary>« Cette semaine » / « Aujourd'hui » selon la vue.</summary>
     public string TexteRetourPresent => IsVueJour ? TextesHistorique.Aujourdhui : TextesHistorique.CetteSemaine;
 
-    /// <summary>Levé par <see cref="FermerCommand"/> : la fenêtre se ferme (et persiste sa géométrie) ; le VM ne connaît pas la fenêtre.</summary>
+    /// <summary>Levé par <c>FermerCommand</c> : la fenêtre se ferme (et persiste sa géométrie) ; le VM ne connaît pas la fenêtre.</summary>
     public event EventHandler? FermetureDemandee;
 
     /// <summary>Segment Jour / Semaine ; « 4 semaines » est un no-op tant que la vue n'existe pas (phase 35, infobulle « bientôt »).</summary>

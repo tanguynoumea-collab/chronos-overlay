@@ -17,7 +17,7 @@ namespace Chronos.Tests;
 /// est exact et COALESCÉ, 60 ticks de 60 s ne relisent rien et ne changent pas la référence des données, une écriture du journal
 /// ou une reconstruction terminée déclenche UNE relecture, les annotations d'honnêteté et les libellés calendaires sont ceux
 /// de <see cref="TextesHistorique"/>, la géométrie fait l'aller-retour, une lecture périmée est ignorée.
-/// Tests en <c>[Fact]</c> simple (aucun <c>DispatcherTimer</c> dans le ctor), fakes déterministes, horloge figée du scénario.
+/// Tests simples, sans STA (aucun <c>DispatcherTimer</c> dans le ctor), fakes déterministes, horloge figée du scénario.
 /// </summary>
 public class HistoriqueViewModelTests
 {

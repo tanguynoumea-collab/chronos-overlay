@@ -14,7 +14,7 @@ namespace Chronos.Tests;
 /// HIS-06 / HIS-08 — <see cref="TextesHistorique"/> est le producteur UNIQUE des mots de la fenêtre Historique (DESIGN_PLAN §4 :
 /// mêmes mots partout), en fr-FR EXPLICITE (jamais la culture de la machine). Chaque chaîne est testée AU CARACTÈRE PRÈS, sans
 /// une ligne de XAML : libellés de période, ligne de fraîcheur, alerte « journal muet », saut non localisé, épuisée, pied de
-/// page, bandeau F2 — et aucun mot qui annonce l'avenir. Tests en <c>[Fact]</c> pur, fuseau de Paris injecté.
+/// page, bandeau F2 — et aucun mot qui annonce l'avenir. Tests purs, sans STA, fuseau de Paris injecté.
 /// </summary>
 public class TextesHistoriqueTests
 {
