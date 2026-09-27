@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Shell;
 using System.Windows.Threading;
+using Chronos.Controls.Historique;
 using Chronos.Models.Historique;
 using Chronos.Models.Historique.Tokens;
 using Chronos.Services;
@@ -19,7 +20,8 @@ namespace Chronos.Tests;
 /// HIS-01 — smoke test BAML de la COQUILLE de la fenêtre Historique (34-05) : chrome de consultation (WindowChrome, sans
 /// transparence, sans Owner, sans Topmost), tailles lues dans les tokens, Échap → <c>FermerCommand</c>, en-tête §2.1 complet
 /// (« 4 semaines » désactivé avec son infobulle), segment et style actifs visibles, bandeau F2 qui vit et disparaît, pastille
-/// « journal muet », géométrie restaurée bornée puis réécrite en <c>Normal</c> seulement, deux vues hébergées encore vides.
+/// « journal muet », géométrie restaurée bornée puis réécrite en <c>Normal</c> seulement, deux vues hébergées et remplies, pinceaux du
+/// thème actif visibles DANS les vues (34-08 : le dictionnaire fusionné par chaque vue ne doit pas ombrer le thème).
 ///
 /// Ce que <c>dotnet build</c> ne voit pas : un bouton bindé sur la mauvaise commande, une infobulle absente sur un bouton
 /// désactivé (clic inerte), un <c>Topmost</c> ou un <c>AllowsTransparency</c> revenus par copier-coller de <c>SettingsWindow</c>.
@@ -273,10 +275,10 @@ public class HistoriqueBindingTests
         Assert.Equal(600, reglages.Courant.HistoriqueHeight);
     }
 
-    // ------------------------------------------------------------------ Vues hébergées (stubs de 34-06 / 34-07)
+    // ------------------------------------------------------------------ Vues hébergées (remplies par 34-06 / 34-07)
 
     [WpfFact]
-    public void Les_deux_vues_sont_hebergees_et_encore_vides()
+    public void Les_deux_vues_sont_hebergees_et_remplies()
     {
         var (fenetre, vm, racine, _) = Monter();
 
@@ -297,5 +299,46 @@ public class HistoriqueBindingTests
 
         Assert.True(fenetre.Resources.Contains("Alerte"), "les pinceaux du thème doivent être injectés dans les ressources de la fenêtre");
         Assert.Contains(fenetre.Resources.MergedDictionaries, d => d.Source?.OriginalString.Contains("DesignTokens.xaml", StringComparison.Ordinal) == true);
+    }
+
+    /// <summary>
+    /// 34-08 (écart 5 de 34-07) — chaque vue fusionne <c>DesignTokens.xaml</c> pour se monter seule ; ce dictionnaire porte le repli
+    /// STATIQUE <c>Alerte</c> (#EFA23A, l'ambre de Minuit). Un <c>{DynamicResource Alerte}</c> posé DANS une vue le trouve avant le
+    /// pinceau du thème injecté dans la fenêtre : avec un thème autre que Minuit, l'ambre des trous « jeton » resterait celui de Minuit.
+    /// Thème « Nord » (ambre #EBCB8B) : le mot, la bordure du trou et la bande de couverture doivent porter l'ambre DU THÈME, en Semaine
+    /// comme en Jour.
+    /// </summary>
+    [WpfFact]
+    public void Les_vues_hebergees_suivent_les_pinceaux_du_theme_actif()
+    {
+        var reglages = new ReglagesHistoriqueMemoire(new ChronosSettings { ThemeKey = "nord" });
+        var (_, vm, racine, _) = Monter(reglages: reglages);
+        var ambre = CouleurDe(vm.Theme.BrushTokens()["Alerte"]);
+        Assert.Equal("nord", vm.Theme.Key);
+        Assert.NotEqual(Color.FromRgb(0xEF, 0xA2, 0x3A), ambre);   // sinon le test ne distingue rien
+
+        var semaine = Assert.Single(Tous<VueSemaineView>(racine));
+        Assert.Equal(ambre, CouleurDe(Assert.Single(Tous<TextBlock>(semaine), t => t.Text == "jeton invalide" && VisibleDans(t, semaine)).Foreground));
+        Assert.All(Tous<PisteNiveau>(semaine), p => Assert.Equal(ambre, CouleurDe(p.BordTrouJeton)));
+        Assert.All(Tous<PisteCouverture>(semaine), p => Assert.Equal(ambre, CouleurDe(p.Jeton)));
+
+        vm.ChoisirVueCommand.Execute(VueHistorique.Jour);
+        vm.AttendreLecture().GetAwaiter().GetResult();
+        Idle(racine);
+        racine.Measure(new Size(920, 610));
+        racine.Arrange(new Rect(0, 0, 920, 610));
+        racine.UpdateLayout();
+        var jour = Assert.Single(Tous<VueJourView>(racine));
+        Assert.Equal(ambre, CouleurDe(Assert.Single(Tous<TextBlock>(jour), t => t.Text == "jeton invalide").Foreground));
+        Assert.Equal(ambre, CouleurDe(Assert.Single(Tous<PisteNiveau>(jour)).BordTrouJeton));
+        Assert.Equal(ambre, CouleurDe(Assert.Single(Tous<PisteCouverture>(jour)).Jeton));
+    }
+
+    /// <summary>Vrai si aucun ancêtre de <paramref name="e"/> jusqu'à <paramref name="racine"/> n'est caché (la grille de style active).</summary>
+    private static bool VisibleDans(DependencyObject e, DependencyObject racine)
+    {
+        for (var x = e; x is not null && !ReferenceEquals(x, racine); x = VisualTreeHelper.GetParent(x))
+            if (x is UIElement { Visibility: not Visibility.Visible }) return false;
+        return true;
     }
 }
