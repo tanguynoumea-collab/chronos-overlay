@@ -209,11 +209,11 @@ sommer des `usage` ; l'âge de dernière écriture des magasins (CPT-02) accueil
 la première semaine terminée, pas en un seul bloc à la fin.
 
 Plans:
-- [ ] 33-01-PLAN.md — TOK-01, TOK-05 : `TrancheTokens` (clé slot UTC × modèle × sub, quatre compteurs, `n`), `AgregatsTokensStore` JSONL mensuel (écriture atomique, réécriture par fichier source, lecture tolérante), garde structurelle « aucun double de quota dérivé des tokens », schéma avec périmètre partiel
-- [ ] 33-02-PLAN.md — TOK-02 (lecture), TOK-03 : lecteur en flux d'un transcript (`FileShare.ReadWrite`, `SequentialScan`, pré-filtre texte, dédup `message.id` par fichier via CPT-01), `curseurs.json`, offset de dernière ligne complète, réingestion d'un fichier raccourci ou renommé
-- [ ] 33-03-PLAN.md — TOK-02, TOK-03 : service de reconstruction de fond (`IHostedService`, thread `IsBackground` `BelowNormal`, mtime décroissant, `Task.Yield`, annulable, progression N / M), puis incrémental sur (taille, mtime) changés ; reprise idempotente testée
-- [ ] 33-04-PLAN.md — TOK-04 : rendu UTC → heure locale aux changements d'heure (25 h le 25/10/2026, 23 h le 28/03/2027), états « hors couverture » et « transcripts absents », lecture par plage des agrégats (semaine de forfait, jour, tranche 15 min et heure) en classes pures alignées sur JRN-05
-- [ ] 33-05-PLAN.md — TOK-02, TOK-05 : câblage DI et arrêt propre, âge de dernière écriture des agrégats au diagnostic (CPT-02), `docs/data-sources.md` « Agrégats de tokens », mesure du coût sur la vraie machine consignée
+- [ ] 33-01-PLAN.md — TOK-01 : `TrancheTokens`/`DeltaTranche`, `LigneAgregat` (9 champs, `slot` « O » UTC, parsing tolérant), `MagasinAgregats` (réécriture atomique triée, `IEtatMagasin`, rétention alignée sur le journal), `CouvertureTokens` (intervalles garantis persistés, `HorizonPurge` 30 j), garde TOK-05 réflexive + textuelle avec contrôle positif
+- [ ] 33-02-PLAN.md — TOK-03 : 12 fixtures réelles anonymisées, `LecteurTranscript` (octet, offsets, pré-filtre, `sub` par dossier, ligne future = curseur bloqué), `DedupUsage.Fusionner`, `IndexMessages` (shards `ids-AAAA-MM.jsonl` append-only, delta par id, `HorizonIndex` 45 j), `Curseurs` (nouveau / inchangé / grandi / raccourci / disparu)
+- [ ] 33-03-PLAN.md — TOK-02 : `IEtatReconstruction`, `ProjectionAgregats`, `ReconstructionTokens` (`BackgroundService` + thread dédié `IsBackground` `BelowNormal`, `Thread.Yield()`, mtime décroissant, semaine courante d'abord, flush ids → agrégats → curseurs, incrémental 60 s) ; reprise idempotente octet pour octet, annulation < 200 ms
+- [ ] 33-04-PLAN.md — TOK-04 : `LecteurAgregats.Lire` par plage (mois UTC chevauchants, couverture en sous-plages), `RenduLocalTokens` (25 barres le 25/10/2026, 23 le 28/03/2027, colonnes par quart d'heure et par modèle, part sous-agents)
+- [ ] 33-05-PLAN.md — TOK-05 : câblage DI (hébergé avant `RefreshOrchestrator`, arrêt propre), diagnostic (troisième magasin + `[Agrégats de tokens]`), `MainViewModel` (propriétés de reconstruction, sans XAML), `docs/data-sources.md` §8 sous la nouvelle garde `ContratAgregatsDocumenteTests`, mesures consignées
 
 ### Phase 34: Fenêtre Historique : Semaine et Jour
 **Goal**: Une **fenêtre « Historique »** séparée — opaque, non topmost, redimensionnable, mémorisée — montre la
