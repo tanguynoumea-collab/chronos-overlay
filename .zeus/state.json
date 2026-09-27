@@ -34,7 +34,7 @@
     "triage_findings": false,
     "go_publication": false,
     "confirmation_roadmap": false,
-    "plan_design_reglages_valide": false
+    "plan_design_reglages_valide": true
   },
   "pending": {
     "findings_critiques": [
@@ -81,6 +81,7 @@
     "2026-09-27 — GSD phase 34 close : 8/8 plans, verification passed 8/8, 1565 tests, 0 warning Debug/Release (fix reel : ombrage des brosses du theme dans les vues). GATE TESTS OK. -> DESIGN-REVIEW (DAEDALUS phase 2) : galerie `dotnet run --project src/Chronos -- --historique` a lancer par l'utilisateur. Phase 35 : contexte ecrit, recherche en cours (en parallele, les ecarts bloquants de la revue y entreront en vague 1).",
     "2026-09-27 — GSD phase 35 : vagues 1-3 executees (6 plans / 7) : vue 4 semaines, double-clic + carte F1, diagnostic [Journal d'historique], README + data-sources §9, release Chronos-v3.3.0.exe (78 104 918 o, md5 7ec9fbcf, commit 9b74ed5, ni tag ni push). 1648 tests, 0 warning. Reste : 35-07 constat humain (reprend E1-ter et le tableau de 32-08), revue DAEDALUS de la galerie, puis DEV-COUNCIL / DEV-SENIOR / PUBLICATION.",
     "2026-09-27 — Utilisateur : bug « processus zombie apres Quitter » (cause prouvee : interblocage Host/Dispatcher a l'arret) -> quick 260927 en cours (correctif + test + release 3.3.1). Utilisateur : refonte des reglages -> DAEDALUS mode REFONTE : audit + DESIGN_PLAN_REGLAGES.md + maquettes HTML (quota Figma Starter atteint). CHECKPOINT design reglages en attente.",
-    "2026-09-27 — Quick 260927 livre : interblocage d'arret corrige (Task.Run, ConfigureAwait(false), ArretHote borne a 5 s, 6 tests Host reel sous Dispatcher), release Chronos-v3.3.1.exe (78 111 106 o, md5 c9d4c0bb, commit 8723e2a). 1654 tests, 0 warning. Le constat 35-07 se jouera sur la 3.3.1."
+    "2026-09-27 — Quick 260927 livre : interblocage d'arret corrige (Task.Run, ConfigureAwait(false), ArretHote borne a 5 s, 6 tests Host reel sous Dispatcher), release Chronos-v3.3.1.exe (78 111 106 o, md5 c9d4c0bb, commit 8723e2a). 1654 tests, 0 warning. Le constat 35-07 se jouera sur la 3.3.1.",
+    "2026-09-27 — CHECKPOINT design reglages franchi sur accord implicite de l'utilisateur (« J'ai toujours le vieux menu sur la 3.3.1 » apres envoi des maquettes R1-R4) : consigne comme decision utilisateur. -> implementation (quick 260927-reglages, release 3.4.0)."
   ]
 }

@@ -1,6 +1,6 @@
 # DESIGN_PLAN — Chronos · fenêtre de réglages (REFONTE)
 
-> Statut : ☐ Brouillon ☑ Auto-critiqué (Passe B) ☐ **VALIDÉ PAR L'UTILISATEUR** (obligatoire avant tout XAML)
+> Statut : ☐ Brouillon ☑ Auto-critiqué (Passe B) ☑ **VALIDÉ PAR L'UTILISATEUR** le 2026-09-27 (implicitement : « J'ai toujours le vieux menu sur la 3.3.1 » après l'envoi des maquettes — l'utilisateur attend la refonte telle que proposée ; consigné par ZEUS)
 > Version : 1.0 — 2026-09-27 · Mode DAEDALUS : **REFONTE** · Ampleur : **REFONTE TOTALE de cette fenêtre**, décidée par
 > l'utilisateur (« redesigne-la entièrement, fenêtre rectangulaire classique, redimensionnable dynamiquement »).
 > Maquettes : `.zeus/maquettes/reglages-v2.html` (R1 à R4, référence). Le quota Figma du forfait Starter a été atteint après le
