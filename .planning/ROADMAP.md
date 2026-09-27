@@ -283,8 +283,8 @@ Plans:
 - [x] 34-03-PLAN.md — HIS-08 : réglages (`HistoriqueStyleSemaine`, géométrie), `Divergences` (seuil 0,01 nommé), `GraduationsCalendrier`, `ISourceHistorique`/`SourceHistoriqueDisque`, `TextesHistorique` (mots §4), `ScenariosHistorique` (semaine des maquettes), `HistoriqueViewModel` (lecture hors UI, tick 60 s sans relecture, F2 coalescé)
 - [x] 34-04-PLAN.md — HIS-07 : six `FrameworkElement` à `OnRender` + `StreamGeometry` gelée (`PisteBase` avec compteur de rendus, Niveau, Rythme, Tokens, Couverture, Fenêtres 5 h, `SurcoucheReticule`), test « jamais au tick » niveau contrôle
 - [x] 34-05-PLAN.md — HIS-01 : `HistoriqueWindow` (WindowChrome, coins DWM best-effort, en-tête §2.1 avec « 4 semaines » désactivé, F2, Échap, géométrie bornée et persistée), stubs `VueSemaineView`/`VueJourView`, mode `--historique`, DI + miroir + garde
-- [ ] 34-06-PLAN.md — HIS-02, HIS-03 : vue Semaine — trois grilles Pistes / Simplifié / Tuiles aux hauteurs 150/72/72/12 · 200/90/12 · 120/62/58/58/12 vérifiées par Measure/Arrange, annotations d'honnêteté, zone avant journal, surcouche + infobulle, 760 → 1 400
-- [ ] 34-07-PLAN.md — HIS-04 : vue Jour — 190/64/64/12, % 5 h au premier plan (gris si épuisée), hebdo trait fin, resets observés, tokens par quart d'heure par modèle + légende, « maintenant » aujourd'hui seulement
+- [x] 34-06-PLAN.md — HIS-02, HIS-03 : vue Semaine — trois grilles Pistes / Simplifié / Tuiles aux hauteurs 150/72/72/12 · 200/90/12 · 120/62/58/58/12 vérifiées par Measure/Arrange, annotations d'honnêteté, zone avant journal, surcouche + infobulle, 760 → 1 400
+- [x] 34-07-PLAN.md — HIS-04 : vue Jour — 190/64/64/12, % 5 h au premier plan (gris si épuisée), hebdo trait fin, resets observés, tokens par quart d'heure par modèle + légende, « maintenant » aujourd'hui seulement
 - [ ] 34-08-PLAN.md — HIS-06 : honnêteté de bout en bout sur la galerie (2 vues × 3 styles, mots + trace de rendu), garde de vocabulaire « aucune projection », garde tokens durcie, mutations h1–h5, GATE TESTS (suite × 2, Release 0 warning)
 
 ### Phase 35: 4 semaines, accès, release 3.3.0
@@ -344,7 +344,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 |-------|----------------|--------|-----------|
 | 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
 | 33. Agrégats de tokens | 5/5 | Complete    | 2026-09-27 |
-| 34. Fenêtre Historique : Semaine et Jour | 5/8 | In Progress|  |
+| 34. Fenêtre Historique : Semaine et Jour | 7/8 | In Progress|  |
 | 35. 4 semaines, accès, release 3.3.0 | 0/5 | Not started | - |
 
 ### Couverture des exigences
