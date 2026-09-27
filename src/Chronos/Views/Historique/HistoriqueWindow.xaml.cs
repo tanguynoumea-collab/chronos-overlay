@@ -12,8 +12,8 @@ namespace Chronos.Views.Historique;
 ///
 /// <para>D-34-22 : fenêtre de consultation sans transparence ; bords de redimensionnement et ombre par <c>WindowChrome</c> (XAML),
 /// coins arrondis DWM best-effort posés ici dans <c>SourceInitialized</c> (Windows 11 ; Windows 10 garde des coins droits, sans
-/// exception). D-34-23 : pas d'<c>Owner</c>, pas de <c>Topmost</c>, pas de fermeture à la désactivation — fenêtre indépendante,
-/// rappelée par les gestes de la phase 35.</para>
+/// exception). D-34-23 : pas de fenêtre propriétaire, pas de <c>Topmost</c>, pas de fermeture à la désactivation — fenêtre
+/// indépendante, rappelée par les gestes de la phase 35.</para>
 ///
 /// <para>Aucune logique métier ici : tout est dans <see cref="HistoriqueViewModel"/>. Le code-behind ne fait que : poser le
 /// DataContext, injecter les pinceaux du thème, restaurer / persister la géométrie (bornée par <see cref="PlacementHistorique"/>,
@@ -69,8 +69,8 @@ public partial class HistoriqueWindow : Window
         }
     }
 
-    /// <summary>Mémorise position et taille — en <see cref="WindowState.Normal"/> seulement (une fenêtre maximisée ne doit pas
-    /// écraser la géométrie « normale » mémorisée). Appelée par <c>Closing</c> ; <c>internal</c> pour les tests.</summary>
+    /// <summary>Mémorise position et taille — en état normal seulement (une fenêtre maximisée ou réduite ne doit pas écraser la
+    /// géométrie « normale » mémorisée). Appelée par <c>Closing</c> ; <c>internal</c> pour les tests.</summary>
     internal void EnregistrerGeometrie()
     {
         if (WindowState != WindowState.Normal) return;

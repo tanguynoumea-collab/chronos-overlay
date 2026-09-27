@@ -4,7 +4,9 @@ using Chronos.Services;
 using Chronos.Services.Historique;
 using Chronos.Services.Historique.Tokens;
 using Chronos.ViewModels;
+using Chronos.ViewModels.Historique;
 using Chronos.Views;
+using Chronos.Views.Historique;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -59,10 +61,22 @@ public partial class App : Application
             return;
         }
 
+        // MODE GALERIE HISTORIQUE (--historique) : la fenêtre Historique RÉELLE sur la semaine de référence des maquettes (phase 34,
+        // D-34-26). Court-circuite le pipeline/host et le verrou d'instance unique comme --cadrans / --sessions : aucune réconciliation
+        // des hooks, aucun service résolu, aucune écriture dans settings.json (réglages en mémoire). Sert à la revue visuelle DESIGN_PLAN §8.
+        if (e.Args.Any(a => string.Equals(a, "--historique", StringComparison.OrdinalIgnoreCase)))
+        {
+            base.OnStartup(e);
+            var galerie = HistoriqueGalerie.Creer();
+            MainWindow = galerie;
+            galerie.Show();
+            return;
+        }
+
         base.OnStartup(e);
 
         // CPT-03 — UNE SEULE INSTANCE de l'overlay par session Windows. Posé ici, APRÈS les court-circuits --statusline, --hook,
-        // --cadrans et --sessions (multi-instances par construction : Claude Code lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
+        // --cadrans, --sessions et --historique (multi-instances par construction : Claude Code lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
         // le second exe n'a démarré aucun service, n'a pas réconcilié ~/.claude/settings.json et n'a pas écrasé chronos.log.
         // Il se retire en le DISANT et ne tue jamais l'autre : le 2026-09-27, trois exe tournaient ensemble et écrivaient les mêmes fichiers.
         // Mutex nommé Local\ (pas Global\ : aucun droit, un autre utilisateur a le sien) ; un abandon (instance morte sans libérer) = acquis.
@@ -248,6 +262,16 @@ public partial class App : Application
         // sont injectés parce qu'ils sont inscrits plus bas — mêmes instances que le journal et que le service hébergé de reconstruction.
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
+
+        // Fenêtre Historique (phase 34, HIS-01) : façade de lecture neutre sur %APPDATA%\Chronos\historique (ChronosPaths), réglages via
+        // SettingsService (motif GAP-1 : Save(mutation(Load()))), fuseau du système au site de composition (D-32-29 / D-33-21). Le VM est
+        // singleton (D-34-05) : un seul abonnement à IEtatReconstruction.Changement, état de navigation conservé entre deux ouvertures ;
+        // IEtatJournal / IEtatReconstruction lui sont injectés comme paramètres optionnels (précédent 32-05 / 33-05 : inscrits plus bas).
+        // La fenêtre elle-même est construite par la phase 35 (gestes d'ouverture) : new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>()).
+        services.AddSingleton(TimeZoneInfo.Local);
+        services.AddSingleton<ISourceHistorique>(sp => new SourceHistoriqueDisque(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<TimeZoneInfo>()));
+        services.AddSingleton<IReglagesHistorique>(sp => new ReglagesHistoriqueSurDisque(sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton<HistoriqueViewModel>();
 
         // Placement/persistance Phase 6 (FEN-03/04/05/07) : settings.json chargé UNE fois au démarrage
         // (coin + device = vérité), adaptateur de placement, contrat neutre pour le VM (menu 06-04).
