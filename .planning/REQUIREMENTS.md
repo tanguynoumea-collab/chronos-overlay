@@ -53,7 +53,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 
 ### Agrégats de tokens (TOK)
 
-- [x] **TOK-01**: Les tokens des transcripts (principal ET `subagents/`) sont agrégés par **tranche de 15 min UTC × modèle ×
+- [ ] **TOK-01**: Les tokens des transcripts (principal ET `subagents/`) sont agrégés par **tranche de 15 min UTC × modèle ×
   principal/sous-agent** dans `historique\tokens-AAAA-MM.jsonl` : `{v, slot, model, sub, in, out, cache_w, cache_r, n}` — quatre
   compteurs séparés, jamais la somme, jamais le message individuel, jamais le contenu.
 - [ ] **TOK-02**: La **reconstruction initiale** parcourt les transcripts existants en arrière-plan (thread `IsBackground`,
@@ -175,7 +175,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | JRN-04 | Phase 32 | Complete |
 | JRN-05 | Phase 32 | Complete |
 | JRN-06 | Phase 32 | Complete |
-| TOK-01 | Phase 33 | Complete |
+| TOK-01 | Phase 33 | Pending |
 | TOK-02 | Phase 33 | Pending |
 | TOK-03 | Phase 33 | Complete |
 | TOK-04 | Phase 33 | Pending |
