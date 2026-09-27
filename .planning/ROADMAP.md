@@ -211,8 +211,8 @@ la première semaine terminée, pas en un seul bloc à la fin.
 Plans:
 - [x] 33-01-PLAN.md — TOK-01 : `TrancheTokens`/`DeltaTranche`, `LigneAgregat` (9 champs, `slot` « O » UTC, parsing tolérant), `MagasinAgregats` (réécriture atomique triée, `IEtatMagasin`, rétention alignée sur le journal), `CouvertureTokens` (intervalles garantis persistés, `HorizonPurge` 30 j), garde TOK-05 réflexive + textuelle avec contrôle positif
 - [x] 33-02-PLAN.md — TOK-03 : 12 fixtures réelles anonymisées, `LecteurTranscript` (octet, offsets, pré-filtre, `sub` par dossier, ligne future = curseur bloqué), `DedupUsage.Fusionner`, `IndexMessages` (shards `ids-AAAA-MM.jsonl` append-only, delta par id, `HorizonIndex` 45 j), `Curseurs` (nouveau / inchangé / grandi / raccourci / disparu)
-- [ ] 33-03-PLAN.md — TOK-02 : `IEtatReconstruction`, `ProjectionAgregats`, `ReconstructionTokens` (`BackgroundService` + thread dédié `IsBackground` `BelowNormal`, `Thread.Yield()`, mtime décroissant, semaine courante d'abord, flush ids → agrégats → curseurs, incrémental 60 s) ; reprise idempotente octet pour octet, annulation < 200 ms
-- [ ] 33-04-PLAN.md — TOK-04 : `LecteurAgregats.Lire` par plage (mois UTC chevauchants, couverture en sous-plages), `RenduLocalTokens` (25 barres le 25/10/2026, 23 le 28/03/2027, colonnes par quart d'heure et par modèle, part sous-agents)
+- [x] 33-03-PLAN.md — TOK-02 : `IEtatReconstruction`, `ProjectionAgregats`, `ReconstructionTokens` (`BackgroundService` + thread dédié `IsBackground` `BelowNormal`, `Thread.Yield()`, mtime décroissant, semaine courante d'abord, flush ids → agrégats → curseurs, incrémental 60 s) ; reprise idempotente octet pour octet, annulation < 200 ms
+- [x] 33-04-PLAN.md — TOK-04 : `LecteurAgregats.Lire` par plage (mois UTC chevauchants, couverture en sous-plages), `RenduLocalTokens` (25 barres le 25/10/2026, 23 le 28/03/2027, colonnes par quart d'heure et par modèle, part sous-agents)
 - [ ] 33-05-PLAN.md — TOK-05 : câblage DI (hébergé avant `RefreshOrchestrator`, arrêt propre), diagnostic (troisième magasin + `[Agrégats de tokens]`), `MainViewModel` (propriétés de reconstruction, sans XAML), `docs/data-sources.md` §8 sous la nouvelle garde `ContratAgregatsDocumenteTests`, mesures consignées
 
 ### Phase 34: Fenêtre Historique : Semaine et Jour
@@ -343,7 +343,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
-| 33. Agrégats de tokens | 2/5 | In Progress|  |
+| 33. Agrégats de tokens | 4/5 | In Progress|  |
 | 34. Fenêtre Historique : Semaine et Jour | 0/8 | Not started | - |
 | 35. 4 semaines, accès, release 3.3.0 | 0/5 | Not started | - |
 
