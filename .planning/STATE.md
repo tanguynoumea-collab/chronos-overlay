@@ -45,7 +45,7 @@ Progress: [░░░░░░░░░░] 0 %
 ### Blockers / dettes ouvertes
 - **Constat en production v1.7 PARTIEL** (VAL-03) : trois exécutables en marche (3.1.0, 3.2.0, 3.2.1), tableau des gestes non
   joué → repris en tête de la phase 32 (VAL-04) sur la 3.2.2. L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
-- **`last-exact.json` : PAS de gel** (corrigé par la recherche 32, sonde WMI hors arbre le 27/09 01:56) : le fichier réel est réécrit chaque minute ; la copie figée au 13/09 12:44 est la vue virtualisée (COW) du paquet MSIX que toute session lit. CPT-02 devient observabilité (âge de dernière écriture, événement `ecriture_ratee`, ligne « Vue AppData : réelle | virtualisée » au diagnostic) + test du try/catch muet.
+- **`last-exact.json` — le « gel » n'a jamais existé (établi le 2026-09-27, sondes WMI hors arbre du 25/09 21:17 et du 27/09 01:56 ; corrigé en 32-02).** Le fichier réel est réécrit chaque minute (mtime 01:55:37 pour une capture 23:53:37Z) ; la copie datée du 2026-09-13 12:44:59 est la vue virtualisée (copy-on-write) du paquet MSIX que toute session Claude Code lit — un overlay avait tourné SOUS l'arbre de l'app ce jour-là de 07:36 à 12:44. Le `try/catch` de `LastExactUsageProvider` n'a rien avalé. Livré : `IEtatMagasin`, `DerniereEcriture`/`DerniereErreur`/`EcritureRatee` sur `LastExactStore`, section `[Magasins persistants]` et ligne « Vue AppData » au diagnostic. Règle : ne jamais juger l'overlay depuis une session.
 - **Parser de tokens ×2 à 2,75** (lignes `assistant` dupliquées par bloc, même `usage`) → CPT-01.
 
 ### Sécurité — contrainte qui prime sur tout
@@ -69,7 +69,7 @@ fichier ; usage identique entre doublons, 0 divergent) → dédup par `message.i
 n'existe** (`TranscriptSessionSource` fait un `Seek` de queue) : les curseurs sont à construire. Balayage `grep` de 2 Go : 3,8 s
 cache chaud ; C# en flux avec pré-filtre : 10–20 s CPU chaud estimés.
 
-**Persistance existante** : `last-exact.json` réel réécrit chaque minute (la vue lue depuis une session est la copie COW du paquet, figée au 13/09) ; `LastExactStore` (temp + `File.Move`, lecture tolérante, `SchemaVersion`) est le modèle maison.
+**Persistance existante** : `last-exact.json` réel réécrit chaque minute (la vue lue depuis une session est la copie COW du paquet, figée au 13/09 — voir 32-02 : `IEtatMagasin`, diagnostic « Vue AppData ») ; `LastExactStore` (temp + `File.Move`, lecture tolérante, `SchemaVersion`) est le modèle maison.
 `ChronosPaths` construit les chemins sous `%APPDATA%\Chronos`. `ServicesLayerPurityTests` interdit tout type WPF sous
 `Services/` et `Models/`. AppData est VIRTUALISÉ (MSIX) pour tout ce qui tourne sous l'app bureau : l'overlay lancé par
 l'Explorateur écrit la vue réelle, un processus lancé depuis une session écrit `Packages\Claude_*\LocalCache\Roaming` —
