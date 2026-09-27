@@ -21,7 +21,7 @@ namespace Chronos.Tests;
 ///         CONTRAT que 34-04 à 34-07 consomment par <c>{StaticResource …}</c>, sans jamais taper un chiffre.</item>
 /// </list>
 ///
-/// Lecture XML du fichier source (pas de BAML, pas de thread STA) : ces tests sont des <c>[Fact]</c> purs.
+/// Lecture XML du fichier source (pas de BAML, pas de thread STA) : ces tests sont des faits purs, sans STA.
 /// </summary>
 public class GardeTokensHistoriqueTests
 {

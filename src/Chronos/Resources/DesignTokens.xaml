@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:conv="clr-namespace:Chronos.Converters">
+                    xmlns:conv="clr-namespace:Chronos.Converters"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Tokens couleur VERROUILLÉS (maquette / 05-CONTEXT) — source unique de vérité (CAD-01).
          Dictionnaire autonome pour être chargeable à la fois par App.xaml (MergedDictionaries)
          et par les smoke tests (pack URI), sans dépendre d'une Application démarrée. -->
@@ -23,6 +24,87 @@
                                                                            par défaut « minuit » ; ChronosTheme.BrushTokens() l'écrase par le RampAmber
                                                                            du thème actif. AMBRE et non rouge : le rouge signifie déjà « quota épuisé »
                                                                            dans la rampe d'usage, un rouge d'auth entrerait en collision sémantique. -->
+
+    <!-- Palette du CHROME des fenêtres secondaires (réglages, historique) — promue de SettingsWindow.xaml en 34-01 (HIS-07),
+         valeurs INCHANGÉES. Toujours sombre, indépendante du thème du cadran : PAS dans ChronosTheme.BrushTokens(). -->
+    <SolidColorBrush x:Key="Panel"  Color="#151322"/>
+    <SolidColorBrush x:Key="Panel2" Color="#1E1B30"/>
+    <SolidColorBrush x:Key="Line"   Color="#2C2942"/>
+    <SolidColorBrush x:Key="Ink"    Color="#F2F0FB"/>
+    <SolidColorBrush x:Key="Ink2"   Color="#A9A6C4"/>
+    <SolidColorBrush x:Key="Accent" Color="#8B7BF0"/>
+    <SolidColorBrush x:Key="Ok"     Color="#4EC98A"/>
+
+    <!-- Neutres de la fenêtre Historique (DESIGN_PLAN §2 / §2.0). Les tokens ne portent JAMAIS la rampe de quota :
+         la couleur d'un niveau vient de ChronosTheme.ArcColor du thème actif. HistoGris = le gris « épuisé » du cadran (D-34-01). -->
+    <SolidColorBrush x:Key="HistoTokens"    Color="#8C89A8"/>   <!-- barres de tokens (principal) -->
+    <SolidColorBrush x:Key="HistoSousAgent" Color="#5A5776"/>   <!-- part sous-agents empilée -->
+    <SolidColorBrush x:Key="HistoModele1"   Color="#9D9AB8"/>   <!-- vue Jour : 1er modèle par tokens de sortie -->
+    <SolidColorBrush x:Key="HistoModele2"   Color="#6E6B8C"/>
+    <SolidColorBrush x:Key="HistoModele3"   Color="#4A4762"/>
+    <SolidColorBrush x:Key="HistoGris"      Color="#5A5960"/>   <!-- « épuisée », fantôme S-1, bordure d'un trou « Chronos arrêté » -->
+    <DrawingBrush x:Key="HistoHachure" TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute">  <!-- zones « hors couverture » / « transcripts absents » (D-34-04) -->
+        <DrawingBrush.Drawing>
+            <GeometryDrawing>
+                <GeometryDrawing.Geometry><LineGeometry StartPoint="0,4" EndPoint="4,0"/></GeometryDrawing.Geometry>
+                <GeometryDrawing.Pen><Pen Brush="{StaticResource HistoGris}" Thickness="1"/></GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- Tailles de la fenêtre Historique (D-34-02) : corps §2, hauteurs de pistes §2.2 / §2.3, épaisseurs, opacités, gabarits.
+         Un test de mise en page réel (34-06 / 34-07) vérifie les hauteurs sur l'arbre visuel — elles ne sont dupliquées nulle part en C#.
+         Valeurs écrites avec un POINT (parseur XAML invariant), clés sans virgule. -->
+    <!-- Corps de police (§2 : 16 / 14 / 11,5 / 11 / 10,5 / 9,5 / 9 / 8,5) -->
+    <sys:Double x:Key="HistoCorpsTitre">16</sys:Double>
+    <sys:Double x:Key="HistoCorpsGrand">14</sys:Double>
+    <sys:Double x:Key="HistoCorpsNormal">11.5</sys:Double>
+    <sys:Double x:Key="HistoCorpsMoyen">11</sys:Double>
+    <sys:Double x:Key="HistoCorpsPetit">10.5</sys:Double>
+    <sys:Double x:Key="HistoCorpsMini">9.5</sys:Double>
+    <sys:Double x:Key="HistoCorpsLegende">9</sys:Double>
+    <sys:Double x:Key="HistoCorpsInfime">8.5</sys:Double>
+    <!-- Épaisseurs de trait et longueur des tirets de reset -->
+    <sys:Double x:Key="HistoEpaisseurEscalier">2.2</sys:Double>
+    <sys:Double x:Key="HistoEpaisseurPremierPlan">2.4</sys:Double>
+    <sys:Double x:Key="HistoEpaisseurFin">1</sys:Double>
+    <sys:Double x:Key="HistoEpaisseurBordureActive">1.5</sys:Double>
+    <sys:Double x:Key="HistoLongueurTiretReset">8</sys:Double>
+    <!-- Opacités (trou « Chronos arrêté », bande de couverture, ligne « maintenant ») -->
+    <sys:Double x:Key="HistoOpaciteTrou">0.35</sys:Double>
+    <sys:Double x:Key="HistoOpaciteCouverture">0.55</sys:Double>
+    <sys:Double x:Key="HistoOpaciteMaintenant">0.6</sys:Double>
+    <!-- Rayon des coins et gabarits de colonnes -->
+    <sys:Double x:Key="HistoRayonCoins">16</sys:Double>
+    <sys:Double x:Key="HistoLargeurLibelles">96</sys:Double>
+    <sys:Double x:Key="HistoLargeurLegendeDroite">72</sys:Double>
+    <!-- Hauteurs de pistes — Semaine, style Pistes (§2.2) -->
+    <sys:Double x:Key="HistoHauteurNiveauPistes">150</sys:Double>
+    <sys:Double x:Key="HistoHauteurRythmePistes">72</sys:Double>
+    <sys:Double x:Key="HistoHauteurTokensPistes">72</sys:Double>
+    <sys:Double x:Key="HistoHauteurCouverture">12</sys:Double>
+    <!-- Semaine, style Simplifié (§2.2) -->
+    <sys:Double x:Key="HistoHauteurNiveauSimplifie">200</sys:Double>
+    <sys:Double x:Key="HistoHauteurTokensSimplifie">90</sys:Double>
+    <!-- Semaine, style Tuiles (§2.2) -->
+    <sys:Double x:Key="HistoHauteurNiveauTuiles">120</sys:Double>
+    <sys:Double x:Key="HistoHauteurFenetres5hTuiles">62</sys:Double>
+    <sys:Double x:Key="HistoHauteurRythmeTuiles">58</sys:Double>
+    <sys:Double x:Key="HistoHauteurTokensTuiles">58</sys:Double>
+    <!-- Jour (§2.3) -->
+    <sys:Double x:Key="HistoHauteurNiveauJour">190</sys:Double>
+    <sys:Double x:Key="HistoHauteurRythmeJour">64</sys:Double>
+    <sys:Double x:Key="HistoHauteurTokensJour">64</sys:Double>
+    <!-- Fenêtre : minimale 760 × 480, défaut 920 × 610 (§2) -->
+    <sys:Double x:Key="HistoLargeurMin">760</sys:Double>
+    <sys:Double x:Key="HistoHauteurMin">480</sys:Double>
+    <sys:Double x:Key="HistoLargeurDefaut">920</sys:Double>
+    <sys:Double x:Key="HistoHauteurDefaut">610</sys:Double>
+    <!-- Gabarits de mise en page : rangée d'annotations au-dessus d'une piste, en-tête commun (§2.1) -->
+    <sys:Double x:Key="HistoHauteurAnnotations">18</sys:Double>
+    <sys:Double x:Key="HistoHauteurEnTete">92</sys:Double>
+    <!-- Seul token non-double : bord de redimensionnement (WindowChrome.ResizeBorderThickness, 34-05). -->
+    <Thickness x:Key="HistoBordRedimensionnement">6</Thickness>
 
     <!-- Converters : rampe d'utilization (05-02) + BooleanToVisibility intégré WPF. -->
     <conv:UtilizationToBrushConverter x:Key="UtilBrush"/>

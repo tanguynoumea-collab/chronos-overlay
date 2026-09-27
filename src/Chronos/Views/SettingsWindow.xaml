@@ -6,14 +6,13 @@
         WindowStartupLocation="Manual" Topmost="True"
         FontFamily="Segoe UI">
     <Window.Resources>
-        <!-- Palette du CHROME des réglages (toujours sombre, indépendant du thème du cadran). -->
-        <SolidColorBrush x:Key="Panel"  Color="#151322"/>
-        <SolidColorBrush x:Key="Panel2" Color="#1E1B30"/>
-        <SolidColorBrush x:Key="Line"   Color="#2C2942"/>
-        <SolidColorBrush x:Key="Ink"    Color="#F2F0FB"/>
-        <SolidColorBrush x:Key="Ink2"   Color="#A9A6C4"/>
-        <SolidColorBrush x:Key="Accent" Color="#8B7BF0"/>
-        <SolidColorBrush x:Key="Ok"     Color="#4EC98A"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Palette du chrome (Panel/Panel2/Line/Ink/Ink2/Accent/Ok) : promue dans DesignTokens.xaml (34-01, HIS-07),
+                     fusionnée au niveau fenêtre pour que les StaticResource résolvent sans Application (smoke tests).
+                     Le dictionnaire fournit aussi BoolToVis : plus de déclaration locale. -->
+                <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
 
         <!-- Libellé de section -->
         <Style x:Key="Section" TargetType="TextBlock">
@@ -94,7 +93,6 @@
         </Style>
 
         <!-- Puce de sélection du STYLE de cadran (surbrillance quand IsSelected). -->
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="StyleChip" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Margin" Value="2"/>
@@ -118,6 +116,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <!-- Panneau principal -->
