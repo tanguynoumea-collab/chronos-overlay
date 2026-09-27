@@ -43,7 +43,6 @@ public class TextesHistoriqueTests
         Assert.Equal("Jour", TextesHistorique.SegmentJour);
         Assert.Equal("Semaine", TextesHistorique.SegmentSemaine);
         Assert.Equal("4 semaines", TextesHistorique.SegmentQuatreSemaines);
-        Assert.Equal("bientôt (phase 35)", TextesHistorique.InfobulleBientot);
         Assert.Equal("Cette semaine", TextesHistorique.CetteSemaine);
         Assert.Equal("Aujourd'hui", TextesHistorique.Aujourdhui);
         Assert.Equal("NIVEAU", TextesHistorique.PisteNiveau);
@@ -303,6 +302,7 @@ public class TextesHistoriqueTests
         Assert.Equal("avant le journal — aucun relevé", TextesHistorique.AvantJournalAucunReleve);
         Assert.Equal("aucun relevé", TextesHistorique.AucunReleve);
         Assert.Equal("COUVERTURE PAR SEMAINE", TextesHistorique.CouvertureParSemaine);
-        Assert.Equal("bientôt (phase 35)", TextesHistorique.InfobulleBientot);   // Pitfall 6 : retirée par 35-04, pas ici
+        // 35-04 : le segment « 4 semaines » est actif, la constante « bientôt (phase 35) » n'existe plus.
+        Assert.Null(typeof(TextesHistorique).GetField("InfobulleBientot"));
     }
 }

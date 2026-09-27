@@ -19,7 +19,7 @@ namespace Chronos.Tests;
 /// <summary>
 /// HIS-01 — smoke test BAML de la COQUILLE de la fenêtre Historique (34-05) : chrome de consultation (WindowChrome, sans
 /// transparence, sans Owner, sans Topmost), tailles lues dans les tokens, Échap → <c>FermerCommand</c>, en-tête §2.1 complet
-/// (« 4 semaines » désactivé avec son infobulle), segment et style actifs visibles, bandeau F2 qui vit et disparaît, pastille
+/// (« 4 semaines » actif depuis 35-04), segment et style actifs visibles, bandeau F2 qui vit et disparaît, pastille
 /// « journal muet », géométrie restaurée bornée puis réécrite en <c>Normal</c> seulement, deux vues hébergées et remplies, pinceaux du
 /// thème actif visibles DANS les vues (34-08 : le dictionnaire fusionné par chaque vue ne doit pas ombrer le thème).
 ///
@@ -140,11 +140,6 @@ public class HistoriqueBindingTests
         Assert.NotEqual("", vm.LibellePeriode);
         Assert.NotEqual("", vm.TexteFraicheur);
 
-        var quatre = Bouton(racine, "4 semaines");
-        Assert.False(quatre.IsEnabled, "« 4 semaines » n'existe pas avant la phase 35 : désactivé, jamais un clic inerte");
-        Assert.Equal("bientôt (phase 35)", quatre.ToolTip);
-        Assert.True(ToolTipService.GetShowOnDisabled(quatre), "l'infobulle doit s'afficher sur le bouton désactivé");
-
         var semaine = Bouton(racine, "Semaine");
         Assert.Same(vm.ChoisirVueCommand, semaine.Command);
         Assert.Equal(VueHistorique.Semaine, semaine.CommandParameter);
@@ -185,6 +180,38 @@ public class HistoriqueBindingTests
         Assert.Equal(accent, CouleurDe(Bouton(racine, "Jour").BorderBrush));
         Assert.Equal(Colors.Transparent, CouleurDe(semaine.BorderBrush));
         Assert.Same(vm.RetourPresentCommand, Bouton(racine, "Aujourd'hui").Command);
+    }
+
+    /// <summary>35-04 (HIS-05) — le segment « 4 semaines » est actif : il ouvre la vue, masque les deux autres et le sélecteur de
+    /// style, et la vue hébergée reçoit les pinceaux du thème (34-08).</summary>
+    [WpfFact]
+    public void Le_segment_4_semaines_est_actif_et_ouvre_la_vue()
+    {
+        var (fenetre, vm, racine, _) = Monter();
+        var quatre = Bouton(racine, "4 semaines");
+        Assert.True(quatre.IsEnabled, "« 4 semaines » existe depuis la phase 35 : segment actif");
+        Assert.Null(quatre.ToolTip);
+        Assert.Same(vm.ChoisirVueCommand, quatre.Command);
+        Assert.Equal(VueHistorique.QuatreSemaines, quatre.CommandParameter);
+
+        quatre.Command.Execute(quatre.CommandParameter);
+        vm.AttendreLecture().GetAwaiter().GetResult();
+        Idle(racine);
+        racine.Measure(new Size(920, 610));
+        racine.Arrange(new Rect(0, 0, 920, 610));
+        racine.UpdateLayout();
+
+        var vue = Assert.IsType<VueQuatreSemainesView>(fenetre.FindName("VueQuatreSemaines"));
+        Assert.Equal(Visibility.Visible, vue.Visibility);
+        Assert.Equal(Visibility.Collapsed, Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("VueSemaine")).Visibility);
+        Assert.Equal(Visibility.Collapsed, Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("VueJour")).Visibility);
+        Assert.Equal(Visibility.Collapsed, Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("SelecteurStyle")).Visibility);
+        Assert.Same(vm, vue.DataContext);
+        Assert.NotEmpty(Assert.IsType<Grid>(vue.Content).Children);
+
+        Assert.True(vue.Resources.Contains("Alerte"), "les pinceaux du thème doivent être injectés dans la vue 4 semaines (34-08)");
+        Assert.Equal(CouleurDe(vm.Theme.BrushTokens()["Alerte"]), CouleurDe((Brush)vue.Resources["Alerte"]));
+        Assert.Equal(Color.FromRgb(0x8B, 0x7B, 0xF0), CouleurDe(quatre.BorderBrush));   // segment actif : bordure Accent
     }
 
     // ------------------------------------------------------------------ Bandeau F2
