@@ -45,7 +45,7 @@ patterns-established:
 requirements-completed: [CPT-03]
 
 # Metrics
-duration: ~30 min (premier commit RED 01:01Z → fin ≈ 01:30Z, hors attentes de compilation partagée)
+duration: ~35 min (premier commit RED 01:01Z → commit de docs 01:36Z, attentes de compilation partagée incluses)
 completed: 2026-09-27
 ---
 
@@ -55,7 +55,7 @@ completed: 2026-09-27
 
 ## Performance
 
-- **Duration:** ~30 min de travail effectif (SHA d'entrée `c9d65cf`) ; les attentes de fenêtres compilables dans l'arbre partagé (4 agents, 3 RED simultanés) ne sont pas comptées.
+- **Duration:** ~35 min (SHA d'entrée `c9d65cf` ; premier commit RED 01:01Z → fin 01:36Z), attentes de fenêtres compilables dans l'arbre partagé (4 agents, RED simultanés) incluses.
 - **Started:** 2026-09-27T01:01Z (premier commit RED)
 - **Completed:** 2026-09-27
 - **Tasks:** 3/3
@@ -176,4 +176,4 @@ CPT-03 tenue côté code. Prêt pour 32-05 (câblage diagnostic) et 32-08 (const
 - Fichiers : `VerrouInstanceUnique.cs`, `InventaireProcessus.cs`, `VerrouInstanceUniqueTests.cs`, `InventaireProcessusTests.cs`, `App.xaml.cs`, `GardesPerimetreTests.cs`, `32-03-SUMMARY.md` — tous FOUND.
 - Commits : `c5348e5`, `1025cb2`, `e28e2a6`, `fc0846c`, `2385123` — tous FOUND dans `git log --all`.
 - Arbre de travail : aucun des six fichiers du plan n'est modifié après les commits (`git status` vide sur ces chemins).
-- `REQUIREMENTS.md` : CPT-03 coché (l. 30) et traçabilité « Complete » (l. 171) via `requirements mark-complete` ; le fichier portait déjà, non validées, les lignes JRN-01..03 « Complete » du plan parallèle 32-04 — embarquées telles quelles dans le commit de docs.
+- `REQUIREMENTS.md` : CPT-03 coché (l. 30) et traçabilité « Complete » (l. 171) via `requirements mark-complete`. Au moment du staging, le diff ne contenait plus que ces deux lignes CPT-03 (les lignes JRN-01..03 du plan parallèle 32-04, vues non validées plus tôt, avaient été validées par cet agent entre-temps) : le commit de docs `35f1a3e` ne porte que CPT-03 — sa description qui mentionne JRN-01..03 est à lire comme un constat périmé.
