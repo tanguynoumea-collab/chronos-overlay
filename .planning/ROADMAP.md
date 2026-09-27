@@ -344,7 +344,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 |-------|----------------|--------|-----------|
 | 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
 | 33. Agrégats de tokens | 5/5 | Complete    | 2026-09-27 |
-| 34. Fenêtre Historique : Semaine et Jour | 8/8 | Complete   | 2026-09-27 |
+| 34. Fenêtre Historique : Semaine et Jour | 8/8 | Complete    | 2026-09-27 |
 | 35. 4 semaines, accès, release 3.3.0 | 0/5 | Not started | - |
 
 ### Couverture des exigences

@@ -5,8 +5,8 @@
   "version_cible": "3.3.0",
   "milestone_gsd": "v1.8",
   "route": "full",
-  "phase": "GSD",
-  "phase_status": "gsd_phase_32_checkpoint_humain_VAL-04",
+  "phase": "DESIGN-REVIEW",
+  "phase_status": "en_attente_galerie_utilisateur",
   "cycle": {
     "numero": 1,
     "demarre_le": "2026-09-26",
@@ -74,6 +74,7 @@
     "2026-09-27 — GSD phase 32 : vagues 1 et 2 executees (6 plans / 8) — DedupUsage (max par champ par message.id), magasins observables + vue AppData au diagnostic, mutex mono-instance, journal des releves branche (FileShare.None, dedup CapturedAt, 6 evenements), alerte « journal muet », lecture par plage (169 h / 167 h DST). Suite 1200 -> 1309 verts. Vague 3 (release 3.2.2) en cours ; vague 4 = constat humain (VAL-04).",
     "2026-09-27 — Phase 32 : 7 plans / 8 executes, Chronos-v3.2.2.exe publie (77 557 997 o, md5 51f4d95b), 1313 tests / 0, zero warning. Plan 32-08 (constat VAL-04) arrete au point de controle (a) : gestes de l'utilisateur requis (quitter 3.1.0/3.2.0/3.2.1, lancer 3.2.2 par l'Explorateur, second lancement refuse). Temps 0 releve (commit 882fecc).",
     "2026-09-27 — GSD phase 33 (agregats de tokens) executee et verifiee 5/5 : 1415 tests, 0 warning ; reconstruction reelle 3,2 s a chaud / 47 ms incremental ; .gitattributes LF. Phase 32 : constat humain toujours en attente (3.2.2 lancee, anciennes non quittees). Phase 34 (fenetre Historique) : contexte ecrit, recherche en cours.",
-    "2026-09-27 — GSD phase 34 : vagues 1-3 executees (7 plans / 8, 1549 tests, 0 warning) — tokens promus, geometrie pure, VM + scenarios, pistes OnRender, HistoriqueWindow + galerie --historique, vues Semaine (3 styles) et Jour. Vague 4 (34-08 honnetete + GATE TESTS) en cours. Ensuite : DESIGN-REVIEW DAEDALUS sur la galerie lancee par l'utilisateur."
+    "2026-09-27 — GSD phase 34 : vagues 1-3 executees (7 plans / 8, 1549 tests, 0 warning) — tokens promus, geometrie pure, VM + scenarios, pistes OnRender, HistoriqueWindow + galerie --historique, vues Semaine (3 styles) et Jour. Vague 4 (34-08 honnetete + GATE TESTS) en cours. Ensuite : DESIGN-REVIEW DAEDALUS sur la galerie lancee par l'utilisateur.",
+    "2026-09-27 — GSD phase 34 close : 8/8 plans, verification passed 8/8, 1565 tests, 0 warning Debug/Release (fix reel : ombrage des brosses du theme dans les vues). GATE TESTS OK. -> DESIGN-REVIEW (DAEDALUS phase 2) : galerie `dotnet run --project src/Chronos -- --historique` a lancer par l'utilisateur. Phase 35 : contexte ecrit, recherche en cours (en parallele, les ecarts bloquants de la revue y entreront en vague 1)."
   ]
 }

@@ -56,6 +56,7 @@ chiffre exact.
 - ✓ Contrat de la source app-bureau sous garde croisée (14 champs) ; exe 3.2.0 puis 3.2.1 publiés, version embarquée, réconciliation constatée dans le fichier (VAL-02 ; VAL-03 partielle : constat en production reporté en phase 32) — Phase 31 — v1.7
 - ✓ Compter juste et journaliser : dédup des usages par `message.id` (max par champ, dictionnaire global), magasins observables + vue AppData au diagnostic, mutex mono-instance, journal des relevés exacts (1 / 5 min, événements de couverture, append sûr), alerte « journal muet », lecture par plage (169 h / 167 h aux changements d'heure), exe 3.2.2 publié (CPT-01..03, JRN-01..06 ; VAL-04 en cours : constat avec l'utilisateur) — Phase 32 — v1.8
 - ✓ Agrégats de tokens : tranches 15 min UTC × modèle × sous-agent, quatre compteurs, index d'ids append-only + projection mensuelle réécrite atomiquement, reconstruction de fond (thread BelowNormal, 3,2 s à chaud, 47 ms en incrémental), curseurs, rendu local DST (25 barres le 25/10/2026, 23 le 28/03/2027), couverture « hors couverture / transcripts absents / couverte », garde « aucun pourcentage dérivé de tokens » (TOK-01..05) — Phase 33 — v1.8
+- ✓ Fenêtre Historique : fenêtre de consultation opaque (WindowChrome, géométrie persistée), vue Semaine de forfait en trois styles sélectionnables (Pistes / Simplifié / Tuiles, hauteurs du plan de design vérifiées par Measure/Arrange), vue Jour au grain 5 min, pistes à OnRender + StreamGeometry gelée jamais redessinées au tick, palette promue dans DesignTokens.xaml sans changer une valeur, honnêteté testée mot pour mot (trous, « répartition inconnue », « consommé ailleurs »), bandeau F2, galerie `--historique` (HIS-01..04, HIS-06..08) — Phase 34 — v1.8
 
 ### Active
 
@@ -93,7 +94,7 @@ cours du temps, sans jamais présenter une estimation comme un chiffre exact.
 
 ## Current State (v1.8 en cours — 2026-09-27)
 
-**Phases 32 et 33 exécutées** (1200 → 1415 tests verts, zéro warning) : `Chronos-v3.2.2.exe` publié et lancé par l'utilisateur (journal des relevés vérifié : 12 relevés / h, 0 doublon, réconciliation conforme) ; agrégats de tokens câblés. Reste pour la 32 : le constat humain (quitter les trois anciens overlays, second lancement, tableau des gestes). Phase 34 (fenêtre Historique) en préparation.
+**Phases 32, 33 et 34 exécutées** (1200 → 1565 tests verts, zéro warning ; fenêtre Historique livrée, revue visuelle DAEDALUS en attente sur la galerie `--historique`) : `Chronos-v3.2.2.exe` publié et lancé par l'utilisateur (journal des relevés vérifié : 12 relevés / h, 0 doublon, réconciliation conforme) ; agrégats de tokens câblés. Reste pour la 32 : le constat humain (quitter les trois anciens overlays, second lancement, tableau des gestes). Phase 34 (fenêtre Historique) en préparation.
 
 **v1.7 clos le 2026-09-27** (exe 3.2.1, 1200 tests) avec un écart connu : le constat en production est PARTIEL (trois exécutables
 en marche, tableau des gestes non joué) et se rejoue en tête de la phase 32 sur la 3.2.2. **Deux défauts découverts à la clôture**
@@ -235,4 +236,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-27 — phases 32 et 33 de v1.8 exécutées (1415 tests, exe 3.2.2) ; constat 32-08 en attente ; phase 34 en cours*
+*Last updated: 2026-09-27 — phases 32 à 34 de v1.8 exécutées (1565 tests) ; revue visuelle et constat 32-08 en attente ; phase 35 en recherche*
