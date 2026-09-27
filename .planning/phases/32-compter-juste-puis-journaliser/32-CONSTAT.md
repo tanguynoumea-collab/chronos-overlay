@@ -153,16 +153,17 @@ L'overlay reste ouvert (la sonde T+60 attend).
 | `Chronos-v3.2.2.exe` | 77 557 997 o, md5 `51f4d95b…`, 3.2.2.0 / 3.2.2 | **77 557 997 o, md5 `51f4d95bb346b9a4ce33f3f63f3d434c`, FileVersion 3.2.2.0, ProductVersion 3.2.2** ✅ |
 | App Claude | 2.9939.2.0 | 2.9939.2.0 ✅ |
 | Dossier de test `Documents\chronos-constat` | existe, vide | existe (créé en phase 31), vide après suppression de `sonde-t0.*` |
-| Processus après lancement | un seul : `Chronos-v3.2.2.exe`, sans argument, parent explorer ; 0 ancienne | à relever |
-| Second double-clic (CPT-03) | message « Chronos tourne déjà… » vu ; un seul cadran ; aucun second processus résident | à relever |
-| **Réconciliation** : sauvegarde horodatée | neuve, datée du lancement, md5 = `52827d6a52cb148b08165f36f46f2401` | à relever |
-| **Réconciliation** : fichier courant | = sauvegarde + 9 remplacements `Chronos-v3.2.1.exe` → `Chronos-v3.2.2.exe` (égalité structurelle) ; 9 / 0 | à relever |
-| **Réconciliation** : groupes | 8 `--hook` 3.2.2 + statusLine 3.2.2, 3 `gsd-` intacts, un seul groupe Chronos par clé (8 clés) | à relever |
-| Rapport `chronos.log` (réel) | « Version : 3.2.2 » ; « Exe courant : …\Chronos-v3.2.2.exe » ; « Vue AppData : réelle » ; « Processus Chronos : 1 (dont ce processus) — 0 autre(s) » ; « Verrou mono-instance (Local\Chronos-overlay) : tenu par ce processus » | à relever |
-| **Journal à T+10 min** | fichier existe ; mtime < 6 min ; ≥ 2 relevés de `t` distincts ; `demarrage` en tête ; `version 3.2.2` | à relever |
-| **Journal à T+60 min** | ≈ 12 ± 2 relevés ; aucun doublon de `t` ; mtime < 6 min ; pas d'`arret` | à relever |
+| Processus après lancement (sonde a, 11:20:30 ; preuve : parent `WmiPrvSE.exe`, `Claude` absent) | un seul : `Chronos-v3.2.2.exe`, sans argument, parent explorer ; 0 ancienne | ⚠ **QUATRE overlays** : `Chronos-v3.2.2.exe` PID **87604**, parent 27872 `explorer.exe`, sans argument, créé le **2026-09-27 à 08:07:09** (= T0) — ET 3.1.0 (40772), 3.2.0 (126160), 3.2.1 (121900) toujours en marche : les trois anciennes n'ont PAS été quittées — écart **E1-ter** §3 ; « une seule instance » NON CONSTATÉE |
+| Second double-clic (CPT-03) | message « Chronos tourne déjà… » vu ; un seul cadran ; aucun second processus résident | **non rapporté** : l'utilisateur a répondu « continue » sans dire s'il a fait le second lancement ni vu la boîte ; la sonde ne voit qu'un seul processus 3.2.2 résident (cohérent avec un refus, ou avec l'absence de second lancement) — NON CONSTATÉ, à rejouer (E1-ter) |
+| **Réconciliation** : sauvegarde horodatée | neuve, datée du lancement, md5 = `52827d6a52cb148b08165f36f46f2401` | `claude-settings-20260927-080710.json`, 3 384 o, md5 **`52827d6a52cb148b08165f36f46f2401`** = temps 0 (mtime conservé 2026-09-26 18:53:11) ✅ |
+| **Réconciliation** : fichier courant | = sauvegarde + 9 remplacements `Chronos-v3.2.1.exe` → `Chronos-v3.2.2.exe` (égalité structurelle) ; 9 / 0 | écrit le 2026-09-27 08:07:10 (1 s après T0), md5 `b010cd8733344a134875d2c8a8d43b37`, 3 384 o ; **égalité OCTET à octet** : md5(courant avec `3.2.2` → `3.2.1`) = `52827d6a…` ; égalité structurelle True ; 3.2.2 : **9** / 3.2.1 : **0** (3.2.0 et 3.1.0 : 0) ✅ |
+| **Réconciliation** : groupes | 8 `--hook` 3.2.2 + statusLine 3.2.2, 3 `gsd-` intacts, un seul groupe Chronos par clé (8 clés) | **8** hooks 3.2.2, statusLine `…/Chronos-v3.2.2.exe" --statusline`, **3** `gsd-`, un seul groupe Chronos par clé (Notification, PermissionRequest, PostToolUse, PreToolUse, SessionEnd, SessionStart, Stop, UserPromptSubmit) — contrôle automatique (0, 9, 8, 3, True) ✅ |
+| Rapport `chronos.log` (réel, 6 710 o, écrit 08:10:32, rapport daté 08:07:11) | « Version : 3.2.2 » ; « Exe courant : …\Chronos-v3.2.2.exe » ; « Vue AppData : réelle » ; « Processus Chronos : 1 (dont ce processus) — 0 autre(s) » ; « Verrou mono-instance (Local\Chronos-overlay) : tenu par ce processus » | « **Version : 3.2.2** » ✅ ; « Exe courant : …\PROJET OVERLAY\Chronos-v3.2.2.exe » ✅ ; `[Magasins persistants]` : « **Vue AppData : réelle** » ✅ ; « dernier exact : %APPDATA%\Chronos\last-exact.json — dernière écriture il y a 3 min (321 o) » ; « journal des relevés : %APPDATA%\Chronos\historique\releves-2026-09.jsonl — dernière écriture il y a 3 min (322 o) » ✅ ; pas de ligne ALERTE ✅ ; « **Processus Chronos : 4 (dont ce processus) — 3 autre(s)** » puis `Chronos-v3.1.0#40772 — démarré il y a 3 j`, `Chronos-v3.2.0#126160 — il y a 17 h 51`, `Chronos-v3.2.1#121900 — il y a 9 h 35`, `Chronos-v3.2.2#87604 — ce processus, il y a 3 min` (⚠ attendu 1 : E1-ter, le rapport dit vrai) ; « **Verrou mono-instance (Local\Chronos-overlay) : tenu par ce processus** » ✅ ; « agrégats de tokens : aucun (phase 33) » |
+| **Journal à T+10 min** (constaté a posteriori sur les premières lignes, sonde a) | fichier existe ; mtime < 6 min ; ≥ 2 relevés de `t` distincts ; `demarrage` en tête ; `version 3.2.2` | `historique existe : True` ; `releves-2026-09.jsonl` ; ligne 1 = `{"v":1,"t":"2026-09-27T06:07:10.0489553+00:00","ev":"demarrage","version":"3.2.2"}` ✅ ; relevés à `t` = 06:07:10Z (u5 0 / r5 09:50Z, u7 0,55 / r7 2026-10-02T22:00Z, statut5/7 Autorise, overage_statut Rejete, source SondeEnTetes) puis 06:12:10Z (u5 0,04, u7 0,56) : **2 relevés distincts avant T+10** ✅ ; l'âge « < 6 min » n'a pas été mesuré à T+10 (sonde différée non lancée à T0, cf. §3) mais l'est à T+193 : mtime 11:18:12 pour une sonde à 11:20:30, soit **2 min 18 s** ✅ |
+| **Journal à T+60 min** (sonde t60, jouée à 11:21:42 = T+194 min ; preuve : parent `WmiPrvSE.exe`, `Claude` absent) | ≈ 12 ± 2 relevés ; aucun doublon de `t` ; mtime < 6 min ; pas d'`arret` | **12 relevés dans T+0..T+60** ✅ ; puis 11 (T+60..120), 11 (T+120..180), 2 (T+180..194) ; total **36 relevés, 36 `t` distincts, 0 doublon** ✅ ; intervalles min 5,00 / max 6,00 / moyenne 5,46 min, aucun trou > 7 min ; dernier `t` 09:18:11Z, âge 3,5 min ✅ ; événements : `demarrage` seul (pas d'`arret`, pas de `sonde_refusee` ni `jeton_invalide`) ✅ ; 8 790 o, 37 lignes |
 | Diagnostic collé (point b) | « Vue AppData : réelle » ; « dernier exact : … il y a N min » (N ≤ 2) ; « journal des relevés : … dernière écriture il y a N min » (N ≤ 5) ; pas d'ALERTE ; « Processus Chronos : 1 … » ; « Verrou … tenu par ce processus » | à relever |
-| Carte « Journal des relevés » (réglages) | texte vu par l'utilisateur ; pastille absente ; en-tête « v3.2 » | à relever |
+| Carte « Journal des relevés » (réglages) | texte vu par l'utilisateur ; pastille absente ; en-tête « v3.2 » | non rapporté au point (a) (« continue » sans détail) ; à relever au point (b) avec le diagnostic |
+| Autres fichiers réels après lancement (sonde a) | vivants | `last-exact.json` 326 o mtime 11:20:11 ; `treated.json` 372 o 11:18:47 ; `settings.json` 536 o 11:17:52 ; `oauth.dat` 08:53:10 — quatre écrivains possibles sur `treated.json`/`last-exact.json` tant que E1-ter dure ; le journal, lui, n'a qu'un écrivain (les anciennes n'en ont pas) |
 
 ## 1. Les trois lignes
 
@@ -194,8 +195,24 @@ L'overlay reste ouvert (la sonde T+60 attend).
 
 ## 3. Écarts
 
-(aucun au temps 0 ; à compléter au fil des points (a), (b), (c) et des relevés du journal — un écart est un fait consigné,
-jamais corrigé ici)
+- **E1-ter (point a, constaté à 11:20 par sonde hors arbre) — point (a) partiellement joué : QUATRE overlays.** L'utilisateur a
+  lancé `Chronos-v3.2.2.exe` par l'Explorateur à 08:07:09 (PID 87604, parent explorer — le lanceur est le bon) et a répondu
+  « continue » sans rapporter les gestes ; les trois anciennes (3.1.0 PID 40772, 3.2.0 PID 126160, 3.2.1 PID 121900) n'ont PAS été
+  quittées. Le mutex `Local\Chronos-overlay` de la 3.2.2 ne les connaît pas : elle l'a pris (« tenu par ce processus ») et le rapport
+  compte honnêtement « 4 (dont ce processus) — 3 autre(s) ». Conséquences : **« une seule instance » NON CONSTATÉE** ; **le refus du
+  second lancement (CPT-03 en vrai) NON CONSTATÉ** (second double-clic non rapporté ; la sonde ne voit qu'un 3.2.2 résident, ce qui
+  ne distingue pas « refusé » de « pas tenté »). La réconciliation et le journal, eux, sont constatés (§0). Rien n'est corrigé
+  ici ; **à rejouer** quand l'utilisateur aura quitté les trois anciennes (réglages « v3.1 », « v3.2 », « v3.2 » → « Quitter
+  Chronos »), puis double-cliqué `Chronos-v3.2.2.exe` une seconde fois (attendu : boîte « Chronos tourne déjà… », un seul cadran) —
+  l'agent relèvera alors par sonde : 1 seul processus Chronos, « Processus Chronos : 1 (dont ce processus) — 0 autre(s) ». Les
+  mesures du point (b) restent possibles pour le widget (le journal n'a qu'un écrivain), mais `treated.json` et `last-exact.json`
+  ont quatre écrivains tant que E1-ter dure.
+- **Note (non écart) — sondes différées T+10 et T+60 non lancées à T0.** L'agent n'a été rappelé qu'à T+193 min ; le journal a
+  été relevé une fois pour toutes à T+193/T+194 (sonde a et sonde t60), et les attendus T+10 (≥ 2 relevés distincts avant T0+10,
+  `demarrage` en tête) et T+60 (12 relevés dans la première heure) ont été constatés a posteriori sur le contenu daté du fichier,
+  l'âge de dernière écriture (2 min 18 s) l'étant à l'heure de la sonde. Le critère « le journal s'écrit » est tenu.
+- **Note (non écart)** : le rapport de démarrage dit « usage.json : présent — … (maj il y a 114312 min) » : vestige du pont
+  statusLine de juillet, source non retenue par l'arbitrage (l'affichage dit « EXACT · sonde d'en-têtes · frais »).
 
 ## 4. Verdict
 
