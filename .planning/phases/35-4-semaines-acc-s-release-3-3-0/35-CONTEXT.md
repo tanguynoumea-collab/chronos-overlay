@@ -65,6 +65,29 @@ constat de la 3.3.0 avec l'utilisateur, verdict écrit dans `35-CONSTAT.md` (VAL
 - Écarts connus et acceptés : rayon DWM ≈ 8 px (pas 16), coins droits sur Windows 10, badge de version omis, infobulle non bornée
   au bord droit (à corriger si simple), repères « 100 % / 0 » selon 34-08.
 
+### Décisions de l'orchestrateur sur les questions ouvertes de 35-RESEARCH (2026-09-27)
+1. **Semaine épuisée** : prouvée par une fixture DÉRIVÉE du scénario (S-1 poussée à 100 % un jeudi soir), sans modifier
+   `ScenariosHistorique.Generer` ; la galerie peut proposer ce second scénario si c'est trivial.
+2. **Valeurs de la frame E** (maquette construite par l'orchestrateur, fichier Figma O8WVDejfdPcJv6314a7h6k) : zone de tracé
+   700 px dans une fenêtre de 920, NIVEAU 4 semaines = **250 px**, colonne d'étiquettes à droite ≈ **140 px**, bande COUVERTURE
+   PAR SEMAINE = quatre rangées de **10 px** espacées de **16 px**. Ces valeurs deviennent les nouveaux tokens (table de 34-01 mise à
+   jour dans le même commit).
+3. **Veille de minuit** (trou qui chevauche minuit) : vue Jour seulement en v1.8 ; la Semaine n'est pas concernée (ses bornes sont
+   des samedis 00:00 déjà couverts par la lecture de la semaine).
+4. **Revue DAEDALUS** : en attente de la galerie lancée par l'utilisateur. Le plan de la vue 4 semaines réserve une tâche « écarts
+   bloquants de la revue » ; si la revue n'est pas rendue quand ce plan s'exécute, la tâche consigne « revue non rendue » et les
+   écarts entreront par une itération DESIGN-REVIEW → GSD (max 3, pipeline ZEUS).
+5. **Fuseau du diagnostic** : injecté par la DI (`TimeZoneInfo` est enregistré depuis 34-05), jamais `TimeZoneInfo.Local` dans le
+   code neutre ; repli explicite seulement dans la racine de composition.
+6. **Découpage** : release et constat SÉPARÉS (la release reste autonome, le constat seul est `autonomous: false`) → 7 plans en
+   4 vagues : vague 1 (données/VM 4 semaines + minuit + robustesse de réouverture ∥ gestes + carte F1 + ouvreur ∥ diagnostic),
+   vague 2 (vue 4 semaines XAML + tokens + segment + infobulle bornée + annotations Jour ∥ README + data-sources §9 + garde),
+   vague 3 (release 3.3.0), vague 4 (constat VAL-05, qui rejoue aussi E1-ter et le tableau L1…Q / V01…V12 de 32-08).
+7. **Coût du double-clic** : le simple clic bascule après le délai système (≈ 0,5 s) — accepté, annoncé au constat.
+8. **Protocole du constat** : au moins une nuit avec l'overlay 3.3.0 avant la lecture d'un trou réel ; une veille donne « cause
+   inconnue », c'est honnête ; le critère « hachuré » de VAL-05 se lit « rectangle gris à bordure pointillée annoté de sa cause »
+   (la hachure est réservée à « avant le journal »).
+
 ### Claude's Discretion
 Structure de `VueQuatreSemainesView` (réutilise `PisteNiveau`/`PisteCouverture` de 34-04 avec quatre séries ou une piste dédiée),
 mécanique exacte du double-clic (temporisation vs annulation), forme du singleton de fenêtre (service `IOuvreurHistorique`), ordre
