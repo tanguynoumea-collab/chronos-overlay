@@ -16,7 +16,7 @@ Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau
 - **Anneau interne — fenêtre hebdomadaire** : se remplit à l'approche du reset ; couleur = % de quota consommé.
 - **Anneau du milieu — fenêtre 5 h glissante** : idem pour la fenêtre de 5 heures.
 - **Anneau externe — timeline 24 h** : où tu en es dans la journée, avec des marques à chaque reset 5 h.
-- **Au centre** : les deux pourcentages d'utilisation. **Clique au centre** pour basculer vers le **temps avant reset**, et re-clique pour revenir aux pourcentages.
+- **Au centre** : les deux pourcentages d'utilisation. Un **clic** au centre bascule entre les pourcentages et le **temps avant reset** (après le délai de double-clic de Windows, ≈ 0,5 s) ; un **double-clic** ouvre l'**Historique** (voir [plus bas](#historique-dutilisation)).
 - **Couleurs** : vert → ambre → rouge selon l'utilisation, **gris** quand le quota est épuisé, **neutre** quand la donnée est inconnue (jamais de valeur inventée). Un `~` devant un pourcentage signale une **estimation**.
 
 ## Installation (portable, sans droits admin)
@@ -82,6 +82,81 @@ une conversation Chat de l'app au premier plan compte comme « regardée ».
 Contrats : [`docs/hooks-contract.md`](docs/hooks-contract.md) (les hooks) et
 [`docs/desktop-app-sessions.md`](docs/desktop-app-sessions.md) (ce que l'app bureau écrit de chaque session).
 
+## Historique d'utilisation
+
+Une fenêtre à part, **Historique**, montre ce que le journal de Chronos a relevé : la semaine de forfait, la journée,
+les quatre dernières semaines. Ce n'est pas un overlay : c'est une fenêtre ordinaire, présente dans la barre des
+tâches, redimensionnable, qui retient sa position et sa taille.
+
+### Ouvrir
+
+- Deux gestes : **double-clic au centre du cadran**, ou **Réglages** (clic droit sur le cadran) → carte **« Historique
+  d'utilisation »** → **« Ouvrir »**.
+- Si la fenêtre est déjà ouverte, elle revient au premier plan (et se rouvre si elle était réduite). **Échap** ou
+  **✕** la ferment.
+- Le prix du double-clic : au centre, le simple clic attend le délai de double-clic de Windows (≈ 0,5 s) avant de
+  basculer entre % et temps avant reset, pour savoir si un second clic arrive.
+
+### Trois vues
+
+En haut : **Jour · Semaine · 4 semaines**, ‹ › pour la période précédente ou suivante, « Cette semaine » /
+« Aujourd'hui » pour revenir au présent, et une ligne de fraîcheur (« Dernier relevé il y a N min · source ·
+N relevés · N interruptions · journal ouvert le … »).
+
+- **Semaine de forfait** (vue par défaut) — du samedi 00:00 au samedi 00:00 suivant, bornée par le reset hebdo que
+  le serveur annonce.
+- **Jour** — de 0 h à 24 h, un relevé toutes les 5 min (« 288 relevés attendus · N présents »). Le % 5 h passe au
+  premier plan, avec un trait à chaque reset 5 h observé (« reset 5 h HH:MM ») ; les tokens sont comptés par quart
+  d'heure et par modèle. Un trou qui commence la veille est nommé avec sa cause, sans rien dessiner avant minuit.
+- **4 semaines** — quatre semaines de forfait superposées sur le même axe samedi → samedi : la courante en couleur,
+  les trois précédentes en gris de plus en plus pâle, chacune étiquetée à droite (valeur finale, ou « pas de relevés
+  (avant le journal) »). Une semaine épuisée devient un plateau gris « épuisée <jour> HH:MM → bloquée jusqu'au
+  reset ». Une bande de couverture par semaine ; pas de piste de tokens dans cette vue.
+
+### Trois styles pour la Semaine
+
+Le style se choisit dans la fenêtre (« Style : Pistes · Simplifié · Tuiles ») ou dans la carte des réglages : c'est
+le même réglage.
+
+| Style | Pistes affichées |
+|---|---|
+| **Pistes** (par défaut) | Niveau · Rythme · Tokens Claude Code · Couverture |
+| **Simplifié** | Niveau · Tokens Claude Code · Couverture |
+| **Tuiles** | Niveau · Fenêtres 5 h · Rythme · Tokens Claude Code · Couverture |
+
+- **Niveau** — le % hebdo en escalier (couleur = niveau), la semaine précédente en gris pointillé ; en Pistes et
+  Simplifié, le % 5 h en dents de scie et un tiret à chaque reset 5 h.
+- **Fenêtres 5 h** — une tuile par fenêtre, du premier relevé au reset 5 h annoncé ; hauteur = % 5 h le plus haut,
+  grise quand la fenêtre est « épuisée ».
+- **Rythme** — par heure, de combien le compteur 5 h a monté entre deux relevés (jamais à travers un reset).
+- **Tokens Claude Code** — par heure, principal et sous-agents empilés, sur leur propre axe.
+- **Couverture** — une bande toujours visible : relevé présent, « Chronos arrêté », « jeton invalide » ou « sonde
+  refusée ».
+
+### Règles d'honnêteté
+
+- Les pourcentages sont des **relevés exacts du serveur**, écrits dans un journal depuis sa première ligne
+  (« journal ouvert le … »). Avant, rien n'est dessiné : aucune courbe n'est reconstituée.
+- Un **trou** (plus de 10 min sans relevé) interrompt la ligne et porte sa cause : « Chronos arrêté », « jeton
+  invalide », « sonde refusée » — ou aucune, quand elle n'est pas connue.
+- Ce qui a été consommé pendant une absence est un bloc plat : « +N % pendant l'absence (répartition inconnue) ».
+  Jamais une barre au réveil.
+- Une marche de % sans tokens Claude Code est encadrée en violet : **consommé ailleurs** (Cowork, claude.ai).
+- Les tokens sont comptés localement dans les transcripts de Claude Code : bruts, non pondérés, hors Cowork et
+  claude.ai, sur leur propre axe. Ce n'est **jamais** un % du forfait.
+- Aucun trou n'est interpolé et rien n'annonce l'avenir. Le reset 5 h et le reset hebdo sont ceux que le serveur
+  annonce.
+
+### Le journal
+
+- `%APPDATA%\Chronos\historique\` : relevés dans `releves-AAAA-MM.jsonl`, tokens dans `tokens-AAAA-MM.jsonl`
+  (format et lecture : [`docs/data-sources.md`](docs/data-sources.md), §7 à §9).
+- La carte des réglages et **« Diagnostic… »** (section « Journal d'historique ») disent la **dernière écriture** du
+  journal, avec une alerte au-delà de 15 min sans écriture alors que Chronos tourne.
+- Au premier lancement de la 3.3.0, les tokens des transcripts sont reconstruits en arrière-plan, du plus récent au
+  plus ancien ; un bandeau dans la fenêtre suit la progression. Les pourcentages, eux, ne se reconstruisent pas : ils
+  commencent à l'ouverture du journal.
+
 ## Prérequis
 
 - **Windows 10/11 (x64)**.
@@ -105,7 +180,7 @@ Détails de publication dans [`docs/publish.md`](docs/publish.md). Contrat des s
 
 ## Stack
 
-C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) · rendu du cadran en XAML pur (aucune dépendance native) · exe self-contained mono-fichier. plus de 1 100 tests unitaires.
+C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) · rendu du cadran en XAML pur (aucune dépendance native) · exe self-contained mono-fichier. plus de 1 600 tests unitaires.
 
 ## Licence
 
