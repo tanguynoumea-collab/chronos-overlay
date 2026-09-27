@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using Chronos.Models.Historique;
 using Chronos.Models.Historique.Tokens;
+using Chronos.Rendering.Historique;
 using Chronos.Services;
 using Chronos.Services.Historique;
 using Chronos.Text;
@@ -130,9 +131,6 @@ public class HistoriqueViewModelTests
         Assert.Equal(BornesPlage.Jour(Now - TimeSpan.FromDays(1), Tz), b.Vm.PlageCourante);
         Assert.False(b.Vm.AfficherMaintenant);
         Assert.False(b.Vm.EstAuPresent);
-
-        b.Vm.ChoisirVueCommand.Execute(VueHistorique.QuatreSemaines);
-        Assert.Equal(VueHistorique.Jour, b.Vm.VueActive);   // phase 35 : no-op
     }
 
     [Fact]
@@ -455,5 +453,193 @@ public class HistoriqueViewModelTests
         Assert.NotNull(b.Vm.DonneesSemaine);
         Assert.Equal(attendue, b.Vm.DonneesSemaine!.Plage);
         Assert.NotEqual(ScenariosHistorique.Semaine(Tz), b.Vm.DonneesSemaine.Plage);
+    }
+
+    // ------------------------------------------------------------------ 35-01 : vue 4 semaines (HIS-05) et thème relu
+
+    private static readonly string[] JoursCourts = { "sam.", "dim.", "lun.", "mar.", "mer.", "jeu.", "ven." };
+
+    private static async Task<Banc> QuatreSemainesOuvertes(Banc b)
+    {
+        await Ouvert(b);
+        b.Vm.ChoisirVueCommand.Execute(VueHistorique.QuatreSemaines);
+        await b.Vm.AttendreLecture();
+        return b;
+    }
+
+    [Fact]
+    public async Task La_vue_quatre_semaines_s_ouvre_sur_le_bloc_courant()
+    {
+        var b = await QuatreSemainesOuvertes(Construire());
+        var vm = b.Vm;
+
+        Assert.Equal(VueHistorique.QuatreSemaines, vm.VueActive);
+        Assert.True(vm.IsVueQuatreSemaines);
+        Assert.False(vm.IsVueSemaine);
+        Assert.False(vm.IsVueJour);
+        Assert.Equal(new Plage(Utc("2026-08-28T22:00:00Z"), Utc("2026-09-25T22:00:00Z")), vm.PlageCourante);
+        Assert.Equal("4 semaines de forfait · du sam. 29 août au sam. 26 sept. 2026", vm.LibellePeriode);
+        Assert.Equal("Cette semaine", vm.TexteRetourPresent);
+        Assert.False(vm.AfficherMaintenant);
+        Assert.True(vm.EstAuPresent);
+
+        var d = Assert.IsType<DonneesQuatreSemaines>(vm.DonneesQuatreSemaines);
+        Assert.Equal(4, d.Semaines.Count);
+        Assert.Equal(ScenariosHistorique.Semaine(Tz), d.Courante.Plage);
+        Assert.Equal(JoursCourts, vm.LibellesJoursCourts.Select(g => g.Texte));
+        Assert.Equal(GraduationsCalendrier.Jours(ScenariosHistorique.Semaine(Tz), Tz), vm.LibellesJoursCourts.Select(g => g.Instant));
+        Assert.Equal(TextesHistorique.PiedQuatreSemaines, vm.PiedQuatreSemaines);
+
+        // Depuis la vue Jour aussi : le segment n'est plus ignoré.
+        vm.ChoisirVueCommand.Execute(VueHistorique.Jour);
+        await vm.AttendreLecture();
+        vm.ChoisirVueCommand.Execute(VueHistorique.QuatreSemaines);
+        await vm.AttendreLecture();
+        Assert.True(vm.IsVueQuatreSemaines);
+        Assert.Equal(new Plage(Utc("2026-08-28T22:00:00Z"), Utc("2026-09-25T22:00:00Z")), vm.PlageCourante);
+    }
+
+    [Fact]
+    public async Task La_navigation_quatre_semaines_avance_et_recule_par_bloc()
+    {
+        var b = await QuatreSemainesOuvertes(Construire());
+        var vm = b.Vm;
+        var courant = vm.PlageCourante!;
+        Assert.False(vm.SuivantCommand.CanExecute(null));
+
+        vm.PrecedentCommand.Execute(null);
+        await vm.AttendreLecture();
+        Assert.Equal(new Plage(Utc("2026-07-31T22:00:00Z"), Utc("2026-08-28T22:00:00Z")), vm.PlageCourante);   // sam. 1er août → sam. 29 août
+        Assert.False(vm.EstAuPresent);
+        Assert.Equal("4 semaines de forfait · du sam. 1 août au sam. 29 août 2026", vm.LibellePeriode);
+        Assert.Equal(vm.PlageCourante!.Debut, vm.DonneesQuatreSemaines!.Semaines[0].Plage.Debut);
+        Assert.Equal(vm.PlageCourante.Fin, vm.DonneesQuatreSemaines.Courante.Plage.Fin);
+        Assert.True(vm.SuivantCommand.CanExecute(null));
+
+        vm.SuivantCommand.Execute(null);
+        await vm.AttendreLecture();
+        Assert.Equal(courant, vm.PlageCourante);
+        Assert.True(vm.EstAuPresent);
+        Assert.False(vm.SuivantCommand.CanExecute(null));
+        Assert.Equal(BornesPlage.QuatreSemaines(Now, ScenariosHistorique.RepereHebdo, null, Tz), vm.DonneesQuatreSemaines!.Semaines.Select(a => a.Plage));
+    }
+
+    [Fact]
+    public async Task Les_etiquettes_distinguent_avant_le_journal_et_pas_de_releves()
+    {
+        var b = await QuatreSemainesOuvertes(Construire());
+        var e = b.Vm.EtiquettesSemaines;
+        var d = b.Vm.DonneesQuatreSemaines!;
+
+        Assert.Equal(new[] { 0, 1, 2, 3 }, e.Select(x => x.Rang));
+        Assert.Equal("S · 19 sept. · " + TextesHistorique.Pourcent(d.Courante.Serie.Last(r => r.U7 is not null).U7), e[0].Texte);
+        Assert.EndsWith(" %", e[0].Texte, StringComparison.Ordinal);
+        Assert.StartsWith("S-1 · 12 sept. · ", e[1].Texte, StringComparison.Ordinal);
+        Assert.EndsWith(" %", e[1].Texte, StringComparison.Ordinal);
+        Assert.False(e[0].AvantJournal);
+        Assert.False(e[1].AvantJournal);
+        Assert.Equal("S-2 · 5 sept. · pas de relevés (avant le journal)", e[2].Texte);
+        Assert.Equal("S-3 · 29 août · pas de relevés (avant le journal)", e[3].Texte);
+        Assert.True(e[2].AvantJournal);
+        Assert.True(e[3].AvantJournal);
+
+        // Une semaine POSTÉRIEURE à l'ouverture du journal, sans relevé : « pas de relevés », jamais « avant le journal » (D-35-03).
+        var vide = Construire();
+        vide.Source.TransformerQuatreSemaines = q => q with
+        {
+            Semaines = new[]
+            {
+                q.Semaines[0], q.Semaines[1],
+                AnalyseReleves.Analyser(new LectureJournal(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0, q.JournalOuvertLe, q.Semaines[2].Plage),
+                                        q.Semaines[2].Plage.Fin, RateLimitHeaderUsageProvider.CadenceNominale),
+                q.Semaines[3],
+            },
+        };
+        await QuatreSemainesOuvertes(vide);
+        var s1 = vide.Vm.EtiquettesSemaines[1];
+        Assert.Equal("S-1 · 12 sept. · pas de relevés", s1.Texte);
+        Assert.DoesNotContain("avant le journal", s1.Texte, StringComparison.Ordinal);
+        Assert.False(s1.AvantJournal);
+        Assert.Equal(TextesHistorique.AucunReleve, vide.Vm.RangeesCouverture[1].Texte);
+    }
+
+    [Fact]
+    public async Task La_semaine_epuisee_est_annotee_et_reportee_sur_l_axe_de_S()
+    {
+        var sans = await QuatreSemainesOuvertes(Construire());
+        Assert.Empty(sans.Vm.AnnotationsEpuiseeSemaines);
+
+        var b = Construire();
+        b.Source.TransformerQuatreSemaines = q => FixturesQuatreSemaines.SemaineUnEpuisee(q, Tz);
+        await QuatreSemainesOuvertes(b);
+        var d = b.Vm.DonneesQuatreSemaines!;
+        var premier = d.Semaines[2].Serie.First(r => r.T >= FixturesQuatreSemaines.DebutEpuisee);
+
+        var a = Assert.Single(b.Vm.AnnotationsEpuiseeSemaines);
+        Assert.Equal(TypeAnnotation.Epuisee, a.Type);
+        Assert.Equal(TextesHistorique.EpuiseeSemaine(premier.T, Tz), a.Texte);
+        Assert.Equal("épuisée jeu. 20:00 → bloquée jusqu'au reset", a.Texte);
+        Assert.Equal(EchelleTemps.Reporter(premier.T, d.Semaines[2].Plage, d.Courante.Plage), a.Debut);
+        Assert.Equal(d.Courante.Plage.Fin, a.Fin);
+        Assert.True(d.Courante.Plage.Contient(a.Debut));
+    }
+
+    [Fact]
+    public async Task Les_rangees_de_couverture_disent_avant_le_journal_et_marquent_l_ouverture()
+    {
+        var b = await QuatreSemainesOuvertes(Construire());
+        var r = b.Vm.RangeesCouverture;
+        var d = b.Vm.DonneesQuatreSemaines!;
+
+        Assert.Equal(4, r.Count);
+        Assert.Equal(new[] { "S", "S-1", "S-2", "S-3" }, r.Select(x => x.Libelle));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, r.Select(x => x.Rang));
+        for (var k = 0; k < 4; k++) Assert.Equal(d.Semaines[3 - k].Plage, r[k].Plage);
+
+        foreach (var k in new[] { 2, 3 })
+        {
+            Assert.Equal(r[k].Plage, r[k].ZoneAvantJournal);
+            Assert.Equal(TextesHistorique.AvantJournalAucunReleve, r[k].Texte);
+            Assert.Null(r[k].JournalOuvert);
+            Assert.Empty(r[k].Serie);
+        }
+
+        Assert.Equal(new Plage(r[1].Plage.Debut, ScenariosHistorique.JournalOuvertLe), r[1].ZoneAvantJournal);
+        Assert.Equal("journal ouvert le 14 sept. 2026", r[1].JournalOuvert!.Texte);
+        Assert.Equal(ScenariosHistorique.JournalOuvertLe, r[1].JournalOuvert!.Debut);
+        Assert.Equal("", r[1].Texte);
+        Assert.Equal(r[1].Plage.Fin, r[1].InstantLecture);
+        Assert.NotEmpty(r[1].Serie);
+
+        Assert.Null(r[0].ZoneAvantJournal);
+        Assert.Null(r[0].JournalOuvert);
+        Assert.Equal("", r[0].Texte);
+        Assert.Equal(d.LueA, r[0].InstantLecture);
+        Assert.Equal(2, r[0].Trous.Count);   // « Chronos arrêté » et « jeton invalide »
+    }
+
+    [Fact]
+    public async Task La_fraicheur_quatre_semaines_est_celle_de_la_semaine_courante()
+    {
+        var b = await QuatreSemainesOuvertes(Construire());
+
+        Assert.Equal(TextesHistorique.LigneFraicheurSemaine(b.Vm.DonneesQuatreSemaines!.Courante, Now, Tz), b.Vm.TexteFraicheur);
+        Assert.Equal("Rien n'est inventé avant l'ouverture du journal.", b.Vm.PiedQuatreSemaines);
+    }
+
+    [Fact]
+    public void Le_theme_se_relit_a_la_demande()
+    {
+        var b = Construire(reglages: new ReglagesHistoriqueMemoire(new ChronosSettings { ThemeKey = "nord" }));
+        Assert.Equal("nord", b.Vm.Theme.Key);
+
+        var notifies = new List<string?>();
+        b.Vm.PropertyChanged += (_, e) => notifies.Add(e.PropertyName);
+        b.Reglages.Modifier(s => s with { ThemeKey = "aurore" });
+        Assert.Equal("nord", b.Vm.Theme.Key);   // rien n'est relu tant qu'on ne le demande pas
+
+        b.Vm.ActualiserTheme();
+        Assert.Equal("aurore", b.Vm.Theme.Key);
+        Assert.Contains(nameof(HistoriqueViewModel.Theme), notifies);
     }
 }
