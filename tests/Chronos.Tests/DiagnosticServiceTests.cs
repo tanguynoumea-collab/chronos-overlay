@@ -1394,4 +1394,73 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("o)", ligne);
         Assert.DoesNotContain("aucune écriture", ligne);
     }
+    // ------------------------------------------------------------------ JRN-04 / CPT-03 (phase 32, 32-05) : journal muet, processus, verrou
+    // L'âge de la dernière écriture du journal devient un chiffre de première classe : le rapport CRIE quand le journal se tait
+    // alors que Chronos tourne (D-32-21 : mesuré depuis max(démarrage, dernière écriture), sinon l'alerte s'allumerait à chaque
+    // lancement sur l'écriture de la veille), et il compte les processus Chronos et nomme l'état du verrou (câblage de 32-03).
+
+    private static DiagnosticService DiagAvecJournal(ChronosPaths paths, FakeClock clock, DateTimeOffset? derniereEcriture, DateTimeOffset demarrage)
+        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(),
+               magasins: new[] { new FauxMagasin { Nom = NomsMagasins.JournalReleves, Chemin = paths.HistoriqueDir, DerniereEcriture = derniereEcriture } },
+               demarrageProcessus: demarrage);
+
+    private static string? LigneApres(string report, string debut)
+    {
+        var lignes = Lignes(report);
+        var i = lignes.FindIndex(l => l.TrimStart().StartsWith(debut, StringComparison.Ordinal));
+        Assert.True(i >= 0, "ligne « " + debut + " » introuvable :\n" + report);
+        return i + 1 < lignes.Count ? lignes[i + 1].Trim() : null;
+    }
+
+    [Fact]
+    public async Task Le_diagnostic_dit_journal_muet_quand_la_derniere_ecriture_a_plus_de_quinze_minutes()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var now = clock.UtcNow;
+
+        var muet = await DiagAvecJournal(paths, clock, derniereEcriture: now.AddMinutes(-16), demarrage: now.AddHours(-1)).BuildReportAsync();
+        Assert.Equal("ALERTE — journal muet depuis 16 min", LigneApres(muet, "journal des relevés : "));
+
+        var vivant = await DiagAvecJournal(paths, clock, derniereEcriture: now.AddMinutes(-4), demarrage: now.AddHours(-1)).BuildReportAsync();
+        Assert.DoesNotContain("ALERTE", vivant);
+        Assert.Contains("dernière écriture il y a 4 min", Ligne(vivant, "journal des relevés : "));
+    }
+
+    [Fact]
+    public async Task Le_diagnostic_ne_dit_pas_muet_juste_apres_le_demarrage()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var now = clock.UtcNow;
+
+        // Dernière écriture d'il y a 3 h (la veille, en pratique), processus démarré il y a 5 min : la référence est le
+        // démarrage, pas l'écriture — « muet » veut dire « alors que Chronos tourne », et il tourne depuis 5 min.
+        var report = await DiagAvecJournal(paths, clock, derniereEcriture: now.AddHours(-3), demarrage: now.AddMinutes(-5)).BuildReportAsync();
+
+        Assert.DoesNotContain("ALERTE", report);
+        Assert.Contains("dernière écriture il y a 3 h 00", Ligne(report, "journal des relevés : "));
+    }
+
+    [Fact]
+    public async Task Le_diagnostic_compte_les_processus_Chronos_et_dit_l_etat_du_verrou()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+
+        var report = await DiagAvecJournal(paths, clock, derniereEcriture: null, demarrage: clock.UtcNow).BuildReportAsync();
+
+        var processus = Ligne(report, "Processus Chronos : ");
+        Assert.False(string.IsNullOrWhiteSpace(processus));
+        var verrou = Ligne(report, "Verrou mono-instance (Local\\Chronos-overlay) : ");
+        Assert.True(verrou.EndsWith("libre", StringComparison.Ordinal)
+                    || verrou.EndsWith("tenu par ce processus", StringComparison.Ordinal)
+                    || verrou.EndsWith("tenu par un autre processus", StringComparison.Ordinal), verrou);
+        // Les deux lignes vivent dans la section des magasins persistants, avant la ligne des agrégats (phase 33).
+        Assert.True(report.IndexOf("[Magasins persistants]", StringComparison.Ordinal) < report.IndexOf("Processus Chronos : ", StringComparison.Ordinal)
+                    && report.IndexOf("Processus Chronos : ", StringComparison.Ordinal) < report.IndexOf("agrégats de tokens : ", StringComparison.Ordinal),
+                    "les lignes de processus et de verrou appartiennent à [Magasins persistants]");
+    }
+
 }
