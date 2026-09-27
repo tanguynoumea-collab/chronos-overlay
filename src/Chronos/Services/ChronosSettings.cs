@@ -26,6 +26,10 @@ public enum SessionStyle { Pastilles, Marge, Jetons, Sonar, Facade, Etagere, Ann
 /// (C : NIVEAU / FENÊTRES 5 H / RYTHME / TOKENS / COUVERTURE). Sérialisé en TEXTE ; absent d'un ancien settings.json → Pistes.</summary>
 public enum HistoriqueStyleSemaine { Pistes, Simplifie, Tuiles }
 
+/// <summary>Section de la fenêtre de réglages (quick 260927-reglages-v2, DESIGN_PLAN_REGLAGES §4), dans l'ORDRE du rail :
+/// Ctrl+1 … Ctrl+6 suivent cet ordre. Sérialisée en TEXTE ; absente d'un ancien settings.json → <see cref="Donnees"/>.</summary>
+public enum SectionReglages { Donnees, Historique, Apparence, Sessions, Comportement, Diagnostic }
+
 /// <summary>
 /// Schéma persisté de settings.json (FEN-07). Décision verrouillée : le COIN + le nom du
 /// moniteur (<see cref="MonitorDeviceName"/>) sont la VÉRITÉ pour restaurer la position ;
@@ -122,4 +126,14 @@ public sealed record ChronosSettings
     public double? HistoriqueY { get; init; }
     public double? HistoriqueWidth { get; init; }
     public double? HistoriqueHeight { get; init; }
+
+    /// <summary>Position / taille de la fenêtre de réglages en DIU (DESIGN_PLAN_REGLAGES §4). null = défaut 860 × 580 centré.
+    /// Même règle que l'Historique : persistée en <c>WindowState.Normal</c> seulement, bornée à l'écran au rétablissement.</summary>
+    public double? ReglagesX { get; init; }
+    public double? ReglagesY { get; init; }
+    public double? ReglagesWidth { get; init; }
+    public double? ReglagesHeight { get; init; }
+
+    /// <summary>Dernière section ouverte dans les réglages (rouverte telle quelle). Défaut <see cref="SectionReglages.Donnees"/>.</summary>
+    public SectionReglages ReglagesSection { get; init; } = SectionReglages.Donnees;
 }

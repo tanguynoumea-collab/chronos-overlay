@@ -140,6 +140,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// synchronisation par construction, aucun état de style dupliqué ici. <c>null</c> hors DI (tests historiques).</summary>
     public HistoriqueViewModel? Historique { get; }
 
+    /// <summary>Quick 260927-reglages-v2 — l'état PROPRE à la fenêtre de réglages (section du rail, géométrie, panneau Diagnostic).
+    /// Les réglages eux-mêmes restent ici, sur le VM partagé avec le cadran : la fenêtre les lie sans intermédiaire.</summary>
+    public ReglagesViewModel Reglages { get; }
+
     /// <summary>ACC-01 / D-35-09 — la carte « Historique d'utilisation » (qui absorbe la ligne d'état du journal) se montre dès
     /// qu'elle a quelque chose à dire : la fenêtre à ouvrir, ou l'état du journal.</summary>
     public bool AfficherCarteHistorique => Historique is not null || AfficherEtatJournal;
@@ -252,6 +256,7 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsStyleVolets  => CadranStyle == CadranStyle.Volets;
     partial void OnCadranStyleChanged(CadranStyle value)
     {
+        OnPropertyChanged(nameof(NomStyleCadran));
         OnPropertyChanged(nameof(IsStyleArcs));
         OnPropertyChanged(nameof(IsStyleBraises));
         OnPropertyChanged(nameof(IsStyleFusible));
@@ -261,6 +266,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Catalogue des styles de cadran affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
     public ObservableCollection<CadranStyleChoice> CadranStyles { get; } = new();
+
+    /// <summary>Nom du style de cadran courant (« Anneaux », « Braises »…), tel que l'affiche le catalogue : légende de l'aperçu
+    /// vivant des réglages.</summary>
+    public string NomStyleCadran => CadranStyles.FirstOrDefault(c => c.Style == CadranStyle)?.Name ?? "";
 
     /// <summary>Sélectionne un style de cadran : surbrillance, bascule des Visibility, persistance (GAP-1 :
     /// Load DISQUE frais avant Save, pour ne pas écraser un réglage écrit ailleurs — ex. OverlayController).</summary>
@@ -300,6 +309,13 @@ public sealed partial class MainViewModel : ObservableObject
     /// le toggle des réglages appelle <see cref="ToggleVerticalLayoutCommand"/>.</summary>
     [ObservableProperty] private bool _verticalLayout;
 
+    // L'aperçu du widget dans les réglages suit la disposition choisie (rangée / colonne), comme le widget réel.
+    partial void OnVerticalLayoutChanged(bool value)
+    {
+        if (Reglages is not null)
+            Reglages.ApercuSessions.RowOrientation = value ? System.Windows.Controls.Orientation.Vertical : System.Windows.Controls.Orientation.Horizontal;
+    }
+
     /// <summary>Bascule horizontal ↔ vertical (Sonar/Jetons/Veilleurs) : persiste (GAP-1) + applique en LIVE.</summary>
     [RelayCommand]
     private void ToggleVerticalLayout()
@@ -312,14 +328,19 @@ public sealed partial class MainViewModel : ObservableObject
 
     // --- Thèmes visuels (settings) ---
 
-    /// <summary>Version de l'app (« v2.4 ») affichée dans l'en-tête des réglages.</summary>
-    public string AppVersion => "v" + (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(2) ?? "");
+    /// <summary>Version de l'app (« v3.4.0 ») affichée dans la barre de titre des réglages : les trois composantes publiées.</summary>
+    public string AppVersion => "v" + (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "");
 
     /// <summary>Catalogue des thèmes affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
     public ObservableCollection<ThemeChoice> Themes { get; } = new();
 
     /// <summary>Clé du thème actif (persisté). Consommé par la vue pour appliquer les pinceaux au démarrage.</summary>
-    [ObservableProperty] private string _selectedThemeKey = "minuit";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NomThemeActif))]
+    private string _selectedThemeKey = "minuit";
+
+    /// <summary>Nom du thème actif (« Aurore »…) : légende de l'aperçu vivant des réglages.</summary>
+    public string NomThemeActif => ThemeCatalog.ByKey(SelectedThemeKey).Name;
 
     /// <summary>Émis quand le thème change → la vue met à jour les ressources de pinceaux de la fenêtre.</summary>
     public event Action<ChronosTheme>? ThemeChanged;
@@ -346,7 +367,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
     /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position, puis
     /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui, puis <paramref name="ouvreurHistorique"/> (ACC-02, 35-02) et
-    /// <paramref name="historique"/> (ACC-01, 35-02).
+    /// <paramref name="historique"/> (ACC-01, 35-02), puis <paramref name="pressePapiers"/> (réglages v2 : « ⧉ Copier » du diagnostic).
     /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
@@ -358,7 +379,8 @@ public sealed partial class MainViewModel : ObservableObject
         IEtatJournal? journal = null,
         IEtatReconstruction? reconstruction = null,
         IOuvreurHistorique? ouvreurHistorique = null,
-        HistoriqueViewModel? historique = null)
+        HistoriqueViewModel? historique = null,
+        IPressePapiers? pressePapiers = null)
     {
         _ui = ui;
         _clock = clock;
@@ -375,6 +397,11 @@ public sealed partial class MainViewModel : ObservableObject
         _ouvreurHistorique = ouvreurHistorique;   // ACC-02 : optionnel, en fin de liste (motif 32-05 / 33-05)
         Historique = historique;                  // ACC-01 / D-35-08 : le singleton de la fenêtre, partagé avec la carte des réglages
         _settings = settings.Load();
+
+        // Réglages v2 : l'état propre à la fenêtre de réglages. Le rapport de diagnostic est construit SUR LE POOL (Task.Run) :
+        // BuildReportAsync commence par des lectures disque synchrones, qui gèleraient la fenêtre sur le thread UI (§5).
+        Reglages = new ReglagesViewModel(new ReglagesHistoriqueSurDisque(settings),
+                                         () => Task.Run(() => _diagnostic.BuildReportAsync()), clock, pressePapiers);
 
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
         IsBackground = _settings.Background;
@@ -407,6 +434,7 @@ public sealed partial class MainViewModel : ObservableObject
             SessionStyles.Add(new SessionStyleChoice(style, name, style == _settings.SessionStyle));
         SessionStyle = _settings.SessionStyle;   // scalaire courant (option disposition verticale)
         VerticalLayout = _settings.VerticalLayout;
+        OnVerticalLayoutChanged(VerticalLayout);   // aperçu du widget aligné dès le départ (le setter ne notifie pas si false)
 
         // Thèmes : peupler le catalogue (surbrillance du persisté) et appliquer aux jauges dès le départ.
         SelectedThemeKey = _settings.ThemeKey;

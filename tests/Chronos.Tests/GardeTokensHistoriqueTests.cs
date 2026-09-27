@@ -221,8 +221,11 @@ public class GardeTokensHistoriqueTests
             Assert.True(reelle == valeur, $"« {cle} » vaut {reelle.ToString(CultureInfo.InvariantCulture)} au lieu de {valeur.ToString(CultureInfo.InvariantCulture)}.");
         }
 
-        Assert.True(doubles.Count == TaillesHisto.Length,
-            $"DesignTokens.xaml : {doubles.Count} sys:Double au lieu de {TaillesHisto.Length} — un token de taille non contractuel a été ajouté ou retiré.");
+        // Réglages v2 (quick 260927) : les tokens de la fenêtre de réglages sont comptés avec ceux de l'historique — la table
+        // contractuelle des réglages vit dans GardeTokensReglagesTests (même règle : aucun token non contractuel).
+        var attendus = TaillesHisto.Length + GardeTokensReglagesTests.TaillesReglages.Length;
+        Assert.True(doubles.Count == attendus,
+            $"DesignTokens.xaml : {doubles.Count} sys:Double au lieu de {attendus} — un token de taille non contractuel a été ajouté ou retiré.");
 
         // Le seul token non-double : l'épaisseur du bord de redimensionnement (WindowChrome.ResizeBorderThickness en 34-05).
         var bord = tokens.Descendants(Xaml + "Thickness").SingleOrDefault(e => Cle(e) == "HistoBordRedimensionnement");

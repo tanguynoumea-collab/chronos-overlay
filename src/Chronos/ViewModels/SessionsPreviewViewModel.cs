@@ -26,7 +26,14 @@ public sealed class SessionsPreviewViewModel : ObservableObject
     public string LibelleCompteur => AffichageSessions.EnAttente;
     public int TotalCount => Items.Count;
     public bool HasWaiting => WaitingCount > 0;
-    public Orientation RowOrientation => Orientation.Horizontal;
+    /// <summary>Rangée (défaut) ou colonne pour les styles en rangée — réglable pour que l'aperçu des réglages suive
+    /// « Disposition verticale » ; la galerie garde la rangée.</summary>
+    public Orientation RowOrientation
+    {
+        get => _rowOrientation;
+        set => SetProperty(ref _rowOrientation, value);
+    }
+    private Orientation _rowOrientation = Orientation.Horizontal;
 
     private static readonly Brush Amber = Frozen("#E9A23C");
     private static readonly Brush Green = Frozen("#3FB98A");

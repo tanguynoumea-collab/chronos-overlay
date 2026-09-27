@@ -16,8 +16,12 @@ public partial class MainWindow : Window
     // État persisté à restaurer AVANT le premier rendu (fourni par App avant Show).
     private ChronosSettings? _restored;
 
-    public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard, OverlayController controller)
+    private readonly IOuvreurReglages? _ouvreurReglages;
+
+    public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard, OverlayController controller,
+                      IOuvreurReglages? ouvreurReglages = null)
     {
+        _ouvreurReglages = ouvreurReglages;
         InitializeComponent();
         DataContext = viewModel;          // MVVM : la vue reçoit son VM par injection
         _vm = viewModel;
