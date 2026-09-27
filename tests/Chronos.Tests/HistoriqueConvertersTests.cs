@@ -51,6 +51,33 @@ public class HistoriqueConvertersTests
         Assert.Equal(5.0, Convertir(c, Debut.AddHours(-1), Debut.AddHours(1), Plage168, 840.0));
     }
 
+    /// <summary>35-04 (D-35-17) — l'infobulle du réticule reste dans sa piste : <c>[x, largeurInfobulle, largeurCanvas]</c> →
+    /// <c>clamp(x, 0, max(0, W − w))</c>.</summary>
+    [Fact]
+    public void BorneInfobulle_garde_l_infobulle_dans_la_piste()
+    {
+        var c = new BorneInfobulleConverter();
+        Assert.Equal(280.0, Convertir(c, 300.0, 120.0, 400.0));   // au bord droit : recule de ce qui déborde
+        Assert.Equal(10.0, Convertir(c, 10.0, 120.0, 400.0));    // au milieu : inchangée
+        Assert.Equal(0.0, Convertir(c, -5.0, 120.0, 400.0));     // jamais à gauche de la piste
+        Assert.Equal(0.0, Convertir(c, 300.0, 500.0, 400.0));    // plus large que la piste : collée à gauche
+        Assert.Equal(280.0, Convertir(c, 280.0, 120.0, 400.0));   // pile au bord : inchangée
+    }
+
+    [Fact]
+    public void BorneInfobulle_est_tolerante_et_ne_revient_pas()
+    {
+        var c = new BorneInfobulleConverter();
+        Assert.Equal(0.0, Convertir(c, DependencyProperty.UnsetValue, 120.0, 400.0));
+        Assert.Equal(0.0, Convertir(c, null!, 120.0, 400.0));
+        Assert.Equal(0.0, Convertir(c, double.NaN, 120.0, 400.0));
+        Assert.Equal(0.0, Convertir(c, 300.0));
+        // Largeurs pas encore mesurées (infobulle repliée, canvas non arrangé) : l'abscisse brute, bornée à gauche.
+        Assert.Equal(300.0, Convertir(c, 300.0, DependencyProperty.UnsetValue, DependencyProperty.UnsetValue));
+        Assert.Equal(300.0, Convertir(c, 300.0, 120.0, double.NaN));
+        Assert.Throws<NotSupportedException>(() => { c.ConvertBack(0.0, new[] { typeof(double) }, null, CultureInfo.InvariantCulture); });
+    }
+
     [Fact]
     public void FractionVersLargeur_multiplie_et_borne()
     {

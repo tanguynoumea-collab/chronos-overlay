@@ -296,6 +296,38 @@ public class VueSemaineBindingTests
         Assert.Equal(Visibility.Collapsed, infobulle.Visibility);
     }
 
+    /// <summary>35-04 (D-35-17, reprise 34-08) — sur les trois styles, au bord droit (dernier relevé jeu. 17:12), l'infobulle recule
+    /// pour rester dans sa piste ; au milieu, elle reste posée sur le réticule.</summary>
+    [WpfFact]
+    public void Les_infobulles_des_trois_styles_restent_dans_la_piste()
+    {
+        foreach (var style in new[] { HistoriqueStyleSemaine.Pistes, HistoriqueStyleSemaine.Simplifie, HistoriqueStyleSemaine.Tuiles })
+        {
+            var (vue, _) = Monter(style);
+            var grille = GrilleVisible(vue);
+            var surcouche = Assert.Single(Visibles<SurcoucheReticule>(grille));
+            var infobulle = Assert.Single(Tous<Border>(grille), b => b.Name.StartsWith("Infobulle", StringComparison.Ordinal));
+            var canvas = Assert.IsType<Canvas>(VisualTreeHelper.GetParent(infobulle));
+
+            surcouche.Survoler(surcouche.ActualWidth - 1);
+            Idle(vue);
+            vue.UpdateLayout();
+            Idle(vue);
+            Assert.Equal(Visibility.Visible, infobulle.Visibility);
+            var gauche = Canvas.GetLeft(infobulle);
+            Assert.True(gauche >= 0, $"{style} : infobulle à gauche de la piste ({gauche})");
+            Assert.True(gauche + infobulle.ActualWidth <= canvas.ActualWidth + 0.5,
+                $"{style} : l'infobulle sort de la piste : {gauche} + {infobulle.ActualWidth} > {canvas.ActualWidth}");
+            Assert.True(gauche < surcouche.XReticule, $"{style} : au bord droit, l'infobulle recule");
+
+            surcouche.Survoler(surcouche.ActualWidth * 0.3);
+            Idle(vue);
+            vue.UpdateLayout();
+            Idle(vue);
+            Assert.Equal(surcouche.XReticule, Canvas.GetLeft(infobulle), 0.01);
+        }
+    }
+
     // ------------------------------------------------------------------ Tokens et thème reçus par les pistes
 
     [WpfFact]

@@ -314,6 +314,66 @@ public class VueJourBindingTests
         Assert.Contains(Trace(surcoucheHier), l => l.StartsWith("maintenant ", StringComparison.Ordinal));
     }
 
+    /// <summary>35-04 (D-35-17, reprise 34-08) — au bord droit de la piste, l'infobulle recule pour rester dans sa piste ;
+    /// aujourd'hui (dernier relevé 17:12) comme la veille (dernier relevé 23:55).</summary>
+    [WpfFact]
+    public void L_infobulle_reste_dans_la_piste_au_bord_droit()
+    {
+        foreach (var joursEnArriere in new[] { 0, 1 })
+        {
+            var (_, vue) = Monter(joursEnArriere);
+            var surcouche = Assert.Single(Visibles<SurcoucheReticule>(vue));
+            var infobulle = Assert.IsType<Border>(vue.FindName("Infobulle"));
+            var canvas = Ancetre<Canvas>(infobulle);
+
+            surcouche.Survoler(surcouche.ActualWidth - 1);
+            Idle(vue);
+            vue.UpdateLayout();
+            Idle(vue);
+            Assert.Equal(Visibility.Visible, infobulle.Visibility);
+            Assert.True(infobulle.ActualWidth > 0);
+            var gauche = Canvas.GetLeft(infobulle);
+            Assert.True(gauche >= 0, $"infobulle à gauche de la piste : {gauche}");
+            Assert.True(gauche + infobulle.ActualWidth <= canvas.ActualWidth + 0.5,
+                $"l'infobulle sort de la piste : {gauche} + {infobulle.ActualWidth} > {canvas.ActualWidth} (jour −{joursEnArriere})");
+            Assert.True(gauche < surcouche.XReticule, "au bord droit, l'infobulle recule");
+
+            // Au milieu de la piste, elle reste posée sur le réticule.
+            surcouche.Survoler(surcouche.ActualWidth * 0.3);
+            Idle(vue);
+            vue.UpdateLayout();
+            Idle(vue);
+            Assert.Equal(surcouche.XReticule, Canvas.GetLeft(infobulle), 0.01);
+        }
+    }
+
+    /// <summary>35-04 (reprise 34-08, écart « annotations d'une même rangée ») — jeudi : « reset 5 h 15:00 » et le trou « jeton
+    /// invalide » (14:00 → 16:00) sont proches ; chacun a sa rangée, les deux ne se recouvrent plus.</summary>
+    [WpfFact]
+    public void Les_resets_et_les_trous_ont_chacun_leur_rangee()
+    {
+        var (_, vue) = Monter();
+        var reset = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == "reset 5 h 15:00");
+        var jeton = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == "jeton invalide");
+
+        var rangeeReset = Assert.IsType<Grid>(vue.FindName("RangeeAnnotationsHaut"));
+        var rangeeTrous = Assert.IsType<Grid>(vue.FindName("RangeeAnnotationsTrous"));
+        Assert.True(EstDans(reset, rangeeReset), "le reset est dans la rangée du haut");
+        Assert.True(EstDans(jeton, rangeeTrous), "le trou est dans la rangée des trous");
+
+        var yReset = reset.TranslatePoint(new Point(0, 0), vue).Y;
+        var yJeton = jeton.TranslatePoint(new Point(0, 0), vue).Y;
+        Assert.True(yReset + reset.ActualHeight <= yJeton + 0.5 || yJeton + jeton.ActualHeight <= yReset + 0.5,
+            $"les deux annotations se recouvrent verticalement : reset [{yReset}, {yReset + reset.ActualHeight}], trou [{yJeton}, {yJeton + jeton.ActualHeight}]");
+    }
+
+    private static bool EstDans(DependencyObject e, DependencyObject ancetre)
+    {
+        for (var p = VisualTreeHelper.GetParent(e); p is not null; p = VisualTreeHelper.GetParent(p))
+            if (ReferenceEquals(p, ancetre)) return true;
+        return false;
+    }
+
     [WpfFact]
     public void Le_trou_jeton_invalide_et_son_saut_5h_sont_annotes_aujourd_hui()
     {
