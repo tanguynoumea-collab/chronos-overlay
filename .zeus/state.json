@@ -36,9 +36,9 @@
   },
   "pending": {
     "findings_critiques": [
-      "Parser de tokens : lignes assistant dupliquées par bloc de contenu, meme usage recopie -> SumUsageTokens compte 2 a 2,75x trop ; la correction par delta (TokensDepuisReleve) est fausse en production. Dedup par message.id (repli requestId).",
-      "last-exact.json non ecrit depuis le 2026-09-13 12:44 malgre des releves exacts frais ; Save dans un try/catch muet. Cause a etablir avant le journal.",
-      "Trois exe Chronos (3.1.0, 3.2.0, 3.2.1) en marche simultanement : triple sonde, ecrivains concurrents."
+      "Parser de tokens : une ligne assistant par bloc de contenu, output_tokens partiel et croissant -> somme naive x2,1 ; regle = MAX par champ par message.id (dictionnaire global sur la passe). La correction par delta v1.5 est fausse en production. (CPT-01)",
+      "FAUSSE ALERTE corrigee le 27/09 : last-exact.json reel est reecrit chaque minute (sonde WMI hors arbre) ; la copie figee au 13/09 est la vue virtualisee MSIX lue depuis les sessions. CPT-02 = observabilite (age d'ecriture, ecriture_ratee, vue AppData) + test du try/catch muet.",
+      "Trois exe Chronos (3.1.0, 3.2.0, 3.2.1) en marche simultanement : triple sonde, ecrivains concurrents ; FileMode.Append non atomique sous Windows (mesure). (CPT-03, JRN-03)"
     ],
     "pour_roadmap": [
       "Heatmap jour x heure des rythmes (v1.9)",
@@ -69,6 +69,7 @@
     "2026-09-27 — UX-DESIGN : 6 maquettes Figma produites (A retenue, B simplifiee, C tuiles 5 h, D Jour, E 4 semaines, F point d'entree + bandeau de reconstruction). Fichier : https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k. CHECKPOINT 1 en attente : validation de la forme par l'utilisateur.",
     "2026-09-27 — CHECKPOINT 1 VALIDE par l'utilisateur (« je te valide tout ») : DESIGN_PLAN.md ecrit (.zeus/DESIGN_PLAN.md). Toutes les variantes seront codees et selectionnables. → GSD : cloture v1.7 (constat partiel, reste reporte en phase 32) puis milestone v1.8.",
     "2026-09-27 — GSD : milestone v1.7 clos (tag v1.7, ecart connu VAL-03 partiel repris en phase 32) ; milestone v1.8 demarre : 28 exigences ecrites (CPT/JRN/TOK/HIS/ACC/VAL), roadmapper lance pour les phases 32-35.",
-    "2026-09-27 — DoD modifiee (decision explicite) : ligne « Acces » corrigee — plus de menu contextuel depuis v1.6, remplace par carte des reglages + double-clic centre (ACC-01/ACC-02). Roadmap v1.8 creee : phases 32-35, 28/28 exigences, 26 plans ; points de controle humains 32-08 (VAL-04) et 35-05 (VAL-05)."
+    "2026-09-27 — DoD modifiee (decision explicite) : ligne « Acces » corrigee — plus de menu contextuel depuis v1.6, remplace par carte des reglages + double-clic centre (ACC-01/ACC-02). Roadmap v1.8 creee : phases 32-35, 28/28 exigences, 26 plans ; points de controle humains 32-08 (VAL-04) et 35-05 (VAL-05).",
+    "2026-09-27 — Recherche de phase 32 (commit b98ef8a) : le « gel » de last-exact.json etait un artefact de la virtualisation MSIX (lecture depuis une session) ; regle de dedup = max par champ par message.id ; Append non atomique. CONTEXT/STATE/memoire corriges. Planner lance."
   ]
 }

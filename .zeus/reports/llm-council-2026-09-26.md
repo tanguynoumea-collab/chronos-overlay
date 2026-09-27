@@ -122,3 +122,15 @@ au-delà de 4 000 points, redessin sur changement de données ou de plage, jamai
   changement d'heure du 25/10.
 
 Table privée étiquette → membre : A = Rigoriste, B = Généraliste, C = Pragmatique, D = Red-teamer, E = Premiers principes.
+
+
+## Erratum (2026-09-27, recherche de phase 32)
+
+- **`last-exact.json` n'est PAS figé.** Le conseil (et le Président) ont lu le fichier depuis une session Claude Code, donc la copie
+  virtualisée du paquet MSIX (copy-on-write, figée au 13/09 12:44). Une sonde WMI hors de l'arbre de l'app montre le fichier réel
+  réécrit chaque minute. La leçon reste vraie (un `Save` dans un `try/catch` muet est une panne silencieuse en attente ; l'âge de la
+  dernière écriture doit être exposé), mais la « troisième panne silencieuse » n'a pas eu lieu.
+- **La dédup n'est pas « même `usage` recopié »** : depuis Claude Code 2.1.260, `output_tokens` est partiel et croissant par bloc ;
+  la règle est le **max par champ par `message.id`**, avec un dictionnaire partagé sur toute la passe (491 ids vivent dans 2-3
+  fichiers). Le facteur mesuré sur 8 jours est ×2,1.
+- **`FileMode.Append` n'est pas atomique sous Windows** avec deux écrivains (.NET 8.0.25, mesuré) : `FileShare.None` + reprises.
