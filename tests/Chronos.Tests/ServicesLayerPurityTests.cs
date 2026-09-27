@@ -85,6 +85,25 @@ public class ServicesLayerPurityTests
     }
 
     /// <summary>
+    /// TOK-01 / D-33-01 — la garde VOIT le quartier Tokens (phase 33 : <c>Services/Historique/Tokens</c>,
+    /// <c>Models/Historique/Tokens</c>, un niveau de plus). Même raison que pour Historique : si le balayage
+    /// redevenait plat ou s'arrêtait à un niveau, les agrégats de tokens sortiraient de la surveillance en silence.
+    /// </summary>
+    [Fact]
+    public void La_garde_de_purete_voit_le_sous_namespace_Tokens()
+    {
+        var asm = typeof(Chronos.Services.IUsageProvider).Assembly;
+
+        Assert.Contains(asm.GetTypes(), t => t.Namespace == "Chronos.Services.Historique.Tokens");
+        Assert.Contains(asm.GetTypes(), t => t.Namespace == "Chronos.Models.Historique.Tokens");
+
+        Assert.True(EstTypeNeutre(typeof(Chronos.Services.Historique.Tokens.MagasinAgregats)),
+            "Le filtre de la garde de pureté ne voit pas Chronos.Services.Historique.Tokens : le magasin des agrégats échappe à la garde.");
+        Assert.True(EstTypeNeutre(typeof(Chronos.Models.Historique.Tokens.TrancheTokens)),
+            "Le filtre de la garde de pureté ne voit pas Chronos.Models.Historique.Tokens : les tranches de tokens échappent à la garde.");
+    }
+
+    /// <summary>
     /// GARDE DE NON-RETOUR (DEL-05, phase 16). Le sous-système de plafonds — cause racine des
     /// pourcentages faux après le passage Max x5 → Max x20 — a été entièrement supprimé. Les limites
     /// Anthropic pondèrent par modèle : « tokens / plafond » reste faux même avec le bon plafond, la
