@@ -166,7 +166,7 @@ Plans:
 - [x] 32-04-PLAN.md — JRN-01, JRN-02, JRN-03 : types neutres `Models/Historique`, `LigneJournal`, `JournalReleves` (append exclusif idempotent `(t, source)`, mois UTC, rétention 24 mois, test à deux écrivains), `LecteurJournal.LireFichier` tolérant, `JournalisationUsageProvider` (décorateur + hosted service : dédup `CapturedAt` strictement croissant, exclusions, `demarrage`/`arret`/`jeton_invalide`/`sonde_refusee`/`reprise`/`ecriture_ratee`) — NON BRANCHÉ ; quatre gardes élargies aux sous-dossiers
 - [x] 32-05-PLAN.md — JRN-04 (+ câblage) : DI — décorateur entre `LastExactUsageProvider` et le composite, hosted service avant l'orchestrateur, `EcritureRatee` → `ecriture_ratee`, magasins au diagnostic ; « journal muet depuis N min » (15 min depuis max(démarrage, dernière écriture)), processus et verrou au diagnostic ; carte « Journal des relevés » + pastille `Alerte` dans les réglages
 - [x] 32-06-PLAN.md — JRN-05 : `LecteurJournal.Lire` par plage (mois chevauchants, `JournalOuvertLe`), `BornesPlage` (semaine de forfait samedi 00:00 local via `resets_at` 7 j / `WeeklyAnchor`, jour, quatre semaines, DST 169 h / 167 h), `AnalyseReleves` pur (série, trous > 2 cadences avec cause, resets observés, Δ de même `resets_at`, saut non localisé) ; 7 fixtures de journal
-- [ ] 32-07-PLAN.md — JRN-06 : `docs/data-sources.md` §7 « Journal d'historique » (schéma, dédup, événements, rétention, deux vues, HYP-1/2/3) sous garde documentaire, `docs/publish.md` §7 verrou ; csproj 3.2.2 × 4, `dotnet publish`, `Chronos-v3.2.2.exe`, contrôles, smoke `--hook`, commit de release — s'arrête avant tout lancement
+- [x] 32-07-PLAN.md — JRN-06 : `docs/data-sources.md` §7 « Journal d'historique » (schéma, dédup, événements, rétention, deux vues, HYP-1/2/3) sous garde documentaire, `docs/publish.md` §7 verrou ; csproj 3.2.2 × 4, `dotnet publish`, `Chronos-v3.2.2.exe`, contrôles, smoke `--hook`, commit de release — s'arrête avant tout lancement
 - [ ] 32-08-PLAN.md — VAL-04 : constat en production avec l'utilisateur (trois anciennes quittées, 3.2.2 lancée par l'Explorateur, second lancement refusé, réconciliation, tableau L1…Q, V01…V12, journal T+10 âge < 6 min et T+60 ≈ 12 relevés par sonde WMI hors arbre) → `32-CONSTAT.md`, `32-VALIDATION.md` signée — `autonomous: false`
 
 ### Phase 33: Agrégats de tokens
@@ -342,7 +342,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 32. Compter juste, puis journaliser | 6/8 | In Progress|  |
+| 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
 | 33. Agrégats de tokens | 0/5 | Not started | - |
 | 34. Fenêtre Historique : Semaine et Jour | 0/8 | Not started | - |
 | 35. 4 semaines, accès, release 3.3.0 | 0/5 | Not started | - |
