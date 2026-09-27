@@ -53,14 +53,14 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 
 ### Agrégats de tokens (TOK)
 
-- [ ] **TOK-01**: Les tokens des transcripts (principal ET `subagents/`) sont agrégés par **tranche de 15 min UTC × modèle ×
+- [x] **TOK-01**: Les tokens des transcripts (principal ET `subagents/`) sont agrégés par **tranche de 15 min UTC × modèle ×
   principal/sous-agent** dans `historique\tokens-AAAA-MM.jsonl` : `{v, slot, model, sub, in, out, cache_w, cache_r, n}` — quatre
   compteurs séparés, jamais la somme, jamais le message individuel, jamais le contenu.
 - [ ] **TOK-02**: La **reconstruction initiale** parcourt les transcripts existants en arrière-plan (thread `IsBackground`,
   priorité `BelowNormal`, fichiers par mtime décroissant, lecture en flux `FileShare.ReadWrite`, pré-filtre texte avant parsing
   JSON, dédup `message.id` par fichier, `Task.Yield` entre fichiers, annulable) ; la progression (N / M fichiers) est exposée au
   ViewModel ; l'UI ne bloque jamais ; la semaine courante est disponible avant l'historique.
-- [ ] **TOK-03**: La mise à jour est **incrémentale par curseurs** (`curseurs.json` : chemin → offset de la dernière ligne
+- [x] **TOK-03**: La mise à jour est **incrémentale par curseurs** (`curseurs.json` : chemin → offset de la dernière ligne
   complète, taille, mtime) : seuls les fichiers dont (taille, mtime) ont changé sont relus depuis leur offset ; un fichier
   raccourci ou renommé est réingéré de zéro et ses tranches réécrites (pas ajoutées) ; la reprise après arrêt est idempotente.
 - [ ] **TOK-04**: Les tranches UTC sont **rendues en heure locale** correctement aux changements d'heure (25 h le 25/10/2026,
@@ -175,9 +175,9 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | JRN-04 | Phase 32 | Complete |
 | JRN-05 | Phase 32 | Complete |
 | JRN-06 | Phase 32 | Complete |
-| TOK-01 | Phase 33 | Pending |
+| TOK-01 | Phase 33 | Complete |
 | TOK-02 | Phase 33 | Pending |
-| TOK-03 | Phase 33 | Pending |
+| TOK-03 | Phase 33 | Complete |
 | TOK-04 | Phase 33 | Pending |
 | TOK-05 | Phase 33 | Pending |
 | HIS-01 | Phase 34 | Pending |
