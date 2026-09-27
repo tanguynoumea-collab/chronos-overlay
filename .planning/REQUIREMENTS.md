@@ -92,7 +92,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   fin, trait et libellé « reset 5 h HH:MM » à chaque reset observé ; RYTHME par heure ; TOKENS par **quart d'heure empilés par
   modèle** (`HistoModele1/2/3`, légende « opus · sonnet · haiku · sous-agents inclus ») ; COUVERTURE ; ligne « maintenant » si
   le jour est aujourd'hui ; ligne de fraîcheur « 288 relevés attendus · N présents · N interruption(s) (cause, HH:MM → HH:MM) ».
-- [ ] **HIS-05**: La **vue « 4 semaines »** : quatre courbes hebdo superposées sur le même axe samedi → samedi, la courante en
+- [x] **HIS-05**: La **vue « 4 semaines »** : quatre courbes hebdo superposées sur le même axe samedi → samedi, la courante en
   couleur, S-1 / S-2 / S-3 en gris aux opacités 0,8 / 0,45 / 0,25 avec étiquettes à droite (libellé + valeur finale, ou « pas de
   relevés (avant le journal) ») ; une semaine **épuisée** montre un plateau gris à 100 % annoté « épuisée <jour> HH:MM → bloquée
   jusqu'au reset » ; bande COUVERTURE PAR SEMAINE (4 rangées) ; les semaines antérieures au journal sont vides et dites telles.
@@ -184,7 +184,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | HIS-02 | Phase 34 | Complete |
 | HIS-03 | Phase 34 | Complete |
 | HIS-04 | Phase 34 | Complete |
-| HIS-05 | Phase 35 | Pending |
+| HIS-05 | Phase 35 | Complete |
 | HIS-06 | Phase 34 | Complete |
 | HIS-07 | Phase 34 | Complete |
 | HIS-08 | Phase 34 | Complete |
