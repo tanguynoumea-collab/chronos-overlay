@@ -39,7 +39,7 @@ cette phase : la fenêtre Historique (phase 34) consommera la lecture par plage 
   texte (`"type":"assistant"`) avant `JsonDocument`, `Task.Yield` entre fichiers, annulable, curseurs persistés par lot ; ensuite
   incrémental : seuls les fichiers dont (taille, mtime) ont changé, relus depuis l'offset de la dernière ligne complète.
 - **Fuseaux** : buckets UTC, rendu local via `TimeZoneInfo` injecté (tests « Europe/Paris » explicites) ; 25 h le 25/10/2026, 23 h le
-  29/03/2027 ; `BornesPlage` (phase 32) donne les bornes de plage.
+  28/03/2027 ; `BornesPlage` (phase 32) donne les bornes de plage.
 - **Couverture** : tranches antérieures au plus vieux transcript = « hors couverture » ; mois purgé par Claude Code = « transcripts
   absents » ; jamais « zéro token ». La lecture par plage des agrégats expose cette couverture comme JRN-05 le fait pour les relevés.
 - **Observabilité** : l'agrégateur implémente `IEtatMagasin` (troisième magasin, `NomsMagasins`), la progression N / M et l'état de

@@ -64,7 +64,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   complète, taille, mtime) : seuls les fichiers dont (taille, mtime) ont changé sont relus depuis leur offset ; un fichier
   raccourci ou renommé est réingéré de zéro et ses tranches réécrites (pas ajoutées) ; la reprise après arrêt est idempotente.
 - [ ] **TOK-04**: Les tranches UTC sont **rendues en heure locale** correctement aux changements d'heure (25 h le 25/10/2026,
-  23 h le 29/03/2027) — testé ; les tranches antérieures au plus vieux transcript sont « hors couverture », un mois purgé par
+  23 h le 28/03/2027) — testé ; les tranches antérieures au plus vieux transcript sont « hors couverture », un mois purgé par
   Claude Code est « transcripts absents », jamais « zéro token ».
 - [ ] **TOK-05**: **Aucun pourcentage dérivé de tokens** : une garde structurelle de test interdit à tout type de la couche
   historique d'exposer un `double` de quota calculé à partir de tokens ; le périmètre partiel (Claude Code seul, hors Cowork et

@@ -196,7 +196,7 @@ sommer des `usage` ; l'âge de dernière écriture des magasins (CPT-02) accueil
      de la reconstruction puis une reprise produisent **les mêmes agrégats** qu'une passe ininterrompue — tous testés
      (TOK-03).
   4. **L'heure locale est juste aux changements d'heure** : la journée du **25/10/2026 compte 25 h** et celle du
-     **29/03/2027 en compte 23**, testé sur les tranches UTC rendues en `Europe/Paris` ; les tranches antérieures au plus
+     **28/03/2027 en compte 23**, testé sur les tranches UTC rendues en `Europe/Paris` ; les tranches antérieures au plus
      vieux transcript sont « hors couverture », un mois purgé par Claude Code (juillet 2026) est « transcripts
      absents », et ni l'un ni l'autre n'est « zéro token » (TOK-04).
   5. **Aucun pourcentage ne peut naître des tokens** : une garde structurelle rougit si un type de la couche
@@ -212,7 +212,7 @@ Plans:
 - [ ] 33-01-PLAN.md — TOK-01, TOK-05 : `TrancheTokens` (clé slot UTC × modèle × sub, quatre compteurs, `n`), `AgregatsTokensStore` JSONL mensuel (écriture atomique, réécriture par fichier source, lecture tolérante), garde structurelle « aucun double de quota dérivé des tokens », schéma avec périmètre partiel
 - [ ] 33-02-PLAN.md — TOK-02 (lecture), TOK-03 : lecteur en flux d'un transcript (`FileShare.ReadWrite`, `SequentialScan`, pré-filtre texte, dédup `message.id` par fichier via CPT-01), `curseurs.json`, offset de dernière ligne complète, réingestion d'un fichier raccourci ou renommé
 - [ ] 33-03-PLAN.md — TOK-02, TOK-03 : service de reconstruction de fond (`IHostedService`, thread `IsBackground` `BelowNormal`, mtime décroissant, `Task.Yield`, annulable, progression N / M), puis incrémental sur (taille, mtime) changés ; reprise idempotente testée
-- [ ] 33-04-PLAN.md — TOK-04 : rendu UTC → heure locale aux changements d'heure (25 h le 25/10/2026, 23 h le 29/03/2027), états « hors couverture » et « transcripts absents », lecture par plage des agrégats (semaine de forfait, jour, tranche 15 min et heure) en classes pures alignées sur JRN-05
+- [ ] 33-04-PLAN.md — TOK-04 : rendu UTC → heure locale aux changements d'heure (25 h le 25/10/2026, 23 h le 28/03/2027), états « hors couverture » et « transcripts absents », lecture par plage des agrégats (semaine de forfait, jour, tranche 15 min et heure) en classes pures alignées sur JRN-05
 - [ ] 33-05-PLAN.md — TOK-02, TOK-05 : câblage DI et arrêt propre, âge de dernière écriture des agrégats au diagnostic (CPT-02), `docs/data-sources.md` « Agrégats de tokens », mesure du coût sur la vraie machine consignée
 
 ### Phase 34: Fenêtre Historique : Semaine et Jour
