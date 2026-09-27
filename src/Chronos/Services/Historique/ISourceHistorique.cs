@@ -21,6 +21,15 @@ public interface ISourceHistorique
 
     /// <summary>Le jour local <paramref name="jour"/>, analysé à <paramref name="now"/>. Ne lève jamais.</summary>
     DonneesJour LireJour(Plage jour, DateTimeOffset now);
+
+    /// <summary>
+    /// HIS-05 — les quatre semaines de forfait <paramref name="semaines"/> : quatre plages CONTIGUËS en ordre chronologique
+    /// (<see cref="BornesPlage.QuatreSemaines"/>), lues en UNE seule lecture du journal (D-35-01), chaque semaine analysée à
+    /// <see cref="InstantsHistorique.InstantDAnalyse"/>(<paramref name="now"/>, sa plage). Pas d'agrégats de tokens (pas de piste
+    /// tokens en v1.8). Ne lève jamais sur une panne d'E/S (données vides) ; <see cref="ArgumentException"/> si
+    /// <c>semaines.Count != 4</c> (erreur de programmation, pas une panne).
+    /// </summary>
+    DonneesQuatreSemaines LireQuatreSemaines(IReadOnlyList<Plage> semaines, DateTimeOffset now);
 }
 
 /// <summary>

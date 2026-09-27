@@ -77,6 +77,31 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
         }
     }
 
+    /// <inheritdoc />
+    public DonneesQuatreSemaines LireQuatreSemaines(IReadOnlyList<Plage> semaines, DateTimeOffset now)
+    {
+        if (semaines is null || semaines.Count != 4)
+            throw new ArgumentException("Quatre semaines de forfait contiguës sont attendues (BornesPlage.QuatreSemaines).", nameof(semaines));
+        try
+        {
+            // D-35-01 : LecteurJournal relit le plus ancien fichier à chaque appel (JournalOuvertLe) — UNE lecture, partitionnée en mémoire.
+            var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
+            var lecture = LecteurJournal.Lire(_dossier, semaines[0].Debut, semaines[3].Fin);
+            var analyses = semaines.Select(p => AnalyseReleves.Analyser(
+                    new LectureJournal(
+                        lecture.Releves.Where(r => p.Contient(r.T)).ToList(),
+                        lecture.Evenements.Where(e => p.Contient(e.T)).ToList(),
+                        0, lecture.JournalOuvertLe, p),
+                    InstantsHistorique.InstantDAnalyse(now, p), cadence))
+                .ToList();
+            return new DonneesQuatreSemaines(analyses, lecture.JournalOuvertLe, now);
+        }
+        catch (Exception)
+        {
+            return new DonneesQuatreSemaines(semaines.Select(p => AnalyseVide(p, now)).ToList(), null, now);
+        }
+    }
+
     // Pitfall 11 : LecteurAgregats.Lire ne rend pas l'instance ; couverture.json se charge à part (tolérant : absent → tout hors couverture).
     private CouvertureTokens ChargerCouverture() => CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
 

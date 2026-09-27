@@ -23,7 +23,7 @@ public enum VueHistorique
     /// <summary>La semaine de forfait, samedi 00:00 local → samedi 00:00 local (167 h / 168 h / 169 h).</summary>
     Semaine,
 
-    /// <summary>Quatre semaines de forfait S-3 … S (phase 35 : segment présent mais désactivé en phase 34).</summary>
+    /// <summary>Quatre semaines de forfait S-3 … S (phase 35 : vue active — données et mots en 35-01, XAML en 35-04).</summary>
     QuatreSemaines,
 }
 
@@ -114,3 +114,44 @@ public sealed record DonneesJour(
     IReadOnlyList<SousPlageCouverture> CouvertureTokens,
     DateTimeOffset? JournalOuvertLe,
     DateTimeOffset LueA);
+
+/// <summary>
+/// HIS-05 — la vue 4 semaines, prête à dessiner (D-35-01 : UNE lecture du journal, quatre analyses). Aucune piste tokens en v1.8 :
+/// seuls les relevés du serveur sont superposés, semaine par semaine, sur l'axe de la semaine courante.
+/// </summary>
+/// <param name="Semaines">Les quatre analyses en ordre CHRONOLOGIQUE : <c>[0]</c> = S-3, <c>[1]</c> = S-2, <c>[2]</c> = S-1,
+/// <c>[3]</c> = S (celui de <c>BornesPlage.QuatreSemaines</c>). Chaque analyse porte SA plage et a été faite à
+/// <c>InstantDAnalyse(now, sa plage)</c> : une semaine révolue ne finit jamais par un faux trou ouvert.</param>
+/// <param name="JournalOuvertLe">Première ligne valide du journal ; <c>null</c> = journal vide ou absent (tout est « avant le journal »).</param>
+/// <param name="LueA">L'instant (horloge injectée) de la lecture.</param>
+public sealed record DonneesQuatreSemaines(IReadOnlyList<AnalyseJournal> Semaines, DateTimeOffset? JournalOuvertLe, DateTimeOffset LueA)
+{
+    /// <summary>La semaine courante S (la dernière de l'ordre chronologique).</summary>
+    public AnalyseJournal Courante => Semaines[^1];
+}
+
+/// <summary>
+/// L'étiquette d'une semaine, à droite des courbes (DESIGN_PLAN §2.4) : « S · 19 sept. · 43 % », « S-2 · 5 sept. · pas de relevés
+/// (avant le journal) » ou « S-1 · 12 sept. · pas de relevés » — texte DÉJÀ rédigé par <c>TextesHistorique</c>.
+/// </summary>
+/// <param name="Rang">0 = S, 1 = S-1, 2 = S-2, 3 = S-3.</param>
+/// <param name="Texte">Le libellé visible, mot pour mot.</param>
+/// <param name="AvantJournal">La semaine se termine avant (ou à) l'ouverture du journal, ou le journal est absent (D-35-03).</param>
+public sealed record EtiquetteSemaine(int Rang, string Texte, bool AvantJournal);
+
+/// <summary>
+/// Une rangée de la bande COUVERTURE PAR SEMAINE (DESIGN_PLAN §2.4) : relevés présents, trous avec leur cause, partie « avant le
+/// journal » (hachurée) et marqueur « journal ouvert le … » sur la semaine d'ouverture. Tout est déjà calculé : la piste pose.
+/// </summary>
+/// <param name="Rang">0 = S, 1 = S-1, 2 = S-2, 3 = S-3.</param>
+/// <param name="Libelle">« S », « S-1 », … (mot de <c>TextesHistorique.RangSemaine</c>).</param>
+/// <param name="Plage">La semaine de forfait de la rangée (son PROPRE axe : 167 / 168 / 169 h).</param>
+/// <param name="Serie">Les relevés de la semaine (source retenue par l'analyse).</param>
+/// <param name="Trous">Les trous de la semaine, avec leur cause.</param>
+/// <param name="InstantLecture">L'instant d'analyse de la semaine : <c>min(LueA, Plage.Fin)</c> (ferme un trou encore ouvert).</param>
+/// <param name="ZoneAvantJournal">La partie de la plage ANTÉRIEURE à l'ouverture du journal (toute la plage si la semaine est
+/// avant le journal) ; <c>null</c> si la semaine commence après l'ouverture.</param>
+/// <param name="Texte">« avant le journal — aucun relevé », « aucun relevé » ou vide.</param>
+/// <param name="JournalOuvert">« journal ouvert le … » si l'ouverture tombe dans la plage ; sinon <c>null</c>.</param>
+public sealed record RangeeCouverture(int Rang, string Libelle, Plage Plage, IReadOnlyList<ReleveJournal> Serie, IReadOnlyList<Trou> Trous,
+    DateTimeOffset InstantLecture, Plage? ZoneAvantJournal, string Texte, AnnotationHistorique? JournalOuvert);

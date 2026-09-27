@@ -44,4 +44,17 @@ public sealed class SourceHistoriqueDemonstration(TimeZoneInfo tz) : ISourceHist
         var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, ScenariosHistorique.Couverture());
         return new DonneesJour(jour, analyse, colonnes, agregats.Couverture, journal.JournalOuvertLe, now);
     }
+
+    /// <inheritdoc />
+    public DonneesQuatreSemaines LireQuatreSemaines(IReadOnlyList<Plage> semaines, DateTimeOffset now)
+    {
+        if (semaines is null || semaines.Count != 4)
+            throw new ArgumentException("Quatre semaines de forfait contiguës sont attendues (BornesPlage.QuatreSemaines).", nameof(semaines));
+        // Même règle que le disque (instant d'analyse borné à chaque plage) ; en mémoire, quatre lectures ne coûtent rien.
+        var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
+        var analyses = semaines
+            .Select(p => AnalyseReleves.Analyser(ScenariosHistorique.Journal(p, _tz), InstantsHistorique.InstantDAnalyse(now, p), cadence))
+            .ToList();
+        return new DonneesQuatreSemaines(analyses, ScenariosHistorique.JournalOuvertLe, now);
+    }
 }

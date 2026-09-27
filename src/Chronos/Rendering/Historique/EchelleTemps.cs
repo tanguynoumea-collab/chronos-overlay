@@ -43,4 +43,13 @@ public static class EchelleTemps
         var ticks = (long)Math.Round(fraction * plage.Duree.Ticks);
         return plage.Debut + TimeSpan.FromTicks(ticks);
     }
+
+    /// <summary>
+    /// D-35-02 — reporte <paramref name="t"/>, instant de la plage <paramref name="source"/>, sur l'axe de <paramref name="cible"/>
+    /// à la MÊME fraction : <c>cible.Debut + Fraction(t, source) × cible.Duree</c>. La vue 4 semaines superpose S-1 … S-3 sur l'axe
+    /// de S : une semaine de 169 h (passage à l'heure d'hiver) et une de 168 h se superposent bord à bord, par construction —
+    /// jamais un « t − 7 jours » qui déborderait d'une heure. Non borné, comme <see cref="Fraction"/>.
+    /// </summary>
+    public static DateTimeOffset Reporter(DateTimeOffset t, Plage source, Plage cible)
+        => cible.Debut + TimeSpan.FromTicks((long)Math.Round(Fraction(t, source) * cible.Duree.Ticks));
 }

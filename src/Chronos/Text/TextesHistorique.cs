@@ -55,6 +55,12 @@ public static class TextesHistorique
     public const string HistoriqueIndisponible = "historique indisponible";
     public const string Tiret = "—";
 
+    // --- Vue 4 semaines (§2.4, 35-01) ---
+    public const string PiedQuatreSemaines = "Rien n'est inventé avant l'ouverture du journal.";
+    public const string AvantJournalAucunReleve = "avant le journal — aucun relevé";
+    public const string AucunReleve = "aucun relevé";
+    public const string CouvertureParSemaine = "COUVERTURE PAR SEMAINE";
+
     private const string SuffixePermanentTokens = ", comptés localement — hors Cowork et claude.ai · bruts, non pondérés · ce n'est PAS un % du forfait";
     private const string RepartitionInconnue = " pendant l'absence (répartition inconnue)";
     private const string SousAgentsInclus = "sous-agents inclus";
@@ -83,6 +89,27 @@ public static class TextesHistorique
 
     /// <summary>« sam. 19 » — libellé d'un minuit local sur l'axe de la semaine.</summary>
     public static string LibelleJour(DateTimeOffset minuitLocal, TimeZoneInfo tz) => Local(minuitLocal, tz).ToString("ddd d", Fr);
+
+    /// <summary>« sam. » — le jour de la semaine seul (axe de la vue 4 semaines : il sert quatre semaines, pas de quantième).</summary>
+    public static string LibelleJourCourt(DateTimeOffset t, TimeZoneInfo tz) => Local(t, tz).ToString("ddd", Fr);
+
+    /// <summary>« 4 semaines de forfait · du sam. 29 août au sam. 26 sept. 2026 » (bornes locales du bloc S-3 … S).</summary>
+    public static string LibellePeriodeQuatreSemaines(Plage bloc, TimeZoneInfo tz)
+        => "4 semaines de forfait · du " + Local(bloc.Debut, tz).ToString("ddd d MMM", Fr)
+           + " au " + Local(bloc.Fin, tz).ToString("ddd d MMM yyyy", Fr);
+
+    /// <summary>« S » (rang 0), « S-1 », « S-2 », « S-3 ».</summary>
+    public static string RangSemaine(int rang) => rang == 0 ? "S" : "S-" + rang.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>L'étiquette d'une semaine (D-35-03) : « S · 19 sept. · 43 % » ; « S-2 · 5 sept. · pas de relevés (avant le journal) » ;
+    /// « S-1 · 12 sept. · pas de relevés » — une semaine POSTÉRIEURE à l'ouverture du journal sans relevé n'est jamais « avant le journal ».</summary>
+    public static string EtiquetteSemaine(int rang, Plage semaine, double? valeurFinale, bool avantJournal, bool sansReleve, TimeZoneInfo tz)
+        => RangSemaine(rang) + " · " + Local(semaine.Debut, tz).ToString("d MMM", Fr) + " · "
+           + (avantJournal ? "pas de relevés (avant le journal)" : sansReleve ? "pas de relevés" : Pourcent(valeurFinale));
+
+    /// <summary>« épuisée jeu. 20:00 → bloquée jusqu'au reset » — le PREMIER relevé à 100 % (ou refusé) d'une semaine, daté.</summary>
+    public static string EpuiseeSemaine(DateTimeOffset t, TimeZoneInfo tz)
+        => "épuisée " + LibelleJourCourt(t, tz) + " " + HeureMinute(t, tz) + " → bloquée jusqu'au reset";
 
     /// <summary>« 3 h », « 0 h », « 21 h » — libellé d'une heure locale ronde sur l'axe du jour.</summary>
     public static string LibelleHeure(DateTimeOffset t, TimeZoneInfo tz) => Local(t, tz).Hour.ToString(CultureInfo.InvariantCulture) + " h";
