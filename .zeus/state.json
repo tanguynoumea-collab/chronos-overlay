@@ -11,7 +11,8 @@
     "numero": 1,
     "demarre_le": "2026-09-26",
     "idees": [
-      "Trackeur d'utilisation du forfait : journaliser l'usage au fil du temps et le visualiser (courbe/graphique) ; vue à l'échelle de la semaine de forfait (reset samedi 00:00 heure locale) avec la courbe hebdo superposée aux tranches de 5 h ; comprendre sa façon d'utiliser Claude au cours du temps."
+      "Trackeur d'utilisation du forfait : journaliser l'usage au fil du temps et le visualiser (courbe/graphique) ; vue à l'échelle de la semaine de forfait (reset samedi 00:00 heure locale) avec la courbe hebdo superposée aux tranches de 5 h ; comprendre sa façon d'utiliser Claude au cours du temps.",
+      "2026-09-27 (utilisateur) : refonte complete de la fenetre de reglages — fenetre rectangulaire classique redimensionnable dynamiquement (trop longue pour l'ecran)."
     ],
     "impact_ui": true,
     "mode_daedalus": "EVOLUTION",
@@ -32,7 +33,8 @@
     "plan_design_valide": true,
     "triage_findings": false,
     "go_publication": false,
-    "confirmation_roadmap": false
+    "confirmation_roadmap": false,
+    "plan_design_reglages_valide": false
   },
   "pending": {
     "findings_critiques": [
@@ -57,7 +59,8 @@
     ],
     "dod": ".zeus/DOD.md",
     "audit_points": "AUDIT_POINTS.md",
-    "brief_council": ".zeus/reports/llm-council-2026-09-26-brief.md"
+    "brief_council": ".zeus/reports/llm-council-2026-09-26-brief.md",
+    "design_plan_reglages": ".zeus/DESIGN_PLAN_REGLAGES.md (maquettes .zeus/maquettes/reglages-v2.html)"
   },
   "phases_sautees": [],
   "historique": [
@@ -76,6 +79,7 @@
     "2026-09-27 — GSD phase 33 (agregats de tokens) executee et verifiee 5/5 : 1415 tests, 0 warning ; reconstruction reelle 3,2 s a chaud / 47 ms incremental ; .gitattributes LF. Phase 32 : constat humain toujours en attente (3.2.2 lancee, anciennes non quittees). Phase 34 (fenetre Historique) : contexte ecrit, recherche en cours.",
     "2026-09-27 — GSD phase 34 : vagues 1-3 executees (7 plans / 8, 1549 tests, 0 warning) — tokens promus, geometrie pure, VM + scenarios, pistes OnRender, HistoriqueWindow + galerie --historique, vues Semaine (3 styles) et Jour. Vague 4 (34-08 honnetete + GATE TESTS) en cours. Ensuite : DESIGN-REVIEW DAEDALUS sur la galerie lancee par l'utilisateur.",
     "2026-09-27 — GSD phase 34 close : 8/8 plans, verification passed 8/8, 1565 tests, 0 warning Debug/Release (fix reel : ombrage des brosses du theme dans les vues). GATE TESTS OK. -> DESIGN-REVIEW (DAEDALUS phase 2) : galerie `dotnet run --project src/Chronos -- --historique` a lancer par l'utilisateur. Phase 35 : contexte ecrit, recherche en cours (en parallele, les ecarts bloquants de la revue y entreront en vague 1).",
-    "2026-09-27 — GSD phase 35 : vagues 1-3 executees (6 plans / 7) : vue 4 semaines, double-clic + carte F1, diagnostic [Journal d'historique], README + data-sources §9, release Chronos-v3.3.0.exe (78 104 918 o, md5 7ec9fbcf, commit 9b74ed5, ni tag ni push). 1648 tests, 0 warning. Reste : 35-07 constat humain (reprend E1-ter et le tableau de 32-08), revue DAEDALUS de la galerie, puis DEV-COUNCIL / DEV-SENIOR / PUBLICATION."
+    "2026-09-27 — GSD phase 35 : vagues 1-3 executees (6 plans / 7) : vue 4 semaines, double-clic + carte F1, diagnostic [Journal d'historique], README + data-sources §9, release Chronos-v3.3.0.exe (78 104 918 o, md5 7ec9fbcf, commit 9b74ed5, ni tag ni push). 1648 tests, 0 warning. Reste : 35-07 constat humain (reprend E1-ter et le tableau de 32-08), revue DAEDALUS de la galerie, puis DEV-COUNCIL / DEV-SENIOR / PUBLICATION.",
+    "2026-09-27 — Utilisateur : bug « processus zombie apres Quitter » (cause prouvee : interblocage Host/Dispatcher a l'arret) -> quick 260927 en cours (correctif + test + release 3.3.1). Utilisateur : refonte des reglages -> DAEDALUS mode REFONTE : audit + DESIGN_PLAN_REGLAGES.md + maquettes HTML (quota Figma Starter atteint). CHECKPOINT design reglages en attente."
   ]
 }
