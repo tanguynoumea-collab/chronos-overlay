@@ -79,7 +79,8 @@ public class MainViewModelTests
         FakeRecalibrationPrompt prompt, SettingsService settings,
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
         RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null,
-        FakeEtatJournal? journal = null, FakeEtatReconstruction? reconstruction = null)
+        FakeEtatJournal? journal = null, FakeEtatReconstruction? reconstruction = null,
+        FakeOuvreurHistorique? ouvreur = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
@@ -91,7 +92,7 @@ public class MainViewModelTests
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
             new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
-            auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction);
+            auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction, ouvreurHistorique: ouvreur);
     }
 
     private static MainViewModel NewVmFull(
@@ -443,6 +444,80 @@ public class MainViewModelTests
         vm.ToggleCenterMode();
         Assert.False(vm.ShowCountdown);   // → retour aux pourcentages
         Assert.True(vm.ShowPercent);
+    }
+
+    // --- ACC-02 / D-35-06 : clic au centre arbitré — simple = bascule à l'échéance, double = Historique sans bascule ---
+
+    private static MainViewModel VmAvecOuvreur(FakeOuvreurHistorique? ouvreur, out FakeClock clock)
+    {
+        clock = new FakeClock(Now);
+        return Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
+                     new FakeAutostartService(), new FakeRecalibrationPrompt(), new SettingsService(TempPaths()), ouvreur: ouvreur);
+    }
+
+    [Fact]
+    public void Un_simple_clic_au_centre_bascule_une_fois_a_l_echeance()
+    {
+        var ouvreur = new FakeOuvreurHistorique();
+        var vm = VmAvecOuvreur(ouvreur, out var clock);
+        vm.DefinirDelaiDoubleClic(TimeSpan.FromMilliseconds(500));
+
+        vm.ClicCentre(1);
+        Assert.False(vm.ShowCountdown);                    // armée, pas encore décidée
+
+        clock.UtcNow = Now + TimeSpan.FromMilliseconds(500);
+        vm.EcheanceClicCentre();
+        Assert.True(vm.ShowCountdown);                     // basculé…
+
+        clock.UtcNow = Now + TimeSpan.FromSeconds(2);
+        vm.EcheanceClicCentre();
+        Assert.True(vm.ShowCountdown);                     // … une seule fois
+        Assert.Equal(0, ouvreur.Ouvertures);
+    }
+
+    [Fact]
+    public void Un_double_clic_au_centre_ouvre_l_Historique_sans_bascule()
+    {
+        var ouvreur = new FakeOuvreurHistorique();
+        var vm = VmAvecOuvreur(ouvreur, out var clock);
+        vm.DefinirDelaiDoubleClic(TimeSpan.FromMilliseconds(500));
+
+        vm.ClicCentre(1);
+        clock.UtcNow = Now + TimeSpan.FromMilliseconds(200);
+        vm.ClicCentre(2);
+        clock.UtcNow = Now + TimeSpan.FromSeconds(1);
+        vm.EcheanceClicCentre();
+
+        Assert.Equal(1, ouvreur.Ouvertures);
+        Assert.False(vm.ShowCountdown);                    // INCHANGÉ : aucune bascule
+
+        vm.OuvrirHistoriqueCommand.Execute(null);          // le bouton « Ouvrir » des réglages passe par le même ouvreur
+        Assert.Equal(2, ouvreur.Ouvertures);
+    }
+
+    [Fact]
+    public void Sans_ouvreur_un_double_clic_ne_leve_pas_et_ne_bascule_pas()
+    {
+        var vm = VmAvecOuvreur(ouvreur: null, out var clock);
+
+        vm.ClicCentre(1);
+        vm.ClicCentre(2);
+        clock.UtcNow = Now + TimeSpan.FromSeconds(1);
+        vm.EcheanceClicCentre();
+        vm.OuvrirHistoriqueCommand.Execute(null);
+
+        Assert.False(vm.ShowCountdown);
+    }
+
+    [Fact]
+    public void Le_bouton_Ouvrir_ouvre_l_Historique_une_fois()
+    {
+        var ouvreur = new FakeOuvreurHistorique();
+        var vm = VmAvecOuvreur(ouvreur, out _);
+
+        vm.OuvrirHistoriqueCommand.Execute(null);
+
+        Assert.Equal(1, ouvreur.Ouvertures);
     }
 
     // --- GAP-1 (audit intégration) : le recalibrage ne doit PAS écraser les réglages écrits sur disque
