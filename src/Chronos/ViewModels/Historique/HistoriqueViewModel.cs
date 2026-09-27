@@ -51,6 +51,8 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     private DateTimeOffset? _reconstructionVue;
     private DateTimeOffset? _journalOuvertLe;        // mémorisé à la première lecture (sous-texte F2)
     private int _f2EnAttente;                        // 0 = aucun Post F2 en vol
+    private bool _abonneReconstruction;              // D-35-05 : abonné à IEtatReconstruction.Changement (réabonnement idempotent)
+    private IReadOnlyList<Plage>? _semaines;         // vue 4 semaines : S-3 … S du bloc affiché (ordre chronologique)
     private DispatcherTimer? _timer;
 
     public HistoriqueViewModel(ISourceHistorique source, IUiDispatcher ui, IClock clock, TimeZoneInfo tz, IReglagesHistorique reglages,
@@ -69,9 +71,13 @@ public sealed partial class HistoriqueViewModel : ObservableObject
         var lus = reglages.Lire();
         _ancre = lus.WeeklyAnchor;
         _style = lus.HistoriqueStyleSemaine;
-        Theme = ThemeCatalog.ByKey(lus.ThemeKey);   // lu une fois à l'ouverture (rampe des pistes)
+        Theme = ThemeCatalog.ByKey(lus.ThemeKey);   // relu par ActualiserTheme() à chaque construction de fenêtre (D-35-05)
 
-        if (_reconstruction is not null) _reconstruction.Changement += SurChangementReconstruction;
+        if (_reconstruction is not null)
+        {
+            _reconstruction.Changement += SurChangementReconstruction;
+            _abonneReconstruction = true;
+        }
     }
 
     // ------------------------------------------------------------------ Vue / période
@@ -79,10 +85,12 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     [ObservableProperty] private VueHistorique _vueActive = VueHistorique.Semaine;
     public bool IsVueJour => VueActive == VueHistorique.Jour;
     public bool IsVueSemaine => VueActive == VueHistorique.Semaine;
+    public bool IsVueQuatreSemaines => VueActive == VueHistorique.QuatreSemaines;
     partial void OnVueActiveChanged(VueHistorique value)
     {
         OnPropertyChanged(nameof(IsVueJour));
         OnPropertyChanged(nameof(IsVueSemaine));
+        OnPropertyChanged(nameof(IsVueQuatreSemaines));
         OnPropertyChanged(nameof(TexteRetourPresent));
     }
 
@@ -96,11 +104,12 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     /// <summary>Levé par <c>FermerCommand</c> : la fenêtre se ferme (et persiste sa géométrie) ; le VM ne connaît pas la fenêtre.</summary>
     public event EventHandler? FermetureDemandee;
 
-    /// <summary>Segment Jour / Semaine ; « 4 semaines » est un no-op tant que la vue n'existe pas (phase 35, infobulle « bientôt »).</summary>
+    /// <summary>Segment Jour / Semaine / 4 semaines (HIS-05, 35-01 : la vue 4 semaines est servie par le VM ; son XAML arrive en 35-04).
+    /// Choisir la vue déjà active ne fait rien ; sinon la vue s'ouvre au présent.</summary>
     [RelayCommand]
     private void ChoisirVue(VueHistorique vue)
     {
-        if (vue == VueHistorique.QuatreSemaines || vue == VueActive) return;
+        if (vue == VueActive) return;
         VueActive = vue;
         AllerAuPresent();
     }
@@ -110,9 +119,19 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     private void Precedent()
     {
         if (PlageCourante is not { } p) return;
-        PlageCourante = VueActive == VueHistorique.Jour
-            ? BornesPlage.Jour(p.Debut.AddTicks(-1), _tz)
-            : BornesPlage.SemaineDeForfait(p.Debut.AddTicks(-1), p.Debut, _ancre, _tz);
+        switch (VueActive)
+        {
+            case VueHistorique.Jour:
+                PlageCourante = BornesPlage.Jour(p.Debut.AddTicks(-1), _tz);
+                break;
+            case VueHistorique.QuatreSemaines:
+                // Bloc précédent : S du nouveau bloc = la semaine qui finit au début du bloc courant (même motif que la semaine).
+                PoserBloc(BornesPlage.QuatreSemaines(p.Debut.AddTicks(-1), p.Debut, _ancre, _tz));
+                break;
+            default:
+                PlageCourante = BornesPlage.SemaineDeForfait(p.Debut.AddTicks(-1), p.Debut, _ancre, _tz);
+                break;
+        }
         _decalage--;
         EstAuPresent = false;
         ApresChangementDePlage();
@@ -125,9 +144,26 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     private void Suivant()
     {
         if (PlageCourante is not { } p || EstAuPresent) return;
-        PlageCourante = VueActive == VueHistorique.Jour
-            ? BornesPlage.Jour(p.Fin, _tz)
-            : BornesPlage.SemaineDeForfait(p.Fin, p.Fin, _ancre, _tz);
+        switch (VueActive)
+        {
+            case VueHistorique.Jour:
+                PlageCourante = BornesPlage.Jour(p.Fin, _tz);
+                break;
+            case VueHistorique.QuatreSemaines:
+                // Quatre semaines de forfait en avant depuis la fin du bloc (calendrier local : 167 / 168 / 169 h absorbées).
+                var x = p.Fin;
+                var derniere = p;
+                for (var i = 0; i < 4; i++)
+                {
+                    derniere = BornesPlage.SemaineDeForfait(x, x, _ancre, _tz);
+                    x = derniere.Fin;
+                }
+                PoserBloc(BornesPlage.QuatreSemaines(derniere.Debut, derniere.Debut, _ancre, _tz));
+                break;
+            default:
+                PlageCourante = BornesPlage.SemaineDeForfait(p.Fin, p.Fin, _ancre, _tz);
+                break;
+        }
         _decalage++;
         EstAuPresent = _decalage == 0;
         ApresChangementDePlage();
@@ -164,6 +200,16 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
     [ObservableProperty] private DonneesSemaine? _donneesSemaine;
     [ObservableProperty] private DonneesJour? _donneesJour;
+    [ObservableProperty] private DonneesQuatreSemaines? _donneesQuatreSemaines;
+
+    // Dérivés de la vue 4 semaines (HIS-05) : recalculés dans AppliquerQuatreSemaines, JAMAIS au tick. Rang 0 = S d'abord.
+    [ObservableProperty] private IReadOnlyList<GraduationLibellee> _libellesJoursCourts = Array.Empty<GraduationLibellee>();
+    [ObservableProperty] private IReadOnlyList<EtiquetteSemaine> _etiquettesSemaines = Array.Empty<EtiquetteSemaine>();
+    [ObservableProperty] private IReadOnlyList<AnnotationHistorique> _annotationsEpuiseeSemaines = Array.Empty<AnnotationHistorique>();
+    [ObservableProperty] private IReadOnlyList<RangeeCouverture> _rangeesCouverture = Array.Empty<RangeeCouverture>();
+
+    /// <summary>« Rien n'est inventé avant l'ouverture du journal. » — pied de la vue 4 semaines.</summary>
+    public string PiedQuatreSemaines => TextesHistorique.PiedQuatreSemaines;
 
     // Dérivés des données : recalculés dans Appliquer*, JAMAIS au tick.
     [ObservableProperty] private IReadOnlyList<GraduationLibellee> _libellesJours = Array.Empty<GraduationLibellee>();
@@ -202,8 +248,12 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
     // ------------------------------------------------------------------ Thème, fuseau
 
-    /// <summary>Le thème actif à l'ouverture (rampe des pistes : même loi que le cadran).</summary>
-    public ChronosTheme Theme { get; }
+    /// <summary>Le thème ACTIF (rampe des pistes : même loi que le cadran). Observable : le VM est un singleton né au démarrage,
+    /// la fenêtre appelle <see cref="ActualiserTheme"/> à chaque construction, avant d'injecter les pinceaux (piège 3, D-35-05).</summary>
+    [ObservableProperty] private ChronosTheme _theme = ThemeCatalog.Default;
+
+    /// <summary>Relit le thème des réglages (l'utilisateur a pu en changer pendant que la fenêtre était fermée).</summary>
+    public void ActualiserTheme() => Theme = ThemeCatalog.ByKey(_reglages.Lire().ThemeKey);
 
     /// <summary>Le fuseau injecté (infobulle et graduations en heure locale).</summary>
     public TimeZoneInfo Fuseau => _tz;
@@ -223,9 +273,15 @@ public sealed partial class HistoriqueViewModel : ObservableObject
         MajBandeauF2();
     }
 
-    /// <summary>Crée le timer de 60 s (côté UI uniquement, jamais dans le ctor). Idempotent.</summary>
+    /// <summary>Crée le timer de 60 s (côté UI uniquement, jamais dans le ctor) et (ré)abonne le bandeau F2 à la reconstruction si
+    /// une fermeture l'avait désabonné (piège 2, D-35-05 : le VM singleton survit à la fenêtre). Idempotent.</summary>
     public void DemarrerHorloge()
     {
+        if (_reconstruction is not null && !_abonneReconstruction)
+        {
+            _reconstruction.Changement += SurChangementReconstruction;
+            _abonneReconstruction = true;
+        }
         if (_timer is not null) return;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _timer.Tick += (_, _) => Tick(_clock.UtcNow);
@@ -238,6 +294,7 @@ public sealed partial class HistoriqueViewModel : ObservableObject
         _timer?.Stop();
         _timer = null;
         if (_reconstruction is not null) _reconstruction.Changement -= SurChangementReconstruction;
+        _abonneReconstruction = false;
     }
 
     /// <summary>
@@ -281,9 +338,18 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     {
         var now = _clock.UtcNow;
         _decalage = 0;
-        PlageCourante = VueActive == VueHistorique.Jour
-            ? BornesPlage.Jour(now, _tz)
-            : BornesPlage.SemaineDeForfait(now, _repere, _ancre, _tz);
+        switch (VueActive)
+        {
+            case VueHistorique.Jour:
+                PlageCourante = BornesPlage.Jour(now, _tz);
+                break;
+            case VueHistorique.QuatreSemaines:
+                PoserBloc(BornesPlage.QuatreSemaines(now, _repere, _ancre, _tz));
+                break;
+            default:
+                PlageCourante = BornesPlage.SemaineDeForfait(now, _repere, _ancre, _tz);
+                break;
+        }
         EstAuPresent = true;
         ApresChangementDePlage();
     }
@@ -291,12 +357,22 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     private void ApresChangementDePlage()
     {
         if (PlageCourante is not { } p) return;
-        LibellePeriode = VueActive == VueHistorique.Jour
-            ? TextesHistorique.LibellePeriodeJour(p, SemaineDe(p.Debut), _tz)
-            : TextesHistorique.LibellePeriodeSemaine(p, _tz);
+        LibellePeriode = VueActive switch
+        {
+            VueHistorique.Jour => TextesHistorique.LibellePeriodeJour(p, SemaineDe(p.Debut), _tz),
+            VueHistorique.QuatreSemaines => TextesHistorique.LibellePeriodeQuatreSemaines(p, _tz),
+            _ => TextesHistorique.LibellePeriodeSemaine(p, _tz),
+        };
         SuivantCommand.NotifyCanExecuteChanged();
         MajMaintenant();
         DemanderLecture();
+    }
+
+    // Le bloc 4 semaines : les quatre plages (S-3 … S) et leur union comme période affichée.
+    private void PoserBloc(IReadOnlyList<Plage> semaines)
+    {
+        _semaines = semaines;
+        PlageCourante = new Plage(semaines[0].Debut, semaines[3].Fin);
     }
 
     // La semaine de forfait qui contient un instant, alignée sur le repère observé (ou l'ancre, ou le calendrier).
@@ -311,6 +387,7 @@ public sealed partial class HistoriqueViewModel : ObservableObject
         if (PlageCourante is not { } plage) return;
         var numero = Interlocked.Increment(ref _numeroLecture);
         var vue = VueActive;
+        var semaines = _semaines?.ToArray();
         var now = _clock.UtcNow;
         _derniereEcritureVue = _journal?.DerniereEcriture;
         _reconstructionVue = _reconstruction?.DerniereReconstructionTerminee;
@@ -323,6 +400,11 @@ public sealed partial class HistoriqueViewModel : ObservableObject
                 {
                     var d = _source.LireJour(plage, now);
                     _ui.Post(() => { if (numero == Volatile.Read(ref _numeroLecture)) AppliquerJour(d); });
+                }
+                else if (vue == VueHistorique.QuatreSemaines && semaines is not null)
+                {
+                    var d = _source.LireQuatreSemaines(semaines, now);
+                    _ui.Post(() => { if (numero == Volatile.Read(ref _numeroLecture)) AppliquerQuatreSemaines(d); });
                 }
                 else
                 {
@@ -402,6 +484,47 @@ public sealed partial class HistoriqueViewModel : ObservableObject
         MajBandeauF2();
     }
 
+    // HIS-05 — la vue 4 semaines : étiquettes, « épuisée » reportée sur l'axe de S, couverture par semaine. Rang k = S-k.
+    private void AppliquerQuatreSemaines(DonneesQuatreSemaines d)
+    {
+        DonneesQuatreSemaines = d;
+        _journalOuvertLe = d.JournalOuvertLe;
+        var courante = d.Courante.Plage;
+
+        LibellesJoursCourts = GraduationsCalendrier.Jours(courante, _tz)
+            .Select(i => new GraduationLibellee(i, TextesHistorique.LibelleJourCourt(i, _tz))).ToList();
+
+        var etiquettes = new List<EtiquetteSemaine>(4);
+        var epuisees = new List<AnnotationHistorique>();
+        var rangees = new List<RangeeCouverture>(4);
+        for (var k = 0; k < 4; k++)
+        {
+            var a = d.Semaines[3 - k];
+            // D-35-03 : « avant le journal » = la semaine finit avant (ou à) l'ouverture, ou pas de journal du tout ;
+            // une semaine postérieure sans relevé dit seulement « pas de relevés ».
+            var avant = d.JournalOuvertLe is not { } j || a.Plage.Fin <= j;
+            var sansReleve = a.Serie.Count == 0;
+            var valeur = a.Serie.LastOrDefault(r => r.U7 is not null)?.U7;
+            etiquettes.Add(new EtiquetteSemaine(k, TextesHistorique.EtiquetteSemaine(k, a.Plage, valeur, avant, sansReleve, _tz), avant));
+
+            // Miroir de D-34-19 : le PREMIER relevé à 100 % ou refusé, reporté par fraction sur l'axe de S (D-35-02).
+            if (a.Serie.FirstOrDefault(r => r.Statut7 == StatutServeur.Rejete || r.U7 >= 1.0) is { } e)
+                epuisees.Add(new AnnotationHistorique(TypeAnnotation.Epuisee, EchelleTemps.Reporter(e.T, a.Plage, courante), courante.Fin,
+                                                      TextesHistorique.EpuiseeSemaine(e.T, _tz)));
+
+            var zone = avant ? a.Plage : (d.JournalOuvertLe is { } jj && a.Plage.Contient(jj) ? new Plage(a.Plage.Debut, jj) : null);
+            var texte = avant ? TextesHistorique.AvantJournalAucunReleve : sansReleve ? TextesHistorique.AucunReleve : "";
+            rangees.Add(new RangeeCouverture(k, TextesHistorique.RangSemaine(k), a.Plage, a.Serie, a.Trous,
+                                             InstantsHistorique.InstantDAnalyse(d.LueA, a.Plage), zone, texte, JournalOuvert(d.JournalOuvertLe, a.Plage)));
+        }
+        EtiquettesSemaines = etiquettes;
+        AnnotationsEpuiseeSemaines = epuisees;
+        RangeesCouverture = rangees;
+
+        MajFraicheur(_clock.UtcNow);
+        MajBandeauF2();
+    }
+
     // ------------------------------------------------------------------ Annotations (mots de TextesHistorique)
 
     private IReadOnlyList<AnnotationHistorique> Trous(AnalyseJournal a, DateTimeOffset lueA)
@@ -461,9 +584,12 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
     private void MajFraicheur(DateTimeOffset now)
     {
-        TexteFraicheur = IsVueJour
-            ? (DonneesJour is { } j ? TextesHistorique.LigneFraicheurJour(j.Plage, j.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, _tz) : "")
-            : (DonneesSemaine is { } s ? TextesHistorique.LigneFraicheurSemaine(s.Analyse, now, _tz) : "");
+        TexteFraicheur = VueActive switch
+        {
+            VueHistorique.Jour => DonneesJour is { } j ? TextesHistorique.LigneFraicheurJour(j.Plage, j.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, _tz) : "",
+            VueHistorique.QuatreSemaines => DonneesQuatreSemaines is { } q ? TextesHistorique.LigneFraicheurSemaine(q.Courante, now, _tz) : "",
+            _ => DonneesSemaine is { } s ? TextesHistorique.LigneFraicheurSemaine(s.Analyse, now, _tz) : "",
+        };
 
         if (_journal is null)
         {

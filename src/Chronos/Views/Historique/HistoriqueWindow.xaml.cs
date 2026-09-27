@@ -31,6 +31,8 @@ public partial class HistoriqueWindow : Window
         InitializeComponent();
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
         DataContext = vm;
+        // Le VM est un singleton né au démarrage : relire le thème ACTIF avant d'injecter les pinceaux (piège 3, D-35-05).
+        vm.ActualiserTheme();
 
         // Pinceaux du thème actif (Alerte, …) → résout les DynamicResource de la fenêtre (motif MainWindow) ET des deux vues : chaque vue
         // fusionne DesignTokens.xaml (elle se monte seule en test), dont le repli statique « Alerte » serait trouvé AVANT celui de la
@@ -44,12 +46,9 @@ public partial class HistoriqueWindow : Window
 
         RestaurerGeometrie();
 
-        // Échap et ✕ passent par FermerCommand → le VM lève FermetureDemandee ; Close() n'a de sens que sur une fenêtre chargée.
-        vm.FermetureDemandee += (_, _) =>
-        {
-            DemandesDeFermeture++;
-            if (IsLoaded) Close();
-        };
+        // Échap et ✕ passent par FermerCommand → le VM lève FermetureDemandee ; handler NOMMÉ, retiré au Closed : le VM singleton
+        // ne retient aucune fenêtre fermée (piège 4, D-35-05).
+        vm.FermetureDemandee += SurFermetureDemandee;
         SourceInitialized += (_, _) => ArrondirCoinsDwm(new WindowInteropHelper(this).Handle);
         Loaded += (_, _) =>
         {
@@ -57,7 +56,18 @@ public partial class HistoriqueWindow : Window
             vm.DemarrerHorloge();   // tick 60 s — jamais dans le constructeur du VM
         };
         Closing += (_, _) => EnregistrerGeometrie();
-        Closed += (_, _) => vm.ArreterHorloge();
+        Closed += (_, _) =>
+        {
+            _vm.FermetureDemandee -= SurFermetureDemandee;
+            _vm.ArreterHorloge();
+        };
+    }
+
+    /// <summary>Fermeture demandée par le VM (Échap, ✕) : comptée ; <c>Close()</c> n'a de sens que sur une fenêtre chargée.</summary>
+    private void SurFermetureDemandee(object? sender, EventArgs e)
+    {
+        DemandesDeFermeture++;
+        if (IsLoaded) Close();
     }
 
     /// <summary>Relit la géométrie persistée, la borne à l'écran virtuel et aux minima (Pitfall 2) ; sinon défaut centré.</summary>
