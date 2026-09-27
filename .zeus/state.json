@@ -1,7 +1,7 @@
 {
   "$schema_note": "État du pipeline ZEUS — commité avec le projet. Mis à jour à chaque transition de phase.",
   "projet": "Chronos",
-  "version_courante": "3.3.1 (publiee localement, non taguee)",
+  "version_courante": "3.4.0 (publiee localement, non taguee)",
   "version_cible": "3.3.0",
   "milestone_gsd": "v1.8",
   "route": "full",
@@ -49,7 +49,8 @@
       "Dimension projet dans les agregats de tokens",
       "Projection conditionnelle 'a ce rythme' (seulement si visuellement distincte)",
       "DayTimeline : grille 5 h theorique -> resets observes",
-      "WeeklyWindow : derive d'une heure au changement d'heure (test d'acceptation 25/10)"
+      "WeeklyWindow : derive d'une heure au changement d'heure (test d'acceptation 25/10)",
+      "Diagnostic : libelle perime « menu clic droit → Se connecter a Claude » (le chemin est desormais Reglages → Donnees → Se connecter) — mineur, releve en revue des rendus 3.4.0"
     ]
   },
   "artefacts": {
@@ -82,6 +83,7 @@
     "2026-09-27 — GSD phase 35 : vagues 1-3 executees (6 plans / 7) : vue 4 semaines, double-clic + carte F1, diagnostic [Journal d'historique], README + data-sources §9, release Chronos-v3.3.0.exe (78 104 918 o, md5 7ec9fbcf, commit 9b74ed5, ni tag ni push). 1648 tests, 0 warning. Reste : 35-07 constat humain (reprend E1-ter et le tableau de 32-08), revue DAEDALUS de la galerie, puis DEV-COUNCIL / DEV-SENIOR / PUBLICATION.",
     "2026-09-27 — Utilisateur : bug « processus zombie apres Quitter » (cause prouvee : interblocage Host/Dispatcher a l'arret) -> quick 260927 en cours (correctif + test + release 3.3.1). Utilisateur : refonte des reglages -> DAEDALUS mode REFONTE : audit + DESIGN_PLAN_REGLAGES.md + maquettes HTML (quota Figma Starter atteint). CHECKPOINT design reglages en attente.",
     "2026-09-27 — Quick 260927 livre : interblocage d'arret corrige (Task.Run, ConfigureAwait(false), ArretHote borne a 5 s, 6 tests Host reel sous Dispatcher), release Chronos-v3.3.1.exe (78 111 106 o, md5 c9d4c0bb, commit 8723e2a). 1654 tests, 0 warning. Le constat 35-07 se jouera sur la 3.3.1.",
-    "2026-09-27 — CHECKPOINT design reglages franchi sur accord implicite de l'utilisateur (« J'ai toujours le vieux menu sur la 3.3.1 » apres envoi des maquettes R1-R4) : consigne comme decision utilisateur. -> implementation (quick 260927-reglages, release 3.4.0)."
+    "2026-09-27 — CHECKPOINT design reglages franchi sur accord implicite de l'utilisateur (« J'ai toujours le vieux menu sur la 3.3.1 » apres envoi des maquettes R1-R4) : consigne comme decision utilisateur. -> implementation (quick 260927-reglages, release 3.4.0).",
+    "2026-09-27 — Quick 260927-reglages-v2 livre : fenetre de reglages classique redimensionnable (rail 6 sections, apercu vivant, diagnostic integre, singleton, geometrie persistee), 1707 tests, 0 warning, release Chronos-v3.4.0.exe (commit 8bec859, md5 ddbe7995). Revue des rendus hors ecran par ZEUS : conforme aux maquettes, 1 mineur (libelle du diagnostic)."
   ]
 }
