@@ -267,11 +267,12 @@ public partial class App : Application
         // SettingsService (motif GAP-1 : Save(mutation(Load()))), fuseau du système au site de composition (D-32-29 / D-33-21). Le VM est
         // singleton (D-34-05) : un seul abonnement à IEtatReconstruction.Changement, état de navigation conservé entre deux ouvertures ;
         // IEtatJournal / IEtatReconstruction lui sont injectés comme paramètres optionnels (précédent 32-05 / 33-05 : inscrits plus bas).
-        // La fenêtre elle-même est construite par la phase 35 (gestes d'ouverture) : new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>()).
+        // Phase 35 (ACC-02) : un seul ouvreur, une fenêtre recréée après fermeture, le VM singleton partagé avec la carte des réglages.
         services.AddSingleton(TimeZoneInfo.Local);
         services.AddSingleton<ISourceHistorique>(sp => new SourceHistoriqueDisque(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<TimeZoneInfo>()));
         services.AddSingleton<IReglagesHistorique>(sp => new ReglagesHistoriqueSurDisque(sp.GetRequiredService<SettingsService>()));
         services.AddSingleton<HistoriqueViewModel>();
+        services.AddSingleton<IOuvreurHistorique>(sp => new OuvreurHistorique(() => new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>())));
 
         // Placement/persistance Phase 6 (FEN-03/04/05/07) : settings.json chargé UNE fois au démarrage
         // (coin + device = vérité), adaptateur de placement, contrat neutre pour le VM (menu 06-04).

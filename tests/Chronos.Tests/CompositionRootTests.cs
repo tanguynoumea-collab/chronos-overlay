@@ -8,6 +8,7 @@ using Chronos.Services.Historique.Tokens;
 using Chronos.ViewModels;
 using Chronos.ViewModels.Historique;
 using Chronos.Views;
+using Chronos.Views.Historique;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -689,11 +690,13 @@ public class CompositionRootTests
         services.AddSingleton<IEtatJournal>(_ => new FakeEtatJournal());
         services.AddSingleton<IEtatReconstruction>(_ => new FakeEtatReconstruction { Phase = PhaseReconstruction.Reconstruction, FichiersTraites = 1, FichiersTotal = 3 });
 
-        // Les quatre lignes de App.xaml.cs (à l'identique).
+        // Les cinq lignes de App.xaml.cs (à l'identique) — la cinquième (35-02, ACC-02) : l'ouvreur singleton. Le résoudre ne construit
+        // AUCUNE fenêtre (la fabrique ne s'exécute qu'à Ouvrir()).
         services.AddSingleton(TimeZoneInfo.Local);
         services.AddSingleton<ISourceHistorique>(sp => new SourceHistoriqueDisque(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<TimeZoneInfo>()));
         services.AddSingleton<IReglagesHistorique>(sp => new ReglagesHistoriqueSurDisque(sp.GetRequiredService<SettingsService>()));
         services.AddSingleton<HistoriqueViewModel>();
+        services.AddSingleton<IOuvreurHistorique>(sp => new OuvreurHistorique(() => new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>())));
 
         using var provider = services.BuildServiceProvider();
         Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<ChronosPaths>().SettingsFile);   // jamais le vrai %APPDATA%
@@ -701,6 +704,8 @@ public class CompositionRootTests
         Assert.IsType<SourceHistoriqueDisque>(provider.GetRequiredService<ISourceHistorique>());
         Assert.IsType<ReglagesHistoriqueSurDisque>(provider.GetRequiredService<IReglagesHistorique>());
         Assert.NotNull(provider.GetRequiredService<TimeZoneInfo>());
+        Assert.IsType<OuvreurHistorique>(provider.GetRequiredService<IOuvreurHistorique>());
+        Assert.Same(provider.GetRequiredService<IOuvreurHistorique>(), provider.GetRequiredService<IOuvreurHistorique>());   // un seul ouvreur, une seule fenêtre
 
         var vm = provider.GetRequiredService<HistoriqueViewModel>();
         Assert.Same(vm, provider.GetRequiredService<HistoriqueViewModel>());   // singleton : un seul abonnement à Changement
@@ -715,6 +720,8 @@ public class CompositionRootTests
         Assert.Contains("services.AddSingleton<ISourceHistorique>", app, StringComparison.Ordinal);
         Assert.Contains("services.AddSingleton<IReglagesHistorique>", app, StringComparison.Ordinal);
         Assert.Contains("services.AddSingleton<HistoriqueViewModel>();", app, StringComparison.Ordinal);
+        Assert.Contains("services.AddSingleton<IOuvreurHistorique>(sp => new OuvreurHistorique(() => new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>())));",
+                        app, StringComparison.Ordinal);
     }
 
     /// <summary>
