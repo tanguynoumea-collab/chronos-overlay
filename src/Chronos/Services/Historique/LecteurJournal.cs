@@ -29,7 +29,7 @@ public sealed record LectureFichier(
 ///
 /// <para>Ne lève JAMAIS : fichier absent → <see cref="LectureFichier.Vide"/> ; verrou tenu par un écrivain
 /// (<c>FileShare.None</c> pendant quelques microsecondes) → quelques reprises courtes, puis vide. Type NEUTRE.
-/// 32-06 ajoutera ici <c>Lire(dossier, de, a)</c> (mois UTC chevauchant une plage).</para>
+/// <see cref="Lire"/> (JRN-05) lit une PLAGE : les seuls mois UTC qui la chevauchent, triés et filtrés.</para>
 /// </summary>
 public static class LecteurJournal
 {
@@ -91,4 +91,89 @@ public static class LecteurJournal
         try { return lecteur.ReadLine(); }
         catch (IOException) { return null; }
     }
+
+    // --- JRN-05 : lecture par plage ---
+
+    // Les seuls fichiers qu'une lecture par plage accepte d'ouvrir : le motif de JournalReleves.NomFichier.
+    private static readonly System.Text.RegularExpressions.Regex NomMensuel =
+        new(@"^releves-\d{4}-\d{2}\.jsonl$", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Lit la plage <c>[de, a[</c> : ouvre les SEULS fichiers mensuels (mois UTC, D-32-16) qui la chevauchent, rend
+    /// relevés et événements filtrés et triés par <c>t</c> (tri stable), la somme des lignes ignorées, et
+    /// <see cref="LectureJournal.JournalOuvertLe"/> (première ligne valide du plus ancien fichier du dossier, quelle que
+    /// soit la plage). Dossier absent → lecture vide. Ne lève jamais : une E/S qui casse rend ce qui a été lu.
+    /// </summary>
+    public static LectureJournal Lire(string dossier, DateTimeOffset de, DateTimeOffset a)
+    {
+        var plage = new Plage(de, a);
+        if (string.IsNullOrEmpty(dossier) || !Directory.Exists(dossier))
+            return new LectureJournal(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0, null, plage);
+
+        var releves = new List<ReleveJournal>();
+        var evenements = new List<EvenementJournal>();
+        var ignorees = 0;
+
+        try
+        {
+            foreach (var mois in MoisUtcChevauchant(de, a))
+            {
+                var lecture = LireFichier(Path.Combine(dossier, JournalReleves.NomFichier(mois)));
+                releves.AddRange(lecture.Releves.Where(r => plage.Contient(r.T)));
+                evenements.AddRange(lecture.Evenements.Where(e => plage.Contient(e.T)));
+                ignorees += lecture.LignesIgnorees;
+            }
+        }
+        catch (IOException) { /* lecture partielle : le journal ne fait jamais tomber son lecteur */ }
+        catch (UnauthorizedAccessException) { }
+
+        return new LectureJournal(
+            releves.OrderBy(r => r.T).ToList(),       // OrderBy est STABLE : deux sources au même t gardent l'ordre du fichier
+            evenements.OrderBy(e => e.T).ToList(),
+            ignorees,
+            PremiereLigneValide(dossier),
+            plage);
+    }
+
+    // Le premier jour (UTC) du mois de `de`, puis chaque mois jusqu'à celui de `a − 1 tick` inclus : la borne `a`
+    // étant EXCLUE, une plage qui finit pile au 1er du mois n'ouvre pas ce mois. Plage vide ou inversée → rien.
+    private static IEnumerable<DateTimeOffset> MoisUtcChevauchant(DateTimeOffset de, DateTimeOffset a)
+    {
+        if (a <= de) yield break;
+        var dernierInstant = (a - TimeSpan.FromTicks(1)).UtcDateTime;
+        var dernierMois = new DateTime(dernierInstant.Year, dernierInstant.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var premier = de.UtcDateTime;
+        for (var mois = new DateTime(premier.Year, premier.Month, 1, 0, 0, 0, DateTimeKind.Utc); mois <= dernierMois; mois = mois.AddMonths(1))
+            yield return new DateTimeOffset(mois);
+    }
+
+    // « Journal ouvert le … » : les fichiers conformes triés par nom (ordinal = chronologique pour AAAA-MM), et dans
+    // le plus ancien qui porte une ligne lisible, le t de la PREMIÈRE ligne valide (relevé ou événement). Un fichier
+    // ancien entièrement illisible ne cache pas l'ouverture : on passe au suivant. Aucun → null.
+    private static DateTimeOffset? PremiereLigneValide(string dossier)
+    {
+        string[] fichiers;
+        try
+        {
+            fichiers = Directory.GetFiles(dossier)
+                .Where(f => NomMensuel.IsMatch(Path.GetFileName(f)))
+                .OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal)
+                .ToArray();
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+
+        foreach (var fichier in fichiers)
+        {
+            var lecture = LireFichier(fichier);
+            var premierReleve = lecture.Releves.Count > 0 ? lecture.Releves[0].T : (DateTimeOffset?)null;
+            var premierEvenement = lecture.Evenements.Count > 0 ? lecture.Evenements[0].T : (DateTimeOffset?)null;
+            var premier = Min(premierReleve, premierEvenement);
+            if (premier is not null) return premier;
+        }
+        return null;
+    }
+
+    private static DateTimeOffset? Min(DateTimeOffset? a, DateTimeOffset? b)
+        => a is null ? b : b is null ? a : (a <= b ? a : b);
 }
