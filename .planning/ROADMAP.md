@@ -103,7 +103,8 @@ d'acceptation le 25/10/2026 avec le journal).
 - [ ] **Phase 32: Compter juste, puis journaliser** - Le parser dédoublonne par `message.id`, plus aucune écriture ne se tait, une seule instance tourne, un journal des relevés exacts s'écrit toutes les 5 min avec ses événements de couverture ; publié seul en 3.2.2, sans interface, et constaté en production avec l'utilisateur
 - [x] **Phase 33: Agrégats de tokens** - Les tokens des transcripts sont agrégés par tranche de 15 min UTC × modèle × sous-agent, reconstruits en arrière-plan depuis 2,2 Go puis tenus à jour par curseurs, justes au changement d'heure, jamais convertis en pourcentage
  (completed 2026-09-27)
-- [x] **Phase 34: Fenêtre Historique : Semaine et Jour** - Une fenêtre opaque séparée montre la semaine de forfait dans trois styles et le jour au grain de 5 min, avec des trous qui restent des trous, sur un rendu `OnRender` gouverné par les tokens de design (completed 2026-09-27)
+- [x] **Phase 34: Fenêtre Historique : Semaine et Jour** - Une fenêtre opaque séparée montre la semaine de forfait dans trois styles et le jour au grain de 5 min, avec des trous qui restent des trous, sur un rendu `OnRender` gouverné par les tokens de design
+ (completed 2026-09-27)
 - [ ] **Phase 35: 4 semaines, accès, release 3.3.0** - La vue 4 semaines, les deux gestes d'ouverture, la section du diagnostic, les docs, l'exe 3.3.0 publié et le constat avec l'utilisateur
 
 ### Phase Details
@@ -320,15 +321,18 @@ diagnostic (âge de dernière écriture, événements, progression N / M). **Con
      semaine courante affiche les relevés depuis l'ouverture du journal (3.2.2, phase 32) et les tokens reconstruits ;
      les trois styles se sélectionnent ; un trou réel (PC éteint la nuit) est hachuré et annoté avec sa cause ;
      l'utilisateur relit les libellés d'honnêteté et rend un verdict, écarts compris (VAL-05).
-**Plans**: 5 plans en 3 vagues (vague 1 : 35-01 ∥ 35-02 ∥ 35-03 — vue, gestes, diagnostic : fichiers disjoints ;
-vague 2 : 35-04 ; vague 3 : 35-05, point de contrôle humain, `autonomous: false`).
+**Plans**: 7 plans en 4 vagues (vague 1 : 35-01 ∥ 35-02 ∥ 35-03 — données/VM, gestes, diagnostic : fichiers disjoints ;
+vague 2 : 35-04 ∥ 35-05 — vue XAML, docs ; vague 3 : 35-06 release ; vague 4 : 35-07 constat, `autonomous: false`).
 
 Plans:
-- [ ] 35-01-PLAN.md — HIS-05 : vue 4 semaines — quatre courbes superposées (opacités 0,8 / 0,45 / 0,25), étiquettes à droite, plateau gris « épuisée … », couverture par semaine à quatre rangées, semaines antérieures au journal vides et dites telles
-- [ ] 35-02-PLAN.md — ACC-01, ACC-02 : carte F1 « Historique d'utilisation » dans DONNÉES (Ouvrir, sous-texte, sélecteur de style, mention, carte d'état > 15 min) ; double-clic `CentreHit` sans double bascule, drag et clic droit inchangés
-- [ ] 35-03-PLAN.md — ACC-03 : section « Journal d'historique » du diagnostic (chemins, âge, relevés du jour, événements, reconstruction N / M, tailles, instances) — même lecture que la fenêtre
-- [ ] 35-04-PLAN.md — ACC-04 : README et `docs/data-sources.md` avec les mots §4 ; csproj 3.3.0 × 4, `dotnet publish`, `Chronos-v3.3.0.exe`, contrôles, smoke `--hook`, commit de release ; s'arrête avant tout lancement
-- [ ] 35-05-PLAN.md — VAL-05 : constat de la 3.3.0 avec l'utilisateur (deux gestes, semaine courante, trois styles, trou réel annoté, libellés relus) → `35-CONSTAT.md` — `autonomous: false`
+- [ ] 35-01-PLAN.md — HIS-05 (contribue) : données, VM et mots de la vue 4 semaines ; semaine épuisée par fixture dérivée ; veille de minuit en vue Jour ; réouverture fiable du VM singleton (reconstruction réabonnée, thème relu, `FermetureDemandee` désabonné)
+- [ ] 35-02-PLAN.md — ACC-01, ACC-02 : double-clic au centre sans double bascule (arbitre pur, `GetDoubleClickTime`), `IOuvreurHistorique` (fenêtre singleton recréée), carte F1 fusionnée avec la carte du journal, sélecteur synchronisé
+- [ ] 35-03-PLAN.md — ACC-03 : section `[Journal d'historique]` du diagnostic via la façade `LireJour` et un helper neutre (aucun `.Lire(`), une seule relève des processus, fuseau injecté
+- [ ] 35-04-PLAN.md — HIS-05 : `PisteQuatreSemaines`, `VueQuatreSemainesView`, tokens 38 → 45, segment actif, infobulle bornée, annotations Jour sur deux rangées, tâche réservée aux écarts de la revue DAEDALUS
+- [ ] 35-05-PLAN.md — ACC-04 (contribue) : README « Historique d'utilisation », `docs/data-sources.md` §9, garde de vocabulaire limitée à ces sections, câblage du fuseau du diagnostic
+- [ ] 35-06-PLAN.md — ACC-04 : release 3.3.0 (procédure 32-07, csproj × 4, publish, contrôles, smoke `--hook`), sans tag ni push ni lancement
+- [ ] 35-07-PLAN.md — VAL-05 : constat de la 3.3.0 avec l'utilisateur (E1-ter, deux gestes, vraies données, trois styles, 4 semaines, trou réel après une nuit, tableau L1…Q / V01…V12 de 32-08 s'il n'a pas été joué) → `35-CONSTAT.md` — `autonomous: false`
+
 **UI hint**: yes
 
 ### Progress
