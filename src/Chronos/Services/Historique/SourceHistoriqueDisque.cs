@@ -48,8 +48,7 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, semaine), cadence);
             var analysePrecedente = AnalyseReleves.Analyser(LecteurJournal.Lire(_dossier, precedente.Debut, precedente.Fin), InstantsHistorique.InstantDAnalyse(now, precedente), cadence);
             var agregats = LecteurAgregats.Lire(_dossier, semaine.Debut, semaine.Fin);
-            var couverture = CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
-            var barres = RenduLocalTokens.ParHeure(agregats.Tranches, semaine, _tz, couverture);
+            var barres = RenduLocalTokens.ParHeure(agregats.Tranches, semaine, _tz, ChargerCouverture());
             var divergences = Divergences.Detecter(analyse.DeltasHebdo, barres);
             return new DonneesSemaine(semaine, analyse, precedente, analysePrecedente, barres, agregats.Couverture, divergences, journal.JournalOuvertLe, now);
         }
@@ -69,8 +68,7 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             var journal = LecteurJournal.Lire(_dossier, jour.Debut, jour.Fin);
             var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence);
             var agregats = LecteurAgregats.Lire(_dossier, jour.Debut, jour.Fin);
-            var couverture = CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
-            var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, couverture);
+            var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, ChargerCouverture());
             return new DonneesJour(jour, analyse, colonnes, agregats.Couverture, journal.JournalOuvertLe, now);
         }
         catch (Exception)
@@ -78,6 +76,9 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             return JourVide(jour, now);
         }
     }
+
+    // Pitfall 11 : LecteurAgregats.Lire ne rend pas l'instance ; couverture.json se charge à part (tolérant : absent → tout hors couverture).
+    private CouvertureTokens ChargerCouverture() => CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
 
     // --- Données vides (jamais nulles) : une plage sans rien dit « aucun relevé », « hors couverture ». ---
 

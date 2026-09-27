@@ -37,7 +37,8 @@ public static class ScenariosHistorique
     private static readonly DateTimeOffset MaintenantUtc = new(2026, 9, 24, 15, 12, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset PlusAncienneLigneVue = new(2026, 6, 23, 12, 44, 22, TimeSpan.Zero);
 
-    // Trou A « Chronos arrêté » : mar. 23:00 → mer. 07:00 local. Trou B « jeton invalide » : jeu. 14:00 → 16:00 local.
+    // Trou A « Chronos arrêté » : mar. 23:00 → mer. 07:00 local (2026-09-22T21:00Z → 2026-09-23T05:00Z).
+    // Trou B « jeton invalide » : jeu. 14:00 → 16:00 local (2026-09-24T12:00Z → 2026-09-24T14:00Z).
     private static readonly DateTimeOffset TrouADebut = new(2026, 9, 22, 21, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset TrouAFin = new(2026, 9, 23, 5, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset TrouBDebut = new(2026, 9, 24, 12, 0, 0, TimeSpan.Zero);
