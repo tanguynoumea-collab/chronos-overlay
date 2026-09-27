@@ -24,4 +24,11 @@ public sealed record ChronosPaths(string UsageFile, string ProjectsRoot)
     /// tests qui construisent un répertoire temp obtiennent aussi un last-exact.json isolé.
     /// </summary>
     public string LastExactFile => Path.Combine(Path.GetDirectoryName(UsageFile)!, "last-exact.json");
+
+    /// <summary>
+    /// JRN-01 — dossier du journal des relevés (releves-AAAA-MM.jsonl), colocalisé avec usage.json et dérivé
+    /// comme les autres chemins, jamais construit en dur : les tests obtiennent un journal isolé sans retouche
+    /// du ctor positionnel. Contrat de chemin que 32-05 câble.
+    /// </summary>
+    public string HistoriqueDir => Path.Combine(Path.GetDirectoryName(UsageFile)!, "historique");
 }

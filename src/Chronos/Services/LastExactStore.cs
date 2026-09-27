@@ -28,8 +28,15 @@ namespace Chronos.Services;
 ///
 /// Écriture ATOMIQUE (temp + renommage) et lecture TOLÉRANTE (fichier absent, JSON invalide,
 /// version inconnue → null, jamais d'exception qui remonte). Type NEUTRE : aucun type WPF.
+///
+/// Observabilité (phase 32, CPT-02) : le magasin dit QUAND il a écrit pour la dernière fois
+/// (<see cref="DerniereEcriture"/> = mtime du fichier, le chiffre même qu'une sonde hors arbre lit) et
+/// POURQUOI il n'a pas pu (<see cref="DerniereErreur"/>, <see cref="EcritureRatee"/>). Le projet a payé
+/// trois fois la panne silencieuse — jeton expiré, usage.json figé, puis un faux « gel » de ce fichier
+/// qui a fondé une phase : la copie copy-on-write du paquet MSIX, lue depuis une session, alors que le
+/// fichier réel était réécrit chaque minute. L'ÉCRITURE ne se tait plus ; la LECTURE reste tolérante.
 /// </summary>
-public sealed class LastExactStore
+public sealed class LastExactStore : IEtatMagasin
 {
     /// <summary>
     /// Version du schéma persisté. Une version inconnue est refusée EN BLOC plutôt que devinée :
@@ -54,10 +61,43 @@ public sealed class LastExactStore
 
     private readonly string _path;
 
-    public LastExactStore(string path) => _path = path;
+    public LastExactStore(string path)
+    {
+        _path = path;
+
+        // Amorçage best-effort (D-32-05) : si le fichier existe déjà, l'âge de sa dernière écriture est celui
+        // du disque — un processus qui redémarre ne doit pas afficher « jamais écrit » devant un fichier d'hier.
+        try
+        {
+            DerniereEcriture = System.IO.File.Exists(path)
+                ? new DateTimeOffset(System.IO.File.GetLastWriteTimeUtc(path), TimeSpan.Zero)
+                : null;
+        }
+        catch { DerniereEcriture = null; }
+    }
 
     /// <summary>Fichier effectivement piloté (injecté, donc isolable en test).</summary>
     public string Path => _path;
+
+    // --- IEtatMagasin (CPT-02) ---------------------------------------------------------------------
+
+    /// <inheritdoc/>
+    public string Nom => NomsMagasins.DernierExact;
+
+    /// <inheritdoc/>
+    public string Chemin => _path;
+
+    /// <summary>UTC. Posée sur le mtime après le renommage (D-32-05), amorcée du disque au démarrage ; null =
+    /// jamais écrit, ni par ce processus, ni trouvé sur le disque.</summary>
+    public DateTimeOffset? DerniereEcriture { get; private set; }
+
+    /// <summary>« Type : message » de la dernière écriture ratée ; effacée au premier succès. Une erreur n'est
+    /// pas une cicatrice, mais tant qu'elle dure, elle se lit au diagnostic.</summary>
+    public string? DerniereErreur { get; private set; }
+
+    /// <summary>Levé à chaque écriture ratée avec la cause (= <see cref="DerniereErreur"/>), AVANT de relancer.
+    /// Le journal des relevés (32-05) l'abonne pour écrire un événement « ecriture_ratee ».</summary>
+    public event EventHandler<string>? EcritureRatee;
 
     /// <summary>
     /// Persiste les fenêtres exactes du snapshot. Une fenêtre non exacte laisse la valeur
@@ -80,13 +120,30 @@ public sealed class LastExactStore
         var json = JsonSerializer.Serialize(payload, Options);
 
         var dir = System.IO.Path.GetDirectoryName(_path)!;
-        System.IO.Directory.CreateDirectory(dir);
+        try
+        {
+            System.IO.Directory.CreateDirectory(dir);
 
-        // Temp unique par process, sur le même volume que la cible → renommage atomique :
-        // un last-exact.json partiel n'est jamais observable, même sur arrêt brutal.
-        var tmp = _path + $".tmp-{Environment.ProcessId}";
-        System.IO.File.WriteAllText(tmp, json);
-        System.IO.File.Move(tmp, _path, overwrite: true);
+            // Temp unique par process, sur le même volume que la cible → renommage atomique :
+            // un last-exact.json partiel n'est jamais observable, même sur arrêt brutal.
+            var tmp = _path + $".tmp-{Environment.ProcessId}";
+            System.IO.File.WriteAllText(tmp, json);
+            System.IO.File.Move(tmp, _path, overwrite: true);
+
+            // D-32-05 : le mtime, et non une horloge injectée — c'est exactement ce que lit une sonde hors arbre,
+            // et c'est le chiffre que le diagnostic comparera aux faits disque.
+            DerniereEcriture = new DateTimeOffset(System.IO.File.GetLastWriteTimeUtc(_path), TimeSpan.Zero);
+            DerniereErreur = null;
+        }
+        catch (Exception ex)
+        {
+            // CPT-02 — consigner PUIS relancer (D-32-06) : la tête (LastExactUsageProvider) garde son « je ne
+            // sais pas » (EXA-05 : null, jamais false), mais la panne laisse une trace lisible au diagnostic et
+            // un événement que le journal (32-05) écrira en « ecriture_ratee ». Plus rien ne se passe en silence.
+            DerniereErreur = ex.GetType().Name + " : " + ex.Message;
+            EcritureRatee?.Invoke(this, DerniereErreur);
+            throw;
+        }
     }
 
     /// <summary>
@@ -134,8 +191,10 @@ public sealed class LastExactStore
         }
         catch
         {
-            // Dégradation SILENCIEUSE : un magasin illisible n'est pas une panne de Chronos,
-            // c'est simplement l'absence d'un relevé de secours.
+            // Dégradation tolérante en LECTURE : un magasin illisible n'est pas une panne de Chronos, c'est
+            // simplement l'absence d'un relevé de secours (« je ne sais pas » vaut mieux qu'un chiffre douteux).
+            // L'ÉCRITURE, elle, ne se tait plus (DerniereErreur, EcritureRatee) : c'est là que vivait le défaut
+            // d'observabilité que la phase 32 corrige.
             return null;
         }
     }
