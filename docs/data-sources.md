@@ -437,11 +437,137 @@ l'app produit un second jeu de fichiers**, journal compris — c'est l'utilisate
 ### Ce que le journal n'est pas
 
 Pas une source d'affichage du cadran (il n'est jamais relu par l'overlay pour afficher) ; pas un pourcentage dérivé de
-tokens — les tokens des transcripts arrivent en phase 33, dans `tokens-AAAA-MM.jsonl`, sur leur propre axe, dédoublonnés
+tokens — les tokens des transcripts vivent au §8 (`tokens-AAAA-MM.jsonl`), sur leur propre axe, dédoublonnés
 par `message.id` (voir §2 : une ligne `assistant` par bloc de contenu, `output_tokens` partiel croissant, dédup = max par
 champ via `DedupUsage`) ; aucune projection ; aucun trou interpolé ; aucune estimation présentée comme exacte.
 
 ---
 
-*Fin du document — capturé le 2026-07-08, complété le 2026-09-27 (§7, note CPT-01 du §2), à revalider à chaque MAJ majeure
-de Claude Code (schéma = API privée de facto).*
+## 8. Agrégats de tokens
+
+> Ajouté le 2026-09-27 (phase 33, exe 3.3.0). Les agrégats ne sondent rien et n'appellent rien : ils comptent les tokens des
+> transcripts locaux de Claude Code, en lecture seule stricte de `~/.claude/projects`, et les écrivent à côté du journal (§7).
+> Types : `Services/Historique/Tokens/{LigneAgregat, MagasinAgregats, CouvertureTokens, LecteurTranscript, IndexMessages, Curseurs,
+> ReconstructionTokens, ProjectionAgregats, IEtatReconstruction, LecteurAgregats, RenduLocalTokens}`,
+> `Models/Historique/Tokens/{TrancheTokens, Couverture, PhaseReconstruction, LectureAgregats}`.
+
+**Périmètre : Claude Code seulement — hors Cowork et claude.ai ; bruts, non pondérés.** (`LigneAgregat.Perimetre`, cité tel quel par
+le diagnostic, section `[Magasins persistants]`.) Ces agrégats comptent les tokens des transcripts locaux de Claude Code (session
+principale et `subagents/`) ; ils ne voient ni l'app de bureau, ni Cowork, ni claude.ai, et ne sont pas pondérés par modèle. Ils
+vivent sur LEUR axe : aucun type du quartier `…Historique.Tokens` n'expose un flottant (garde `GardeTokensSansPourcentageTests`,
+réflexive et textuelle), et **jamais** un **pourcentage** du forfait n'en est dérivé (TOK-05) — le forfait, c'est le §7.
+
+### Emplacement et fichiers
+
+Sous `%APPDATA%\Chronos\historique\` (chemin par `ChronosPaths.HistoriqueDir`, le dossier du journal), vue RÉELLE quand l'overlay
+est lancé par l'Explorateur — les deux vues d'AppData du §7 s'appliquent mot pour mot. UTF-8 sans BOM, `\n` seul, instants au format
+aller-retour « O » UTC (`2026-09-01T00:00:00.0000000+00:00`), le même dialecte que `t` au §7.
+
+| Fichier | Rôle | Écriture |
+|---|---|---|
+| `tokens-AAAA-MM.jsonl` | les agrégats, un fichier par **mois UTC du `slot`** — la PROJECTION de l'index | réécriture atomique du mois entier (temp + `File.Move`), triée (`slot`, `model` ordinal, `sub` false avant true) : même état = mêmes octets |
+| `ids-AAAA-MM.jsonl` | l'index des messages vus, un shard par mois UTC du premier `ts` — la MÉMOIRE D'IDEMPOTENCE | ajout seul sous partage exclusif ; une ligne par delta ; à la relecture, le **max par champ** gagne |
+| `curseurs.json` | `{v, fichiers: {chemin relatif à la racine → {offset, taille, mtime}}}` | atomique (temp + `File.Move`), APRÈS les agrégats de chaque lot |
+| `couverture.json` | `{v, plus_ancienne_ligne_vue, intervalles: [{debut, fin}]}` — les intervalles garantis | atomique, après chaque passe COMPLÈTE seulement (une passe annulée ne garantit rien) |
+
+### Ligne d'agrégat (une tranche de 15 min UTC × modèle × origine)
+
+| champ | type / unité | d'où il vient |
+|---|---|---|
+| `v` | entier, version du schéma de ligne (1 ; une autre valeur = ligne sautée et comptée) | `LigneAgregat.SchemaVersion` |
+| `slot` | début de tranche de **15 min**, UTC, format « O » ; non aligné = ligne refusée | `TrancheTokens.SlotDe(premier timestamp du message)` |
+| `model` | identifiant tel que lu (`claude-opus-5`, `claude-sonnet-5`…), jamais normalisé | `message.model` |
+| `sub` | booléen : le transcript vit sous un dossier `subagents/` | chemin du fichier (`LecteurTranscript.EstSousAgent`) |
+| `in` | entier, `input_tokens` sommés sur les messages distincts de la tranche | `usage.input_tokens` via `DedupUsage.LireUsage` |
+| `out` | entier, `output_tokens` sommés | `usage.output_tokens` |
+| `cache_w` | entier, `cache_creation_input_tokens` sommés | `usage.cache_creation_input_tokens` |
+| `cache_r` | entier, `cache_read_input_tokens` sommés | `usage.cache_read_input_tokens` |
+| `n` | entier, nombre de messages DISTINCTS dans la tranche | taille du groupe d'ids |
+
+Quatre compteurs SÉPARÉS, **jamais leur somme** ; jamais un message individuel, jamais du texte. Un compteur absent, non entier ou
+négatif REFUSE la ligne (une somme sans compteur n'existe pas — à la différence du §7 où un champ absent vaut `null`) ; `model` absent
+refuse ; `sub` absent vaut `false`. Exemple :
+`{"v":1,"slot":"2026-09-27T09:15:00.0000000+00:00","model":"claude-opus-5","sub":false,"in":12,"out":3480,"cache_w":52110,"cache_r":918204,"n":7}`
+(≈ 146 o par ligne).
+
+### Ligne d'index (un message vu, tel que compté)
+
+`v` (1), `id` (`message.id`, repli `requestId` ; une ligne sans aucun identifiant reçoit une **clé synthétique** déterministe
+`sans-id:{ticks UTC}:{modèle}:{0|1}:{quatre compteurs}` — D-33-18), `ts` (premier timestamp vu, « O » UTC), `model`, `sub`, puis les quatre
+compteurs de l'agrégat (mêmes noms, mêmes unités : entrée, sortie, écriture de cache, lecture de cache). Le shard est **en ajout seul** :
+un id re-rencontré avec des compteurs plus grands (bloc partiel qui a grandi) écrit une nouvelle ligne, et la relecture garde le max de
+chaque champ. Ordre d'écriture à chaque lot : ids (ajout) → agrégats (`File.Move`) → `curseurs.json` (`File.Move`) ; au démarrage, les mois
+OUVERTS sont reprojetés depuis l'index (`ProjectionAgregats.Projeter`) — un arrêt à n'importe quel point est rattrapé, prouvé octet pour octet.
+
+### Dédup et idempotence
+
+Une ligne `assistant` par bloc de contenu (§2) ; dédup par `message.id` (repli `requestId`), **max par champ** via `DedupUsage.Fusionner`
+(la règle CPT-01, à UN endroit). Sur cette machine, **1 377 ids vivent dans 2 à 4 fichiers** (fork / resume, copies indiscernables
+structurellement, âge max 3,6 j) : une dédup par fichier sur-compterait de 2,1 % à 2,4 % — d'où l'index. Re-rencontrer un id applique
+`max − déjà compté` : reprise après arrêt, fichier raccourci ou renommé, copie fork, bloc partiel = un seul et même cas. Limites écrites :
+une ligne `assistant` à quatre compteurs nuls (`<synthetic>`) n'est ni comptée ni indexée (D-33-10) ; deux lignes sans id strictement
+identiques (même instant, même modèle, même origine, mêmes quatre compteurs) sont indiscernables et comptent une fois (D-33-18 ; 0 ligne
+sans id observée sur 238 857) ; une ligne datée de plus de 24 h dans le futur est ignorée et comptée, une ligne future de moins de 24 h
+bloque le curseur devant elle (D-33-09).
+
+### Bornes (valeurs du code, gardées par `ContratAgregatsDocumenteTests`)
+
+- `IndexMessages.HorizonIndex` = **45 j** : les shards des mois qui chevauchent [maintenant − 45 j, maintenant] sont chargés en mémoire
+  (≈ 118 k ids, tas résident ≈ 40–50 Mo mesurés).
+- `IndexMessages.RetentionIndexMois` = **3 mois** : au-delà, le shard est supprimé et le mois d'agrégats est GELÉ — une copie fork d'un
+  message de plus de 3 mois serait comptée deux fois (jamais observé : âge max des copies 3,6 j).
+- `MagasinAgregats.RetentionMois` = rétention du journal = **24 mois** ; purge au démarrage, noms non conformes ignorés et comptés.
+- `CouvertureTokens.HorizonPurge` = **30 j** (HYP-4 ci-dessous) ; `ReconstructionTokens.CadenceIncrementale` = **60 s** ;
+  `SemaineCourante` = 7 j (par mtime) ; flush par lot de 100 fichiers ou 2 s.
+
+### Reconstruction et incrémental
+
+Service hébergé (`ReconstructionTokens`, inscrit AVANT l'orchestrateur : démarre avec la tête, s'arrête avant elle) qui possède un thread
+dédié `IsBackground` **`BelowNormal`** nommé `Chronos.AgregatsTokens`, boucle synchrone, annulation honorée entre deux fichiers et toutes
+les 4 096 lignes. Passe : inventaire, tri par **mtime décroissant**, lecture en flux au niveau octet (`FileShare.ReadWrite | Delete`,
+offset de la dernière ligne COMPLÈTE), pré-filtre texte `"type":"assistant"` puis autorité `type` / `role` ; **la semaine courante est
+disponible** (sur le disque) au premier fichier plus vieux que 7 j. Puis toutes les 60 s : inchangé (taille, mtime, offset == taille)
+→ pas ouvert ; grandi → relu depuis l'offset ; raccourci ou renommé → relu de zéro ; disparu → retiré des curseurs, **rien n'est
+soustrait** (une purge par Claude Code ne fait pas disparaître l'historique déjà journalisé). Une passe en échec pose `EnEchec` +
+`DerniereErreur` (préfixée par la brique : « index : », « agrégats : », « curseurs.json : », « couverture : ») et la passe suivante
+recommence. Progression exposée en ENTIERS (`IEtatReconstruction` : N / M fichiers, phase, dernier fichier relatif) au ViewModel
+(« reconstruction des tokens — N / M fichiers · la semaine courante est déjà complète ») et au diagnostic.
+
+### Couverture — pourquoi une plage vide dit POURQUOI elle est vide
+
+Trois états, jamais un zéro implicite : **« hors couverture »** = avant la plus ancienne ligne jamais vue (`plus_ancienne_ligne_vue`,
+ici `2026-06-23T12:44:22Z`) ; **« transcripts absents »** = hors de tout intervalle garanti `[début de passe − HorizonPurge, fin de passe[`
+(juillet 2026 : 458 tuples survivent dans des fichiers d'août — présence PARTIELLE, jamais « zéro token ») ; **« couverte »** = dans un
+intervalle garanti : l'absence de tranche est une vraie absence d'activité. La couverture est un état persisté et daté, jamais déduit
+des mtimes. Rendu local (`RenduLocalTokens`) : une barre par DÉBUT D'HEURE UTC libellée en heure locale — **25 barres le 25/10/2026**
+(deux « 02:00 »), **23 le 28/03/2027** (aucune « 02:00 » ; le lundi 29 est un jour ordinaire), 24 sinon ; l'état de couverture voyage
+avec chaque barre.
+
+### Hypothèse à vérifier AVEC les fichiers (pas avant)
+
+- **HYP-4 — horizon de purge de Claude Code** : `HorizonPurge` = **30 j** = `cleanupPeriodDays` par défaut (non défini dans
+  `~/.claude/settings.json` sur cette machine, NON lu par Chronos en v1.8). Si Claude Code purge plus tôt, des tranches classées
+  « couvertes » pourraient manquer — à vérifier après un mois en comparant le plus vieux mtime des transcripts au début du dernier
+  intervalle garanti de `couverture.json`. Le mécanisme exact de purge n'est pas vérifié (38 fichiers de juin survivent au 27/09).
+
+### Mesures (vraie machine, lecture seule, 2026-09-27)
+
+| Mesure | Prototype de recherche (11:20–11:45, cache chaud) | Service réel `ReconstructionTokens` (harnais hors arbre, 11:40) |
+|---|---|---|
+| Transcripts | 1 603 fichiers / 2,08 Go / 238 857 lignes `assistant` / 118 401 ids | 1 611 fichiers / 118 641 ids |
+| Passe complète (mur / CPU) | **2,4–2,6 s / 2,7 s** (788–800 Mo/s) | **3,2 s / 3,6 s** à chaud (× 2 runs) ; **15,0 s / 3,75 s** au premier run (cache froid, SATA) |
+| Semaine courante disponible | 1,7 s (886 fichiers) | — (checkpoint par mtime, flush réussi) |
+| Cycle incrémental, rien n'a bougé | 63 ms de contrôle (+ 93 ms d'inventaire) | **47 ms** (0 fichier ouvert) |
+| Mémoire | pic +90 Mo, tas 31 Mo | pic working set 120–176 Mo (+93 à +149 Mo), tas GC 40–51 Mo |
+| Agrégats produits | 3 886 tuples = 524 Ko | **3 853 tuples** (− 34 `<synthetic>` exclus) ≈ 570 Ko, dont `tokens-2026-09.jsonl` 331 Ko / 2 233 lignes |
+| Index d'ids | ≈ 11 Mo/mois estimés | 170 234 lignes = **28,8 Mo**, dont `ids-2026-09.jsonl` 19,6 Mo (les blocs partiels écrivent plusieurs lignes par id) |
+| `curseurs.json` / `couverture.json` | 351 816 o | 356 290 o / 173 o |
+
+L'estimation d'entrée « 10–20 s CPU » est périmée : ≈ 3,5 s CPU à priorité basse, une fois par lancement, puis 47 ms par minute. Le
+service réel coûte plus que le prototype (flush par lot, shards d'ids, reprojection) et c'est accepté : c'est le prix de la reprise
+idempotente. Le premier lancement à froid peut prendre une quinzaine de secondes sur ce disque SATA — l'UI n'attend pas.
+
+---
+
+*Fin du document — capturé le 2026-07-08, à revalider à chaque MAJ majeure de Claude Code (schéma = API privée de facto) ;
+complété le 2026-09-27 (§7, note CPT-01 du §2 ; §8 agrégats de tokens).*
