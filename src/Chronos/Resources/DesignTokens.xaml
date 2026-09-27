@@ -34,6 +34,9 @@
     <SolidColorBrush x:Key="Ink2"   Color="#A9A6C4"/>
     <SolidColorBrush x:Key="Accent" Color="#8B7BF0"/>
     <SolidColorBrush x:Key="Ok"     Color="#4EC98A"/>
+    <!-- Réglages v2 (DESIGN_PLAN_REGLAGES §2) : action DESTRUCTIVE uniquement (« Quitter Chronos »). Valeur de l'ancien littéral
+         de SettingsWindow, inchangée : c'est la seule couleur ajoutée par la refonte. -->
+    <SolidColorBrush x:Key="Danger" Color="#E8907F"/>
 
     <!-- Neutres de la fenêtre Historique (DESIGN_PLAN §2 / §2.0). Les tokens ne portent JAMAIS la rampe de quota :
          la couleur d'un niveau vient de ChronosTheme.ArcColor du thème actif. HistoGris = le gris « épuisé » du cadran (D-34-01). -->
@@ -113,6 +116,42 @@
     <!-- Gabarits de mise en page : rangée d'annotations au-dessus d'une piste, en-tête commun (§2.1) -->
     <sys:Double x:Key="HistoHauteurAnnotations">18</sys:Double>
     <sys:Double x:Key="HistoHauteurEnTete">92</sys:Double>
+    <!-- Fenêtre de RÉGLAGES (quick 260927-reglages-v2, DESIGN_PLAN_REGLAGES §2) : fenêtre classique 860 × 580, minimum 640 × 440,
+         rail de 208 à largeur fixe, colonne de lecture de 640 au plus (centrée au-delà). Grille de 4 px ; les gabarits repris de
+         l'ancienne fenêtre (interrupteur 40 × 23 → 40 × 24, bouton 17 → 16 ; vignette 88 × 74 → 88 × 76) y sont ramenés. -->
+    <sys:Double x:Key="ReglagesLargeurMin">640</sys:Double>
+    <sys:Double x:Key="ReglagesHauteurMin">440</sys:Double>
+    <sys:Double x:Key="ReglagesLargeurDefaut">860</sys:Double>
+    <sys:Double x:Key="ReglagesHauteurDefaut">580</sys:Double>
+    <sys:Double x:Key="ReglagesRailLargeur">208</sys:Double>
+    <sys:Double x:Key="ReglagesContenuMax">640</sys:Double>
+    <sys:Double x:Key="ReglagesHauteurBarreTitre">40</sys:Double>
+    <sys:Double x:Key="ReglagesLargeurBoutonFenetre">44</sys:Double>
+    <sys:Double x:Key="ReglagesHauteurEntreeRail">36</sys:Double>
+    <!-- Typographie : titre de section 18 · titre de carte 13 · corps / aide 11 · libellé du rail 12 · étiquette 10,5 · mini 9,5 -->
+    <sys:Double x:Key="ReglagesCorpsTitreSection">18</sys:Double>
+    <sys:Double x:Key="ReglagesCorpsTitreCarte">13</sys:Double>
+    <sys:Double x:Key="ReglagesCorpsAide">11</sys:Double>
+    <sys:Double x:Key="ReglagesCorpsRail">12</sys:Double>
+    <sys:Double x:Key="ReglagesCorpsEtiquette">10.5</sys:Double>
+    <sys:Double x:Key="ReglagesCorpsMini">9.5</sys:Double>
+    <!-- Gabarits : interrupteur, vignette de thème, aperçus, logo, trait de sélection du rail, pastille, barre de défilement -->
+    <sys:Double x:Key="ReglagesInterrupteurLargeur">40</sys:Double>
+    <sys:Double x:Key="ReglagesInterrupteurHauteur">24</sys:Double>
+    <sys:Double x:Key="ReglagesInterrupteurBouton">16</sys:Double>
+    <sys:Double x:Key="ReglagesVignetteLargeur">88</sys:Double>
+    <sys:Double x:Key="ReglagesVignetteHauteur">76</sys:Double>
+    <sys:Double x:Key="ReglagesVignetteDisque">32</sys:Double>
+    <sys:Double x:Key="ReglagesVignettePastille">8</sys:Double>
+    <sys:Double x:Key="ReglagesApercuCadran">144</sys:Double>
+    <sys:Double x:Key="ReglagesApercuSessionsHauteur">120</sys:Double>
+    <sys:Double x:Key="ReglagesLogo">16</sys:Double>
+    <sys:Double x:Key="ReglagesLogoTrait">3</sys:Double>
+    <sys:Double x:Key="ReglagesTraitSelection">3</sys:Double>
+    <sys:Double x:Key="ReglagesPastille">10</sys:Double>
+    <sys:Double x:Key="ReglagesBarreDefilement">8</sys:Double>
+    <sys:Double x:Key="ReglagesOpaciteInactif">0.45</sys:Double>
+
     <!-- Seul token non-double : bord de redimensionnement (WindowChrome.ResizeBorderThickness, 34-05). -->
     <Thickness x:Key="HistoBordRedimensionnement">6</Thickness>
 

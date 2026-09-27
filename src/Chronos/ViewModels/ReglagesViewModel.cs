@@ -99,13 +99,19 @@ public sealed partial class ReglagesViewModel : ObservableObject
         _pressePapiers = pressePapiers;
         _fuseau = fuseau ?? TimeZoneInfo.Local;
 
+        _relecture = true;
+        _section = LireSection();
+        _relecture = false;
     }
 
     /// <summary>À l'ouverture de la fenêtre : relit la dernière section persistée (sans la réécrire), et lance le diagnostic si
     /// la fenêtre rouvre directement sur lui sans rapport en main.</summary>
     public void Ouvrir()
     {
-        // RED : squelette
+        _relecture = true;
+        try { Section = LireSection(); }
+        finally { _relecture = false; }
+        LancerDiagnosticSiVide();
     }
 
     private SectionReglages LireSection()
@@ -123,21 +129,22 @@ public sealed partial class ReglagesViewModel : ObservableObject
         OnPropertyChanged(nameof(IsComportement));
         OnPropertyChanged(nameof(IsDiagnostic));
         OnPropertyChanged(nameof(IsSectionDefilante));
-
+        if (!_relecture) _reglages.Modifier(s => s with { ReglagesSection = value });
+        if (!_relecture) LancerDiagnosticSiVide();
     }
 
     /// <summary>Clic sur une entrée du rail.</summary>
     [RelayCommand]
     private void AllerA(SectionReglages section)
     {
-
+        if (Enum.IsDefined(section)) Section = section;
     }
 
     /// <summary>Ctrl+<paramref name="numero"/> : la n-ième entrée du rail (1 à 6) ; tout autre chiffre est ignoré.</summary>
     [RelayCommand]
     private void AllerAuNumero(int numero)
     {
-
+        if (numero >= 1 && numero <= Entrees.Count) Section = Entrees[numero - 1].Section;
     }
 
     // ------------------------------------------------------------------ Géométrie (motif HistoriqueViewModel)
@@ -145,13 +152,13 @@ public sealed partial class ReglagesViewModel : ObservableObject
     /// <summary>Position et taille mémorisées (DIU) ; un champ absent → la fenêtre garde son défaut.</summary>
     public (double? X, double? Y, double? Largeur, double? Hauteur) GeometriePersistee()
     {
-        return (null, null, null, null);
+        var s = _reglages.Lire();
+        return (s.ReglagesX, s.ReglagesY, s.ReglagesWidth, s.ReglagesHeight);
     }
 
     /// <summary>Mémorise la géométrie (à appeler en <c>WindowState.Normal</c> seulement).</summary>
     public void EnregistrerGeometrie(double x, double y, double largeur, double hauteur)
-    {
-    }
+        => _reglages.Modifier(s => s with { ReglagesX = x, ReglagesY = y, ReglagesWidth = largeur, ReglagesHeight = hauteur });
 
     // ------------------------------------------------------------------ Diagnostic (§5 : jamais sur le thread UI, jamais de MessageBox)
 
@@ -164,7 +171,24 @@ public sealed partial class ReglagesViewModel : ObservableObject
     /// <summary>« ↻ Actualiser » / « Réessayer » : régénère le rapport. La génération elle-même est déléguée (le
     /// <see cref="MainViewModel"/> la pousse sur le pool) ; une erreur devient une phrase, jamais une exception qui remonte.</summary>
     [RelayCommand]
-    private Task ActualiserDiagnostic() => Task.CompletedTask;
+    private async Task ActualiserDiagnostic()
+    {
+        EtatDiagnostic = EtatDiagnostic.EnCours;
+        ErreurDiagnostic = "";
+        RetourCopie = "";
+        try
+        {
+            var rapport = await _genererDiagnostic() ?? "";
+            TexteDiagnostic = rapport;
+            LigneDiagnostic = Ligne(rapport);
+            EtatDiagnostic = EtatDiagnostic.Pret;
+        }
+        catch (Exception ex)
+        {
+            ErreurDiagnostic = PrefixeEchec + ex.Message;
+            EtatDiagnostic = EtatDiagnostic.Echec;
+        }
+    }
 
     private string Ligne(string rapport)
     {
@@ -177,6 +201,7 @@ public sealed partial class ReglagesViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(DiagnosticPret))]
     private void CopierDiagnostic()
     {
-
+        if (_pressePapiers is null) return;
+        RetourCopie = _pressePapiers.Copier(TexteDiagnostic) ? TexteCopie : TexteCopieImpossible;
     }
 }

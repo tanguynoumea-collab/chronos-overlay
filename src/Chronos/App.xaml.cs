@@ -299,6 +299,10 @@ public partial class App : Application
         services.AddSingleton<IReglagesHistorique>(sp => new ReglagesHistoriqueSurDisque(sp.GetRequiredService<SettingsService>()));
         services.AddSingleton<HistoriqueViewModel>();
         services.AddSingleton<IOuvreurHistorique>(sp => new OuvreurHistorique(() => new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>())));
+        // Réglages v2 (quick 260927) : un seul ouvreur pour le clic droit du cadran — la fenêtre est ramenée si elle est ouverte,
+        // recréée après fermeture ; le VM partagé reste le MainViewModel. Fabrique paresseuse : aucune résolution circulaire.
+        services.AddSingleton<IOuvreurReglages>(sp => new Views.Reglages.OuvreurReglages(() => new SettingsWindow(sp.GetRequiredService<MainViewModel>())));
+        services.AddSingleton<IPressePapiers, PressePapiersWpf>();
 
         // Placement/persistance Phase 6 (FEN-03/04/05/07) : settings.json chargé UNE fois au démarrage
         // (coin + device = vérité), adaptateur de placement, contrat neutre pour le VM (menu 06-04).
