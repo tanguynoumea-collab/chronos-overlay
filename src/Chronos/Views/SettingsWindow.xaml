@@ -204,6 +204,27 @@
                 </Grid>
             </Border>
 
+            <!-- JRN-04 : l'âge de la dernière écriture du journal des relevés, en première classe. Ligne d'état MINIMALE (la carte
+                 complète « Historique d'utilisation » arrive en phase 35, ACC-01) ; la pastille reprend le jeton Alerte de la
+                 déconnexion, aucune couleur ni taille nouvelle (gabarit de la carte « Sonde d'en-têtes »). Masquée sans journal. -->
+            <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,9" Margin="0,7,0,0"
+                    Visibility="{Binding AfficherEtatJournal, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" MaxWidth="225">
+                        <TextBlock Text="Journal des relevés" Foreground="{StaticResource Ink}" FontSize="13"/>
+                        <TextBlock Foreground="{StaticResource Ink2}" FontSize="10.5" TextWrapping="Wrap"
+                                   Text="un relevé exact toutes les 5 min, écrit dans %APPDATA%\Chronos\historique — sans interface pour l'instant"/>
+                        <TextBlock x:Name="LigneEtatJournal" Foreground="{StaticResource Ink2}" FontSize="10.5"
+                                   Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="{Binding TexteEtatJournal}"/>
+                    </StackPanel>
+                    <Ellipse x:Name="PastilleJournal" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Center"
+                             Fill="{DynamicResource Alerte}"
+                             ToolTip="journal muet : aucune écriture depuis plus de 15 min alors que Chronos tourne"
+                             Visibility="{Binding AlerteJournal, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+            </Border>
+
             <!-- Thème -->
             <TextBlock Text="THÈME" Style="{StaticResource Section}"/>
             <ItemsControl ItemsSource="{Binding Themes}">

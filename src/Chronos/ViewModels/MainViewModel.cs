@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Chronos.Models;
 using Chronos.Services;
+using Chronos.Services.Historique;
 using Chronos.Text;
 using Chronos.Theming;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -34,6 +35,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ISessionsController _sessions;
     private readonly IAuthStatus _authStatus;
     private readonly IEtatServeur? _etatServeur;
+    private readonly IEtatJournal? _journal;       // JRN-04 : ce que le journal des relevés dit de lui-même (optionnel)
+    private readonly DateTimeOffset _demarrage;    // JRN-04 / D-32-21 : référence basse de « muet » (instant de construction du VM)
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
     private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
@@ -113,6 +116,17 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>Pilote la visibilité de la ligne ci-dessus (motif HasTokens / HasUtilizationText).</summary>
     [ObservableProperty] private bool _afficherEtatSonde;
+
+    /// <summary>JRN-04 — l'âge de la dernière écriture du journal des relevés, en une ligne pour les réglages : mêmes mots
+    /// que le diagnostic (D-32-22). VIDE sans journal injecté : jamais un « journal sain » par défaut.</summary>
+    [ObservableProperty] private string _texteEtatJournal = "";
+
+    /// <summary>JRN-04 — le journal se tait depuis plus de trois cadences (15 min) alors que Chronos tourne (D-32-21).
+    /// Pilote la pastille <c>Alerte</c> de la carte « Journal des relevés ».</summary>
+    [ObservableProperty] private bool _alerteJournal;
+
+    /// <summary>Pilote la visibilité de la carte « Journal des relevés » (motif AfficherEtatSonde) : masquée sans journal injecté.</summary>
+    [ObservableProperty] private bool _afficherEtatJournal;
 
     // État reflété dans l'item « Sessions Claude Code » : le widget de sessions est-il activé ?
     [ObservableProperty] private bool _isSessionsWidgetEnabled;
@@ -234,6 +248,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// style : les sites de construction préexistants (2 en tests, la production passant par la DI)
     /// compilent sans une retouche. Même protocole d'extension qu'au plan 17-05 pour <c>IAuthStatus</c>,
     /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
+    /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position.
     /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
@@ -241,10 +256,12 @@ public sealed partial class MainViewModel : ObservableObject
         IRecalibrationPrompt prompt, SettingsService settings,
         DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
         ISessionsController sessions, IAuthStatus authStatus,
-        IEtatServeur? etatServeur = null)
+        IEtatServeur? etatServeur = null,
+        IEtatJournal? journal = null)
     {
         _ui = ui;
         _clock = clock;
+        _demarrage = clock.UtcNow;   // JRN-04 / D-32-21 : le démarrage du processus, pour ne pas crier sur l'écriture de la veille
         _controller = controller;
         _autostart = autostart;
         _prompt = prompt;
@@ -313,6 +330,11 @@ public sealed partial class MainViewModel : ObservableObject
             _etatServeur.DepassementChange += SurDepassementChange;
             MajTexteEtatSonde();
         }
+
+        // JRN-04 : l'état du journal des relevés. Optionnel — absent, la carte des réglages reste masquée. Relu à chaque
+        // tick (ApplySnapshot) : 60 s suffisent pour un seuil de 15 min ; aucun événement, aucun timer supplémentaire.
+        _journal = journal;
+        MajTexteEtatJournal();
     }
 
     // FRONTIÈRE DE THREAD — franchie UNE seule fois (RAF-04). Aucune mutation d'ObservableProperty hors d'ici.
@@ -385,6 +407,7 @@ public sealed partial class MainViewModel : ObservableObject
         MajPastilles();
 
         MajTexteEtatSonde();        // HDR-03 : le statut déclaré suit les fenêtres, tick par tick
+        MajTexteEtatJournal();      // JRN-04 : l'âge de la dernière écriture du journal, tick par tick (D-32-21)
         MajInfobulleReleve();       // EXA-06 : et l'infobulle nomme QUI les alimente, et depuis quand
         Interpolate(_clock.UtcNow); // premier rendu immédiat (pas d'overlay vide entre deux ticks)
     }
@@ -414,6 +437,50 @@ public sealed partial class MainViewModel : ObservableObject
 
         TexteEtatSonde = string.Join(" · ", morceaux);
         AfficherEtatSonde = TexteEtatSonde.Length > 0;
+    }
+
+    /// <summary>
+    /// JRN-04 — thread UI uniquement. L'âge de la dernière écriture du journal, en première classe : la phase 32 est née
+    /// d'un magasin qu'on croyait figé sans qu'aucun canal ne le dise (CPT-02).
+    ///
+    /// D-32-21 : « muet » se mesure depuis max(démarrage, dernière écriture) — mesuré depuis la seule dernière écriture,
+    /// l'alerte s'allumerait à chaque lancement sur l'écriture de la veille, ce qui n'est pas « muet alors que Chronos
+    /// tourne ». Seuil = trois cadences de la sonde, dérivé, jamais 900 s en dur. D-32-22 : mêmes mots que le diagnostic
+    /// (« dernière écriture {ancienneté} », « muet depuis N min »), <see cref="LibelleSource.Anciennete"/> pour les paliers.
+    /// Recalculé au tick de l'orchestrateur (60 s suffisent pour 15 min).
+    /// </summary>
+    private void MajTexteEtatJournal()
+    {
+        if (_journal is null)
+        {
+            TexteEtatJournal = "";
+            AlerteJournal = false;
+            AfficherEtatJournal = false;
+            return;
+        }
+
+        var now = _clock.UtcNow;
+        var derniere = _journal.DerniereEcriture;
+        var reference = derniere is { } d && d > _demarrage ? d : _demarrage;
+        var age = now - reference;
+        AlerteJournal = age > JournalReleves.SeuilMuet;
+
+        var morceaux = new List<string>();
+        if (AlerteJournal)
+            morceaux.Add("journal muet depuis " + (int)age.TotalMinutes + " min");
+
+        if (_journal.DerniereErreur is { } err)
+            morceaux.Add("dernière écriture : ÉCHEC — " + err);
+        else if (derniere is null)
+            morceaux.Add("aucune écriture depuis le démarrage");
+        else if (derniere < _demarrage)
+            morceaux.Add("aucune écriture depuis le démarrage · dernière écriture " + LibelleSource.Anciennete(derniere, now));
+        else
+            morceaux.Add("dernière écriture " + LibelleSource.Anciennete(derniere, now)
+                         + " · " + _journal.RelevesEcrits + " relevé" + (_journal.RelevesEcrits > 1 ? "s" : "") + " depuis le démarrage");
+
+        TexteEtatJournal = string.Join(" · ", morceaux);
+        AfficherEtatJournal = true;
     }
 
     /// <summary>
