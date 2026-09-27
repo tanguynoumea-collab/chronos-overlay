@@ -21,7 +21,9 @@ namespace Chronos.Services;
 ///
 /// Le dictionnaire vit le temps d'UNE passe disque : 491 ids sur 8 jours vivent dans 2 à 3 fichiers
 /// (reprise / fork de session), la dédup doit donc être GLOBALE à la passe (D-32-03). Le helper
-/// s'instancie de l'extérieur pour que la phase 33 puisse le scoper autrement (curseurs).
+/// s'instancie de l'extérieur pour que la phase 33 puisse le scoper autrement (curseurs) — c'est
+/// <c>IndexMessages</c> (Services/Historique/Tokens) qui porte la mémoire persistante des agrégats ;
+/// la règle du max est partagée par <see cref="Fusionner"/>.
 ///
 /// Type NEUTRE, pur : aucune E/S, aucune horloge, aucun type WPF.
 /// </summary>
@@ -60,17 +62,26 @@ public sealed class DedupUsage
 
         if (_parId.TryGetValue(cle, out var v))
         {
-            _parId[cle] = (v.Ts <= ts ? v.Ts : ts,
-                           Math.Max(v.In, input),
-                           Math.Max(v.Out, output),
-                           Math.Max(v.CacheW, cacheCreation),
-                           Math.Max(v.CacheR, cacheRead));
+            var f = Fusionner((v.In, v.Out, v.CacheW, v.CacheR), (input, output, cacheCreation, cacheRead));
+            _parId[cle] = (v.Ts <= ts ? v.Ts : ts, f.In, f.Out, f.CacheW, f.CacheR);
         }
         else
         {
             _parId[cle] = (ts, input, output, cacheCreation, cacheRead);
         }
     }
+
+    /// <summary>
+    /// LA règle « max par champ » (D-32-01), pure et statique, à un seul endroit : utilisée par <see cref="Ajouter"/>
+    /// (passe de la tête) et par <c>IndexMessages</c> (mémoire persistante des agrégats, phase 33). Symétrique,
+    /// idempotente : un doublon strict relu après le max ne fait jamais redescendre un compteur.
+    /// </summary>
+    public static (long In, long Out, long CacheW, long CacheR) Fusionner(
+        (long In, long Out, long CacheW, long CacheR) connu, (long In, long Out, long CacheW, long CacheR) lu)
+        => (Math.Max(connu.In, lu.In),
+            Math.Max(connu.Out, lu.Out),
+            Math.Max(connu.CacheW, lu.CacheW),
+            Math.Max(connu.CacheR, lu.CacheR));
 
     /// <summary>Entrées dédoublonnées (instant, tokens), NON triées : l'appelant trie globalement.</summary>
     public IReadOnlyList<(DateTimeOffset Ts, long Tokens)> Entrees()
