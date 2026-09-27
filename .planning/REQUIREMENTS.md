@@ -87,7 +87,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   (C : hebdo seul en Niveau, piste FENÊTRES 5 H en tuiles bornées par les resets observés, hauteur = max % 5 h, grise si
   épuisée, puis Rythme, Tokens, Couverture) sont **sélectionnables** (réglage `HistoriqueStyleSemaine`, sélecteur dans la
   fenêtre et dans la carte des réglages), avec exactement les pistes et hauteurs du plan de design §2.2.
-- [ ] **HIS-04**: La **vue « Jour »** : X = 0 h → 24 h locale, grain 5 min (un relevé = un point) ; % 5 h au premier plan (2,4 px,
+- [x] **HIS-04**: La **vue « Jour »** : X = 0 h → 24 h locale, grain 5 min (un relevé = un point) ; % 5 h au premier plan (2,4 px,
   couleur = niveau, **gris à 100 %** avec libellé « épuisée à 100 % — le serveur refuse (statut rejected) »), % hebdo en trait
   fin, trait et libellé « reset 5 h HH:MM » à chaque reset observé ; RYTHME par heure ; TOKENS par **quart d'heure empilés par
   modèle** (`HistoModele1/2/3`, légende « opus · sonnet · haiku · sous-agents inclus ») ; COUVERTURE ; ligne « maintenant » si
@@ -183,7 +183,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | HIS-01 | Phase 34 | Complete |
 | HIS-02 | Phase 34 | Complete |
 | HIS-03 | Phase 34 | Complete |
-| HIS-04 | Phase 34 | Pending |
+| HIS-04 | Phase 34 | Complete |
 | HIS-05 | Phase 35 | Pending |
 | HIS-06 | Phase 34 | Pending |
 | HIS-07 | Phase 34 | Complete |
