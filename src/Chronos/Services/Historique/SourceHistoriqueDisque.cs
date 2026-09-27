@@ -45,8 +45,8 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
         {
             var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
             var journal = LecteurJournal.Lire(_dossier, semaine.Debut, semaine.Fin);
-            var analyse = AnalyseReleves.Analyser(journal, now, cadence);
-            var analysePrecedente = AnalyseReleves.Analyser(LecteurJournal.Lire(_dossier, precedente.Debut, precedente.Fin), now, cadence);
+            var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, semaine), cadence);
+            var analysePrecedente = AnalyseReleves.Analyser(LecteurJournal.Lire(_dossier, precedente.Debut, precedente.Fin), InstantsHistorique.InstantDAnalyse(now, precedente), cadence);
             var agregats = LecteurAgregats.Lire(_dossier, semaine.Debut, semaine.Fin);
             var couverture = CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
             var barres = RenduLocalTokens.ParHeure(agregats.Tranches, semaine, _tz, couverture);
@@ -67,7 +67,7 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
         {
             var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
             var journal = LecteurJournal.Lire(_dossier, jour.Debut, jour.Fin);
-            var analyse = AnalyseReleves.Analyser(journal, now, cadence);
+            var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence);
             var agregats = LecteurAgregats.Lire(_dossier, jour.Debut, jour.Fin);
             var couverture = CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
             var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, couverture);

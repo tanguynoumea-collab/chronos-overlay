@@ -22,3 +22,19 @@ public interface ISourceHistorique
     /// <summary>Le jour local <paramref name="jour"/>, analysé à <paramref name="now"/>. Ne lève jamais.</summary>
     DonneesJour LireJour(Plage jour, DateTimeOffset now);
 }
+
+/// <summary>
+/// Règle partagée par les façades : un trou n'est « encore ouvert » qu'à l'INSTANT de l'analyse, et cet instant ne dépasse jamais
+/// la fin de la plage. Analysée au vrai <c>now</c>, toute plage RÉVOLUE (semaine précédente, jour d'hier) finirait par un faux trou
+/// ouvert « cause inconnue » après son dernier relevé — <c>AnalyseReleves.Analyser</c> ouvre un trou dès que
+/// <c>now − Serie[^1].T</c> dépasse deux cadences. <c>min(now, Plage.Fin)</c> corrige cela sans toucher l'analyse pure.
+/// </summary>
+public static class InstantsHistorique
+{
+    /// <summary>L'instant auquel analyser <paramref name="plage"/> : <paramref name="now"/>, borné à <c>plage.Fin</c>.</summary>
+    public static DateTimeOffset InstantDAnalyse(DateTimeOffset now, Plage plage)
+    {
+        ArgumentNullException.ThrowIfNull(plage);
+        return now < plage.Fin ? now : plage.Fin;
+    }
+}
