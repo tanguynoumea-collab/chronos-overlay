@@ -108,6 +108,27 @@ public sealed class DedupUsageTests
         Assert.Contains(entrees, e => e.Ts == T1 && e.Tokens == 26);
     }
 
+    // --- La règle du max vit à UN endroit (phase 33) : Fusionner, pure, symétrique, idempotente ; Ajouter en hérite ---
+
+    [Fact]
+    public void Fusionner_rend_le_max_par_champ_et_est_symetrique()
+    {
+        var a = (In: 2L, Out: 8L, CacheW: 35005L, CacheR: 41741L);
+        var b = (In: 2L, Out: 256L, CacheW: 35005L, CacheR: 41741L);
+        Assert.Equal((2L, 256L, 35005L, 41741L), DedupUsage.Fusionner(a, b));
+        Assert.Equal((1L, 40L, 100L, 1000L), DedupUsage.Fusionner((1, 40, 100, 1000), (1, 10, 100, 1000)));
+        Assert.Equal(DedupUsage.Fusionner(a, b), DedupUsage.Fusionner(b, a));   // symétrique
+        Assert.Equal(a, DedupUsage.Fusionner(a, a));                            // idempotente
+
+        // Ajouter en hérite : 8 / 256 / 8 → une entrée au max de chaque champ.
+        var dedup = new DedupUsage();
+        dedup.Ajouter("msg_A", "req_A", T0, 2, 8, 35005, 41741);
+        dedup.Ajouter("msg_A", "req_A", T0.AddSeconds(2), 2, 256, 35005, 41741);
+        dedup.Ajouter("msg_A", "req_A", T0.AddSeconds(5), 2, 8, 35005, 41741);
+        var e = Assert.Single(dedup.Entrees());
+        Assert.Equal(2L + 256 + 35005 + 41741, e.Tokens);
+    }
+
     // --- Lecture JSON : les quatre compteurs et les deux identifiants, tolérante, ne lève jamais ---
 
     [Fact]
