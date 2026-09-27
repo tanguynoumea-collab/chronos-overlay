@@ -101,7 +101,7 @@ d'acceptation le 25/10/2026 avec le journal).
 - Phases décimales (32.1, 32.2) : insertions urgentes (marquées INSERTED)
 
 - [ ] **Phase 32: Compter juste, puis journaliser** - Le parser dédoublonne par `message.id`, plus aucune écriture ne se tait, une seule instance tourne, un journal des relevés exacts s'écrit toutes les 5 min avec ses événements de couverture ; publié seul en 3.2.2, sans interface, et constaté en production avec l'utilisateur
-- [ ] **Phase 33: Agrégats de tokens** - Les tokens des transcripts sont agrégés par tranche de 15 min UTC × modèle × sous-agent, reconstruits en arrière-plan depuis 2,2 Go puis tenus à jour par curseurs, justes au changement d'heure, jamais convertis en pourcentage
+- [x] **Phase 33: Agrégats de tokens** - Les tokens des transcripts sont agrégés par tranche de 15 min UTC × modèle × sous-agent, reconstruits en arrière-plan depuis 2,2 Go puis tenus à jour par curseurs, justes au changement d'heure, jamais convertis en pourcentage (completed 2026-09-27)
 - [ ] **Phase 34: Fenêtre Historique : Semaine et Jour** - Une fenêtre opaque séparée montre la semaine de forfait dans trois styles et le jour au grain de 5 min, avec des trous qui restent des trous, sur un rendu `OnRender` gouverné par les tokens de design
 - [ ] **Phase 35: 4 semaines, accès, release 3.3.0** - La vue 4 semaines, les deux gestes d'ouverture, la section du diagnostic, les docs, l'exe 3.3.0 publié et le constat avec l'utilisateur
 
@@ -213,7 +213,7 @@ Plans:
 - [x] 33-02-PLAN.md — TOK-03 : 12 fixtures réelles anonymisées, `LecteurTranscript` (octet, offsets, pré-filtre, `sub` par dossier, ligne future = curseur bloqué), `DedupUsage.Fusionner`, `IndexMessages` (shards `ids-AAAA-MM.jsonl` append-only, delta par id, `HorizonIndex` 45 j), `Curseurs` (nouveau / inchangé / grandi / raccourci / disparu)
 - [x] 33-03-PLAN.md — TOK-02 : `IEtatReconstruction`, `ProjectionAgregats`, `ReconstructionTokens` (`BackgroundService` + thread dédié `IsBackground` `BelowNormal`, `Thread.Yield()`, mtime décroissant, semaine courante d'abord, flush ids → agrégats → curseurs, incrémental 60 s) ; reprise idempotente octet pour octet, annulation < 200 ms
 - [x] 33-04-PLAN.md — TOK-04 : `LecteurAgregats.Lire` par plage (mois UTC chevauchants, couverture en sous-plages), `RenduLocalTokens` (25 barres le 25/10/2026, 23 le 28/03/2027, colonnes par quart d'heure et par modèle, part sous-agents)
-- [ ] 33-05-PLAN.md — TOK-05 : câblage DI (hébergé avant `RefreshOrchestrator`, arrêt propre), diagnostic (troisième magasin + `[Agrégats de tokens]`), `MainViewModel` (propriétés de reconstruction, sans XAML), `docs/data-sources.md` §8 sous la nouvelle garde `ContratAgregatsDocumenteTests`, mesures consignées
+- [x] 33-05-PLAN.md — TOK-05 : câblage DI (hébergé avant `RefreshOrchestrator`, arrêt propre), diagnostic (troisième magasin + `[Agrégats de tokens]`), `MainViewModel` (propriétés de reconstruction, sans XAML), `docs/data-sources.md` §8 sous la nouvelle garde `ContratAgregatsDocumenteTests`, mesures consignées
 
 ### Phase 34: Fenêtre Historique : Semaine et Jour
 **Goal**: Une **fenêtre « Historique »** séparée — opaque, non topmost, redimensionnable, mémorisée — montre la
@@ -343,7 +343,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
-| 33. Agrégats de tokens | 4/5 | In Progress|  |
+| 33. Agrégats de tokens | 5/5 | Complete   | 2026-09-27 |
 | 34. Fenêtre Historique : Semaine et Jour | 0/8 | Not started | - |
 | 35. 4 semaines, accès, release 3.3.0 | 0/5 | Not started | - |
 
