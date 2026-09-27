@@ -563,7 +563,7 @@ public class PistesHistoriqueTests
         }
 
         // La fenêtre épuisée mer. 19:00 → jeu. 00:00 local (fin 22:00Z) est grise, umax 1,00 ; toutes les autres sont de la rampe.
-        var grise = Assert.Single(tuiles.Where(l => l.Contains(" grise ")));
+        var grise = Assert.Single(tuiles, l => l.Contains(" grise "));
         Assert.Equal(Fr(Utc(23, 22), d.Plage), Nombres(grise)[1], 3);
         Assert.Equal(1.0, Nombres(grise)[2], 3);
 
