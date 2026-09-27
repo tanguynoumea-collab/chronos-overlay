@@ -23,6 +23,10 @@ namespace Chronos.Services;
 ///
 /// Une SEULE passe disque : elle matérialise le journal, les bornages sont ensuite calculés EN
 /// MÉMOIRE par <see cref="TranscriptActivityLog"/> (Pattern 2). Type NEUTRE : aucun type WPF.
+///
+/// Depuis la phase 32 (CPT-01), la somme des usages passe par <see cref="DedupUsage"/> : une ligne
+/// <c>assistant</c> par bloc de contenu, même <c>message.id</c>, <c>output_tokens</c> partiel croissant —
+/// voir <c>docs/data-sources.md</c> §7. Cette classe ne lit plus AUCUN champ de <c>message.usage</c>.
 /// </summary>
 public sealed class TranscriptActivityProvider : ITranscriptActivitySource
 {
@@ -52,7 +56,9 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     {
         var now = _clock.UtcNow;
 
-        var entries = new List<(DateTimeOffset Ts, long Tokens)>();
+        // UN dictionnaire pour TOUTE la passe (D-32-03) : 491 ids sur 8 jours vivent dans 2 a 3 fichiers
+        // (reprise / fork de session), une dedup par fichier les compterait encore plusieurs fois.
+        var dedup = new DedupUsage();
 
         foreach (var file in EnumerateJsonl(_paths.ProjectsRoot, now))
         {
@@ -76,14 +82,19 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
                         if (!DateTimeOffset.TryParse(ts.GetString(), CultureInfo.InvariantCulture,
                                 DateTimeStyles.RoundtripKind, out var when)) continue;
 
-                        long tokens = SumUsageTokens(o);                  // input+output+cache_creation+cache_read
-                        if (when <= now) entries.Add((when, tokens));     // Pitfall 3 : filtrer les timestamps futurs (horloge decalee)
+                        if (when > now) continue;                         // Pitfall 3 : timestamps futurs (horloge decalee) ecartes
+
+                        // CPT-01 : une ligne par bloc de contenu, un message compte UNE fois (max par champ).
+                        DedupUsage.LireUsage(o, out var messageId, out var requestId,
+                                             out var input, out var output, out var cacheW, out var cacheR);
+                        dedup.Ajouter(messageId, requestId, when, input, output, cacheW, cacheR);
                     }
                     catch (JsonException) { /* ligne invalide ignoree (ROB-02) */ }
                 }
             }
         }
 
+        var entries = dedup.Entrees().ToList();                            // materialisation dedoublonnee
         entries.Sort((a, b) => a.Ts.CompareTo(b.Ts));                     // tri global (fichiers non tries entre eux)
 
         return new TranscriptActivityLog(now, now - HorizonSpan, entries);
@@ -131,19 +142,4 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
         return m.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.String
             && r.GetString() == "assistant";
     }
-
-    // Somme message.usage : input + output + cache_creation + cache_read. Chaque champ optionnel (defaut 0).
-    private static long SumUsageTokens(JsonElement o)
-    {
-        if (!o.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object
-            || !m.TryGetProperty("usage", out var u) || u.ValueKind != JsonValueKind.Object)
-            return 0;
-
-        return Field(u, "input_tokens") + Field(u, "output_tokens")
-             + Field(u, "cache_creation_input_tokens") + Field(u, "cache_read_input_tokens");
-    }
-
-    private static long Field(JsonElement usage, string name)
-        => usage.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
-           && v.TryGetInt64(out var n) ? n : 0;
 }
