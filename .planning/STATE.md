@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: — Historique d'utilisation
 status: executing
-last_updated: "2026-09-27T15:54:44.988Z"
-last_activity: 2026-09-27
+last_updated: "2026-09-27T16:43:35.724Z"
+last_activity: 2026-09-27 -- Phase 35 execution started
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 21
+  total_plans: 28
   completed_plans: 20
 ---
 
@@ -21,15 +21,15 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend. v1.8 : comprendre
 sa façon d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Phase 34 — Fenêtre Historique : Semaine et Jour
+**Current focus:** Phase 35 — 4 semaines, accès, release 3.3.0
 
 ## Current Position
 
 Milestone: v1.8 — Historique d'utilisation
-Phase: 35
-Plan: Not started
-Status: Executing Phase 34
-Last activity: 2026-09-27
+Phase: 35 (4 semaines, accès, release 3.3.0) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 35
+Last activity: 2026-09-27 -- Phase 35 execution started
 
 Progress: [░░░░░░░░░░] 0 %
 
