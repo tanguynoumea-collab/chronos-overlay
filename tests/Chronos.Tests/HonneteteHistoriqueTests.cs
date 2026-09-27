@@ -479,6 +479,23 @@ public class HonneteteHistoriqueTests
         }
     }
 
+    // ------------------------------------------------------------------ 11. Repères de l'axe NIVEAU (grille 0 / 50 / 100 %, D-34-29)
+
+    [WpfFact]
+    public void Les_reperes_de_l_axe_niveau_sont_poses_sur_chaque_vue()
+    {
+        foreach (var style in TroisStyles)
+        {
+            var grille = GrilleVisible(MonterSemaine(style).Vue);
+            var textes = TextesVisibles(grille);
+            Assert.True(textes.Count(t => t == "100 %") == 1, $"[{style}] repère « 100 % » de NIVEAU absent");
+            Assert.True(textes.Count(t => t == "0") == 1, $"[{style}] repère « 0 » de NIVEAU absent");
+        }
+        var jour = TextesVisibles(MonterJour().Vue);
+        Assert.Equal(1, jour.Count(t => t == "100 %"));
+        Assert.Equal(1, jour.Count(t => t == "0"));
+    }
+
     // ------------------------------------------------------------------ 10. Fraîcheur du jour : attendus, présents, interruptions nommées
 
     [WpfFact]

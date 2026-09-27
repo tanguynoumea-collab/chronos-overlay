@@ -272,6 +272,34 @@ public class GardeTokensHistoriqueTests
             + "Resources/DesignTokens.xaml ({StaticResource Histo…}), jamais un chiffre ni un hexadécimal dans une vue ou une piste.\n  "
             + string.Join("\n  ", infractions));
     }
+
+    /// <summary>Un texte VISIBLE écrit en dur dans un XAML de l'historique (<c>Text="100 %"</c>) : les mots et repères viennent de
+    /// <c>TextesHistorique</c> (source unique, D-34-35) par <c>{x:Static}</c> ou par binding au VM. Tolérés, nommés : la marque
+    /// « Chronos » de l'en-tête et les trois glyphes de boutons (✕ ‹ ›), qui ne sont pas des mots.</summary>
+    private static readonly Regex TexteLitteral = new(@"\b(Text|Content|ToolTip)=""(?!\{)([^""]*)""", RegexOptions.Compiled);
+    private static readonly HashSet<string> TextesToleres = new(StringComparer.Ordinal) { "Chronos", "✕", "‹", "›" };
+
+    [Fact]
+    public void Aucun_texte_visible_ecrit_en_dur_dans_les_xaml_de_l_historique()
+    {
+        var racine = Racine();
+        var xamls = Directory.EnumerateFiles(Path.Combine(racine, "Views", "Historique"), "*.xaml", SearchOption.AllDirectories).ToList();
+        Assert.True(xamls.Count >= 3, $"la garde ne voit pas les XAML de la fenêtre Historique : {xamls.Count}");
+
+        var infractions = new List<string>();
+        foreach (var fichier in xamls)
+        {
+            var lignes = File.ReadAllLines(fichier);
+            for (var i = 0; i < lignes.Length; i++)
+                foreach (Match m in TexteLitteral.Matches(lignes[i]))
+                    if (!TextesToleres.Contains(m.Groups[2].Value))
+                        infractions.Add($"{Path.GetRelativePath(racine, fichier)}:{i + 1}: {lignes[i].Trim()}");
+        }
+
+        Assert.True(infractions.Count == 0,
+            "HIS-06 : un texte visible est écrit EN DUR dans la fenêtre Historique — la source unique est TextesHistorique "
+            + "({x:Static txt:TextesHistorique.…} ou un binding au VM).\n  " + string.Join("\n  ", infractions));
+    }
 }
 
 /// <summary>
