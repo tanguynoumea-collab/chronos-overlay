@@ -6,6 +6,7 @@ using Chronos.Models.Historique.Tokens;
 using Chronos.Services.Historique;
 using Chronos.Services.Historique.Tokens;
 using Chronos.ViewModels;
+using Chronos.ViewModels.Historique;
 using Chronos.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -665,5 +666,85 @@ public class CompositionRootTests
         Assert.Empty(System.IO.Directory.EnumerateFiles(paths.HistoriqueDir, "tokens-*.jsonl"));
         Assert.True(System.IO.File.Exists(System.IO.Path.Combine(paths.HistoriqueDir, CouvertureTokens.NomFichier)),
                     "une passe complète, même vide, persiste la couverture");
+    }
+
+    // ------------------------------------------------------------------ Fenêtre Historique (34-05, HIS-01)
+
+    /// <summary>
+    /// Miroir des QUATRE lignes de <c>ConfigureServices</c> pour la fenêtre Historique (34-05) : fuseau du site de composition,
+    /// façade disque sur <c>ChronosPaths</c> (ici temporaire), réglages via <c>SettingsService</c> (motif GAP-1), VM singleton SANS
+    /// fabrique — le conteneur injecte <c>IEtatJournal</c> / <c>IEtatReconstruction</c> comme paramètres optionnels (précédent 33-05).
+    /// La garde textuelle épingle que <c>App.xaml.cs</c> porte bien les mêmes lignes : un miroir qui résout un graphe que la
+    /// production n'a pas serait vert pour de mauvaises raisons.
+    /// </summary>
+    [WpfFact]
+    public void Le_conteneur_resout_la_fenetre_historique()
+    {
+        var dossier = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosDIHisto_" + System.Guid.NewGuid().ToString("N"));
+        var services = new ServiceCollection();
+        services.AddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(new ChronosPaths(System.IO.Path.Combine(dossier, "usage.json"), System.IO.Path.Combine(dossier, "projects")));
+        services.AddSingleton<SettingsService>();
+        services.AddSingleton<IEtatJournal>(_ => new FakeEtatJournal());
+        services.AddSingleton<IEtatReconstruction>(_ => new FakeEtatReconstruction { Phase = PhaseReconstruction.Reconstruction, FichiersTraites = 1, FichiersTotal = 3 });
+
+        // Les quatre lignes de App.xaml.cs (à l'identique).
+        services.AddSingleton(TimeZoneInfo.Local);
+        services.AddSingleton<ISourceHistorique>(sp => new SourceHistoriqueDisque(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<TimeZoneInfo>()));
+        services.AddSingleton<IReglagesHistorique>(sp => new ReglagesHistoriqueSurDisque(sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton<HistoriqueViewModel>();
+
+        using var provider = services.BuildServiceProvider();
+        Assert.StartsWith(System.IO.Path.GetTempPath(), provider.GetRequiredService<ChronosPaths>().SettingsFile);   // jamais le vrai %APPDATA%
+
+        Assert.IsType<SourceHistoriqueDisque>(provider.GetRequiredService<ISourceHistorique>());
+        Assert.IsType<ReglagesHistoriqueSurDisque>(provider.GetRequiredService<IReglagesHistorique>());
+        Assert.NotNull(provider.GetRequiredService<TimeZoneInfo>());
+
+        var vm = provider.GetRequiredService<HistoriqueViewModel>();
+        Assert.Same(vm, provider.GetRequiredService<HistoriqueViewModel>());   // singleton : un seul abonnement à Changement
+        vm.Ouvrir();                                                          // lit le dossier temporaire (absent → tolérant)
+        vm.AttendreLecture().GetAwaiter().GetResult();
+        Assert.True(vm.AfficherBandeauF2, "le conteneur doit injecter IEtatReconstruction (paramètre optionnel) dans HistoriqueViewModel");
+        vm.ArreterHorloge();
+
+        // La production porte les mêmes lignes (garde textuelle, motif GardesPerimetreTests).
+        var app = System.IO.File.ReadAllText(System.IO.Path.Combine(GardesPerimetreTests.CheminSources(), "App.xaml.cs"));
+        Assert.Contains("services.AddSingleton(TimeZoneInfo.Local);", app, StringComparison.Ordinal);
+        Assert.Contains("services.AddSingleton<ISourceHistorique>", app, StringComparison.Ordinal);
+        Assert.Contains("services.AddSingleton<IReglagesHistorique>", app, StringComparison.Ordinal);
+        Assert.Contains("services.AddSingleton<HistoriqueViewModel>();", app, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// D-34-26 — la galerie <c>--historique</c> est une composition STATIQUE : fenêtre réelle, scénario de référence en mémoire,
+    /// réglages en mémoire. Elle ne résout aucun service et n'écrit rien : <c>settings.json</c> du vrai <c>%APPDATA%\Chronos</c>
+    /// n'est ni créé ni modifié par l'appel (comparaison d'horodatage avant / après — la lecture est interdite aussi : rien à lire).
+    /// </summary>
+    [WpfFact]
+    public void La_galerie_historique_se_compose_sans_service_ni_ecriture()
+    {
+        var reglagesReels = ChronosPaths.Default().SettingsFile;
+        var avant = System.IO.File.Exists(reglagesReels) ? System.IO.File.GetLastWriteTimeUtc(reglagesReels) : (System.DateTime?)null;
+
+        var fenetre = Views.Historique.HistoriqueGalerie.Creer();
+
+        Assert.IsType<Views.Historique.HistoriqueWindow>(fenetre);
+        Assert.Equal("Chronos — Historique", fenetre.Title);
+        var vm = Assert.IsType<HistoriqueViewModel>(fenetre.DataContext);
+        Assert.NotNull(vm.Theme);
+        Assert.Equal(TimeZoneInfo.Local, vm.Fuseau);
+
+        var apres = System.IO.File.Exists(reglagesReels) ? System.IO.File.GetLastWriteTimeUtc(reglagesReels) : (System.DateTime?)null;
+        Assert.Equal(avant, apres);
+
+        // La composition n'a résolu aucun service : la galerie ne connaît ni SettingsService, ni ChronosPaths, ni conteneur.
+        var source = System.IO.File.ReadAllText(System.IO.Path.Combine(GardesPerimetreTests.CheminSources(), "Views", "Historique", "HistoriqueGalerie.cs"));
+        Assert.DoesNotContain("SettingsService", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ChronosPaths", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetRequiredService", source, StringComparison.Ordinal);
+        Assert.Contains("ReglagesHistoriqueMemoire", source, StringComparison.Ordinal);
+        Assert.Contains("SourceHistoriqueDemonstration", source, StringComparison.Ordinal);
     }
 }

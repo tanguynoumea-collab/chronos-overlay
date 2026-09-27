@@ -624,6 +624,37 @@ public class GardesPerimetreTests
 
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
+    /// <summary>
+    /// GARDE DE PLACEMENT (HIS-01, D-34-26). Le mode <c>--historique</c> ouvre la fenêtre Historique réelle sur la semaine de
+    /// référence des maquettes : il doit être branché AVANT <c>VerrouInstanceUnique.Acquerir</c> (multi-instances, comme
+    /// <c>--cadrans</c> / <c>--sessions</c>) et ne résoudre AUCUN service — ni Host, ni <c>GetRequiredService</c>, ni réconciliation
+    /// des hooks : une galerie qui passerait par le Host écrirait <c>chronos.log</c>, réconcilierait <c>~/.claude/settings.json</c> et
+    /// se ferait refuser par le verrou dès que l'overlay tourne. Contrôle de SOURCE : <c>OnStartup</c> n'est pas instanciable sous test.
+    /// </summary>
+    [Fact]
+    public void Le_mode_historique_precede_le_verrou_et_ne_resout_aucun_service()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        var i = texte.IndexOf("\"--historique\"", StringComparison.Ordinal);
+        Assert.True(i > 0, "la branche --historique est absente de App.xaml.cs");
+        var v = texte.IndexOf("VerrouInstanceUnique.Acquerir", StringComparison.Ordinal);
+        Assert.True(v > 0, "le verrou d'instance unique est introuvable (garde muette)");
+        Assert.True(i < v, "--historique doit précéder le verrou d'instance unique (multi-instances, comme --sessions)");
+
+        var fin = texte.IndexOf("return;", i, StringComparison.Ordinal);
+        Assert.True(fin > i, "fin de la branche --historique introuvable");
+        var bloc = texte[i..fin];
+        Assert.Contains("HistoriqueGalerie.Creer(", bloc, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetRequiredService", bloc, StringComparison.Ordinal);
+        Assert.DoesNotContain("Host", bloc, StringComparison.Ordinal);
+        Assert.DoesNotContain("ConfigureServices", bloc, StringComparison.Ordinal);
+        Assert.DoesNotContain("Reconcil", bloc, StringComparison.Ordinal);
+    }
+
     internal static string CheminSources()
         => typeof(GardesPerimetreTests).Assembly
                .GetCustomAttributes<AssemblyMetadataAttribute>()
