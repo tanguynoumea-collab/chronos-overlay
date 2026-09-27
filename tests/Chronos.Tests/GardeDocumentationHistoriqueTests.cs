@@ -118,4 +118,41 @@ public class GardeDocumentationHistoriqueTests
         Assert.True(int.Parse(nombre.Groups[1].Value + nombre.Groups[2].Value) >= 1600,
             "La ligne « Stack » annonce moins de tests que la suite n'en compte (1622 à l'entrée de 35-05).");
     }
+
+    // ── §9 de docs/data-sources.md ────────────────────────────────────────────────────────────────────────────────────────────
+
+    private const string TitreParagrapheNeuf = "## 9. Lecture par la fenêtre Historique";
+
+    private static string DataSources() => Lire(Path.Combine(CheminDocs(), "data-sources.md"));
+
+    [Fact]
+    public void Le_paragraphe_neuf_dit_comment_la_fenetre_lit_le_journal()
+    {
+        var section = ContratHooksDocumenteTests.SectionDe(DataSources(), TitreParagrapheNeuf);
+        Assert.True(LignesNonVides(section) >= 15, $"Le §9 est muet ({LignesNonVides(section)} ligne(s) non vide(s)).");
+
+        foreach (var mot in new[] { "`ISourceHistorique`", "`InstantDAnalyse`", "une seule lecture", "veille", "0,01", "Écarts connus" })
+            Assert.True(section.Contains(mot, StringComparison.Ordinal), $"Le §9 ne dit pas « {mot} ».");
+
+        // Au moins cinq écarts connus des maquettes, un par ligne de liste, sous leur propre sous-titre.
+        var lignes = section.Split('\n');
+        var debut = Array.FindIndex(lignes, l => l.StartsWith("### ", StringComparison.Ordinal) && l.Contains("Écarts connus", StringComparison.Ordinal));
+        Assert.True(debut >= 0, "Le §9 n'a pas de sous-partie « ### Écarts connus des maquettes ».");
+        var ecarts = lignes.Skip(debut + 1).TakeWhile(l => !l.StartsWith("### ", StringComparison.Ordinal) && l.Trim() != "---")
+                           .Count(l => l.StartsWith("- ", StringComparison.Ordinal));
+        Assert.True(ecarts >= 5, $"Le §9 ne liste que {ecarts} écart(s) connu(s) des maquettes (au moins 5 attendus).");
+
+        var infractions = lignes.Where(l => Projection.IsMatch(l) || Mesure.IsMatch(l)).ToList();
+        Assert.True(infractions.Count == 0,
+            "Mot de projection (ou « mesure ») dans le §9 de data-sources.md :\n" + string.Join("\n", infractions));
+    }
+
+    [Fact]
+    public void La_ligne_finale_nomme_le_paragraphe_huit_et_le_neuf()
+    {
+        var derniere = DataSources().Split('\n').Last(l => !string.IsNullOrWhiteSpace(l));
+
+        Assert.Contains("§8", derniere, StringComparison.Ordinal);   // la garde de 33-05 (ContratAgregatsDocumenteTests) la lit aussi
+        Assert.Contains("§9", derniere, StringComparison.Ordinal);
+    }
 }
