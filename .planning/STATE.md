@@ -45,7 +45,7 @@ Progress: [░░░░░░░░░░] 0 %
 ### Blockers / dettes ouvertes
 - **Constat en production v1.7 PARTIEL** (VAL-03) : trois exécutables en marche (3.1.0, 3.2.0, 3.2.1), tableau des gestes non
   joué → repris en tête de la phase 32 (VAL-04) sur la 3.2.2. L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
-- **`last-exact.json` figé** depuis le 2026-09-13 12:44 (Save dans un try/catch muet) → CPT-02.
+- **`last-exact.json` : PAS de gel** (corrigé par la recherche 32, sonde WMI hors arbre le 27/09 01:56) : le fichier réel est réécrit chaque minute ; la copie figée au 13/09 12:44 est la vue virtualisée (COW) du paquet MSIX que toute session lit. CPT-02 devient observabilité (âge de dernière écriture, événement `ecriture_ratee`, ligne « Vue AppData : réelle | virtualisée » au diagnostic) + test du try/catch muet.
 - **Parser de tokens ×2 à 2,75** (lignes `assistant` dupliquées par bloc, même `usage`) → CPT-01.
 
 ### Sécurité — contrainte qui prime sur tout
@@ -69,7 +69,7 @@ fichier ; usage identique entre doublons, 0 divergent) → dédup par `message.i
 n'existe** (`TranscriptSessionSource` fait un `Seek` de queue) : les curseurs sont à construire. Balayage `grep` de 2 Go : 3,8 s
 cache chaud ; C# en flux avec pré-filtre : 10–20 s CPU chaud estimés.
 
-**Persistance existante** : `LastExactStore` (temp + `File.Move`, lecture tolérante, `SchemaVersion`) est le modèle maison.
+**Persistance existante** : `last-exact.json` réel réécrit chaque minute (la vue lue depuis une session est la copie COW du paquet, figée au 13/09) ; `LastExactStore` (temp + `File.Move`, lecture tolérante, `SchemaVersion`) est le modèle maison.
 `ChronosPaths` construit les chemins sous `%APPDATA%\Chronos`. `ServicesLayerPurityTests` interdit tout type WPF sous
 `Services/` et `Models/`. AppData est VIRTUALISÉ (MSIX) pour tout ce qui tourne sous l'app bureau : l'overlay lancé par
 l'Explorateur écrit la vue réelle, un processus lancé depuis une session écrit `Packages\Claude_*\LocalCache\Roaming` —

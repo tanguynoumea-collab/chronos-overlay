@@ -60,8 +60,9 @@ lignes de diagnostic — dans le respect des conventions du dépôt (MVVM, DI, f
 ### Reusable Assets
 - `Services/LastExactStore.cs` : écriture atomique temp + `File.Move`, lecture tolérante, `SchemaVersion` — le modèle du journal.
 - `Services/LastExactUsageProvider.cs` (App.xaml.cs:400 : il enveloppe `CompositeUsageProvider(sonde → OAuth → gated → objet
-  d'usage)`) : point d'accroche ; son `try { _store.Save(snap) } catch { }` est le suspect n° 1 du gel de `last-exact.json`
-  (non écrit depuis le 2026-09-13 12:44 dans les DEUX vues d'AppData, aucun `.tmp-*` résiduel, chemin `ChronosPaths.LastExactFile`).
+  d'usage)`) : point d'accroche ; CORRIGÉ par 32-RESEARCH : il n'y a PAS de gel — le fichier réel est réécrit chaque minute (sonde WMI hors
+  arbre, 27/09 01:56) ; la copie datée du 13/09 12:44 est la vue virtualisée du paquet MSIX que toute session lit. CPT-02 =
+  observabilité (âge de dernière écriture, `ecriture_ratee`, « Vue AppData : réelle | virtualisée ») + test du `try/catch` muet.
 - `Services/RateLimitHeaderUsageProvider.cs` : `CadenceNominale` 300 s, `CapturedAt = now` (l. 431), statuts serveur
   (`IEtatServeur`) — les sources de `statut5/statut7/overage`.
 - `Services/RefreshOrchestrator.cs` (`SnapshotChanged`, `PeriodicTimer` 60 s), `Services/RefreshOptions.cs`.
