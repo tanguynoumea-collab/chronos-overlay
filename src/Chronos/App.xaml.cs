@@ -246,10 +246,7 @@ public partial class App : Application
         // Blocage volontaire : dispose déterministe des Singletons IDisposable (évite le piège async-void qui n'attend pas StopAsync).
         // CPT-03 : le Host peut n'avoir JAMAIS été construit (seconde instance retirée avant lui) — _host est alors null.
         if (_host is not null)
-        {
-            _host.StopAsync().GetAwaiter().GetResult();
-            _host.Dispose();
-        }
+            ArretHote.Arreter(_host, ArretHote.DelaiParDefaut, out _);
         _verrou?.Liberer();   // sur le thread UI, celui qui a acquis (ReleaseMutex l'exige) ; l'OS le ferait à la mort du processus, on le fait proprement
         base.OnExit(e);
     }
