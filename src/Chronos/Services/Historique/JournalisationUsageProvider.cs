@@ -79,6 +79,9 @@ public sealed class JournalisationUsageProvider : IUsageProvider, IHostedService
     {
         _journal.Purger();   // rétention 24 mois, une fois au démarrage
         _journal.AjouterEvenement(new EvenementJournal(_clock.UtcNow, TypeEvenement.Demarrage, Version: _version ?? VersionEmbarquee()));
+        // ACC-01 (35-02) : « journal ouvert le » se lit sur le disque — JAMAIS sur le thread UI (StartAsync s'exécute
+        // synchronement dans OnStartup). Le plus ancien gagne face à l'écriture de `demarrage` ci-dessus.
+        _ = Task.Run(() => _journal.AmorcerJournalOuvertLe());
         if (_authStatus is not null)
         {
             lock (_verrou) { _dernierEtatAuth = _authStatus.Etat; }

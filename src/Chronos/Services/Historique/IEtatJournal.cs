@@ -21,4 +21,9 @@ public interface IEtatJournal
 
     /// <summary>Nombre de relevés réellement ÉCRITS par ce processus (les doublons refusés ne comptent pas).</summary>
     int RelevesEcrits { get; }
+
+    /// <summary>ACC-01 (35-02) — « journal ouvert le … » : le t de la première ligne valide du plus ancien fichier mensuel, amorcé
+    /// HORS du thread UI au démarrage, posé à la première écriture si le dossier était vide ; le plus ancien des deux gagne.
+    /// <c>null</c> = inconnu : le segment « journal du … » est alors omis, jamais inventé.</summary>
+    DateTimeOffset? JournalOuvertLe { get; }
 }

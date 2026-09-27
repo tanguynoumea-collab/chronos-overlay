@@ -147,6 +147,14 @@ public static class LecteurJournal
             yield return new DateTimeOffset(mois);
     }
 
+    /// <summary>
+    /// ACC-01 (35-02) — « journal ouvert le … » sans lire une plage : le t de la première ligne valide (relevé ou événement)
+    /// du plus ancien fichier mensuel qui en porte une. Tolérant : dossier absent, illisible ou vide → <c>null</c> (inconnu,
+    /// jamais inventé), aucune exception. Lecture FICHIER PAR FICHIER qui s'arrête au premier lisible : à appeler hors du
+    /// thread UI (<see cref="JournalReleves.AmorcerJournalOuvertLe"/>).
+    /// </summary>
+    public static DateTimeOffset? JournalOuvertLe(string dossier) => PremiereLigneValide(dossier);
+
     // « Journal ouvert le … » : les fichiers conformes triés par nom (ordinal = chronologique pour AAAA-MM), et dans
     // le plus ancien qui porte une ligne lisible, le t de la PREMIÈRE ligne valide (relevé ou événement). Un fichier
     // ancien entièrement illisible ne cache pas l'ouverture : on passe au suivant. Aucun → null.

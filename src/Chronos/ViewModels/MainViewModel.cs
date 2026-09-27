@@ -7,6 +7,7 @@ using Chronos.Services.Historique;
 using Chronos.Services.Historique.Tokens;
 using Chronos.Text;
 using Chronos.Theming;
+using Chronos.ViewModels.Historique;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -127,11 +128,29 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _texteEtatJournal = "";
 
     /// <summary>JRN-04 — le journal se tait depuis plus de trois cadences (15 min) alors que Chronos tourne (D-32-21).
-    /// Pilote la pastille <c>Alerte</c> de la carte « Journal des relevés ».</summary>
+    /// Pilote la pastille <c>Alerte</c> de la ligne d'état du journal (carte « Historique d'utilisation » depuis 35-02).</summary>
     [ObservableProperty] private bool _alerteJournal;
 
-    /// <summary>Pilote la visibilité de la carte « Journal des relevés » (motif AfficherEtatSonde) : masquée sans journal injecté.</summary>
+    /// <summary>Pilote la visibilité de la ligne d'état du journal (motif AfficherEtatSonde) : masquée sans journal injecté.</summary>
     [ObservableProperty] private bool _afficherEtatJournal;
+    partial void OnAfficherEtatJournalChanged(bool value) => OnPropertyChanged(nameof(AfficherCarteHistorique));
+
+    /// <summary>ACC-01 / D-35-08 — le VM SINGLETON de la fenêtre Historique, exposé tel quel : les puces de style de la carte des
+    /// réglages bindent SA commande et SES booléens. Même instance, mêmes réglages, même commande que le sélecteur de la fenêtre :
+    /// synchronisation par construction, aucun état de style dupliqué ici. <c>null</c> hors DI (tests historiques).</summary>
+    public HistoriqueViewModel? Historique { get; }
+
+    /// <summary>ACC-01 / D-35-09 — la carte « Historique d'utilisation » (qui absorbe la ligne d'état du journal) se montre dès
+    /// qu'elle a quelque chose à dire : la fenêtre à ouvrir, ou l'état du journal.</summary>
+    public bool AfficherCarteHistorique => Historique is not null || AfficherEtatJournal;
+
+    /// <summary>Le bouton « Ouvrir », le sélecteur de style et la mention du double-clic n'ont de sens qu'avec la fenêtre.</summary>
+    public bool AfficherOuvrirHistorique => Historique is not null;
+
+    /// <summary>ACC-01 — sous-texte de la carte : « hebdo / 5 h / tokens · journal du &lt;date&gt; ». Date dans le fuseau de la
+    /// fenêtre (mêmes mots, <see cref="TextesHistorique.DateLongue"/>) ; ouverture inconnue → le segment est OMIS, jamais inventé.
+    /// La « dernière écriture » n'est PAS répétée ici : elle vit dans <see cref="TexteEtatJournal"/>, une seule fois.</summary>
+    [ObservableProperty] private string _sousTexteHistorique = "hebdo / 5 h / tokens";
 
     /// <summary>TOK-02 / D-33-22 — la progression de la reconstruction des agrégats de tokens, en une ligne : « N / M fichiers »,
     /// suivie de la mention de la semaine courante dès qu'elle est sur le disque ; ou « ÉCHEC — cause ». VIDE quand tout est à jour
@@ -326,7 +345,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// compilent sans une retouche. Même protocole d'extension qu'au plan 17-05 pour <c>IAuthStatus</c>,
     /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
     /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position, puis
-    /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui, puis <paramref name="ouvreurHistorique"/> (ACC-02, 35-02).
+    /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui, puis <paramref name="ouvreurHistorique"/> (ACC-02, 35-02) et
+    /// <paramref name="historique"/> (ACC-01, 35-02).
     /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
@@ -337,7 +357,8 @@ public sealed partial class MainViewModel : ObservableObject
         IEtatServeur? etatServeur = null,
         IEtatJournal? journal = null,
         IEtatReconstruction? reconstruction = null,
-        IOuvreurHistorique? ouvreurHistorique = null)
+        IOuvreurHistorique? ouvreurHistorique = null,
+        HistoriqueViewModel? historique = null)
     {
         _ui = ui;
         _clock = clock;
@@ -352,6 +373,7 @@ public sealed partial class MainViewModel : ObservableObject
         _oauthLogin = oauthLogin;
         _sessions = sessions;
         _ouvreurHistorique = ouvreurHistorique;   // ACC-02 : optionnel, en fin de liste (motif 32-05 / 33-05)
+        Historique = historique;                  // ACC-01 / D-35-08 : le singleton de la fenêtre, partagé avec la carte des réglages
         _settings = settings.Load();
 
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
@@ -539,6 +561,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     private void MajTexteEtatJournal()
     {
+        // ACC-01 : le sous-texte de la carte « Historique d'utilisation », au même tick (l'amorce de l'ouverture arrive en fond).
+        SousTexteHistorique = "hebdo / 5 h / tokens"
+            + (_journal?.JournalOuvertLe is { } ouvert && Historique is { } h ? " · journal du " + TextesHistorique.DateLongue(ouvert, h.Fuseau) : "");
+
         if (_journal is null)
         {
             TexteEtatJournal = "";

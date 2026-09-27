@@ -71,6 +71,11 @@ public sealed class JournalReleves : IEtatJournal, IEtatMagasin
     private readonly object _verrou = new();
     private readonly IClock _clock;
 
+    // ACC-01 : verrou DÉDIÉ à « journal ouvert le » — lu par le thread UI au tick, il ne doit jamais attendre une écriture
+    // (qui tient _verrou pendant ses reprises de fichier). Un DateTimeOffset? n'est pas atomique : lecture et écriture sous verrou.
+    private readonly object _verrouOuverture = new();
+    private DateTimeOffset? _journalOuvertLe;
+
     public JournalReleves(string dossier, IClock clock)
     {
         Dossier = dossier ?? throw new ArgumentNullException(nameof(dossier));
@@ -82,6 +87,39 @@ public sealed class JournalReleves : IEtatJournal, IEtatMagasin
     public string? DerniereErreur { get; private set; }
     public int RelevesEcrits { get; private set; }
     public int EvenementsEcrits { get; private set; }
+
+    /// <inheritdoc/>
+    public DateTimeOffset? JournalOuvertLe
+    {
+        get { lock (_verrouOuverture) return _journalOuvertLe; }
+    }
+
+    /// <summary>
+    /// ACC-01 (35-02) — lit « journal ouvert le » sur le disque (<see cref="LecteurJournal.JournalOuvertLe"/>) et le RETIENT s'il
+    /// est plus ancien que ce qui est connu. À appeler HORS du thread UI (<c>Task.Run</c> au démarrage) : la lecture parcourt
+    /// les fichiers mensuels. Ne lève jamais : un échec laisse la valeur telle quelle (inconnue ou posée par une écriture).
+    /// </summary>
+    public void AmorcerJournalOuvertLe()
+    {
+        DateTimeOffset? lu;
+        try { lu = LecteurJournal.JournalOuvertLe(Dossier); }
+        catch { return; }   // inconnu reste inconnu : jamais inventé
+        RetenirJournalOuvertLe(lu);
+    }
+
+    /// <summary>Le plus ANCIEN gagne : l'amorce peut revenir APRÈS l'écriture de <c>demarrage</c> (course au démarrage), avec
+    /// une lecture faite avant elle (dossier vide → <c>null</c>) — elle ne doit ni effacer ni rajeunir l'ouverture connue.</summary>
+    internal void RetenirJournalOuvertLe(DateTimeOffset? lu)
+    {
+        lock (_verrouOuverture)
+            _journalOuvertLe = _journalOuvertLe is { } connu && (lu is null || connu <= lu) ? connu : lu;
+    }
+
+    // Première écriture réussie d'un dossier vide : l'ouverture du journal, c'est elle (l'amorce, si elle trouve plus ancien, l'emporte).
+    private void PoserOuvertureSiInconnue(DateTimeOffset t)
+    {
+        lock (_verrouOuverture) _journalOuvertLe ??= t;
+    }
 
     /// <summary>Nom du fichier mensuel : mois UTC de <c>t</c> (D-32-16), chiffres invariants.</summary>
     public static string NomFichier(DateTimeOffset t)
@@ -102,7 +140,7 @@ public sealed class JournalReleves : IEtatJournal, IEtatMagasin
         {
             var ecrit = EcrireSousVerrou(CheminDuMois(r.T), ligne,
                                          fs => DernierTDansFlux(fs, r.Source) is { } dernier && r.T <= dernier);
-            if (ecrit) RelevesEcrits++;
+            if (ecrit) { RelevesEcrits++; PoserOuvertureSiInconnue(r.T); }
             return ecrit;
         }
     }
@@ -114,7 +152,7 @@ public sealed class JournalReleves : IEtatJournal, IEtatMagasin
         lock (_verrou)
         {
             var ecrit = EcrireSousVerrou(CheminDuMois(e.T), ligne, _ => false);
-            if (ecrit) EvenementsEcrits++;
+            if (ecrit) { EvenementsEcrits++; PoserOuvertureSiInconnue(e.T); }
             return ecrit;
         }
     }

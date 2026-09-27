@@ -1,6 +1,8 @@
 <Window x:Class="Chronos.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:txt="clr-namespace:Chronos.Text"
+        xmlns:svc="clr-namespace:Chronos.Services"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" SizeToContent="WidthAndHeight" ShowInTaskbar="False"
         WindowStartupLocation="Manual" Topmost="True"
@@ -116,6 +118,35 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- ACC-01 (35-02) : puce du style de la vue Semaine. Gabarit de StyleChip, mais la sélection se lit sur le Tag du
+             bouton (bindé au booléen IsStyle* du HistoriqueViewModel partagé) : le DataContext des puces est le MainViewModel,
+             le DataTrigger IsSelected de StyleChip y serait muet. Couleurs par jetons uniquement (garde des littéraux). -->
+        <Style x:Key="PuceStyleHistorique" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="puce" CornerRadius="9" Background="{StaticResource Panel}"
+                                BorderThickness="1.5" BorderBrush="{StaticResource Line}" Padding="4,5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Ink2}"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                                <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -203,25 +234,60 @@
                 </Grid>
             </Border>
 
-            <!-- JRN-04 : l'âge de la dernière écriture du journal des relevés, en première classe. Ligne d'état MINIMALE (la carte
-                 complète « Historique d'utilisation » arrive en phase 35, ACC-01) ; la pastille reprend le jeton Alerte de la
-                 déconnexion, aucune couleur ni taille nouvelle (gabarit de la carte « Sonde d'en-têtes »). Masquée sans journal. -->
-            <Border Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,9" Margin="0,7,0,0"
-                    Visibility="{Binding AfficherEtatJournal, Converter={StaticResource BoolToVis}}">
-                <Grid>
-                    <StackPanel VerticalAlignment="Center" MaxWidth="225">
-                        <TextBlock Text="Journal des relevés" Foreground="{StaticResource Ink}" FontSize="13"/>
-                        <TextBlock Foreground="{StaticResource Ink2}" FontSize="10.5" TextWrapping="Wrap"
-                                   Text="un relevé exact toutes les 5 min, écrit dans %APPDATA%\Chronos\historique — sans interface pour l'instant"/>
+            <!-- ACC-01 (35-02) : carte F1 « Historique d'utilisation », juste après la sonde. Bordure Accent 1,5 tant que la
+                 fonctionnalité est nouvelle. D-35-09 : elle ABSORBE l'ancienne carte du journal des relevés (32-05) — la ligne d'état
+                 garde ses noms (LigneEtatJournal / PastilleJournal) et sa source (TexteEtatJournal / AlerteJournal : mêmes mots que
+                 le diagnostic, D-32-22) ; la « dernière écriture » n'y figure qu'UNE fois. D-35-08 : les puces de style pilotent le
+                 HistoriqueViewModel SINGLETON exposé par le MainViewModel — même instance, même commande que le sélecteur de la
+                 fenêtre, aucun état dupliqué. Bouton, puces et mention masqués sans fenêtre (tests historiques) ; carte masquée
+                 quand il n'y a ni fenêtre ni journal. -->
+            <Border x:Name="CarteHistorique" Background="{StaticResource Panel2}" CornerRadius="11" Padding="11,9" Margin="0,7,0,0"
+                    BorderBrush="{StaticResource Accent}" BorderThickness="1.5"
+                    Visibility="{Binding AfficherCarteHistorique, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <Grid>
+                        <TextBlock Text="Historique d'utilisation" Foreground="{StaticResource Ink}" FontSize="13"
+                                   VerticalAlignment="Center"/>
+                        <Button x:Name="BoutonOuvrirHistorique" Content="Ouvrir" HorizontalAlignment="Right"
+                                Style="{StaticResource Flat}" FontSize="12"
+                                Command="{Binding OuvrirHistoriqueCommand}"
+                                Visibility="{Binding AfficherOuvrirHistorique, Converter={StaticResource BoolToVis}}"/>
+                    </Grid>
+                    <TextBlock x:Name="SousTexteHistorique" Foreground="{StaticResource Ink2}" FontSize="10.5" TextWrapping="Wrap"
+                               Margin="0,2,0,0" Text="{Binding SousTexteHistorique}"/>
+                    <DockPanel Margin="0,3,0,0" LastChildFill="True"
+                               Visibility="{Binding AfficherEtatJournal, Converter={StaticResource BoolToVis}}">
+                        <Ellipse x:Name="PastilleJournal" DockPanel.Dock="Right" Width="10" Height="10" Margin="8,0,0,0"
+                                 VerticalAlignment="Center" Fill="{DynamicResource Alerte}"
+                                 ToolTip="alerte si &gt; 15 min sans écriture alors que Chronos tourne"
+                                 Visibility="{Binding AlerteJournal, Converter={StaticResource BoolToVis}}"/>
                         <TextBlock x:Name="LigneEtatJournal" Foreground="{StaticResource Ink2}" FontSize="10.5"
-                                   Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="{Binding TexteEtatJournal}"/>
+                                   TextWrapping="Wrap" Text="{Binding TexteEtatJournal}"/>
+                    </DockPanel>
+                    <StackPanel Visibility="{Binding AfficherOuvrirHistorique, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="Style de la vue Semaine :" Foreground="{StaticResource Ink2}" FontSize="10.5"
+                                   Margin="0,8,0,3"/>
+                        <UniformGrid Columns="3">
+                            <Button x:Name="PuceStylePistes" Style="{StaticResource PuceStyleHistorique}"
+                                    Content="{x:Static txt:TextesHistorique.StylePistes}"
+                                    Command="{Binding Historique.ChoisirStyleCommand}"
+                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Pistes}"
+                                    Tag="{Binding Historique.IsStylePistes}"/>
+                            <Button x:Name="PuceStyleSimplifie" Style="{StaticResource PuceStyleHistorique}"
+                                    Content="{x:Static txt:TextesHistorique.StyleSimplifie}"
+                                    Command="{Binding Historique.ChoisirStyleCommand}"
+                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Simplifie}"
+                                    Tag="{Binding Historique.IsStyleSimplifie}"/>
+                            <Button x:Name="PuceStyleTuiles" Style="{StaticResource PuceStyleHistorique}"
+                                    Content="{x:Static txt:TextesHistorique.StyleTuiles}"
+                                    Command="{Binding Historique.ChoisirStyleCommand}"
+                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Tuiles}"
+                                    Tag="{Binding Historique.IsStyleTuiles}"/>
+                        </UniformGrid>
+                        <TextBlock Text="Aussi : double-clic au centre du cadran" Foreground="{StaticResource Ink2}" FontSize="10.5"
+                                   Margin="0,6,0,0"/>
                     </StackPanel>
-                    <Ellipse x:Name="PastilleJournal" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Center"
-                             Fill="{DynamicResource Alerte}"
-                             ToolTip="journal muet : aucune écriture depuis plus de 15 min alors que Chronos tourne"
-                             Visibility="{Binding AlerteJournal, Converter={StaticResource BoolToVis}}"/>
-                </Grid>
+                </StackPanel>
             </Border>
 
             <!-- Thème -->
