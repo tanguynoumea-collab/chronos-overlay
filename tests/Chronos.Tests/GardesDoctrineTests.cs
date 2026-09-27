@@ -83,7 +83,7 @@ public class GardesDoctrineTests
 
         var fichiers = new[] { "Services", "Models" }
             .Select(d => Path.Combine(racine, d))
-            .SelectMany(d => Directory.EnumerateFiles(d, "*.cs"))   // dossiers plats, non récursif
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.cs", SearchOption.AllDirectories))   // récursif depuis la phase 32 : Services/Historique, Models/Historique
             .ToList();
 
         // Un chemin valide pointant sur un dossier vide rendrait la garde muette.
@@ -164,7 +164,7 @@ public class GardesDoctrineTests
 
         var fichiers = new[] { "Services", "Models" }
             .Select(d => Path.Combine(racine, d))
-            .SelectMany(d => Directory.EnumerateFiles(d, "*.cs"))   // dossiers plats, non récursif
+            .SelectMany(d => Directory.EnumerateFiles(d, "*.cs", SearchOption.AllDirectories))   // récursif depuis la phase 32 : Services/Historique, Models/Historique
             .ToList();
 
         // Un chemin valide pointant sur un dossier vide rendrait la garde muette.
