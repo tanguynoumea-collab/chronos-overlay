@@ -98,6 +98,7 @@ public class VueJourBindingTests
         try
         {
             piste.InvalidateVisual();
+            piste.UpdateLayout();   // OnRender est rejoué à l'arrangement, pas par RenderTargetBitmap.Render seul (34-04, Open Question 4)
             var bmp = new RenderTargetBitmap(Math.Max(1, (int)Math.Ceiling(piste.ActualWidth)), Math.Max(1, (int)Math.Ceiling(piste.ActualHeight)), 96, 96, PixelFormats.Pbgra32);
             bmp.Render(piste);
             return piste.TraceRendu.ToList();
@@ -224,13 +225,16 @@ public class VueJourBindingTests
     [WpfFact]
     public void Les_resets_observes_et_l_epuisee_sont_annonces_le_mercredi()
     {
-        var (vm, vue) = Monter(joursEnArriere: 1);   // mer. 23 sept. : resets 04:00 / 09:00 / 14:00 / 19:00, plateau épuisé 20:00 → 00:00, trou « Chronos arrêté » fermé à 07:00
+        var (vm, vue) = Monter(joursEnArriere: 1);   // mer. 23 sept. : plateau épuisé 20:00 → 00:00, trou « Chronos arrêté » fermé à 07:00
+        // Grille 5 h : 04:00 / 09:00 / 14:00 / 19:00 — mais le reset de 04:00 tombe dans le trou (aucun relevé de part et d'autre) : il n'est
+        // pas OBSERVÉ, donc ni annoté ni tracé. Trois resets observés.
         var plage = vm.DonneesJour!.Plage;
         var textes = TextesVisibles(vue);
 
         // D-34-32 : le mot « reset 5 h HH:MM » vient du VM (AnnotationsResets), posé à l'instant du reset observé.
         Assert.True(vm.AnnotationsResets.Count >= 3, $"resets annotés : {vm.AnnotationsResets.Count}");
-        Assert.Equal(new[] { "reset 5 h 04:00", "reset 5 h 09:00", "reset 5 h 14:00", "reset 5 h 19:00" }, vm.AnnotationsResets.Select(a => a.Texte).ToArray());
+        Assert.Equal(new[] { "reset 5 h 09:00", "reset 5 h 14:00", "reset 5 h 19:00" }, vm.AnnotationsResets.Select(a => a.Texte).ToArray());
+        Assert.DoesNotContain("reset 5 h 04:00", textes);
         Assert.Equal(vm.AnnotationsResets.Select(a => a.Texte).OrderBy(t => t, StringComparer.Ordinal),
                      textes.Where(t => t.StartsWith("reset 5 h ", StringComparison.Ordinal)).OrderBy(t => t, StringComparer.Ordinal));
 
@@ -247,11 +251,15 @@ public class VueJourBindingTests
         Assert.Equal(TextTrimming.CharacterEllipsis, epuisee.TextTrimming);
         Assert.Equal(Hex("A9A6C4"), CouleurDe(epuisee.Foreground));   // Ink2, pas l'ambre : le gris du plateau dit déjà l'état
 
-        // Le trou « Chronos arrêté » a commencé la veille (mar. 23:00) : borné à 0 par le convertisseur.
-        var arret = Assert.Single(vm.AnnotationsTrous, a => a.Texte == "Chronos arrêté");
-        Assert.True(arret.Debut < plage.Debut, $"le trou doit commencer avant la plage ({arret.Debut:O} vs {plage.Debut:O})");
-        var texteArret = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == "Chronos arrêté");
-        Assert.InRange(XDans(texteArret, Ancetre<Canvas>(texteArret)), -0.5, 0.5);
+        // Le trou « Chronos arrêté » (mar. 23:00 → mer. 07:00) chevauche minuit : l'analyse du JOUR commence à son premier relevé (07:00) et
+        // ne le rapporte pas — aucune annotation de trou le mercredi, et rien n'est interpolé avant 07:00 (la couverture commence à 7/24).
+        // Écart par rapport au plan (qui attendait « Chronos arrêté » posé à 0) : consigné dans le SUMMARY pour 34-08.
+        Assert.Empty(vm.AnnotationsTrous);
+        Assert.DoesNotContain("Chronos arrêté", textes);
+        Assert.Equal(Utc("2026-09-23T05:00:00Z"), vm.DonneesJour.Analyse.Serie[0].T);
+        var couverture = PistesVisibles(vue).OfType<PisteCouverture>().Single();
+        var present = Assert.Single(Trace(couverture), l => l.StartsWith("present ", StringComparison.Ordinal));
+        Assert.InRange(double.Parse(present.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture), 7.0 / 24 - 0.001, 7.0 / 24 + 0.001);
 
         // La piste dessine ce que le VM annonce : ≥ 1 palier gris (plateau) et un trait par reset observé dans la plage.
         var niveau = PistesVisibles(vue).OfType<PisteNiveau>().Single();
