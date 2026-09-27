@@ -300,4 +300,96 @@ public class LastExactStoreTests : IDisposable
 
         Assert.False(File.Exists(_fichier));   // rien de certifiable => pas même un fichier
     }
+
+    // --- CPT-02 (phase 32) : la persistance dit QUAND elle a écrit et POURQUOI elle n'a pas pu ---
+    // Le projet a payé trois fois la panne silencieuse (jeton expiré, usage.json figé, puis un faux « gel »
+    // de last-exact.json qui a fondé une phase : la copie copy-on-write du paquet MSIX, lue depuis une
+    // session, alors que le fichier réel était réécrit chaque minute). Le magasin expose donc l'âge de sa
+    // dernière écriture — le mtime, exactement ce qu'une sonde hors arbre lit — et sa dernière erreur.
+
+    [Fact]
+    public void Une_ecriture_reussie_pose_DerniereEcriture_sur_le_mtime_du_fichier_et_efface_DerniereErreur()
+    {
+        var store = new LastExactStore(_fichier);
+
+        store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now.AddMinutes(-5)),
+            Exact(WindowKind.SevenDay, 0.63, Now.AddDays(4), Now.AddMinutes(-5))));
+
+        // D-32-05 : la MÊME valeur que le mtime (tolérance zéro), pas une horloge injectée.
+        Assert.Equal(new DateTimeOffset(File.GetLastWriteTimeUtc(_fichier), TimeSpan.Zero), store.DerniereEcriture);
+        Assert.Null(store.DerniereErreur);
+        Assert.Equal(NomsMagasins.DernierExact, store.Nom);
+        Assert.Equal(_fichier, store.Chemin);
+    }
+
+    [Fact]
+    public void Un_magasin_jamais_ecrit_par_ce_processus_amorce_DerniereEcriture_depuis_le_disque()
+    {
+        // Un autre processus (ou une exécution précédente) a écrit le fichier…
+        new LastExactStore(_fichier).Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now),
+            WindowState.Unavailable(WindowKind.SevenDay)));
+
+        // …un NOUVEL objet magasin connaît tout de même l'âge de cette écriture : il vient du disque.
+        var relu = new LastExactStore(_fichier);
+        Assert.Equal(new DateTimeOffset(File.GetLastWriteTimeUtc(_fichier), TimeSpan.Zero), relu.DerniereEcriture);
+
+        // Chemin absent : rien à amorcer, et surtout rien d'inventé.
+        Assert.Null(new LastExactStore(Path.Combine(_dir, "absent.json")).DerniereEcriture);
+    }
+
+    [Fact]
+    public void Une_ecriture_ratee_consigne_l_erreur_leve_l_evenement_et_relance()
+    {
+        // Panne DURE et déterministe (motif de LastExactUsageProviderTests) : le dossier parent est un FICHIER.
+        var poison = Path.Combine(_dir, "poison");
+        File.WriteAllText(poison, "je suis un fichier, pas un dossier");
+        var store = new LastExactStore(Path.Combine(poison, "last-exact.json"));
+
+        var causes = new List<string>();
+        store.EcritureRatee += (_, cause) => causes.Add(cause);
+
+        // D-32-06 : consigner PUIS relancer — la tête garde son « je ne sais pas » (EXA-05).
+        Assert.ThrowsAny<Exception>(() => store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now),
+            WindowState.Unavailable(WindowKind.SevenDay))));
+
+        Assert.NotNull(store.DerniereErreur);
+        Assert.Matches("^[A-Za-z]+Exception : ", store.DerniereErreur);   // « Type : message »
+        Assert.Equal(new[] { store.DerniereErreur }, causes);                // exactement UNE cause, la même
+        Assert.Null(store.DerniereEcriture);
+    }
+
+    [Fact]
+    public void Un_succes_apres_un_echec_efface_DerniereErreur()
+    {
+        var poison = Path.Combine(_dir, "poison");
+        File.WriteAllText(poison, "je suis un fichier, pas un dossier");
+        var store = new LastExactStore(Path.Combine(poison, "last-exact.json"));
+        var snap = Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now),
+            WindowState.Unavailable(WindowKind.SevenDay));
+
+        Assert.ThrowsAny<Exception>(() => store.Save(snap));
+        Assert.NotNull(store.DerniereErreur);
+
+        // La panne cesse (le poison disparaît, le dossier peut être créé) : l'erreur n'est pas une cicatrice.
+        File.Delete(poison);
+        store.Save(snap);
+
+        Assert.Null(store.DerniereErreur);
+        Assert.NotNull(store.DerniereEcriture);
+    }
+
+    // --- JRN-01 : le dossier du journal est dérivé comme les autres chemins, jamais construit en dur ---
+
+    [Fact]
+    public void HistoriqueDir_reste_dans_le_dossier_du_usage_file_injecte()
+    {
+        var paths = new ChronosPaths(Path.Combine(_dir, "usage.json"), Path.Combine(_dir, "projects"));
+
+        Assert.Equal(Path.Combine(_dir, "historique"), paths.HistoriqueDir);
+        Assert.StartsWith(_dir, paths.HistoriqueDir);
+    }
 }

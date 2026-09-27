@@ -253,6 +253,43 @@ public class LastExactUsageProviderTests : IDisposable
         Assert.Null(snap.UnExactADejaEteObtenu);   // « je ne sais pas » ≠ « jamais » (EXA-05)
     }
 
+    /// <summary>CPT-02 (phase 32) — la MÊME panne que ci-dessus, vue depuis l'observabilité : le décorateur
+    /// rend toujours le même snapshot et n'affirme toujours rien (le try/catch tient EXA-05), mais le magasin,
+    /// lui, ne se tait plus — il a consigné la cause et levé l'événement UNE fois. C'est ce défaut
+    /// d'observabilité, et non un chiffre avalé, qui a laissé croire à un « gel » de last-exact.json alors que
+    /// la copie lue était celle de la vue virtualisée du paquet MSIX (recherche 32, sonde hors arbre).</summary>
+    [Fact]
+    public async Task Un_magasin_en_panne_ne_se_tait_plus_mais_rend_le_meme_snapshot()
+    {
+        var poison = Path.Combine(_dir, "poison");
+        File.WriteAllText(poison, "je suis un fichier, pas un dossier");
+        var enPanne = new LastExactStore(Path.Combine(poison, "last-exact.json"));
+
+        var causes = new List<string>();
+        enPanne.EcritureRatee += (_, cause) => causes.Add(cause);
+
+        var inner = new FakeUsageProvider
+        {
+            Next = Snap(
+                Win(WindowKind.FiveHour, SourceReliability.Exact, 0.30, Now.AddHours(3), Now),
+                WindowState.Unavailable(WindowKind.SevenDay)),
+        };
+
+        var snap = await Deco(inner, enPanne).GetAsync();
+
+        // Rendu IDENTIQUE au test précédent : rien n'a changé pour l'utilisateur…
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(ProvenanceReleve.Frais, snap.FiveHour.Provenance);
+        Assert.Equal(0.30, snap.FiveHour.Utilization);
+        Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
+        Assert.Null(snap.UnExactADejaEteObtenu);   // « je ne sais pas » ≠ « jamais » (EXA-05), inchangé
+
+        // …mais la panne a laissé une trace et un événement, UNE fois.
+        Assert.NotNull(enPanne.DerniereErreur);
+        Assert.Single(causes);
+        Assert.Equal(enPanne.DerniereErreur, causes[0]);
+    }
+
     // --- 8. Aucune écriture inutile : rien d'exact, rien à mémoriser ---
 
     [Fact]
