@@ -171,6 +171,12 @@ publiés** (et sont mouvants : ×2 le 6 mai, +50 % hebdo jusqu'au 13 juillet 202
 est **structurellement approximative**, d'où le marquage **`Estimé`** (jamais présenter comme
 exact).
 
+> **2026-09-27 (phase 32, CPT-01)** : une ligne `assistant` par bloc de contenu d'un même `message.id`,
+> `output_tokens` partiel et croissant (8 → 8 → 256), les trois autres champs identiques ; 491 ids sur
+> 8 jours présents dans 2 à 3 fichiers (fork/resume). Toute somme passe par `DedupUsage` (max par champ
+> par `message.id`, repli `requestId`, dictionnaire global à la passe) : sommer les lignes compterait
+> l'entrée ×2,1.
+
 ### Format des timestamps
 
 `o["timestamp"]` = **ISO 8601 UTC** avec millisecondes et suffixe `Z`, p. ex.
@@ -333,5 +339,109 @@ session Claude Code voit la vue virtualisée et ne vaut pas pour l'overlay (`doc
 
 ---
 
-*Fin du document — capturé le 2026-07-08, à revalider à chaque MAJ majeure de Claude Code
-(schéma = API privée de facto).*
+## 7. Journal d'historique
+
+> Ajouté le 2026-09-27 (phase 32, exe 3.2.2). Le journal ne sonde rien et n'appelle rien : il observe ce que la chaîne
+> exacte produit (décorateur `JournalisationUsageProvider`, entre `LastExactUsageProvider` et le composite) et l'écrit.
+> Lecture seule stricte de `~/.claude` et de `%APPDATA%\Claude`, inchangée. Types : `Services/Historique/{JournalReleves,
+> JournalisationUsageProvider, IEtatJournal, LigneJournal, LecteurJournal, BornesPlage, AnalyseReleves}`,
+> `Models/Historique/{ReleveJournal, EvenementJournal, LectureJournal}`.
+
+### Emplacement et fichiers
+
+`%APPDATA%\Chronos\historique\releves-AAAA-MM.jsonl` (chemin par `ChronosPaths.HistoriqueDir`) — un fichier par **mois
+UTC** de `t` (`JournalReleves.NomFichier`, culture invariante : un relevé du 1er octobre à 01:30+02:00 tombe dans
+`releves-2026-09`) ; UTF-8 sans BOM, une ligne JSON par entrée, terminée par `\n` seul, < 4 Ko (216 o mesurés pour un
+relevé complet sans overage, 270 o avec ; ≈ 75 Ko/jour, ≈ 2,3 Mo/mois). **Rétention 24 mois** (`JournalReleves.RetentionMois`) :
+au démarrage, les fichiers dont AAAA-MM est strictement antérieur à (mois courant − 24) sont supprimés ; les noms non
+conformes sont ignorés et comptés ; **aucune compaction** (JRN-07 différé).
+
+### Ligne de relevé (un relevé exact d'UNE source à UN instant)
+
+| champ | type / unité | d'où il vient |
+|---|---|---|
+| `v` | entier, version du schéma de ligne (1 ; une autre valeur = ligne sautée, pas le fichier) | `LigneJournal.SchemaVersion` |
+| `t` | ISO 8601 UTC, format aller-retour « O » ; `CapturedAt` de la fenêtre | sonde : `now` à la réponse |
+| `u5`, `u7` | fraction 0..1 **brute, sans arrondi** (utilisation 5 h / 7 j) ; `double` invariant (« 0.12 », jamais « 0,12 ») | en-têtes `anthropic-ratelimit-unified-*` |
+| `r5`, `r7` | ISO 8601 UTC, `resets_at` annoncé par le serveur | idem |
+| `statut5`, `statut7` | `Autorise` · `AutoriseAvertissement` · `Rejete` · `NonReconnu`, ou absent | statut serveur de la fenêtre |
+| `overage` | fraction du dépassement (HDR-04), ou absent | en-têtes d'overage |
+| `overage_statut` | statut du dépassement (mêmes valeurs que `statut5`) ; peut exister SEUL, ou absent | idem |
+| `source` | `SondeEnTetes` · `EndpointOAuthChronos` · `EndpointOAuthClaude` · `PontStatusLine` | producteur ; **jamais** `MagasinDernierExact` |
+
+Les `null` sont omis à l'écriture ; un champ absent est `null` à la lecture, **jamais 0**. Un snapshot mixte (5 h de la
+sonde, hebdo d'un repli) fait UNE ligne par couple `(t, source)`, les fenêtres de l'autre couple restant absentes.
+N'entrent JAMAIS dans le journal : un plancher (`Estimated`), une fenêtre indisponible, une valeur rejouée du magasin
+`last-exact.json` (le décorateur voit l'inner BRUT), et tout relevé dont `t` n'est pas **strictement croissant** pour sa
+source — l'orchestrateur ressert le même relevé 5 fois sur 6 (sonde toutes les 300 s, tick toutes les 60 s) et le journal
+n'en garde qu'un.
+
+### Ligne d'événement (la cause d'un trou)
+
+`{"v":1,"t":"…","ev":"…"}` plus, selon le cas, `magasin`, `cause`, `version`. `ev` prend l'une des six valeurs de
+`TypeEvenementTexte.NomsDeFil` :
+
+| `ev` | quand | porte |
+|---|---|---|
+| `demarrage` | le décorateur démarre (date un changement de comportement de l'exe) | `version` (version embarquée, ex. `3.2.2`) |
+| `arret` | arrêt PROPRE (`StopAsync`) ; un kill ou une veille n'en écrit pas — le lecteur fait alors un trou « Chronos arrêté » | — |
+| `jeton_invalide` | transition d'authentification vers Déconnecté | — |
+| `sonde_refusee` | la sonde d'en-têtes est refusée (429, saturation, statut `Rejete`), sur transition seulement | `cause` |
+| `reprise` | le relevé qui suit un trou > `SeuilReprise` = 2 × 300 s = 10 min ; `t` est celui du relevé | `cause` (« trou de N min ») |
+| `ecriture_ratee` | un magasin persistant n'a pas pu écrire (`last-exact`, `journal`…) : une écriture qui échoue n'est plus silencieuse | `magasin`, `cause` |
+
+Un `ev` inconnu à la lecture est **conservé** (`TypeEvenement.NonReconnu`, avec son nom brut) et compté au diagnostic, jamais
+fatal ; il n'est jamais écrit. La lecture par plage (`AnalyseReleves`) attache à chaque trou le dernier `arret` /
+`jeton_invalide` / `sonde_refusee` qui le précède, sinon « Chronos arrêté » s'il y a un `demarrage` dans le trou, sinon
+« cause inconnue » ; `reprise` et `ecriture_ratee` ne causent rien.
+
+### Idempotence et atomicité
+
+Clé d'idempotence **`(t, source)`**. `FileMode.Append` n'est **pas** atomique sous Windows (deux écrivains → une ligne
+perdue ou entrelacée, mesuré le 2026-09-27) : l'écrivain ouvre le fichier du mois en **partage exclusif**
+(`FileShare.None`, jusqu'à 600 reprises ≈ 0,6 s au pire), relit la queue du fichier (16 Ko ≈ 70 lignes ≈ 6 h) **sous le
+même verrou**, compare `t` au dernier `t` de la même source, puis écrit la ligne d'une seule écriture. Deux processus
+n'écrivent donc pas deux fois le même relevé, et une écriture qui échoue est consignée (`DerniereErreur`, événement
+`ecriture_ratee`). Lecture tolérante ligne par ligne (`LecteurJournal`) : ligne tronquée, `v` inconnu, `t` illisible,
+relevé sans `source` → ignorées et **comptées** (`LignesIgnorees`), le reste du fichier est lu.
+
+L'âge de la dernière écriture (`IEtatJournal.DerniereEcriture`) est affiché dans les réglages et le diagnostic ;
+au-delà de `SeuilMuet` = 3 × 300 s = 15 min sans écriture (mesuré depuis le démarrage du processus au plus tôt) :
+« journal muet depuis N min ».
+
+### Les deux vues d'AppData (à relire avant tout constat)
+
+Tout processus lancé sous l'app bureau Claude (session, hook, `dotnet test`, agent) lit et écrit la copie copy-on-write du
+paquet MSIX (`%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Chronos\`) — la **vue virtualisée** ; l'overlay lancé par
+l'Explorateur écrit la **vue réelle** (`%APPDATA%\Chronos\`). C'est ainsi qu'un `last-exact.json` figé au **2026-09-13**
+12:44:59 (vue virtualisée) a été pris pour un gel, alors que le fichier réel était réécrit chaque minute (sonde WMI hors
+arbre du 2026-09-27 01:56). Le diagnostic dit désormais « Vue AppData : réelle | virtualisée » ; les relevés d'un constat
+se font par une sonde hors de l'arbre de l'app (§6 ; `desktop-app-sessions.md` §7). **Lancer l'exe depuis un terminal de
+l'app produit un second jeu de fichiers**, journal compris — c'est l'utilisateur qui lance l'overlay, par l'Explorateur.
+
+### Trois hypothèses à vérifier AVEC le journal (pas avant)
+
+- **HYP-1 — granularité des en-têtes** : `utilization` semble arrondie au centième (0,01 constaté sur les en-têtes ;
+  0,12 puis 0,13, jamais 0,125). Le journal écrit le `double` brut, sans arrondi (D-32-18) ; si des valeurs à trois
+  décimales apparaissent dans `u5`/`u7`, l'hypothèse tombe et la vue Jour (phase 34) gagne en finesse.
+- **HYP-2 — Δ = consommation** : la différence d'`utilization` entre deux relevés consécutifs de même `resets_at` est la
+  consommation de l'intervalle (pas de **recalcul rétroactif** hors reset). La lecture par plage ne calcule un Δ que si
+  `r[i] == r[i−1]`, `u` connu des deux côtés et aucun trou entre les deux ; un Δ négatif est conservé et marqué
+  `Anormal` : s'il s'en produit sans changement de `resets_at`, l'hypothèse tombe.
+- **HYP-3 — reset hebdo à l'heure locale au changement d'heure** : `resets_at` 7 j = samedi 00:00 heure locale
+  (`2026-09-18T22:00Z` constaté = samedi 19/09 00:00 Paris). Le **25/10/2026** (fin de l'heure d'été), la semaine du
+  24 au 31 octobre dure 169 h et l'attendu est **`2026-10-30T23:00Z`** ; `WeeklyWindow`/`WeeklyRecalibration.NextReset`
+  (7 × 24 h fixes) diraient `2026-10-30T22:00Z` — écart d'exactement 1 h (`BornesPlage`, 32-06). Le journal tranchera
+  (`r7` de la première semaine de novembre) ; jusque-là la borne de forfait est un calcul local, best-effort.
+
+### Ce que le journal n'est pas
+
+Pas une source d'affichage du cadran (il n'est jamais relu par l'overlay pour afficher) ; pas un pourcentage dérivé de
+tokens — les tokens des transcripts arrivent en phase 33, dans `tokens-AAAA-MM.jsonl`, sur leur propre axe, dédoublonnés
+par `message.id` (voir §2 : une ligne `assistant` par bloc de contenu, `output_tokens` partiel croissant, dédup = max par
+champ via `DedupUsage`) ; aucune projection ; aucun trou interpolé ; aucune estimation présentée comme exacte.
+
+---
+
+*Fin du document — capturé le 2026-07-08, complété le 2026-09-27 (§7, note CPT-01 du §2), à revalider à chaque MAJ majeure
+de Claude Code (schéma = API privée de facto).*

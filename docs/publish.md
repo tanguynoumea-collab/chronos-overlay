@@ -108,7 +108,9 @@ Vérifications **automatisables** (rappel — faites lors du build de release) :
 3. **Smoke sans lancer l'overlay** : `Chronos-v<X.Y.Z>.exe --hook SessionStart` avec une entrée
    standard vide ⇒ code 0, aucune écriture, md5 de `~/.claude/settings.json` identique avant/après.
    L'agent ne lance jamais l'overlay : lancé depuis une session Claude Code, il verrait la vue
-   virtualisée d'AppData (autres réglages, autre `treated.json`).
+   virtualisée d'AppData (autres réglages, autre `treated.json`). Le smoke `--hook` ne prouve ni le
+   verrou mono-instance ni le journal d'historique (ce mode sort avant le Host) : ils se constatent au
+   premier lancement par l'utilisateur (32-CONSTAT).
 4. Non-régression : `dotnet test Chronos.sln -c Debug` → suite complète verte (0 échec), deux
    exécutions.
 
@@ -125,8 +127,11 @@ Vérifications **humaines (UAT)** — hors périmètre automatisé (voir `07-VAL
 ## 7. Premier lancement et réconciliation
 
 C'est l'utilisateur qui lance le nouvel exe, par l'Explorateur (double-clic) ou Win+R — jamais
-depuis un terminal ouvert dans l'app Claude. Quitter d'abord l'ancienne version (réglages →
-« Quitter Chronos ») : il n'existe aucun verrou mono-instance.
+depuis un terminal ouvert dans l'app Claude. Depuis la 3.2.2, **une seule instance** de l'overlay
+tourne par session Windows (mutex `Local\Chronos-overlay`, `VerrouInstanceUnique`) : un second exe
+affiche « Chronos tourne déjà… » et se retire sans toucher à l'autre. Le verrou ne connaît pas les exe
+ANTÉRIEURS à la 3.2.2 : quitter d'abord ceux-là (réglages → « Quitter Chronos »). Les modes `--hook`
+et `--statusline` restent multi-instances.
 
 Au premier lancement en mode overlay, `ClaudeSettingsReconciler` repointe les huit groupes de hooks
 (widget de sessions activé ; désactivé, il les retire) et la statusLine vers le nouvel exe, après
