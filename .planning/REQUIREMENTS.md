@@ -19,7 +19,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 
 ### Compter juste (CPT) — prérequis de tout le milestone
 
-- [ ] **CPT-01**: Le parser de transcripts **déduplique par `message.id`** (repli `requestId`) avant toute somme de `usage` :
+- [x] **CPT-01**: Le parser de transcripts **déduplique par `message.id`** (repli `requestId`) avant toute somme de `usage` :
   une ligne `assistant` par bloc de contenu recopie le même `usage` (facteur 2 à 2,75 mesuré le 2026-09-26). Un test épingle
   une fixture RÉELLE multi-blocs (trois lignes identiques d'un même `msg_…`) et la correction par delta (`TokensDepuisReleve`)
   en hérite ; aucun nouveau lecteur ne partage l'ancien helper sans cette dédup.
@@ -166,7 +166,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CPT-01 | Phase 32 | Pending |
+| CPT-01 | Phase 32 | Complete |
 | CPT-02 | Phase 32 | Pending |
 | CPT-03 | Phase 32 | Complete |
 | JRN-01 | Phase 32 | Complete |
