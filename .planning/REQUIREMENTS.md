@@ -23,7 +23,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   une ligne `assistant` par bloc de contenu recopie le même `usage` (facteur 2 à 2,75 mesuré le 2026-09-26). Un test épingle
   une fixture RÉELLE multi-blocs (trois lignes identiques d'un même `msg_…`) et la correction par delta (`TokensDepuisReleve`)
   en hérite ; aucun nouveau lecteur ne partage l'ancien helper sans cette dédup.
-- [ ] **CPT-02**: La cause du **gel de `last-exact.json`** (non écrit depuis le 2026-09-13 12:44 malgré des relevés exacts frais,
+- [x] **CPT-02**: La cause du **gel de `last-exact.json`** (non écrit depuis le 2026-09-13 12:44 malgré des relevés exacts frais,
   `Save` dans un `try/catch` muet) est établie, corrigée et couverte par un test ; **l'âge de la dernière écriture** de chaque
   magasin persistant (dernier exact, journal des relevés, agrégats de tokens) apparaît au diagnostic, et une écriture qui échoue
   n'est plus silencieuse (ligne d'événement + diagnostic).
@@ -167,7 +167,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CPT-01 | Phase 32 | Complete |
-| CPT-02 | Phase 32 | Pending |
+| CPT-02 | Phase 32 | Complete |
 | CPT-03 | Phase 32 | Complete |
 | JRN-01 | Phase 32 | Complete |
 | JRN-02 | Phase 32 | Complete |
