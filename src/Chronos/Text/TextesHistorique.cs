@@ -140,18 +140,25 @@ public static class TextesHistorique
     }
 
     /// <summary>« 288 relevés attendus · 262 présents · 1 interruption (jeton invalide, 14:00 → 16:00) » — les attendus viennent de la
-    /// DURÉE de la plage (300 le 25/10, 276 le 28/03 : Pitfall 9) ; série vide → <see cref="AucunReleveJour"/>.</summary>
+    /// DURÉE de la plage (300 le 25/10, 276 le 28/03 : Pitfall 9) ; « présents » compte les seuls relevés DU JOUR (35-01 : un relevé de la
+    /// veille peut accompagner l'analyse) ; une borne de trou antérieure au jour porte son jour (« mar. 23:00 → 07:00 ») ; aucun relevé
+    /// du jour → <see cref="AucunReleveJour"/>.</summary>
     public static string LigneFraicheurJour(Plage jour, AnalyseJournal a, TimeSpan cadence, TimeZoneInfo tz)
     {
-        if (a.Serie.Count == 0) return AucunReleveJour;
+        var presents = a.Serie.Count(r => jour.Contient(r.T));
+        if (presents == 0) return AucunReleveJour;
         var attendus = (int)(jour.Duree / cadence);
         var texte = attendus.ToString(CultureInfo.InvariantCulture) + " relevés attendus · "
-                    + a.Serie.Count.ToString(CultureInfo.InvariantCulture) + " présents · "
+                    + presents.ToString(CultureInfo.InvariantCulture) + " présents · "
                     + Pluriel(a.Trous.Count, "interruption");
         if (a.Trous.Count > 0)
-            texte += " (" + string.Join(" ; ", a.Trous.Select(t => Trou(t) + ", " + HeureMinute(t.Debut, tz) + " → " + (t.Fin is { } f ? HeureMinute(f, tz) : "en cours"))) + ")";
+            texte += " (" + string.Join(" ; ", a.Trous.Select(t => Trou(t) + ", " + BorneDuJour(t.Debut, jour, tz) + " → " + (t.Fin is { } f ? BorneDuJour(f, jour, tz) : "en cours"))) + ")";
         return texte;
     }
+
+    // « 07:00 » dans le jour affiché ; « mar. 23:00 » pour une borne antérieure (la veille de minuit).
+    private static string BorneDuJour(DateTimeOffset t, Plage jour, TimeZoneInfo tz)
+        => (t < jour.Debut ? LibelleJourCourt(t, tz) + " " : "") + HeureMinute(t, tz);
 
     /// <summary>« journal muet depuis 16 min » (règle D-32-21, même mot que le diagnostic).</summary>
     public static string AlerteJournalMuet(TimeSpan age) => "journal muet depuis " + ((int)age.TotalMinutes).ToString(CultureInfo.InvariantCulture) + " min";

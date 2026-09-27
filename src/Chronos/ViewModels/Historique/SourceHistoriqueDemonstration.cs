@@ -38,8 +38,9 @@ public sealed class SourceHistoriqueDemonstration(TimeZoneInfo tz) : ISourceHist
     {
         ArgumentNullException.ThrowIfNull(jour);
         var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
-        var journal = ScenariosHistorique.Journal(jour, _tz);
-        var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence);
+        // D-35-04 : même veille de minuit que le disque (le mercredi du scénario nomme « Chronos arrêté, mar. 23:00 → 07:00 »).
+        var journal = LectureVeille.PourLeJour(ScenariosHistorique.Journal(new Plage(jour.Debut - LectureVeille.Horizon, jour.Fin), _tz), jour, cadence);
+        var analyse = LectureVeille.RestreindreAuJour(AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence), jour);
         var agregats = ScenariosHistorique.Agregats(jour, _tz);
         var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, ScenariosHistorique.Couverture());
         return new DonneesJour(jour, analyse, colonnes, agregats.Couverture, journal.JournalOuvertLe, now);

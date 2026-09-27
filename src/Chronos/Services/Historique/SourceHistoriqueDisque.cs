@@ -65,8 +65,11 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
         try
         {
             var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
-            var journal = LecteurJournal.Lire(_dossier, jour.Debut, jour.Fin);
-            var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence);
+            // D-35-04 : la veille de minuit (vue Jour seulement) — une lecture sur [Debut − Horizon, Fin[, le dernier relevé de la veille
+            // ferme le trou qui chevauche minuit (cause nommée), puis la série rendue est restreinte au jour.
+            var large = LecteurJournal.Lire(_dossier, jour.Debut - LectureVeille.Horizon, jour.Fin);
+            var journal = LectureVeille.PourLeJour(large, jour, cadence);
+            var analyse = LectureVeille.RestreindreAuJour(AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence), jour);
             var agregats = LecteurAgregats.Lire(_dossier, jour.Debut, jour.Fin);
             var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, ChargerCouverture());
             return new DonneesJour(jour, analyse, colonnes, agregats.Couverture, journal.JournalOuvertLe, now);
