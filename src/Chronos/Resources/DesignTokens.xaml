@@ -95,6 +95,16 @@
     <sys:Double x:Key="HistoHauteurNiveauJour">190</sys:Double>
     <sys:Double x:Key="HistoHauteurRythmeJour">64</sys:Double>
     <sys:Double x:Key="HistoHauteurTokensJour">64</sys:Double>
+    <!-- Vue 4 semaines (DESIGN_PLAN §2.4, frame E, décision 2 de la phase 35 — D-35-14) : fantômes S-1 / S-2 / S-3 en HistoGris
+         qui s'effacent avec l'âge, NIVEAU de 250, colonne d'étiquettes de 140 à droite, rangées de couverture de 10 au pas
+         haut-à-haut de 16 (4 × 10 + 3 × 6 = 58). -->
+    <sys:Double x:Key="HistoOpaciteSemaine1">0.8</sys:Double>
+    <sys:Double x:Key="HistoOpaciteSemaine2">0.45</sys:Double>
+    <sys:Double x:Key="HistoOpaciteSemaine3">0.25</sys:Double>
+    <sys:Double x:Key="HistoHauteurNiveauQuatreSemaines">250</sys:Double>
+    <sys:Double x:Key="HistoLargeurEtiquettesSemaines">140</sys:Double>
+    <sys:Double x:Key="HistoHauteurCouvertureSemaine">10</sys:Double>
+    <sys:Double x:Key="HistoPasCouvertureSemaines">16</sys:Double>
     <!-- Fenêtre : minimale 760 × 480, défaut 920 × 610 (§2) -->
     <sys:Double x:Key="HistoLargeurMin">760</sys:Double>
     <sys:Double x:Key="HistoHauteurMin">480</sys:Double>
