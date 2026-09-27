@@ -290,7 +290,7 @@ public class HistoriqueBindingTests
         Assert.Equal(Visibility.Collapsed, semaine.Visibility);
         Assert.Equal(Visibility.Visible, jour.Visibility);
 
-        Assert.Empty(Assert.IsType<Grid>(semaine.Content).Children);
+        Assert.NotEmpty(Assert.IsType<Grid>(semaine.Content).Children);   // 34-06 : la vue Semaine est remplie (VueSemaineBindingTests)
         Assert.NotEmpty(Assert.IsType<Grid>(jour.Content).Children);   // 34-07 : la vue Jour est remplie (VueJourBindingTests)
         Assert.Same(vm, semaine.DataContext);
         Assert.Same(vm, jour.DataContext);
