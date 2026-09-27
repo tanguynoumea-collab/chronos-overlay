@@ -66,7 +66,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 - [x] **TOK-04**: Les tranches UTC sont **rendues en heure locale** correctement aux changements d'heure (25 h le 25/10/2026,
   23 h le 28/03/2027) — testé ; les tranches antérieures au plus vieux transcript sont « hors couverture », un mois purgé par
   Claude Code est « transcripts absents », jamais « zéro token ».
-- [ ] **TOK-05**: **Aucun pourcentage dérivé de tokens** : une garde structurelle de test interdit à tout type de la couche
+- [x] **TOK-05**: **Aucun pourcentage dérivé de tokens** : une garde structurelle de test interdit à tout type de la couche
   historique d'exposer un `double` de quota calculé à partir de tokens ; le périmètre partiel (Claude Code seul, hors Cowork et
   claude.ai) est écrit dans le schéma et les docs.
 
@@ -179,7 +179,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | TOK-02 | Phase 33 | Complete |
 | TOK-03 | Phase 33 | Complete |
 | TOK-04 | Phase 33 | Complete |
-| TOK-05 | Phase 33 | Pending |
+| TOK-05 | Phase 33 | Complete |
 | HIS-01 | Phase 34 | Pending |
 | HIS-02 | Phase 34 | Pending |
 | HIS-03 | Phase 34 | Pending |
