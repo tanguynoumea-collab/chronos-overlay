@@ -330,7 +330,7 @@ Plans:
 - [x] 35-03-PLAN.md — ACC-03 : section `[Journal d'historique]` du diagnostic via la façade `LireJour` et un helper neutre (aucun `.Lire(`), une seule relève des processus, fuseau injecté
 - [x] 35-04-PLAN.md — HIS-05 : `PisteQuatreSemaines`, `VueQuatreSemainesView`, tokens 38 → 45, segment actif, infobulle bornée, annotations Jour sur deux rangées, tâche réservée aux écarts de la revue DAEDALUS
 - [x] 35-05-PLAN.md — ACC-04 (contribue) : README « Historique d'utilisation », `docs/data-sources.md` §9, garde de vocabulaire limitée à ces sections, câblage du fuseau du diagnostic
-- [ ] 35-06-PLAN.md — ACC-04 : release 3.3.0 (procédure 32-07, csproj × 4, publish, contrôles, smoke `--hook`), sans tag ni push ni lancement
+- [x] 35-06-PLAN.md — ACC-04 : release 3.3.0 (procédure 32-07, csproj × 4, publish, contrôles, smoke `--hook`), sans tag ni push ni lancement
 - [ ] 35-07-PLAN.md — VAL-05 : constat de la 3.3.0 avec l'utilisateur (E1-ter, deux gestes, vraies données, trois styles, 4 semaines, trou réel après une nuit, tableau L1…Q / V01…V12 de 32-08 s'il n'a pas été joué) → `35-CONSTAT.md` — `autonomous: false`
 
 **UI hint**: yes
@@ -349,7 +349,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 | 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
 | 33. Agrégats de tokens | 5/5 | Complete    | 2026-09-27 |
 | 34. Fenêtre Historique : Semaine et Jour | 8/8 | Complete    | 2026-09-27 |
-| 35. 4 semaines, accès, release 3.3.0 | 5/7 | In Progress|  |
+| 35. 4 semaines, accès, release 3.3.0 | 6/7 | In Progress|  |
 
 ### Couverture des exigences
 
