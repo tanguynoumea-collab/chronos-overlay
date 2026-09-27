@@ -39,6 +39,7 @@ public sealed class DiagnosticService
     private readonly SessionMonitor? _moniteurSessions;
     private readonly IReadOnlyList<IEtatMagasin>? _magasins;
     private readonly IEtatReconstruction? _reconstruction;
+    private readonly TimeZoneInfo? _fuseau;
     private readonly DateTimeOffset _demarrage;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
@@ -80,6 +81,10 @@ public sealed class DiagnosticService
     /// <param name="reconstruction">TOK-02 — progression et état de la reconstruction des agrégats de tokens (phase, N / M fichiers,
     /// dernier fichier, dernière erreur), en ENTIERS. OPTIONNEL et en DERNIÈRE position à dessein (même protocole que les précédents) ;
     /// null dans les tests qui ne s'y intéressent pas : la ligne du magasin des agrégats et le périmètre se disent quand même.</param>
+    /// <param name="fuseau">ACC-03 / D-35-12 — le fuseau des heures de la section « Journal d'historique » (bornes du jour, événements,
+    /// fin de reconstruction), celui de la fenêtre Historique. OPTIONNEL et en DERNIÈRE position à dessein (même protocole que les
+    /// précédents) ; câblé par la racine de composition (35-05). <c>null</c> → la section parle en UTC et le DIT (« Fuseau : UTC
+    /// (fuseau non injecté) ») : jamais le fuseau local de la machine deviné ici (décision 5 de la phase 35).</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
@@ -87,7 +92,8 @@ public sealed class DiagnosticService
                              SessionMonitor? moniteurSessions = null,
                              IReadOnlyList<IEtatMagasin>? magasins = null,
                              DateTimeOffset? demarrageProcessus = null,
-                             IEtatReconstruction? reconstruction = null)
+                             IEtatReconstruction? reconstruction = null,
+                             TimeZoneInfo? fuseau = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -101,6 +107,7 @@ public sealed class DiagnosticService
         _magasins = magasins;
         _demarrage = demarrageProcessus ?? clock.UtcNow;   // D-32-21 : référence basse de « journal muet »
         _reconstruction = reconstruction;
+        _fuseau = fuseau;   // pas de repli local : voir le XML-doc (D-35-12)
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -430,6 +437,13 @@ public sealed class DiagnosticService
         // 3b) CPT-02 — magasins persistants : où l'on écrit, quand, et depuis quelle VUE d'AppData on regarde.
         // La ligne « Vue AppData » d'abord : lue depuis une session Claude Code, cette section décrit la copie
         // virtualisée du paquet MSIX, pas les fichiers de l'overlay — c'est ce qui a fait croire à un « gel ».
+        // D-35-11 — la table des processus est relevée UNE fois par rapport : la liste détaillée de [Magasins persistants] et le
+        // compte de la section « Journal d'historique » viennent du même relevé (une seconde lecture pourrait compter un hook de plus ou de moins).
+        IReadOnlyList<ProcessusChronos>? processus = null;
+        Exception? echecProcessus = null;
+        try { processus = InventaireProcessus.Relever(); }
+        catch (Exception ex) { echecProcessus = ex; }
+
         sb.AppendLine("[Magasins persistants]");
         sb.AppendLine("  Vue AppData : " + DetecteurVueAppData.Libelle(
             DetecteurVueAppData.Detecter(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData))));
@@ -453,7 +467,8 @@ public sealed class DiagnosticService
         // la machine : sous try/catch, un relevé impossible se DIT, il ne fait jamais échouer le rapport.
         try
         {
-            foreach (var l in InventaireProcessus.Lignes(InventaireProcessus.Relever(), Environment.ProcessId, _clock.UtcNow,
+            if (processus is null) throw echecProcessus ?? new InvalidOperationException("relevé absent");
+            foreach (var l in InventaireProcessus.Lignes(processus, Environment.ProcessId, _clock.UtcNow,
                                                          VerrouInstanceUnique.EtatPourDiagnostic(VerrouInstanceUnique.NomOverlay)))
                 sb.AppendLine("  " + l);
         }
@@ -477,6 +492,9 @@ public sealed class DiagnosticService
         }
         sb.AppendLine("    Périmètre : " + LigneAgregat.Perimetre);
         sb.AppendLine();
+
+        // 3c) ACC-03 — ce que le journal d'historique sait de lui-même, par la MÊME lecture que la fenêtre (D-35-10).
+        SectionJournalHistorique(sb, processus?.Count);
 
         // 4) Résultat effectivement affiché (via le composite réel)
         sb.AppendLine("[Ce qui est affiché maintenant]");
@@ -725,6 +743,80 @@ public sealed class DiagnosticService
             : "treated.json — répondue (réversible)",
         _ => "un filtre non nommé",
     };
+
+    /// <summary>
+    /// ACC-03 — section « Journal d'historique » : dossier, fichiers (taille, âge), dernière écriture du journal sur disque, la journée
+    /// en cours, les cinq derniers événements, la reconstruction des tokens en UNE ligne et le nombre d'instances.
+    ///
+    /// <para>D-35-10 — MÊME LECTURE QUE LA FENÊTRE : la journée se lit par la façade de la vue Jour (<see cref="SourceHistoriqueDisque"/>,
+    /// sans état : une instance locale lit comme le singleton) et se dit par ses mots (<see cref="TextesHistorique.LigneFraicheurJour"/>) ;
+    /// les événements et l'inventaire passent par <see cref="EtatJournalHistorique"/>. Ce fichier ne relit ni n'analyse le journal
+    /// lui-même (gardes <c>GardesPerimetreTests</c> et <c>GardeDiagnosticHistoriqueTests</c>).</para>
+    /// <para>D-35-11 — PAS DE DUPLICATION : le détail de la reconstruction et la liste des processus restent sous [Magasins
+    /// persistants] ; ici, une ligne et un compte, venus du même état et du même relevé.</para>
+    /// <para>D-35-12 — FUSEAU INJECTÉ : sans fuseau, les heures sont en UTC et la section le dit.</para>
+    /// Toute panne s'écrit sur une ligne, jamais une exception : le diagnostic est l'outil de panne.
+    /// </summary>
+    private void SectionJournalHistorique(StringBuilder sb, int? nbProcessus)
+    {
+        sb.AppendLine("[Journal d'historique]");
+        try
+        {
+            var tz = _fuseau ?? TimeZoneInfo.Utc;
+            var now = _clock.UtcNow;
+            var dossier = _paths.HistoriqueDir;
+            string Local(DateTimeOffset t, string format)
+                => TimeZoneInfo.ConvertTime(t, tz).ToString(format, System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
+
+            sb.AppendLine("  Dossier : " + dossier);
+            sb.AppendLine("  Fuseau : " + (_fuseau is { } f ? f.Id : "UTC (fuseau non injecté)"));
+
+            var fichiers = EtatJournalHistorique.Inventaire(dossier);
+            sb.AppendLine("  Fichiers : " + fichiers.Count);
+            foreach (var fi in fichiers)
+                sb.AppendLine("    " + fi.Nom + " — " + fi.Taille + " o — modifié " + LibelleSource.Anciennete(fi.ModifieLe, now));
+
+            var dernierReleves = fichiers.Where(fi => fi.Nom.StartsWith("releves-", StringComparison.Ordinal))
+                                         .OrderBy(fi => fi.ModifieLe).LastOrDefault();
+            sb.AppendLine("  Dernière écriture du journal (disque) : " + (dernierReleves is { } d
+                ? LibelleSource.Anciennete(d.ModifieLe, now) + " — " + d.Nom
+                : "aucun fichier de relevés"));
+
+            // D-35-10 : la façade et les mots de la vue Jour, pas un second chemin.
+            var jour = BornesPlage.Jour(now, tz);
+            var donnees = new SourceHistoriqueDisque(_paths, tz).LireJour(jour, now);
+            sb.AppendLine("  Jour (" + TextesHistorique.DateLongue(jour.Debut, tz) + ") : "
+                          + TextesHistorique.LigneFraicheurJour(jour, donnees.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, tz));
+            sb.AppendLine("  " + (donnees.JournalOuvertLe is { } ouvert ? TextesHistorique.JournalOuvertLe(ouvert, tz) : "journal ouvert le : inconnu"));
+
+            var evenements = EtatJournalHistorique.DerniersEvenements(dossier, now);
+            sb.AppendLine("  Événements récents (5 derniers) :");
+            if (evenements.Count == 0) sb.AppendLine("    (aucun sur 7 jours)");
+            foreach (var e in evenements)
+            {
+                var nom = Chronos.Models.Historique.TypeEvenementTexte.Nom(e.Type) ?? (e.EvBrut ?? "non reconnu");
+                var detail = e.Version ?? e.Cause ?? e.Magasin;
+                sb.AppendLine("    " + Local(e.T, "yyyy-MM-dd HH:mm") + " " + nom + (detail is null ? "" : " (" + detail + ")"));
+            }
+
+            const string Detail = " (détail sous [Magasins persistants])";
+            sb.AppendLine("  Reconstruction des tokens : " + (_reconstruction switch
+            {
+                null => "non câblée",
+                { Phase: PhaseReconstruction.Reconstruction } r => "en cours — " + r.FichiersTraites + " / " + r.FichiersTotal + " fichiers" + Detail,
+                { DerniereReconstructionTerminee: { } fin } => "terminée le " + Local(fin, "d MMM HH:mm") + Detail,
+                { Phase: PhaseReconstruction.JamaisLancee } => "pas encore lancée" + Detail,
+                var r => LibellePhase(r.Phase) + " — " + r.FichiersTraites + " / " + r.FichiersTotal + " fichiers" + Detail,
+            }));
+
+            sb.AppendLine("  Instances Chronos : " + (nbProcessus is { } n ? n + Detail : "relevé impossible"));
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine("  Journal d'historique : relevé impossible (" + ex.GetType().Name + " : " + ex.Message + ")");
+        }
+        sb.AppendLine();
+    }
 
     /// <summary>TOK-02 — la phase de la reconstruction en mots du §4 (vocabulaire unique fenêtre / réglages / diagnostic / docs).</summary>
     private static string LibellePhase(PhaseReconstruction phase) => phase switch
