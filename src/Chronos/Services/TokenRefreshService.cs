@@ -64,7 +64,7 @@ public sealed class TokenRefreshService : IHostedService, IDisposable
     {
         try
         {
-            await _autorite.GetAccessTokenAsync();   // l'autorité décide seule s'il faut rafraîchir
+            await _autorite.GetAccessTokenAsync().ConfigureAwait(false);   // l'autorité décide seule s'il faut rafraîchir
         }
         catch
         {

@@ -68,7 +68,7 @@ public class ArretHoteTests
     /// <summary>Host construit par la MÊME fabrique que l'app (<c>Host.CreateApplicationBuilder</c>) et portant les
     /// services hébergés de production, dans l'ORDRE d'inscription d'App.xaml.cs. Tout est temporaire : aucun
     /// fichier du vrai profil n'est touché.</summary>
-    private static IHost HostMiroir(Action<IServiceCollection>? complement = null)
+    private static IHost HostMiroir(Action<IServiceCollection>? complement = null, IUsageProvider? boutDeChaine = null)
     {
         var dir = Path.Combine(Path.GetTempPath(), "ChronosArret_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -85,7 +85,7 @@ public class ArretHoteTests
 
         services.AddSingleton(sp => new JournalReleves(paths.HistoriqueDir, sp.GetRequiredService<IClock>()));
         services.AddSingleton(sp => new JournalisationUsageProvider(
-            inner: new FakeUsageProvider(),
+            inner: boutDeChaine ?? new FakeUsageProvider(),
             journal: sp.GetRequiredService<JournalReleves>(),
             etatServeur: new FakeEtatServeur(),
             authStatus: new FakeAuthStatus(),
@@ -163,6 +163,56 @@ public class ArretHoteTests
 
         Assert.True(termine, "Un service hébergé attend le thread UI pendant l'arrêt : interblocage.");
         Assert.Null(erreur);
+    }
+
+    /// <summary>Même défense, dans le cas où l'arrêt ne peut PAS finir en ligne : un GetAsync est EN VOL (bloqué
+    /// jusqu'à l'annulation) quand l'arrêt arrive. La fin de la boucle survient alors plus tard, sur le pool, et la
+    /// reprise de <c>await base.StopAsync(ct)</c> est une vraie reprise : sans <c>ConfigureAwait(false)</c>, elle
+    /// attendrait le Dispatcher bloqué — interblocage.</summary>
+    [Fact]
+    public void L_arret_pendant_un_GetAsync_en_vol_ne_reprend_jamais_sur_le_thread_UI()
+    {
+        var bout = new ProviderEnVol();
+        bool enVol = false;
+
+        var termine = JouerSurThreadUi(async _ =>
+        {
+            var host = HostMiroir(boutDeChaine: bout);
+            await host.StartAsync();
+            var limite = DateTime.UtcNow.AddSeconds(3);
+            while (bout.Appels == 0 && DateTime.UtcNow < limite) await Task.Delay(20);
+            enVol = bout.Appels > 0;
+            try
+            {
+                host.StopAsync().GetAwaiter().GetResult();   // forme 3.3.0, VOLONTAIREMENT, thread UI bloqué
+            }
+            finally { host.Dispose(); }
+        }, out var erreur);
+
+        Assert.True(termine, "L'arrêt d'un GetAsync en vol reprend sur le thread UI bloqué : interblocage.");
+        Assert.Null(erreur);
+        Assert.True(enVol, "Anti-muet : aucun GetAsync n'était en vol, ce test ne prouverait rien.");
+    }
+
+    /// <summary>Provider dont le GetAsync reste en vol jusqu'à l'annulation, puis ne rend la main que 200 ms plus tard,
+    /// SUR LE POOL : la fin de la boucle ne peut donc jamais survenir en ligne dans l'appel d'annulation, et la reprise
+    /// de l'arrêt est toujours une vraie reprise (le test ne dépend d'aucune course).</summary>
+    private sealed class ProviderEnVol : IUsageProvider
+    {
+        private int _appels;
+        public int Appels => Volatile.Read(ref _appels);
+
+        public Task<Chronos.Models.UsageSnapshot> GetAsync(CancellationToken ct = default)
+        {
+            Interlocked.Increment(ref _appels);
+            return Task.Run(() =>
+            {
+                ct.WaitHandle.WaitOne();
+                Thread.Sleep(200);
+                ct.ThrowIfCancellationRequested();
+                return Chronos.Models.UsageSnapshot.Empty;
+            });
+        }
     }
 
     /// <summary>La boucle de l'orchestrateur ne vit pas sur le thread UI : <c>SnapshotChanged</c> est émis hors UI

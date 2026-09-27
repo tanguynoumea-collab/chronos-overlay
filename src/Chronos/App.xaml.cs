@@ -243,12 +243,41 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        // Blocage volontaire : dispose déterministe des Singletons IDisposable (évite le piège async-void qui n'attend pas StopAsync).
+        // Arrêt ATTENDU (dispose déterministe des Singletons IDisposable ; évite le piège async-void qui n'attend pas StopAsync),
+        // mais HORS du thread UI et BORNÉ (quick 260927) : l'ancienne attente synchrone de l'arrêt (GetResult) bloquait ce thread
+        // sans limite, une reprise de service hébergé attendait le Dispatcher → « Quitter Chronos » laissait un processus
+        // zombie, sans fenêtre, qui gardait le mutex d'instance unique.
         // CPT-03 : le Host peut n'avoir JAMAIS été construit (seconde instance retirée avant lui) — _host est alors null.
+        string? cause = null;
         if (_host is not null)
-            ArretHote.Arreter(_host, ArretHote.DelaiParDefaut, out _);
+        {
+            var dossierLog = DossierLog(_host);   // lu AVANT l'arrêt : le conteneur est libéré ensuite
+            if (!ArretHote.Arreter(_host, ArretHote.DelaiParDefaut, out cause))
+                SignalerArretDepasse(dossierLog, cause);
+        }
         _verrou?.Liberer();   // sur le thread UI, celui qui a acquis (ReleaseMutex l'exige) ; l'OS le ferait à la mort du processus, on le fait proprement
         base.OnExit(e);
+        // Dernier recours, APRÈS la libération du mutex : un arrêt dépassé ne doit jamais laisser le processus vivant.
+        if (cause is not null) Environment.Exit(e.ApplicationExitCode);
+    }
+
+    /// <summary>Dossier de chronos.log (%APPDATA%\Chronos, via ChronosPaths) — null si indisponible.</summary>
+    private static string? DossierLog(IHost host)
+    {
+        try { return System.IO.Path.GetDirectoryName(host.Services.GetService<ChronosPaths>()?.SettingsFile); }
+        catch { return null; }
+    }
+
+    /// <summary>Best-effort : une ligne datée dans chronos.log quand l'arrêt a dépassé son délai. Ne lève jamais.</summary>
+    private static void SignalerArretDepasse(string? dossier, string? cause)
+    {
+        if (dossier is null) return;
+        try
+        {
+            System.IO.File.AppendAllText(System.IO.Path.Combine(dossier, "chronos.log"),
+                $"{Environment.NewLine}[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] arrêt dépassé : {cause} — sortie forcée{Environment.NewLine}");
+        }
+        catch { /* le diagnostic ne doit jamais empêcher la sortie */ }
     }
 
     private static void ConfigureServices(IServiceCollection services)

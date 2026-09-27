@@ -34,13 +34,19 @@ public sealed class RefreshOrchestrator : BackgroundService
     public RefreshOrchestrator(IUsageProvider provider, ChronosPaths paths, RefreshOptions options)
         => (_provider, _paths, _options) = (provider, paths, options);
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        // Rendre la main à StartAsync immédiatement : sinon la boucle consommateur peut traiter le
-        // 1er déclencheur INLINE (GetAsync synchrone, ex. bloqué sur un gate de test) et faire bloquer
-        // StartAsync sur le thread appelant. Pattern recommandé pour un BackgroundService long.
-        await Task.Yield();
+    /// <summary>
+    /// La boucle part EXPLICITEMENT sur le pool (<see cref="Task.Run(Func{Task})"/>), jamais sur le contexte de
+    /// l'appelant. StartAsync est appelé par App.OnStartup SUR LE THREAD UI : l'ancien « Task.Yield » rendait bien
+    /// la main, mais sa reprise revenait au Dispatcher, et toute la boucle vivait ensuite sur le thread UI. À la
+    /// fermeture, OnExit bloquait ce même thread sur l'arrêt : la boucle ne pouvait plus sortir, la reprise de
+    /// StopAsync non plus — processus zombie (quick 260927). Task.Run rend aussi la main à StartAsync
+    /// immédiatement : le 1er déclencheur n'est jamais traité INLINE sur le thread appelant.
+    /// </summary>
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        => Task.Run(() => BoucleAsync(stoppingToken), CancellationToken.None);
 
+    private async Task BoucleAsync(CancellationToken stoppingToken)
+    {
         CreateWatcher();                       // RAF-01 : surveillance événementielle
         _ = RunPeriodicAsync(stoppingToken);   // RAF-02 : filet de sécurité périodique
         _triggers.Writer.TryWrite(true);       // charge initiale immédiate
@@ -48,11 +54,12 @@ public sealed class RefreshOrchestrator : BackgroundService
         try
         {
             // Consommateur UNIQUE : sérialise les GetAsync (jamais de lecture disque concurrente).
-            await foreach (var _ in _triggers.Reader.ReadAllAsync(stoppingToken))
+            // ConfigureAwait(false) partout : aucune reprise ne doit jamais attendre un contexte capturé.
+            await foreach (var _ in _triggers.Reader.ReadAllAsync(stoppingToken).ConfigureAwait(false))
             {
                 if (_options.Debounce > TimeSpan.Zero)
-                    await Task.Delay(_options.Debounce, stoppingToken); // settle + regroupe les doublons
-                var snap = await _provider.GetAsync(stoppingToken);
+                    await Task.Delay(_options.Debounce, stoppingToken).ConfigureAwait(false); // settle + regroupe les doublons
+                var snap = await _provider.GetAsync(stoppingToken).ConfigureAwait(false);
                 SnapshotChanged?.Invoke(this, snap);                    // thread pool → VM marshalle
             }
         }
@@ -64,7 +71,7 @@ public sealed class RefreshOrchestrator : BackgroundService
         try
         {
             using var timer = new PeriodicTimer(_options.PeriodicInterval);
-            while (await timer.WaitForNextTickAsync(ct))
+            while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
                 _triggers.Writer.TryWrite(true); // pas de GetAsync ici : seul le consommateur lit
         }
         catch (OperationCanceledException) { /* arrêt normal */ }
@@ -116,6 +123,8 @@ public sealed class RefreshOrchestrator : BackgroundService
     public override async Task StopAsync(CancellationToken ct)
     {
         _watcher?.Dispose();      // disposal propre (décision verrouillée)
-        await base.StopAsync(ct); // signale stoppingToken → la boucle et le PeriodicTimer sortent
+        // ConfigureAwait(false) : la reprise ne doit JAMAIS attendre le thread appelant — si c'est le thread UI et
+        // qu'il est bloqué sur l'arrêt, c'était l'interblocage de « Quitter Chronos » (quick 260927).
+        await base.StopAsync(ct).ConfigureAwait(false); // signale stoppingToken → la boucle et le PeriodicTimer sortent
     }
 }
