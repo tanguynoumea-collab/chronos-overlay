@@ -33,12 +33,12 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 
 ### Journal des relevés exacts (JRN)
 
-- [ ] **JRN-01**: Chaque relevé **exact distinct** (source `Exact`, `CapturedAt` strictement plus récent que le dernier écrit) est
+- [x] **JRN-01**: Chaque relevé **exact distinct** (source `Exact`, `CapturedAt` strictement plus récent que le dernier écrit) est
   ajouté à `%APPDATA%\Chronos\historique\releves-AAAA-MM.jsonl` : `{v, t, u5, r5, u7, r7, statut5, statut7, overage, source}` ;
   un relevé rejoué par le cache (cadence 60 s contre sonde 300 s), un plancher ou une valeur de `LastExactStore` n'y entrent jamais.
-- [ ] **JRN-02**: Les **événements de couverture** sont journalisés dans le même fichier : `demarrage`, `arret` (propre),
+- [x] **JRN-02**: Les **événements de couverture** sont journalisés dans le même fichier : `demarrage`, `arret` (propre),
   `jeton_invalide`, `sonde_refusee` (429 / statut `rejected`), `reprise` — pour qu'un trou porte sa cause au lieu d'être tu.
-- [ ] **JRN-03**: Écriture **append atomique et idempotente** (clé = `CapturedAt` + source ; deux processus n'écrivent pas deux
+- [x] **JRN-03**: Écriture **append atomique et idempotente** (clé = `CapturedAt` + source ; deux processus n'écrivent pas deux
   fois le même relevé), lecture **tolérante** (ligne tronquée ou invalide ignorée, `v` inconnu sauté ligne par ligne), fichiers
   mensuels, rétention 24 mois, aucune compaction ; le tout en types neutres (pas de WPF sous `Services/`).
 - [ ] **JRN-04**: L'**âge de la dernière écriture du journal** est exposé au diagnostic et dans les réglages ; si Chronos tourne
@@ -169,9 +169,9 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | CPT-01 | Phase 32 | Pending |
 | CPT-02 | Phase 32 | Pending |
 | CPT-03 | Phase 32 | Pending |
-| JRN-01 | Phase 32 | Pending |
-| JRN-02 | Phase 32 | Pending |
-| JRN-03 | Phase 32 | Pending |
+| JRN-01 | Phase 32 | Complete |
+| JRN-02 | Phase 32 | Complete |
+| JRN-03 | Phase 32 | Complete |
 | JRN-04 | Phase 32 | Pending |
 | JRN-05 | Phase 32 | Pending |
 | JRN-06 | Phase 32 | Pending |
