@@ -74,6 +74,23 @@ internal static class NativeMethods
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     public const int DWMWCP_ROUND = 2;
 
+    // Réglages v2 (quick 260927) : agrandissement borné à la ZONE DE TRAVAIL du moniteur. Une fenêtre WindowStyle=None s'agrandirait
+    // sinon à la taille du moniteur, barre des tâches comprise. ptMaxPosition est relatif au moniteur ; tout est en pixels physiques.
+    public const int WM_GETMINMAXINFO = 0x0024;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT { public int X, Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
+
     [DllImport("dwmapi.dll", PreserveSig = true)]
     public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 }

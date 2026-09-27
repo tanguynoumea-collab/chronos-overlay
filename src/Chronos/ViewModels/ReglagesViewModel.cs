@@ -160,7 +160,7 @@ public sealed partial class ReglagesViewModel : ObservableObject
     public void EnregistrerGeometrie(double x, double y, double largeur, double hauteur)
         => _reglages.Modifier(s => s with { ReglagesX = x, ReglagesY = y, ReglagesWidth = largeur, ReglagesHeight = hauteur });
 
-    // ------------------------------------------------------------------ Diagnostic (§5 : jamais sur le thread UI, jamais de MessageBox)
+    // ------------------------------------------------------------------ Diagnostic (§5 : jamais sur le thread UI, jamais de boîte de message)
 
     private void LancerDiagnosticSiVide()
     {

@@ -7,6 +7,7 @@ using Chronos.ViewModels;
 using Chronos.ViewModels.Historique;
 using Chronos.Views;
 using Chronos.Views.Historique;
+using Chronos.Views.Reglages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -300,8 +301,9 @@ public partial class App : Application
         services.AddSingleton<HistoriqueViewModel>();
         services.AddSingleton<IOuvreurHistorique>(sp => new OuvreurHistorique(() => new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>())));
         // Réglages v2 (quick 260927) : un seul ouvreur pour le clic droit du cadran — la fenêtre est ramenée si elle est ouverte,
-        // recréée après fermeture ; le VM partagé reste le MainViewModel. Fabrique paresseuse : aucune résolution circulaire.
-        services.AddSingleton<IOuvreurReglages>(sp => new Views.Reglages.OuvreurReglages(() => new SettingsWindow(sp.GetRequiredService<MainViewModel>())));
+        // recréée après fermeture ; le VM partagé reste le MainViewModel ; l'aperçu d'Apparence peint le contenu RÉEL du cadran.
+        // Fabrique paresseuse : MainWindow (qui reçoit l'ouvreur) est déjà construite quand le premier clic droit arrive.
+        services.AddSingleton<IOuvreurReglages>(sp => new OuvreurReglages(() => new ReglagesWindow(sp.GetRequiredService<MainViewModel>(), sp.GetRequiredService<MainWindow>().Content as System.Windows.Media.Visual)));
         services.AddSingleton<IPressePapiers, PressePapiersWpf>();
 
         // Placement/persistance Phase 6 (FEN-03/04/05/07) : settings.json chargé UNE fois au démarrage

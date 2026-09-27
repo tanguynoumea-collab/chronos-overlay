@@ -80,7 +80,7 @@ public partial class MainWindow : Window
     }
 
     // Clic DROIT : ouvre la fenêtre de réglages (quick 260927-reglages-v2), ou la RAMÈNE si elle est déjà ouverte — par l'ouvreur
-    // singleton injecté. La vue ne fabrique plus de fenêtre et ne pose plus d'Owner : les réglages sont une fenêtre classique,
+    // singleton injecté. La vue ne fabrique plus de fenêtre et ne lui donne plus de propriétaire : les réglages sont une fenêtre classique,
     // indépendante du cadran topmost (DESIGN_PLAN_REGLAGES §4), placée à sa géométrie mémorisée ou centrée à l'écran.
     private void OnRightClick(object sender, MouseButtonEventArgs e)
     {

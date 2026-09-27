@@ -221,7 +221,7 @@ public class ReglagesWindowTests
 
     [WpfTheory]
     [InlineData(640d, 440d, 3)]
-    [InlineData(860d, 580d, 5)]
+    [InlineData(860d, 580d, 6)]   // 858 − 208 (rail) − 8 (défilement) − 48 (marges) = 594 px → 6 × 96
     public void Les_vignettes_de_theme_passent_a_la_ligne_entieres(double largeur, double hauteur, int parLigneAttendu)
     {
         var vm = NouveauVm();
@@ -416,13 +416,19 @@ public class ReglagesWindowTests
     public void L_apercu_montre_le_vrai_cadran_et_sa_legende_suit_theme_et_style()
     {
         var vm = NouveauVm();
-        var cadran = new Grid();   // tient lieu du contenu de MainWindow
+        var cadran = new Grid();   // tient lieu du contenu de MainWindow, déjà mis en page à 170 × 170
+        cadran.Measure(new Size(170, 170));
+        cadran.Arrange(new Rect(0, 0, 170, 170));
         var f = Monter(vm, SectionReglages.Apparence, ParDefaut, cadran);
 
         var apercu = Nomme<Shape>(f, "ApercuCadran");
         var pinceau = Assert.IsType<VisualBrush>(apercu.Fill);
         Assert.Same(cadran, pinceau.Visual);
         Assert.True(EstAffiche(apercu, Racine(f)));
+        // Cadré sur l'empreinte du cadran, pas sur la boîte englobante de son dessin (qui bouge avec les pastilles).
+        Assert.Equal(BrushMappingMode.Absolute, pinceau.ViewboxUnits);
+        Assert.Equal(new Rect(0, 0, 170, 170), pinceau.Viewbox);
+        Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "ApercuCadranAbsent").Visibility);
 
         Assert.Equal("Thème : Minuit", Nomme<TextBlock>(f, "LegendeTheme").Text);
         Assert.Equal("Style : Anneaux", Nomme<TextBlock>(f, "LegendeStyle").Text);

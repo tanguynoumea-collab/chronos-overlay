@@ -1,6 +1,1046 @@
 <Window x:Class="Chronos.Views.Reglages.ReglagesWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- RED — squelette de la fenêtre de réglages v2. -->
-    <Grid/>
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:svc="clr-namespace:Chronos.Services"
+        xmlns:txt="clr-namespace:Chronos.Text"
+        xmlns:vm="clr-namespace:Chronos.ViewModels"
+        WindowStyle="None" AllowsTransparency="False" Topmost="False" ShowInTaskbar="True" ResizeMode="CanResizeWithGrip"
+        UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Segoe UI"
+        Title="Chronos — Réglages" WindowStartupLocation="CenterScreen">
+    <!--
+        Quick 260927-reglages-v2 — la fenêtre de réglages REFONDUE (DESIGN_PLAN_REGLAGES, maquettes R1 à R4).
+        Fenêtre CLASSIQUE, même chrome que la fenêtre Historique (D-34-22 / D-34-23) : sans transparence, bords de redimensionnement
+        et barre de titre native par WindowChrome (glisser, double-clic = agrandir, accrochage), coins DWM best-effort posés dans le
+        code-behind ; pas d'Owner, pas de Topmost, pas de fermeture à la désactivation ; présente dans la barre des tâches.
+        Un rail FIXE de six sections à gauche ; seule la colonne de droite s'adapte puis défile. Le diagnostic occupe toute la hauteur.
+        DataContext = le MainViewModel PARTAGÉ avec le cadran (mêmes commandes, même état) ; l'état propre à la fenêtre (section,
+        géométrie, diagnostic) est sur MainViewModel.Reglages. Toutes les couleurs et tailles viennent des tokens (garde
+        GardeTokensReglagesTests) ; les marges suivent la grille de 4 px.
+    -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Palette du chrome, tokens Reglages* et BoolToVis : fusion au niveau fenêtre pour que les StaticResource résolvent
+                     sans Application (tests STA). Les pinceaux du thème actif sont injectés par le code-behind dans Resources (entrée
+                     locale : elle prime sur le repli statique du dictionnaire fusionné, 34-08). -->
+                <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Épaisseurs, rayons et une largeur locale NOMMÉS (motif 34-05) : aucune valeur en dur dans les attributs. -->
+            <Thickness x:Key="ReglagesBordureFenetre">1</Thickness>
+            <Thickness x:Key="ReglagesBordureActive">1.5</Thickness>
+            <Thickness x:Key="ReglagesBordureRail">0,0,1,0</Thickness>
+            <Thickness x:Key="ReglagesBordureHaut">0,1,0,0</Thickness>
+            <Thickness x:Key="ReglagesBordureBas">0,0,0,1</Thickness>
+            <Thickness x:Key="ReglagesBordureNote">2,0,0,0</Thickness>
+            <Thickness x:Key="ReglagesBordureNulle">0</Thickness>
+            <CornerRadius x:Key="ReglagesRayonCarte">11</CornerRadius>
+            <CornerRadius x:Key="ReglagesRayonPuce">9</CornerRadius>
+            <CornerRadius x:Key="ReglagesRayonEntree">8</CornerRadius>
+            <CornerRadius x:Key="ReglagesRayonInterrupteur">12</CornerRadius>
+            <CornerRadius x:Key="ReglagesRayonTrait">2</CornerRadius>
+            <CornerRadius x:Key="ReglagesRayonDefilement">4</CornerRadius>
+            <CornerRadius x:Key="ReglagesRayonNul">0</CornerRadius>
+            <sys:Double x:Key="ReglagesLargeurGlyphe">16</sys:Double>
+
+            <!-- ============================== Typographie ============================== -->
+            <Style x:Key="TitreSection" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsTitreSection}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+            <Style x:Key="AideSection" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsAide}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="Margin" Value="0,4,0,16"/>
+            </Style>
+            <Style x:Key="Aide" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsAide}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="TitreCarte" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsTitreCarte}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="Etiquette" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsEtiquette}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,16,0,8"/>
+            </Style>
+
+            <!-- Carte : un réglage, un fond Panel2, rayon 11. -->
+            <Style x:Key="Carte" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource Panel2}"/>
+                <Setter Property="CornerRadius" Value="{StaticResource ReglagesRayonCarte}"/>
+                <Setter Property="Padding" Value="16,12"/>
+                <Setter Property="Margin" Value="0,0,0,8"/>
+            </Style>
+
+            <!-- Focus clavier VISIBLE (le pointillé noir par défaut disparaît sur fond sombre). -->
+            <Style x:Key="FocusAccent">
+                <Setter Property="Control.Template">
+                    <Setter.Value>
+                        <ControlTemplate>
+                            <Border BorderBrush="{StaticResource Accent}" BorderThickness="{StaticResource ReglagesBordureActive}"
+                                    CornerRadius="{StaticResource ReglagesRayonPuce}" Margin="-2"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ============================== Contrôles ============================== -->
+            <!-- Bouton d'action dans une carte (Se connecter, Ouvrir, Recalibrer, Actualiser, Copier, Réessayer). -->
+            <Style x:Key="Plat" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="Background" Value="{StaticResource Panel}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+                <Setter Property="BorderThickness" Value="{StaticResource ReglagesBordureFenetre}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsRail}"/>
+                <Setter Property="Padding" Value="12,4"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusAccent}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource ReglagesRayonPuce}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource Ink2}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="{StaticResource ReglagesOpaciteInactif}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Interrupteur (gabarit de l'ancienne fenêtre, sur tokens) : IsChecked en OneWay, la commande bascule l'état. -->
+            <Style x:Key="Interrupteur" TargetType="ToggleButton">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusAccent}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="piste" Width="{StaticResource ReglagesInterrupteurLargeur}" Height="{StaticResource ReglagesInterrupteurHauteur}"
+                                    CornerRadius="{StaticResource ReglagesRayonInterrupteur}" Background="{StaticResource Line}">
+                                <Ellipse x:Name="bouton" Width="{StaticResource ReglagesInterrupteurBouton}" Height="{StaticResource ReglagesInterrupteurBouton}"
+                                         HorizontalAlignment="Left" Margin="4,0,0,0" Fill="{StaticResource Ink2}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="piste" Property="Background" Value="{StaticResource Accent}"/>
+                                    <Setter TargetName="bouton" Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter TargetName="bouton" Property="Margin" Value="0,0,4,0"/>
+                                    <Setter TargetName="bouton" Property="Fill" Value="{StaticResource Ink}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="{StaticResource ReglagesOpaciteInactif}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Vignette de thème (disque du thème + trois pastilles de rampe + nom). Sélection = bordure Accent. -->
+            <Style x:Key="VignetteTheme" TargetType="Button">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Margin" Value="0,0,8,8"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusAccent}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="cadre" Width="{StaticResource ReglagesVignetteLargeur}" Height="{StaticResource ReglagesVignetteHauteur}"
+                                    CornerRadius="{StaticResource ReglagesRayonCarte}" Background="{StaticResource Panel2}"
+                                    BorderThickness="{StaticResource ReglagesBordureActive}" BorderBrush="Transparent">
+                                <ContentPresenter/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="cadre" Property="BorderBrush" Value="{StaticResource Ink2}"/>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                    <Setter TargetName="cadre" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Puce de style (cadran : 5 ; widget : 8). Sélection = bordure Accent + texte Ink. -->
+            <Style x:Key="Puce" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsAide}"/>
+                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Margin" Value="0,0,8,8"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusAccent}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="puce" CornerRadius="{StaticResource ReglagesRayonPuce}" Background="{StaticResource Panel2}"
+                                    BorderThickness="{StaticResource ReglagesBordureActive}" BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Ink2}"/>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ACC-01 (35-02) : puce du style de la vue Semaine — gabarit de la carte F1 INCHANGÉ, sur tokens. La sélection se lit sur
+                 le Tag du bouton (bindé au booléen IsStyle* du HistoriqueViewModel partagé) : le DataContext des puces est le
+                 MainViewModel, un DataTrigger IsSelected y serait muet. -->
+            <Style x:Key="PuceStyleHistorique" TargetType="Button">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Margin" Value="2"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsRail}"/>
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusAccent}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="puce" CornerRadius="{StaticResource ReglagesRayonPuce}" Background="{StaticResource Panel}"
+                                    BorderThickness="{StaticResource ReglagesBordureActive}" BorderBrush="{StaticResource Line}" Padding="4,5">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Ink2}"/>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Boutons de la barre de titre ─ □ ✕ : cliquables DANS la zone de légende du WindowChrome. -->
+            <Style x:Key="BoutonFenetre" TargetType="Button">
+                <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+                <Setter Property="Width" Value="{StaticResource ReglagesLargeurBoutonFenetre}"/>
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsRail}"/>
+                <Setter Property="IsTabStop" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Panel2}"/>
+                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="BoutonFermerFenetre" TargetType="Button" BasedOn="{StaticResource BoutonFenetre}">
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Danger}"/>
+                        <Setter Property="Foreground" Value="{StaticResource Panel}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Entrée du rail : sélection = fond Panel2 + trait Accent à gauche ; focus clavier = bordure Accent (Style.Triggers). -->
+            <Style x:Key="EntreeRail" TargetType="ListBoxItem">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsRail}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Grid Height="{StaticResource ReglagesHauteurEntreeRail}" Margin="0,0,0,4" Background="Transparent">
+                                <Border x:Name="surface" CornerRadius="{StaticResource ReglagesRayonEntree}" Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{StaticResource ReglagesBordureActive}"/>
+                                <Border x:Name="trait" Width="{StaticResource ReglagesTraitSelection}" HorizontalAlignment="Left" Margin="0,9"
+                                        CornerRadius="{StaticResource ReglagesRayonTrait}" Background="{StaticResource Accent}" Visibility="Hidden"/>
+                                <ContentPresenter Margin="12,0,8,0" VerticalAlignment="Center"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="surface" Property="Background" Value="{StaticResource Panel2}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="surface" Property="Background" Value="{StaticResource Panel2}"/>
+                                    <Setter TargetName="trait" Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- « Quitter Chronos » : même gabarit qu'une entrée du rail, isolé en bas, brosse Danger (action destructive). -->
+            <Style x:Key="EntreeQuitter" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Danger}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsRail}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Height="{StaticResource ReglagesHauteurEntreeRail}" CornerRadius="{StaticResource ReglagesRayonEntree}"
+                                    Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{StaticResource ReglagesBordureActive}">
+                                <ContentPresenter Margin="12,0,8,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Panel2}"/>
+                    </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource Danger}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Rapport du diagnostic : police mono, lecture seule, sélectionnable ; bordure Line sans les couleurs de focus système. -->
+            <Style x:Key="Rapport" TargetType="TextBox">
+                <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New"/>
+                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsAide}"/>
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="Background" Value="{StaticResource Panel}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+                <Setter Property="BorderThickness" Value="{StaticResource ReglagesBordureFenetre}"/>
+                <Setter Property="SelectionBrush" Value="{StaticResource Accent}"/>
+                <Setter Property="CaretBrush" Value="{StaticResource Ink}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource ReglagesRayonPuce}">
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="8,8,4,4"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Barres de défilement fines et sombres (la barre système claire jurerait sur le fond Panel). -->
+            <Style x:Key="PasDeFond" TargetType="RepeatButton">
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="IsTabStop" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RepeatButton">
+                            <Border Background="Transparent"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="PouceDefilement" TargetType="Thumb">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border x:Name="pouce" Background="{StaticResource Ink2}" Opacity="{StaticResource ReglagesOpaciteInactif}"
+                                    CornerRadius="{StaticResource ReglagesRayonDefilement}"/>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="pouce" Property="Background" Value="{StaticResource Ink}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style TargetType="ScrollBar">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Width" Value="{StaticResource ReglagesBarreDefilement}"/>
+                <Setter Property="MinWidth" Value="{StaticResource ReglagesBarreDefilement}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource PasDeFond}" Command="ScrollBar.PageUpCommand"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource PasDeFond}" Command="ScrollBar.PageDownCommand"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource PouceDefilement}"/>
+                                </Track.Thumb>
+                            </Track>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="Orientation" Value="Horizontal">
+                        <Setter Property="Width" Value="Auto"/>
+                        <Setter Property="MinWidth" Value="{StaticResource ReglagesBarreDefilement}"/>
+                        <Setter Property="Height" Value="{StaticResource ReglagesBarreDefilement}"/>
+                        <Setter Property="MinHeight" Value="{StaticResource ReglagesBarreDefilement}"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ScrollBar">
+                                    <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Style="{StaticResource PasDeFond}" Command="ScrollBar.PageLeftCommand"/>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Style="{StaticResource PasDeFond}" Command="ScrollBar.PageRightCommand"/>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb Style="{StaticResource PouceDefilement}"/>
+                                        </Track.Thumb>
+                                    </Track>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Poignée de redimensionnement ◢ (ResizeMode=CanResizeWithGrip), discrète. -->
+            <Style TargetType="ResizeGrip">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ResizeGrip">
+                            <Border Background="Transparent" Padding="0,0,4,2">
+                                <TextBlock Text="◢" Foreground="{StaticResource Ink2}" FontSize="{StaticResource ReglagesCorpsMini}"
+                                           Opacity="{StaticResource ReglagesOpaciteInactif}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <!-- Tailles en éléments-propriétés APRÈS Window.Resources (un StaticResource en attribut de la racine ne voit pas encore son
+         propre dictionnaire). Background = Panel : les coins « carrés » de Windows 10 ont la couleur du fond. -->
+    <Window.MinWidth><StaticResource ResourceKey="ReglagesLargeurMin"/></Window.MinWidth>
+    <Window.MinHeight><StaticResource ResourceKey="ReglagesHauteurMin"/></Window.MinHeight>
+    <Window.Width><StaticResource ResourceKey="ReglagesLargeurDefaut"/></Window.Width>
+    <Window.Height><StaticResource ResourceKey="ReglagesHauteurDefaut"/></Window.Height>
+    <Window.Background><StaticResource ResourceKey="Panel"/></Window.Background>
+
+    <!-- Bords de redimensionnement invisibles (6 px, token partagé avec l'Historique) et barre de titre NATIVE de 40 px : glisser,
+         double-clic = agrandir / restaurer, accrochage Windows. Les boutons ─ □ ✕ y restent cliquables (IsHitTestVisibleInChrome). -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="{StaticResource ReglagesHauteurBarreTitre}" ResizeBorderThickness="{StaticResource HistoBordRedimensionnement}"
+                            GlassFrameThickness="{StaticResource ReglagesBordureNulle}" CornerRadius="{StaticResource ReglagesRayonNul}"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <!-- Ctrl+1…6 (rangée de chiffres et pavé numérique) : la n-ième section du rail. Échap ferme (posé par le code-behind). -->
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="D1" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>1</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="D2" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>2</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="D3" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>3</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="D4" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>4</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="D5" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>5</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="D6" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>6</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="NumPad1" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>1</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="NumPad2" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>2</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="NumPad3" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>3</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="NumPad4" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>4</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="NumPad5" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>5</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+        <KeyBinding Modifiers="Control" Key="NumPad6" Command="{Binding Reglages.AllerAuNumeroCommand}"><KeyBinding.CommandParameter><sys:Int32>6</sys:Int32></KeyBinding.CommandParameter></KeyBinding>
+    </Window.InputBindings>
+
+    <Border x:Name="Cadre" BorderBrush="{StaticResource Line}" BorderThickness="{StaticResource ReglagesBordureFenetre}" Background="{StaticResource Panel}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ============================== Barre de titre (zone de légende native) ============================== -->
+            <Border x:Name="BarreTitre" Grid.Row="0" Height="{StaticResource ReglagesHauteurBarreTitre}"
+                    BorderBrush="{StaticResource Line}" BorderThickness="{StaticResource ReglagesBordureBas}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <Ellipse Width="{StaticResource ReglagesLogo}" Height="{StaticResource ReglagesLogo}" Fill="{StaticResource Panel2}"
+                                 Stroke="{StaticResource Accent}" StrokeThickness="{StaticResource ReglagesLogoTrait}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Chronos" Foreground="{StaticResource Ink}" FontSize="{StaticResource ReglagesCorpsTitreCarte}"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBlock Text="Réglages" Foreground="{StaticResource Ink2}" FontSize="{StaticResource ReglagesCorpsTitreCarte}"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock x:Name="VersionTitre" Grid.Column="2" Text="{Binding AppVersion}" Foreground="{StaticResource Ink2}"
+                               FontSize="{StaticResource ReglagesCorpsEtiquette}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                        <Button x:Name="BoutonReduire" Style="{StaticResource BoutonFenetre}" Content="─" ToolTip="Réduire" Click="Reduire_Click"/>
+                        <Button x:Name="BoutonAgrandir" ToolTip="Agrandir / restaurer" Click="Agrandir_Click">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource BoutonFenetre}">
+                                    <Setter Property="Content" Value="□"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                                            <Setter Property="Content" Value="❐"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button x:Name="BoutonFermer" Style="{StaticResource BoutonFermerFenetre}" Content="✕" ToolTip="Fermer (Échap)" Click="Fermer_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================== Corps : rail fixe + colonne de contenu ============================== -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Rail de navigation : 208 px, ne rétrécit jamais. Quitter isolé en bas, séparé par un filet. -->
+                <Border x:Name="Rail" Grid.Column="0" Width="{StaticResource ReglagesRailLargeur}"
+                        BorderBrush="{StaticResource Line}" BorderThickness="{StaticResource ReglagesBordureRail}">
+                    <DockPanel Margin="12,16,12,12" LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Bottom">
+                            <TextBlock Text="Ctrl+1…6 · ↑ / ↓ · Échap ferme" Foreground="{StaticResource Ink2}" FontSize="{StaticResource ReglagesCorpsMini}"
+                                       TextWrapping="Wrap" Margin="12,0,0,8"/>
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="{StaticResource ReglagesBordureHaut}" Padding="0,8,0,0">
+                                <Button x:Name="BoutonQuitter" Style="{StaticResource EntreeQuitter}" Command="{Binding QuitCommand}"
+                                        AutomationProperties.Name="Quitter Chronos">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⏻" Width="{StaticResource ReglagesLargeurGlyphe}" TextAlignment="Center"/>
+                                        <TextBlock Text="Quitter Chronos" Margin="12,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </StackPanel>
+                        <ListBox x:Name="ListeSections" ItemsSource="{Binding Reglages.Entrees}" SelectedValuePath="Section"
+                                 SelectedValue="{Binding Reglages.Section, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="{StaticResource ReglagesBordureNulle}" Padding="0"
+                                 ItemContainerStyle="{StaticResource EntreeRail}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                 KeyboardNavigation.TabNavigation="Once" AutomationProperties.Name="Sections des réglages">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="glyphe" Text="{Binding Glyphe}" Width="{StaticResource ReglagesLargeurGlyphe}" TextAlignment="Center"/>
+                                        <TextBlock x:Name="libelle" Text="{Binding Libelle}" Margin="12,0,0,0"/>
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                            <Setter TargetName="glyphe" Property="Foreground" Value="{StaticResource Accent}"/>
+                                            <Setter TargetName="libelle" Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- Colonne de contenu : les cinq sections « formulaire » défilent ; largeur de lecture ≤ 640, centrée au-delà. -->
+                <ScrollViewer x:Name="DefilementContenu" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Focusable="False" Visibility="{Binding Reglages.IsSectionDefilante, Converter={StaticResource BoolToVis}}">
+                    <Grid MaxWidth="{StaticResource ReglagesContenuMax}" Margin="24,20,24,24">
+
+                        <!-- ============================== DONNÉES ============================== -->
+                        <StackPanel x:Name="SectionDonnees" Visibility="{Binding Reglages.IsDonnees, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Données" Style="{StaticResource TitreSection}"/>
+                            <TextBlock Text="D'où viennent les chiffres du cadran." Style="{StaticResource AideSection}"/>
+
+                            <!-- Connexion Claude : non connecté → invitation ; connexion en cours → « Connexion… » (commande occupée). -->
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Connexion Claude" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock x:Name="AideConnexion">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Aide}">
+                                                    <Setter Property="Text" Value="Connecte Chronos à ton compte Claude pour des chiffres exacts"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLoggedIn}" Value="True">
+                                                            <Setter Property="Text" Value="chiffres exacts 5 h + hebdo"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Button x:Name="BoutonConnexion" Grid.Column="1" Style="{StaticResource Plat}" Command="{Binding LoginClaudeCommand}">
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="Se connecter"/>
+                                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLoggedIn}" Value="True">
+                                                            <Setter Property="Text" Value="● Connecté"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource Ok}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding LoginClaudeCommand.IsRunning}" Value="True">
+                                                            <Setter Property="Text" Value="Connexion…"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <!-- HDR-06 : le coût est ANNONCÉ, jamais caché. Réglage DISTINCT de la connexion (celle-ci ne coûte rien, la
+                                 sonde si) : les mélanger priverait l'utilisateur du seul interrupteur qui gouverne une dépense. -->
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Sonde d'en-têtes" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Style="{StaticResource Aide}"
+                                                   Text="chiffres exacts même en saturation — une micro-requête sur ton compte toutes les 5 min (≈ 288/jour)"/>
+                                        <TextBlock x:Name="LigneEtatSonde" Style="{StaticResource Aide}" Margin="0,4,0,0"
+                                                   Text="{Binding TexteEtatSonde}"
+                                                   Visibility="{Binding AfficherEtatSonde, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                    <ToggleButton x:Name="InterrupteurSonde" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                  IsChecked="{Binding IsSondeEnTetesActivee, Mode=OneWay}"
+                                                  Command="{Binding ToggleSondeEnTetesCommand}"
+                                                  AutomationProperties.Name="Sonde d'en-têtes"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Ex-« Source terminal » (bouton) : renommé et devenu un interrupteur qui dit ce qu'il fait. -->
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Barre de statut de Claude Code" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Style="{StaticResource Aide}"
+                                                   Text="installe ou retire le pont statusLine dans les réglages de Claude Code (utile en terminal)"/>
+                                    </StackPanel>
+                                    <ToggleButton x:Name="InterrupteurBarreStatut" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                  IsChecked="{Binding IsStatusLineSourceEnabled, Mode=OneWay}"
+                                                  Command="{Binding ToggleStatusLineSourceCommand}"
+                                                  AutomationProperties.Name="Barre de statut de Claude Code"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ============================== HISTORIQUE ============================== -->
+                        <StackPanel x:Name="SectionHistorique" Visibility="{Binding Reglages.IsHistorique, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Historique" Style="{StaticResource TitreSection}"/>
+                            <TextBlock Text="Ce que le journal de Chronos a relevé : la semaine de forfait, la journée, les quatre dernières semaines."
+                                       Style="{StaticResource AideSection}"/>
+
+                            <!-- ACC-01 (35-02) : carte F1 « Historique d'utilisation », INCHANGÉE (bordure Accent 1,5 ; D-35-09 : elle absorbe
+                                 la ligne d'état du journal, mêmes noms et mêmes mots que le diagnostic ; D-35-08 : les puces pilotent le
+                                 HistoriqueViewModel SINGLETON). Bouton, puces et mention masqués sans fenêtre ; carte masquée sans rien à dire. -->
+                            <Border x:Name="CarteHistorique" Style="{StaticResource Carte}"
+                                    BorderBrush="{StaticResource Accent}" BorderThickness="{StaticResource ReglagesBordureActive}"
+                                    Visibility="{Binding AfficherCarteHistorique, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <TextBlock Text="Historique d'utilisation" Style="{StaticResource TitreCarte}" VerticalAlignment="Center"/>
+                                        <Button x:Name="BoutonOuvrirHistorique" Content="Ouvrir" HorizontalAlignment="Right"
+                                                Style="{StaticResource Plat}" Command="{Binding OuvrirHistoriqueCommand}"
+                                                Visibility="{Binding AfficherOuvrirHistorique, Converter={StaticResource BoolToVis}}"/>
+                                    </Grid>
+                                    <TextBlock x:Name="SousTexteHistorique" Style="{StaticResource Aide}" Margin="0,4,0,0" Text="{Binding SousTexteHistorique}"/>
+                                    <DockPanel Margin="0,4,0,0" LastChildFill="True"
+                                               Visibility="{Binding AfficherEtatJournal, Converter={StaticResource BoolToVis}}">
+                                        <Ellipse x:Name="PastilleJournal" DockPanel.Dock="Right" Width="{StaticResource ReglagesPastille}" Height="{StaticResource ReglagesPastille}"
+                                                 Margin="8,0,0,0" VerticalAlignment="Center" Fill="{DynamicResource Alerte}"
+                                                 ToolTip="alerte si &gt; 15 min sans écriture alors que Chronos tourne"
+                                                 Visibility="{Binding AlerteJournal, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock x:Name="LigneEtatJournal" Style="{StaticResource Aide}" Text="{Binding TexteEtatJournal}"/>
+                                    </DockPanel>
+                                    <StackPanel Visibility="{Binding AfficherOuvrirHistorique, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="Style de la vue Semaine :" Style="{StaticResource Aide}" Margin="0,8,0,4"/>
+                                        <UniformGrid Columns="3">
+                                            <Button x:Name="PuceStylePistes" Style="{StaticResource PuceStyleHistorique}"
+                                                    Content="{x:Static txt:TextesHistorique.StylePistes}"
+                                                    Command="{Binding Historique.ChoisirStyleCommand}"
+                                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Pistes}"
+                                                    Tag="{Binding Historique.IsStylePistes}"/>
+                                            <Button x:Name="PuceStyleSimplifie" Style="{StaticResource PuceStyleHistorique}"
+                                                    Content="{x:Static txt:TextesHistorique.StyleSimplifie}"
+                                                    Command="{Binding Historique.ChoisirStyleCommand}"
+                                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Simplifie}"
+                                                    Tag="{Binding Historique.IsStyleSimplifie}"/>
+                                            <Button x:Name="PuceStyleTuiles" Style="{StaticResource PuceStyleHistorique}"
+                                                    Content="{x:Static txt:TextesHistorique.StyleTuiles}"
+                                                    Command="{Binding Historique.ChoisirStyleCommand}"
+                                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Tuiles}"
+                                                    Tag="{Binding Historique.IsStyleTuiles}"/>
+                                        </UniformGrid>
+                                        <TextBlock Text="Aussi : double-clic au centre du cadran" Style="{StaticResource Aide}" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ============================== APPARENCE ============================== -->
+                        <StackPanel x:Name="SectionApparence" Visibility="{Binding Reglages.IsApparence, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Apparence" Style="{StaticResource TitreSection}"/>
+                            <TextBlock Text="Le cadran se met à jour dès que tu cliques un thème ou un style." Style="{StaticResource AideSection}"/>
+
+                            <!-- SIGNATURE (§6) : l'aperçu VIVANT — le rendu réel du cadran (pinceau visuel posé par le code-behind),
+                                 qui change à l'instant du clic sur une vignette ou une puce. -->
+                            <Border x:Name="CarteApercuCadran" Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{StaticResource Panel}" CornerRadius="{StaticResource ReglagesRayonCarte}" Padding="8" VerticalAlignment="Center">
+                                        <!-- Zone FIXE de 144 × 144 : la phrase de repli s'y enroule au lieu d'élargir la colonne (rognage mesuré à 640). -->
+                                        <Grid Width="{StaticResource ReglagesApercuCadran}" Height="{StaticResource ReglagesApercuCadran}">
+                                            <Rectangle x:Name="ApercuCadran"/>
+                                            <TextBlock x:Name="ApercuCadranAbsent" Text="le cadran s'affiche ici quand Chronos tourne" Style="{StaticResource Aide}"
+                                                       TextAlignment="Center" VerticalAlignment="Center" Margin="8" Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="24,0,0,0">
+                                        <TextBlock Text="APERÇU EN DIRECT" Foreground="{StaticResource Ink2}" FontSize="{StaticResource ReglagesCorpsMini}"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="LegendeTheme" Style="{StaticResource TitreCarte}" Margin="0,8,0,0"
+                                                   Text="{Binding NomThemeActif, StringFormat='Thème : {0}'}"/>
+                                        <TextBlock x:Name="LegendeStyle" Style="{StaticResource TitreCarte}" Margin="0,4,0,0"
+                                                   Text="{Binding NomStyleCadran, StringFormat='Style : {0}'}"/>
+                                        <TextBlock Text="C'est ton cadran réel, avec tes chiffres du moment." Style="{StaticResource Aide}" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="THÈME" Style="{StaticResource Etiquette}"/>
+                            <ItemsControl x:Name="GrilleThemes" ItemsSource="{Binding Themes}" Focusable="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource VignetteTheme}" ToolTip="{Binding Name}"
+                                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                                            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
+                                                <Ellipse Width="{StaticResource ReglagesVignetteDisque}" Height="{StaticResource ReglagesVignetteDisque}"
+                                                         Fill="{Binding Theme.PreviewDisc}" Stroke="{StaticResource Line}"
+                                                         StrokeThickness="{StaticResource HistoEpaisseurFin}" HorizontalAlignment="Center"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                             Margin="2,0" Fill="{Binding Theme.PreviewGreen}"/>
+                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                             Margin="2,0" Fill="{Binding Theme.PreviewAmber}"/>
+                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                             Margin="2,0" Fill="{Binding Theme.PreviewRed}"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="{StaticResource ReglagesCorpsEtiquette}"
+                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="STYLE DU CADRAN" Style="{StaticResource Etiquette}" Margin="0,8,0,8"/>
+                            <ItemsControl x:Name="PucesStyleCadran" ItemsSource="{Binding CadranStyles}" Focusable="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource Puce}" Content="{Binding Name}"
+                                                Command="{Binding DataContext.SelectCadranStyleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- « Mode étendu » ne concerne que le style Anneaux → masqué pour les autres styles (comme avant). -->
+                            <Border x:Name="CarteModeEtendu" Style="{StaticResource Carte}" Margin="0,4,0,8"
+                                    Visibility="{Binding IsStyleArcs, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Mode étendu" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Text="3 anneaux (défaut : épuré, 2 anneaux) — style Anneaux seulement" Style="{StaticResource Aide}"/>
+                                    </StackPanel>
+                                    <ToggleButton x:Name="InterrupteurModeEtendu" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                  IsChecked="{Binding IsModeEtendu, Mode=OneWay}" Command="{Binding ToggleCadranModeCommand}"
+                                                  AutomationProperties.Name="Mode étendu"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ============================== SESSIONS ============================== -->
+                        <StackPanel x:Name="SectionSessions" Visibility="{Binding Reglages.IsSessions, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Sessions" Style="{StaticResource TitreSection}"/>
+                            <TextBlock Text="Voir d'un coup d'œil quelle session Claude Code t'attend." Style="{StaticResource AideSection}"/>
+
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Widget sessions Claude Code" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Text="affiché à côté du cadran" Style="{StaticResource Aide}"/>
+                                    </StackPanel>
+                                    <ToggleButton x:Name="InterrupteurWidget" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                  IsChecked="{Binding IsSessionsWidgetEnabled, Mode=OneWay}" Command="{Binding ToggleSessionsWidgetCommand}"
+                                                  AutomationProperties.Name="Widget sessions Claude Code"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Aperçu vivant du widget : mêmes gabarits que le widget réel (SessionStyles.xaml), données d'échantillon
+                                 partagées avec la galerie ; suit le style et la disposition choisis. -->
+                            <Border x:Name="CarteApercuSessions" Style="{StaticResource Carte}"
+                                    Visibility="{Binding IsSessionsWidgetEnabled, Converter={StaticResource BoolToVis}}">
+                                <Border.Resources>
+                                    <ResourceDictionary>
+                                        <ResourceDictionary.MergedDictionaries>
+                                            <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/SessionStyles.xaml"/>
+                                        </ResourceDictionary.MergedDictionaries>
+                                        <Style x:Key="GabaritApercuSessions" TargetType="ContentControl">
+                                            <Setter Property="ContentTemplate" Value="{StaticResource TplPastilles}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Marge}"><Setter Property="ContentTemplate" Value="{StaticResource TplMarge}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Jetons}"><Setter Property="ContentTemplate" Value="{StaticResource TplJetons}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Sonar}"><Setter Property="ContentTemplate" Value="{StaticResource TplSonar}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Facade}"><Setter Property="ContentTemplate" Value="{StaticResource TplFacade}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Etagere}"><Setter Property="ContentTemplate" Value="{StaticResource TplEtagere}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Annonciateur}"><Setter Property="ContentTemplate" Value="{StaticResource TplAnnonciateur}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding SessionStyle}" Value="{x:Static svc:SessionStyle.Veilleurs}"><Setter Property="ContentTemplate" Value="{StaticResource TplVeilleurs}"/></DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ResourceDictionary>
+                                </Border.Resources>
+                                <StackPanel>
+                                    <TextBlock Text="APERÇU" Foreground="{StaticResource Ink2}" FontSize="{StaticResource ReglagesCorpsMini}" FontWeight="SemiBold"
+                                               Margin="0,0,0,8"/>
+                                    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                                             MaxHeight="{StaticResource ReglagesApercuSessionsHauteur}">
+                                        <ContentControl x:Name="ApercuSessions" Content="{Binding Reglages.ApercuSessions}"
+                                                        Style="{StaticResource GabaritApercuSessions}" Focusable="False" IsHitTestVisible="False"/>
+                                    </Viewbox>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Choix du style : grisé tant que le widget est désactivé (§5), avec une phrase d'invitation. -->
+                            <StackPanel x:Name="BlocStylesWidget" IsEnabled="{Binding IsSessionsWidgetEnabled}">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="{StaticResource ReglagesOpaciteInactif}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="STYLE DU WIDGET" Style="{StaticResource Etiquette}" Margin="0,8,0,8"/>
+                                <ItemsControl x:Name="PucesStyleWidget" ItemsSource="{Binding SessionStyles}" Focusable="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource Puce}" Content="{Binding Name}"
+                                                    Command="{Binding DataContext.SelectSessionStyleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Option des styles EN RANGÉE (Sonar / Jetons / Veilleurs) : disposition en colonne. -->
+                                <Border x:Name="CarteDispositionVerticale" Style="{StaticResource Carte}" Margin="0,4,0,8"
+                                        Visibility="{Binding IsRowStyle, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Text="Disposition verticale" Style="{StaticResource TitreCarte}"/>
+                                            <TextBlock Text="colonne (défaut : rangée horizontale)" Style="{StaticResource Aide}"/>
+                                        </StackPanel>
+                                        <ToggleButton x:Name="InterrupteurDisposition" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                      IsChecked="{Binding VerticalLayout, Mode=OneWay}" Command="{Binding ToggleVerticalLayoutCommand}"
+                                                      AutomationProperties.Name="Disposition verticale"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                            <Border x:Name="InvitationWidget" BorderBrush="{StaticResource Accent}" BorderThickness="{StaticResource ReglagesBordureNote}"
+                                    Padding="8,2" Margin="0,8,0,0">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSessionsWidgetEnabled}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="Active le widget pour choisir son style." Style="{StaticResource Aide}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ============================== COMPORTEMENT ============================== -->
+                        <StackPanel x:Name="SectionComportement" Visibility="{Binding Reglages.IsComportement, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Comportement" Style="{StaticResource TitreSection}"/>
+                            <TextBlock Text="Ce que fait le cadran sur ton bureau et au démarrage de Windows." Style="{StaticResource AideSection}"/>
+
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Arrière-plan" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Text="le cadran passe derrière les fenêtres au lieu de rester au-dessus" Style="{StaticResource Aide}"/>
+                                    </StackPanel>
+                                    <ToggleButton x:Name="InterrupteurArrierePlan" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                  IsChecked="{Binding IsBackground, Mode=OneWay}" Command="{Binding ToggleBackgroundCommand}"
+                                                  AutomationProperties.Name="Arrière-plan"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Lancer au démarrage" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Text="ajoute Chronos au dossier Démarrage de Windows (sans droits administrateur)" Style="{StaticResource Aide}"/>
+                                    </StackPanel>
+                                    <ToggleButton x:Name="InterrupteurDemarrage" Grid.Column="1" Style="{StaticResource Interrupteur}"
+                                                  IsChecked="{Binding IsAutostart, Mode=OneWay}" Command="{Binding ToggleAutostartCommand}"
+                                                  AutomationProperties.Name="Lancer au démarrage"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource Carte}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="Recalibrer le reset hebdomadaire…" Style="{StaticResource TitreCarte}"/>
+                                        <TextBlock Text="cale la date du reset hebdomadaire quand aucune source exacte ne la donne" Style="{StaticResource Aide}"/>
+                                    </StackPanel>
+                                    <Button x:Name="BoutonRecalibrerHebdo" Grid.Column="1" Content="Recalibrer" Style="{StaticResource Plat}"
+                                            Command="{Binding RecalibrateCommand}"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- ============================== DIAGNOSTIC (toute la hauteur, remplace la boîte de message) ============================== -->
+                <Grid x:Name="SectionDiagnostic" Grid.Column="1" Margin="24,20,24,16"
+                      Visibility="{Binding Reglages.IsDiagnostic, Converter={StaticResource BoolToVis}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="BoutonActualiserDiagnostic" Content="↻ Actualiser" Style="{StaticResource Plat}"
+                                    Command="{Binding Reglages.ActualiserDiagnosticCommand}"/>
+                            <Button x:Name="BoutonCopierDiagnostic" Content="⧉ Copier" Style="{StaticResource Plat}" Margin="8,0,0,0"
+                                    Command="{Binding Reglages.CopierDiagnosticCommand}"/>
+                        </StackPanel>
+                        <TextBlock Text="Diagnostic" Style="{StaticResource TitreSection}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock Grid.Row="1" Style="{StaticResource AideSection}" Margin="0,4,0,12"
+                               Text="Ce que Chronos voit en ce moment : sources, magasins, journal, sessions. Le jeton n'y figure jamais."/>
+                    <Grid Grid.Row="2">
+                        <TextBox x:Name="RapportDiagnostic" Style="{StaticResource Rapport}" IsReadOnly="True" TextWrapping="NoWrap"
+                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                 Text="{Binding Reglages.TexteDiagnostic, Mode=OneWay}"
+                                 Visibility="{Binding Reglages.DiagnosticPret, Converter={StaticResource BoolToVis}}"
+                                 AutomationProperties.Name="Rapport de diagnostic"/>
+                        <TextBlock x:Name="TexteGenerationDiagnostic" Text="{x:Static vm:ReglagesViewModel.TexteGeneration}" Style="{StaticResource Aide}"
+                                   VerticalAlignment="Top" Visibility="{Binding Reglages.DiagnosticEnCours, Converter={StaticResource BoolToVis}}"/>
+                        <StackPanel x:Name="PanneauEchecDiagnostic" VerticalAlignment="Top"
+                                    Visibility="{Binding Reglages.DiagnosticEnEchec, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding Reglages.ErreurDiagnostic}" Style="{StaticResource TitreCarte}"/>
+                            <Button x:Name="BoutonReessayerDiagnostic" Content="Réessayer" Style="{StaticResource Plat}" HorizontalAlignment="Left"
+                                    Margin="0,12,0,0" Command="{Binding Reglages.ActualiserDiagnosticCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock x:Name="LigneDiagnostic" Text="{Binding Reglages.LigneDiagnostic}" Style="{StaticResource Aide}"/>
+                        <TextBlock x:Name="RetourCopieDiagnostic" Text="{Binding Reglages.RetourCopie}" Foreground="{StaticResource Ok}"
+                                   FontSize="{StaticResource ReglagesCorpsAide}" Margin="12,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>
