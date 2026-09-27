@@ -386,7 +386,12 @@ public class HistoriqueViewModelTests
         Assert.Equal(Utc("2026-09-23T18:00:00Z"), epuisee.Debut);
         Assert.Equal(Utc("2026-09-23T22:00:00Z"), epuisee.Fin);
         Assert.Equal(TextesHistorique.Epuisee, epuisee.Texte);
-        Assert.Empty(vm.AnnotationsSauts);   // aucun trou fermé dans la journée de mercredi
+        // 35-01 : la veille est lue, le trou de minuit est nommé — il se FERME dans l'analyse du jour ; son saut 5 h traverse le reset de
+        // 04:00 : indéterminable, et dit comme tel (jamais une barre au réveil).
+        var saut = Assert.Single(vm.AnnotationsSauts);
+        Assert.Equal("au moins un reset pendant l'absence (répartition inconnue)", saut.Texte);
+        Assert.Equal(Utc("2026-09-22T21:00:00Z"), saut.Debut);
+        Assert.Equal(Utc("2026-09-23T05:00:00Z"), saut.Fin);
         Assert.Empty(vm.AnnotationsDivergences);
         Assert.False(vm.AfficherPiedDivergence);
     }

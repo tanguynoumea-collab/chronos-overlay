@@ -502,15 +502,21 @@ public class HonneteteHistoriqueTests
     public void La_fraicheur_du_jour_compte_les_attendus_et_nomme_les_interruptions()
     {
         var (_, jeudi) = MonterJour();
-        var n = jeudi.DonneesJour!.Analyse.Serie.Count;
+        var n = jeudi.DonneesJour!.Analyse.Serie.Count(r => jeudi.DonneesJour.Plage.Contient(r.T));   // les relevés DU JOUR
         Assert.Equal($"288 relevés attendus · {n} présents · 1 interruption (jeton invalide, 14:00 → 16:00)", jeudi.TexteFraicheur);
 
-        // Mercredi : le trou « Chronos arrêté » commence mardi 23:00 ; l'analyse du JOUR commence à son premier relevé (07:00) et ne
-        // voit pas l'absence de la nuit (limite connue de 32-06 : aucun Δ ni saut ne traverse Plage.Debut). Comportement RÉEL épinglé ;
-        // candidat phase 35 : lire [Debut − cadence, Fin[ pour qu'un trou ouvert à minuit soit nommé (voir 34-08-SUMMARY).
-        var (_, mercredi) = MonterJour(joursEnArriere: 1);
-        var m = mercredi.DonneesJour!.Analyse.Serie.Count;
-        Assert.Equal($"288 relevés attendus · {m} présents · 0 interruption", mercredi.TexteFraicheur);
-        Assert.Equal(TrouAFin, mercredi.DonneesJour.Analyse.Serie[0].T);   // rien n'est inventé avant 07:00
+        // 35-01 : la veille est lue, le trou de minuit est nommé. Mercredi : le trou « Chronos arrêté » commence mardi 23:00 — la vue Jour lit
+        // le dernier relevé de la veille (LectureVeille, D-35-04) et l'analyse nomme l'absence avec sa cause, la borne de la veille datée.
+        var (vueMercredi, mercredi) = MonterJour(joursEnArriere: 1);
+        var plage = mercredi.DonneesJour!.Plage;
+        var m = mercredi.DonneesJour.Analyse.Serie.Count(r => plage.Contient(r.T));
+        Assert.Equal($"288 relevés attendus · {m} présents · 1 interruption (Chronos arrêté, mar. 23:00 → 07:00)", mercredi.TexteFraicheur);
+        Assert.Contains(new Trou(TrouADebut, TrouAFin, CauseTrou.ChronosArrete), mercredi.DonneesJour.Analyse.Trous);
+
+        // Rien n'est inventé avant 07:00 : le premier relevé DU JOUR est TrouAFin, et NIVEAU ne pose aucun palier entre 00:00 et 07:00.
+        Assert.Equal(TrouAFin, mercredi.DonneesJour.Analyse.Serie.First(r => plage.Contient(r.T)).T);
+        var paliers = TraceRendu(Assert.Single(Visibles<PisteNiveau>(vueMercredi))).Where(l => l.StartsWith("palier ", StringComparison.Ordinal)).ToList();
+        Assert.NotEmpty(paliers);
+        Assert.All(paliers, l => Assert.True(Champ(l, 0) >= Fr(TrouAFin, plage) - Tol, $"palier avant 07:00 : {l}"));
     }
 }

@@ -226,15 +226,15 @@ public class VueJourBindingTests
     public void Les_resets_observes_et_l_epuisee_sont_annonces_le_mercredi()
     {
         var (vm, vue) = Monter(joursEnArriere: 1);   // mer. 23 sept. : plateau épuisé 20:00 → 00:00, trou « Chronos arrêté » fermé à 07:00
-        // Grille 5 h : 04:00 / 09:00 / 14:00 / 19:00 — mais le reset de 04:00 tombe dans le trou (aucun relevé de part et d'autre) : il n'est
-        // pas OBSERVÉ, donc ni annoté ni tracé. Trois resets observés.
+        // Grille 5 h : 04:00 / 09:00 / 14:00 / 19:00. 35-01 : la veille est lue (LectureVeille, D-35-04) — le dernier relevé du mardi (23:00)
+        // annonce resets_at = 04:00 et le premier du mercredi (07:00) une NOUVELLE borne (09:00) : le reset de 04:00 est désormais OBSERVÉ
+        // (un relevé de part et d'autre, D-32-27 : même à travers un trou), donc annoté et tracé. Quatre resets observés.
         var plage = vm.DonneesJour!.Plage;
         var textes = TextesVisibles(vue);
 
         // D-34-32 : le mot « reset 5 h HH:MM » vient du VM (AnnotationsResets), posé à l'instant du reset observé.
-        Assert.True(vm.AnnotationsResets.Count >= 3, $"resets annotés : {vm.AnnotationsResets.Count}");
-        Assert.Equal(new[] { "reset 5 h 09:00", "reset 5 h 14:00", "reset 5 h 19:00" }, vm.AnnotationsResets.Select(a => a.Texte).ToArray());
-        Assert.DoesNotContain("reset 5 h 04:00", textes);
+        Assert.Equal(new[] { "reset 5 h 04:00", "reset 5 h 09:00", "reset 5 h 14:00", "reset 5 h 19:00" }, vm.AnnotationsResets.Select(a => a.Texte).ToArray());
+        Assert.Contains("reset 5 h 04:00", textes);
         Assert.Equal(vm.AnnotationsResets.Select(a => a.Texte).OrderBy(t => t, StringComparer.Ordinal),
                      textes.Where(t => t.StartsWith("reset 5 h ", StringComparison.Ordinal)).OrderBy(t => t, StringComparer.Ordinal));
 
@@ -251,15 +251,27 @@ public class VueJourBindingTests
         Assert.Equal(TextTrimming.CharacterEllipsis, epuisee.TextTrimming);
         Assert.Equal(Hex("A9A6C4"), CouleurDe(epuisee.Foreground));   // Ink2, pas l'ambre : le gris du plateau dit déjà l'état
 
-        // Le trou « Chronos arrêté » (mar. 23:00 → mer. 07:00) chevauche minuit : l'analyse du JOUR commence à son premier relevé (07:00) et
-        // ne le rapporte pas — aucune annotation de trou le mercredi, et rien n'est interpolé avant 07:00 (la couverture commence à 7/24).
-        // Écart par rapport au plan (qui attendait « Chronos arrêté » posé à 0) : consigné dans le SUMMARY pour 34-08.
-        Assert.Empty(vm.AnnotationsTrous);
-        Assert.DoesNotContain("Chronos arrêté", textes);
+        // Le trou « Chronos arrêté » (mar. 23:00 → mer. 07:00) chevauche minuit. 35-01 : la veille est lue, le trou de minuit est nommé —
+        // UNE annotation « Chronos arrêté » posée à x = 0 (InstantVersX borné), et rien n'est interpolé avant 07:00 : la série RENDUE commence
+        // au premier relevé du jour (LectureVeille.RestreindreAuJour), la couverture ne peint aucun « présent » avant 7/24 mais le trou de 0 à 7/24.
+        var trou = Assert.Single(vm.AnnotationsTrous);
+        Assert.Equal("Chronos arrêté", trou.Texte);
+        Assert.Equal(CauseTrou.ChronosArrete, trou.Cause);
+        Assert.Equal(Utc("2026-09-22T21:00:00Z"), trou.Debut);
+        Assert.Equal(Utc("2026-09-23T05:00:00Z"), trou.Fin);
+        var texteTrou = Assert.Single(Visibles<TextBlock>(vue), t => t.Text == "Chronos arrêté");
+        var canvasTrou = Ancetre<Canvas>(texteTrou);
+        Assert.InRange(XDans(texteTrou, canvasTrou), -1, 1);
         Assert.Equal(Utc("2026-09-23T05:00:00Z"), vm.DonneesJour.Analyse.Serie[0].T);
         var couverture = PistesVisibles(vue).OfType<PisteCouverture>().Single();
-        var present = Assert.Single(Trace(couverture), l => l.StartsWith("present ", StringComparison.Ordinal));
+        var traceCouverture = Trace(couverture);
+        var present = Assert.Single(traceCouverture, l => l.StartsWith("present ", StringComparison.Ordinal));
         Assert.InRange(double.Parse(present.Split(' ')[1], System.Globalization.CultureInfo.InvariantCulture), 7.0 / 24 - 0.001, 7.0 / 24 + 0.001);
+        var trouCouverture = Assert.Single(traceCouverture, l => l.StartsWith("trou ", StringComparison.Ordinal));
+        var champs = trouCouverture.Split(' ');
+        Assert.InRange(double.Parse(champs[1], System.Globalization.CultureInfo.InvariantCulture), -0.001, 0.001);
+        Assert.InRange(double.Parse(champs[2], System.Globalization.CultureInfo.InvariantCulture), 7.0 / 24 - 0.001, 7.0 / 24 + 0.001);
+        Assert.Equal("arrete", champs[3]);
 
         // La piste dessine ce que le VM annonce : ≥ 1 palier gris (plateau) et un trait par reset observé dans la plage.
         var niveau = PistesVisibles(vue).OfType<PisteNiveau>().Single();

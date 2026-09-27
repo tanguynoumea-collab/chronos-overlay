@@ -216,4 +216,33 @@ public sealed class SourceHistoriqueDisqueTests : IDisposable
 
         Assert.Throws<ArgumentException>(() => source.LireQuatreSemaines(semaines.Take(3).ToList(), NowQuatre));
     }
+
+    // ------------------------------------------------------------------ 35-01 : veille de minuit en vue Jour (D-35-04)
+
+    [Fact]
+    public void Le_jour_lit_la_veille_pour_nommer_le_trou_de_minuit()
+    {
+        // Mardi : relevés jusqu'à 23:00 Paris, « arret » à 23:02 ; mercredi : « demarrage » et relevés dès 07:00 (même fixture que LectureVeilleTests).
+        var dernierMardi = Utc("2026-09-22T21:00:00Z");
+        var premierMercredi = Utc("2026-09-23T05:00:00Z");
+        var horloge = new FakeClock(Utc("2026-09-22T12:00:00Z"));
+        var journal = new JournalReleves(DossierHistorique(), horloge);
+        for (var t = Utc("2026-09-22T12:00:00Z"); t <= dernierMardi; t += TimeSpan.FromMinutes(5)) { horloge.UtcNow = t; Assert.True(journal.AjouterReleve(ReleveSonde(t, 0.30))); }
+        horloge.UtcNow = dernierMardi + TimeSpan.FromMinutes(2);
+        Assert.True(journal.AjouterEvenement(new EvenementJournal(horloge.UtcNow, TypeEvenement.Arret)));
+        horloge.UtcNow = premierMercredi;
+        Assert.True(journal.AjouterEvenement(new EvenementJournal(premierMercredi, TypeEvenement.Demarrage, Version: "tests")));
+        for (var t = premierMercredi; t <= Utc("2026-09-23T06:00:00Z"); t += TimeSpan.FromMinutes(5)) { horloge.UtcNow = t; Assert.True(journal.AjouterReleve(ReleveSonde(t, 0.31))); }
+
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+        var mercredi = BornesPlage.Jour(premierMercredi, Tz);
+        var d = source.LireJour(mercredi, Utc("2026-09-23T06:02:00Z"));
+
+        Assert.Contains(new Trou(dernierMardi, premierMercredi, CauseTrou.ChronosArrete), d.Analyse.Trous);
+        Assert.Equal(premierMercredi, d.Analyse.Serie[0].T);   // la série rendue ne garde que le jour
+        Assert.Equal(13, d.Analyse.Serie.Count);
+        Assert.Equal(Utc("2026-09-22T12:00:00Z"), d.JournalOuvertLe);
+        Assert.Equal("288 relevés attendus · 13 présents · 1 interruption (Chronos arrêté, mar. 23:00 → 07:00)",
+            Chronos.Text.TextesHistorique.LigneFraicheurJour(mercredi, d.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, Tz));
+    }
 }

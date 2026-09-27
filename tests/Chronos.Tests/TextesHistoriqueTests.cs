@@ -129,20 +129,39 @@ public class TextesHistoriqueTests
     {
         var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
         var jour = BornesPlage.Jour(Utc("2026-09-24T15:12:00Z"), Tz);
-        var serie = Serie(262, Utc("2026-09-24T15:10:00Z"));
+        // 35-01 : « présents » ne compte que les relevés DU JOUR — la série de 262 relevés est posée entièrement dans le jeudi.
+        var serie = Serie(262, Utc("2026-09-24T21:55:00Z"));
 
         Assert.Equal("288 relevés attendus · 262 présents · 1 interruption (jeton invalide, 14:00 → 16:00)",
             TextesHistorique.LigneFraicheurJour(jour, Analyse(serie, new[] { TrouJeton }, null, jour), cadence, Tz));
-        Assert.StartsWith("300 relevés attendus", TextesHistorique.LigneFraicheurJour(BornesPlage.Jour(Utc("2026-10-25T12:00:00Z"), Tz), Analyse(serie, Array.Empty<Trou>(), null), cadence, Tz), StringComparison.Ordinal);
-        Assert.StartsWith("276 relevés attendus", TextesHistorique.LigneFraicheurJour(BornesPlage.Jour(Utc("2027-03-28T12:00:00Z"), Tz), Analyse(serie, Array.Empty<Trou>(), null), cadence, Tz), StringComparison.Ordinal);
-        Assert.Equal("288 relevés attendus · 262 présents · 2 interruptions (Chronos arrêté, 23:00 → 07:00 ; jeton invalide, 14:00 → 16:00)",
+        Assert.StartsWith("300 relevés attendus · 3 présents", TextesHistorique.LigneFraicheurJour(BornesPlage.Jour(Utc("2026-10-25T12:00:00Z"), Tz), Analyse(Serie(3, Utc("2026-10-25T12:00:00Z")), Array.Empty<Trou>(), null), cadence, Tz), StringComparison.Ordinal);
+        Assert.StartsWith("276 relevés attendus · 3 présents", TextesHistorique.LigneFraicheurJour(BornesPlage.Jour(Utc("2027-03-28T12:00:00Z"), Tz), Analyse(Serie(3, Utc("2027-03-28T12:00:00Z")), Array.Empty<Trou>(), null), cadence, Tz), StringComparison.Ordinal);
+        // 35-01 : une borne antérieure au jour affiché est datée de son jour (ici le trou du mardi soir, vu depuis le jeudi).
+        Assert.Equal("288 relevés attendus · 262 présents · 2 interruptions (Chronos arrêté, mar. 23:00 → mer. 07:00 ; jeton invalide, 14:00 → 16:00)",
             TextesHistorique.LigneFraicheurJour(jour, Analyse(serie, new[] { TrouArrete, TrouJeton }, null, jour), cadence, Tz));
         Assert.Equal("288 relevés attendus · 262 présents · 0 interruption",
             TextesHistorique.LigneFraicheurJour(jour, Analyse(serie, Array.Empty<Trou>(), null, jour), cadence, Tz));
-        Assert.Equal("288 relevés attendus · 262 présents · 1 interruption (Chronos arrêté, 23:00 → en cours)",
+        Assert.Equal("288 relevés attendus · 262 présents · 1 interruption (Chronos arrêté, mar. 23:00 → en cours)",
             TextesHistorique.LigneFraicheurJour(jour, Analyse(serie, new[] { TrouArrete with { Fin = null } }, null, jour), cadence, Tz));
         Assert.Equal(TextesHistorique.AucunReleveJour,
             TextesHistorique.LigneFraicheurJour(jour, Analyse(Array.Empty<ReleveJournal>(), Array.Empty<Trou>(), null, jour), cadence, Tz));
+    }
+
+    [Fact]
+    public void La_fraicheur_du_jour_ne_compte_que_les_releves_du_jour_et_date_la_veille()
+    {
+        // 35-01 (D-35-04) : la vue Jour lit le dernier relevé de la veille pour nommer le trou qui chevauche minuit ; ce relevé n'est PAS
+        // un relevé du jour — « présents » compte le jour seul, et la borne de la veille porte son jour (« mar. 23:00 → 07:00 »).
+        var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
+        var mercredi = BornesPlage.Jour(Utc("2026-09-23T10:00:00Z"), Tz);
+        var serie = new[] { Releve(Utc("2026-09-22T21:00:00Z")) }.Concat(Serie(10, Utc("2026-09-23T05:45:00Z"))).ToList();
+
+        Assert.Equal("288 relevés attendus · 10 présents · 1 interruption (Chronos arrêté, mar. 23:00 → 07:00)",
+            TextesHistorique.LigneFraicheurJour(mercredi, Analyse(serie, new[] { TrouArrete }, null, mercredi), cadence, Tz));
+
+        // Seul le relevé de la veille : rien n'a été relevé CE jour-là.
+        Assert.Equal(TextesHistorique.AucunReleveJour,
+            TextesHistorique.LigneFraicheurJour(mercredi, Analyse(new[] { Releve(Utc("2026-09-22T21:00:00Z")) }, new[] { TrouArrete with { Fin = null } }, null, mercredi), cadence, Tz));
     }
 
     [Fact]
