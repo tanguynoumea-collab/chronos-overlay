@@ -220,4 +220,88 @@ public class GardeTokensHistoriqueTests
         Assert.True(bord is not null, "DesignTokens.xaml : le Thickness « HistoBordRedimensionnement » manque.");
         Assert.Equal("6", bord!.Value.Trim());
     }
+
+    // ------------------------------------------------------------------------------------------------
+    // Task 2 — garde « aucune valeur en dur » sur la fenêtre Historique
+    // ------------------------------------------------------------------------------------------------
+
+    /// <summary>Couleur hexadécimale ou taille écrite en chiffres dans un XAML de l'historique : tout passe par
+    /// <c>{StaticResource Histo…}</c>. (<c>Viewport="0,0,4,4"</c> n'existe que dans <c>DesignTokens.xaml</c>, hors périmètre.)</summary>
+    private static readonly Regex InterditXaml = new(
+        "#[0-9A-Fa-f]{6,8}|(FontSize|Height|MinHeight|StrokeThickness|Thickness|Opacity)=\"[0-9]",
+        RegexOptions.Compiled);
+
+    /// <summary>Pinceau ou couleur fabriqués en C# dans une piste : la piste reçoit ses brosses par DP liée à un token.
+    /// <c>Brushes.Transparent</c> est le SEUL pinceau nommé toléré (défaut « ne rien dessiner »).</summary>
+    private static readonly Regex InterditCs = new(
+        @"Frozen\(0x|Color\.FromRgb\(|Color\.FromArgb\(|Colors\.[A-Z]|Brushes\.(?!Transparent\b)[A-Z]",
+        RegexOptions.Compiled);
+
+    [Fact]
+    public void Aucune_couleur_ni_taille_en_dur_dans_les_vues_et_les_pistes_de_l_historique()
+    {
+        var racine = Racine();
+        var vues = Path.Combine(racine, "Views", "Historique");
+        var pistes = Path.Combine(racine, "Controls", "Historique");
+
+        var xamls = Directory.Exists(vues) ? Directory.EnumerateFiles(vues, "*.xaml", SearchOption.AllDirectories).ToList() : new List<string>();
+        var cs = Directory.Exists(pistes) ? Directory.EnumerateFiles(pistes, "*.cs", SearchOption.AllDirectories).ToList() : new List<string>();
+
+        // En vague 1 les deux dossiers n'existent pas encore : la liste est vide et la garde passe, prête à rougir
+        // dès qu'une vue triche. Anti-mutisme relevé en 34-08 (HIS-06) : ≥ 3 xaml et ≥ 7 cs.
+
+        var infractions = new List<string>();
+        foreach (var (fichiers, motif) in new[] { (xamls, InterditXaml), (cs, InterditCs) })
+        {
+            foreach (var fichier in fichiers)
+            {
+                var texte = File.ReadAllText(fichier);
+                foreach (Match m in motif.Matches(texte))
+                {
+                    var ligne = texte.Take(m.Index).Count(c => c == '\n') + 1;
+                    var debut = texte.LastIndexOf('\n', m.Index) + 1;
+                    var fin = texte.IndexOf('\n', m.Index);
+                    var extrait = texte[debut..(fin < 0 ? texte.Length : fin)].Trim();
+                    infractions.Add($"{Path.GetRelativePath(racine, fichier)}:{ligne}: {extrait}");
+                }
+            }
+        }
+
+        Assert.True(infractions.Count == 0,
+            "HIS-07 : une couleur ou une taille est écrite EN DUR dans la fenêtre Historique — la source unique est "
+            + "Resources/DesignTokens.xaml ({StaticResource Histo…}), jamais un chiffre ni un hexadécimal dans une vue ou une piste.\n  "
+            + string.Join("\n  ", infractions));
+    }
+}
+
+/// <summary>
+/// Le dictionnaire des tokens se charge SEUL (sans <c>Application</c>), comme le fait <c>SettingsWindow</c> par sa fusion
+/// pack URI : un <c>sys:Double</c> mal typé, un <c>StaticResource HistoGris</c> déclaré avant sa cible ou un
+/// <c>BoolToVis</c> en double ne se voient qu'au chargement BAML — pas dans l'XML. Classe séparée : charge du BAML,
+/// donc collection sérialisée (voir <see cref="XamlWpfCollection"/>).
+/// </summary>
+[Collection("XAML WPF")]
+public class GardeTokensHistoriqueXamlTests
+{
+    [WpfFact]
+    public void Le_dictionnaire_de_tokens_se_charge_seul_et_par_la_fenetre_des_reglages()
+    {
+        // Variante retenue : Application.LoadComponent avec l'URI relative « ;component » (voir le SUMMARY 34-01).
+        var dict = (System.Windows.ResourceDictionary)System.Windows.Application.LoadComponent(
+            new Uri("/Chronos;component/Resources/DesignTokens.xaml", UriKind.Relative));
+
+        Assert.True(dict["HistoGris"] is System.Windows.Media.SolidColorBrush gris
+                    && gris.Color == System.Windows.Media.Color.FromRgb(0x5A, 0x59, 0x60),
+            "HistoGris doit être une SolidColorBrush #5A5960 une fois le BAML chargé.");
+        Assert.True(dict["HistoHauteurNiveauPistes"] is double hauteur && hauteur == 150,
+            "HistoHauteurNiveauPistes doit être un double boxé (150), pas une chaîne.");
+        Assert.True(dict["HistoBordRedimensionnement"] is System.Windows.Thickness bord && bord.Left == 6,
+            "HistoBordRedimensionnement doit être un Thickness de 6.");
+        Assert.True(dict["HistoHachure"] is System.Windows.Media.DrawingBrush,
+            "HistoHachure doit être un DrawingBrush.");
+
+        // Les sept brosses promues résolvent aussi par le dictionnaire (c'est ce que SettingsWindow fusionne).
+        Assert.True(dict["Panel"] is System.Windows.Media.SolidColorBrush panel
+                    && panel.Color == System.Windows.Media.Color.FromRgb(0x15, 0x13, 0x22));
+    }
 }
