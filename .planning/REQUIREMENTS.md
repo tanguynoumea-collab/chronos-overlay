@@ -46,7 +46,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 - [x] **JRN-05**: Une **lecture par plage** (semaine de forfait, jour, 4 semaines) en classes pures et testées fournit : la série des
   relevés, les trous (> 2 cadences), les resets 5 h et hebdo observés, les Δ de consommation entre relevés consécutifs de même
   `resets_at` (jamais à travers un reset), et le saut « non localisé » de part et d'autre d'un trou.
-- [ ] **JRN-06**: **Release 3.2.2** publiée (exe mono-fichier, version embarquée aux quatre propriétés du csproj et dans le nom du
+- [x] **JRN-06**: **Release 3.2.2** publiée (exe mono-fichier, version embarquée aux quatre propriétés du csproj et dans le nom du
   fichier, réconciliation hooks/statusLine au premier lancement constatée dans `~/.claude/settings.json`) contenant CPT + JRN,
   **sans interface** ; `docs/data-sources.md` gagne une section « Journal d'historique » (schéma, dédup, événements, rétention,
   hypothèses à vérifier : granularité des en-têtes, Δ = consommation, reset hebdo à l'heure locale au changement d'heure).
@@ -174,7 +174,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | JRN-03 | Phase 32 | Complete |
 | JRN-04 | Phase 32 | Complete |
 | JRN-05 | Phase 32 | Complete |
-| JRN-06 | Phase 32 | Pending |
+| JRN-06 | Phase 32 | Complete |
 | TOK-01 | Phase 33 | Pending |
 | TOK-02 | Phase 33 | Pending |
 | TOK-03 | Phase 33 | Pending |
