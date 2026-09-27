@@ -95,6 +95,15 @@ public class JournalisationUsageProviderTests : IDisposable
         Assert.Equal(StatutServeur.AutoriseAvertissement, r.Statut7);
         Assert.Equal(1, deco.RelevesJournalises);
         Assert.Equal(6, _inner.GetCount);
+
+        // La dédup MÉMOIRE du décorateur ne se confond pas avec l'idempotence du fichier : un rejeu ne touche PAS le disque
+        // (pas de verrou exclusif toutes les 60 s pour rien). Si le fichier disparaît et que la même instance est rejouée,
+        // il ne renaît pas — seule la mémoire « t strictement supérieur » a tranché.
+        File.Delete(Chemin);
+        await deco.GetAsync();
+        await deco.GetAsync();
+        Assert.False(File.Exists(Chemin));
+        Assert.Equal(1, deco.RelevesJournalises);
     }
 
     [Fact]
