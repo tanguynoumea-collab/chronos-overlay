@@ -118,6 +118,22 @@ public class LecteurAgregatsTests
         var juin = LecteurAgregats.Lire(dossier, Utc("2026-06-01T00:00:00Z"), Utc("2026-06-02T00:00:00Z"));
         Assert.Empty(juin.Tranches);
         Assert.Equal(EtatCouverture.HorsCouverture, juin.EtatA(Utc("2026-06-01T12:00:00Z")));
+        // Un instant HORS de la plage lue n'est jamais « couverte » : on ne garantit pas ce qu'on n'a pas lu.
+        Assert.Equal(EtatCouverture.HorsCouverture, juin.EtatA(Utc("2026-06-05T00:00:00Z")));
+
+        // Le jour du plus vieux transcript : la plage se coupe À la plus ancienne ligne vue (12:44:22Z) — avant, hors
+        // couverture ; après, transcripts absents (juin n'a pas d'intervalle garanti). Une seule sous-plage serait un mensonge.
+        var bascule = LecteurAgregats.Lire(dossier, Utc("2026-06-23T00:00:00Z"), Utc("2026-06-24T00:00:00Z"));
+        Assert.Empty(bascule.Tranches);
+        Assert.Equal(
+            new[]
+            {
+                new SousPlageCouverture(Utc("2026-06-23T00:00:00Z"), Utc("2026-06-23T12:44:22Z"), EtatCouverture.HorsCouverture),
+                new SousPlageCouverture(Utc("2026-06-23T12:44:22Z"), Utc("2026-06-24T00:00:00Z"), EtatCouverture.TranscriptsAbsents),
+            },
+            bascule.Couverture);
+        Assert.Equal(EtatCouverture.HorsCouverture, bascule.EtatA(Utc("2026-06-23T06:00:00Z")));
+        Assert.Equal(EtatCouverture.TranscriptsAbsents, bascule.EtatA(Utc("2026-06-23T18:00:00Z")));
 
         // Juillet, purgé par Claude Code avant lecture : transcripts absents, pas « zéro token ».
         var juillet = LecteurAgregats.Lire(dossier, Utc("2026-07-15T00:00:00Z"), Utc("2026-07-16T00:00:00Z"));
