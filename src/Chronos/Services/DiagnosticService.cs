@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Chronos.Models;
+using Chronos.Services.Historique;
 using Chronos.Text;
 
 namespace Chronos.Services;
@@ -35,6 +36,7 @@ public sealed class DiagnosticService
     private readonly IInventaireMachine _machine;
     private readonly SessionMonitor? _moniteurSessions;
     private readonly IReadOnlyList<IEtatMagasin>? _magasins;
+    private readonly DateTimeOffset _demarrage;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
@@ -67,12 +69,18 @@ public sealed class DiagnosticService
     /// dessein : les sites de construction préexistants compilent sans retouche. Précédents : authStatus (17),
     /// etatServeur (18), machine (20), moniteurSessions (26). Repli : les faits disque seuls (existence, taille,
     /// mtime) — le rapport reste utile sans câblage DI, mais ne peut alors pas dire POURQUOI une écriture a raté.</param>
+    /// <param name="demarrageProcessus">JRN-04 — instant de démarrage du processus. D-32-21 : l'alerte « journal muet » se
+    /// mesure depuis max(démarrage, dernière écriture) ; mesurée depuis la seule dernière écriture, elle s'allumerait à chaque
+    /// lancement sur l'écriture de la veille, ce qui n'est pas « muet alors que Chronos tourne ». OPTIONNEL et en DERNIÈRE
+    /// position à dessein ; repli = l'instant de construction du rapport (≈ démarrage, le diagnostic étant un singleton
+    /// construit au lancement). Les tests injectent un démarrage ancien ou récent pour épingler la règle.</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
                              IInventaireMachine? machine = null,
                              SessionMonitor? moniteurSessions = null,
-                             IReadOnlyList<IEtatMagasin>? magasins = null)
+                             IReadOnlyList<IEtatMagasin>? magasins = null,
+                             DateTimeOffset? demarrageProcessus = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -84,6 +92,7 @@ public sealed class DiagnosticService
         _machine = machine ?? new InventaireMachine();
         _moniteurSessions = moniteurSessions;   // pas de repli : voir le XML-doc ci-dessus
         _magasins = magasins;
+        _demarrage = demarrageProcessus ?? clock.UtcNow;   // D-32-21 : référence basse de « journal muet »
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -420,6 +429,30 @@ public sealed class DiagnosticService
         var fichierDuMois = Path.Combine(_paths.HistoriqueDir, "releves-" + _clock.UtcNow.UtcDateTime.ToString("yyyy-MM") + ".jsonl");
         sb.AppendLine("  " + LigneMagasin(NomsMagasins.JournalReleves, fichierDuMois,
             Directory.Exists(_paths.HistoriqueDir) ? "fichier du mois" : "dossier"));
+
+        // JRN-04 — le journal qui se tait doit être VU se taire. Mêmes mots que les réglages (D-32-22), un seul
+        // libellé dans ce fichier. Référence = max(démarrage, dernière écriture) (D-32-21) : un processus lancé il y a 5 min n'est pas muet
+        // parce que la dernière écriture date de la veille. Seuil dérivé de la cadence de la sonde, jamais 900 s en dur.
+        if (_magasins?.FirstOrDefault(m => m.Nom == NomsMagasins.JournalReleves) is { } j)
+        {
+            var reference = Max(_demarrage, j.DerniereEcriture ?? _demarrage);
+            var silence = _clock.UtcNow - reference;
+            if (silence > JournalReleves.SeuilMuet)
+                sb.AppendLine("    ALERTE — journal muet depuis " + (int)silence.TotalMinutes + " min");
+        }
+
+        // CPT-03 — combien de Chronos tournent, et qui tient le verrou mono-instance. Le relevé lit la table des processus de
+        // la machine : sous try/catch, un relevé impossible se DIT, il ne fait jamais échouer le rapport.
+        try
+        {
+            foreach (var l in InventaireProcessus.Lignes(InventaireProcessus.Relever(), Environment.ProcessId, _clock.UtcNow,
+                                                         VerrouInstanceUnique.EtatPourDiagnostic(VerrouInstanceUnique.NomOverlay)))
+                sb.AppendLine("  " + l);
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine("  Processus Chronos : relevé impossible (" + ex.GetType().Name + " : " + ex.Message + ")");
+        }
         sb.AppendLine("  " + NomsMagasins.AgregatsTokens + " : aucun (phase 33)");
         sb.AppendLine();
 
@@ -713,6 +746,9 @@ public sealed class DiagnosticService
     }
 
     private static string Heure(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss");
+
+    /// <summary>D-32-21 — le plus récent de deux instants (référence de « journal muet »).</summary>
+    private static DateTimeOffset Max(DateTimeOffset a, DateTimeOffset b) => a > b ? a : b;
 
     // La source NOMMÉE AVEC SON DOSSIER, exactement comme un filtre est nommé avec son fichier : « hook »
     // n'apprend rien, « fichier de hook (%APPDATA%\Chronos\sessions) » dit où aller regarder quand une
