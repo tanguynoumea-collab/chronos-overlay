@@ -29,7 +29,7 @@ public sealed record ResultatLecture(
 /// <summary>
 /// TOK-02/TOK-03 — lit un transcript JSONL EN FLUX, au niveau OCTET.
 ///
-/// POURQUOI pas <c>StreamReader.ReadLine</c> : son décodeur lit en avance, <c>BaseStream.Position</c> ne correspond à aucune fin
+/// POURQUOI pas le lecteur de texte ligne à ligne du framework (<c>ReadLine</c>) : son décodeur lit en avance, la position du flux sous-jacent ne correspond à aucune fin
 /// de ligne, et un curseur posé là coupe une ligne (Pitfall 2). Ici : <c>FileStream</c> en partage lecture / écriture / suppression
 /// (Claude Code écrit et purge pendant qu'on lit), balayage séquentiel, tampon de 64 Ko, découpe sur <c>\n</c> ; une ligne plus
 /// longue que le tampon (1,36 Mo mesuré) s'accumule ; le fragment final sans <c>\n</c> n'est PAS traité et le curseur = octets
