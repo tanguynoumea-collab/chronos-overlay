@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using Chronos.Models;
+using Chronos.Models.Historique.Tokens;
 using Chronos.Placement;
 using Chronos.Services;
 using Chronos.ViewModels;
@@ -78,7 +79,7 @@ public class MainViewModelTests
         FakeRecalibrationPrompt prompt, SettingsService settings,
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
         RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null,
-        FakeEtatJournal? journal = null)
+        FakeEtatJournal? journal = null, FakeEtatReconstruction? reconstruction = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
@@ -90,7 +91,7 @@ public class MainViewModelTests
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
             new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
-            auth ?? new FakeAuthStatus(), etatServeur, journal);
+            auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction);
     }
 
     private static MainViewModel NewVmFull(
@@ -1149,4 +1150,63 @@ public class MainViewModelTests
         Assert.StartsWith("journal muet depuis 16 min", vm.TexteEtatJournal);
     }
 
+    // ------------------------------------------------------------------ TOK-02 (phase 33, 33-05) : la progression de la reconstruction exposée au VM
+    // Deux propriétés observables, relues au tick comme l'état du journal (D-32-21 / D-33-22) : le VM du cadran formate des ENTIERS en
+    // texte, jamais une fraction ni un pourcentage ; la fenêtre Historique (phase 34) consommera IEtatReconstruction directement.
+
+    /// <summary>VM construit à <see cref="Now"/>, état de reconstruction injecté par l'argument nommé <c>reconstruction:</c>.</summary>
+    private static MainViewModel VmAvecReconstruction(FakeEtatReconstruction? reconstruction, out FakeClock clock)
+    {
+        clock = new FakeClock(Now);
+        return Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
+                     new FakeAutostartService(), new FakeRecalibrationPrompt(), new SettingsService(TempPaths()), reconstruction: reconstruction);
+    }
+
+    [Fact]
+    public void Le_texte_de_reconstruction_suit_la_progression_au_tick_et_disparait_en_incremental()
+    {
+        var etat = new FakeEtatReconstruction { Phase = PhaseReconstruction.Reconstruction, FichiersTraites = 0, FichiersTotal = 1603 };
+        var vm = VmAvecReconstruction(etat, out _);
+
+        // Dès la construction : la passe a commencé, rien n'est encore disponible.
+        Assert.True(vm.AfficherReconstruction);
+        Assert.Equal("reconstruction des tokens — 0 / 1603 fichiers", vm.TexteReconstruction);
+
+        // Un tick plus tard : la semaine courante est sur le disque, la progression a avancé (relue, pas poussée).
+        etat.FichiersTraites = 886;
+        etat.SemaineCouranteDisponible = true;
+        vm.ApplySnapshot(SnapSimple());
+        Assert.Equal("reconstruction des tokens — 886 / 1603 fichiers · la semaine courante est déjà complète", vm.TexteReconstruction);
+        Assert.True(vm.AfficherReconstruction);
+
+        // Incrémental : tout est à jour, le VM se tait.
+        etat.Phase = PhaseReconstruction.Incremental;
+        etat.FichiersTraites = 1603;
+        vm.ApplySnapshot(SnapSimple());
+        Assert.False(vm.AfficherReconstruction);
+        Assert.Equal("", vm.TexteReconstruction);
+
+        // Échec : la cause est dite, sans mourir.
+        etat.Phase = PhaseReconstruction.EnEchec;
+        etat.DerniereErreur = "IOException : x";
+        vm.ApplySnapshot(SnapSimple());
+        Assert.True(vm.AfficherReconstruction);
+        Assert.Equal("agrégats de tokens : ÉCHEC — IOException : x", vm.TexteReconstruction);
+
+        // Jamais un pourcentage, dans aucun des états traversés.
+        Assert.DoesNotContain("%", vm.TexteReconstruction);
+    }
+
+    [Fact]
+    public void Sans_etat_de_reconstruction_rien_n_est_affiche()
+    {
+        var vm = VmAvecReconstruction(reconstruction: null, out _);
+
+        Assert.False(vm.AfficherReconstruction);
+        Assert.Equal("", vm.TexteReconstruction);
+
+        vm.ApplySnapshot(SnapSimple());
+        Assert.False(vm.AfficherReconstruction);
+        Assert.Equal("", vm.TexteReconstruction);
+    }
 }
