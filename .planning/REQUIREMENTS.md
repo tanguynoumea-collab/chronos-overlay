@@ -109,7 +109,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
   testées ; couleurs et tailles uniquement via `Resources/DesignTokens.xaml` (palette de `SettingsWindow` promue en tokens
   partagés sans changer les valeurs ; nouveaux tokens `HistoTokens`, `HistoSousAgent`, `HistoModele1/2/3`, `HistoGris`) ;
   `ServicesLayerPurityTests` reste vert.
-- [ ] **HIS-08**: Tant que la reconstruction des tokens court, la fenêtre affiche le **bandeau F2** (« Reconstruction des tokens
+- [x] **HIS-08**: Tant que la reconstruction des tokens court, la fenêtre affiche le **bandeau F2** (« Reconstruction des tokens
   depuis vos transcripts Claude Code — N / M fichiers · la semaine courante est déjà complète », barre `Accent`, sous-texte sur
   le non-recalcul des pourcentages) ; il disparaît à la fin.
 
@@ -187,7 +187,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | HIS-05 | Phase 35 | Pending |
 | HIS-06 | Phase 34 | Pending |
 | HIS-07 | Phase 34 | Pending |
-| HIS-08 | Phase 34 | Pending |
+| HIS-08 | Phase 34 | Complete |
 | ACC-01 | Phase 35 | Pending |
 | ACC-02 | Phase 35 | Pending |
 | ACC-03 | Phase 35 | Pending |
