@@ -58,4 +58,25 @@ public class GardeDiagnosticHistoriqueTests
         Assert.Contains("TimeZoneInfo? fuseau = null", texte, StringComparison.Ordinal);   // le fuseau est bien un paramètre injecté
         Assert.DoesNotContain("TimeZoneInfo.Local", texte, StringComparison.Ordinal);
     }
+
+    /// <summary>Décision 5 (phase 35, 35-05) : en production, le diagnostic reçoit le fuseau de la racine de composition — celui
+    /// que la fenêtre Historique et la source du disque partagent. Le seul <c>TimeZoneInfo.Local</c> d'<c>App.xaml.cs</c> est
+    /// l'enregistrement de ce fuseau (repli explicite, en un seul endroit).</summary>
+    [Fact]
+    public void Le_fuseau_du_diagnostic_vient_de_la_racine_de_composition()
+    {
+        var fichier = Path.Combine(GardesPerimetreTests.CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+        var texte = File.ReadAllText(fichier);
+
+        var debut = texte.IndexOf("new DiagnosticService(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "App.xaml.cs n'enregistre plus le DiagnosticService : la garde ne lirait rien.");
+        var fin = texte.IndexOf("));", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin de l'enregistrement du DiagnosticService introuvable.");
+        var enregistrement = texte.Substring(debut, fin - debut);
+
+        Assert.Contains("fuseau: sp.GetRequiredService<TimeZoneInfo>()", enregistrement, StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(texte, "TimeZoneInfo.Local"));
+        Assert.Contains("services.AddSingleton(TimeZoneInfo.Local);", texte, StringComparison.Ordinal);
+    }
 }
