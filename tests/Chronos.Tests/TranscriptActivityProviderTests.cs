@@ -197,4 +197,50 @@ public class TranscriptActivityProviderTests
         Assert.True(log.Covers(Now - TimeSpan.FromDays(1)));
         Assert.Equal(Now - TimeSpan.FromDays(8), log.Horizon);
     }
+
+    // --- CPT-01 : une ligne assistant PAR BLOC de contenu, meme message.id -> UN message compte une fois ---
+
+    [Fact]
+    public async Task Trois_lignes_d_un_meme_message_comptent_une_fois_sur_la_fixture_reelle()
+    {
+        // Fixture REELLE anonymisee (Claude Code 2.1.281) : 3 blocs du meme message (output_tokens 8 / 8 / 256,
+        // les trois autres champs identiques) + 1 doublon strict + 2 lignes sans message.id de meme requestId
+        // (output 20 / 40) + 1 ligne sans aucun identifiant (1 + 1).
+        var provider = ProviderFor(IsolatedRootWith("transcript-multi-blocs.jsonl"));
+
+        var log = await provider.ReadAsync();
+        var delta = log.Since(DepuisReleve5h);
+
+        // (2 + 256 + 35 005 + 41 741) + (10 + 40) + 2 = 77 056 : max par champ par identifiant,
+        // et non la somme ligne par ligne (307 354) ni la premiere ligne (76 756 + ...).
+        Assert.Equal(77056L, delta.Tokens);
+        Assert.True(delta.HasActivity);
+    }
+
+    [Fact]
+    public async Task Le_premier_timestamp_d_un_message_multi_blocs_est_celui_qui_compte()
+    {
+        var provider = ProviderFor(IsolatedRootWith("transcript-multi-blocs.jsonl"));
+
+        var log = await provider.ReadAsync();
+        // Le message multi-blocs est date de son PREMIER bloc (11:20:00) : une borne basse a 11:20:01
+        // l'exclut TOUT ENTIER, meme si ses blocs suivants (11:20:02, 11:20:05) lui sont posterieurs —
+        // le message a ete facture une fois, a l'instant de la reponse.
+        var delta = log.Since(new DateTimeOffset(2026, 07, 08, 11, 20, 01, TimeSpan.Zero));
+
+        // 50 (repli requestId, date 11:25:00) + 2 (sans identifiant, 11:28:00).
+        Assert.Equal(52L, delta.Tokens);
+    }
+
+    [Fact]
+    public async Task Les_fixtures_sans_identifiant_gardent_leurs_totaux()
+    {
+        // sample-valid.jsonl ne porte ni message.id ni requestId : chaque ligne passe par la branche
+        // « sans identifiant » et le total prouve par Tokens_depuis_T_borne_sur_la_fenetre_5h reste 1550.
+        var provider = ProviderFor(IsolatedRootWith("sample-valid.jsonl"));
+
+        var log = await provider.ReadAsync();
+
+        Assert.Equal(1550L, log.Since(DepuisReleve5h).Tokens);
+    }
 }
