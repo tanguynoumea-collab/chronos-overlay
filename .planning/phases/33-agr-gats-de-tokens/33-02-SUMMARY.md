@@ -153,7 +153,7 @@ Chaque tâche a été commitée atomiquement (`--no-verify`, fichiers stagés un
 5. **Task 3 RED** — `c52c4de` test(33-02): curseurs - cles relatives, nouveau/inchange/grandi/raccourci/disparu, curseur bloque jamais inchange, atomique et tolerant, RED 8
 6. **Task 3 GREEN** — `e4585f4` feat(33-02): Curseurs - curseurs.json atomique, cles relatives, classification nouveau/inchange/grandi/raccourci, disparus retires (TOK-03)
 
-**Plan metadata:** commit `docs(33-02)` final (SUMMARY + REQUIREMENTS.md).
+**Plan metadata:** `fd86db1` docs(33-02): complete … (SUMMARY + REQUIREMENTS.md) ; `1578f4f` docs(33-02): REQUIREMENTS.md — ne porter que TOK-03 (réparation, voir incidents) ; commit final de cette note.
 
 ## Tests — RED nommés, GREEN, suite complète
 
@@ -200,9 +200,10 @@ Contribution de ce plan : **+28 tests** (9 + 1 + 10 + 8 ; le plan estimait ≈ 3
 **2. [Rule 1 - Bug de mutation] (k1) et (i1) réécrites**
 - (k1) en `//` avalait le corps de l'`if` sur la même ligne (CS0177) → commentaire bloc ; (i1) adaptée au `Fusionner` sur quatre lignes ; (i2) formulée `TryGetValue(...) && false` (définitivement assigné). Aucun impact sur les sources.
 
-### Incident d'exécution parallèle (réparé, à ne pas reproduire)
+### Incidents d'exécution parallèle (réparés, à ne pas reproduire)
 
-Un `git commit --amend` destiné à ma retouche de commentaire a réécrit le commit `758af72` de 33-01 arrivé entre mon contrôle de HEAD et l'amend (HEAD avait bougé). Réparé immédiatement par `git reset --soft 758af72` (commit du voisin intact, vérifié par `git show --stat`) puis commit séparé `d12f4ec`. **Règle retenue : jamais `--amend` dans un arbre partagé — toujours un commit de plus.**
+1. Un `git commit --amend` destiné à ma retouche de commentaire a réécrit le commit `758af72` de 33-01 arrivé entre mon contrôle de HEAD et l'amend (HEAD avait bougé). Réparé immédiatement par `git reset --soft 758af72` (commit du voisin intact, vérifié par `git show --stat`) puis commit séparé `d12f4ec`. **Règle retenue : jamais `--amend` dans un arbre partagé — toujours un commit de plus.**
+2. Le commit `fd86db1` (SUMMARY + REQUIREMENTS.md) a emporté les lignes TOK-01 que 33-01 venait de marquer dans l'arbre entre mon `requirements mark-complete TOK-03` (diff 2/2 vérifié) et mon `git add` (diff devenu 4/4). Réparé par `1578f4f` : blob = version HEAD~1 + mes seules lignes TOK-03, commité par `git hash-object -w` + `git update-index --cacheinfo` **sans toucher l'arbre de travail** — les lignes TOK-01 y restent en diff non commité, pour le commit final de 33-01. **Règle retenue : `git add` de REQUIREMENTS.md seulement après avoir re-vérifié `git diff --stat` à l'instant du commit, sinon blob depuis HEAD.**
 
 ### Écarts de forme
 
