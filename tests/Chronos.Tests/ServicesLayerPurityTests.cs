@@ -32,9 +32,10 @@ public class ServicesLayerPurityTests
         var asm = typeof(Chronos.Services.IUsageProvider).Assembly;
         string[] interdits = { "PresentationCore", "PresentationFramework", "WindowsBase" };
 
-        // Types NEUTRES du pipeline : Services/Models, hors adaptateurs WPF assumés (Phase 1).
+        // Types NEUTRES du pipeline : Services/Models ET leurs sous-namespaces (phase 32 : Historique),
+        // hors adaptateurs WPF assumés (Phase 1).
         var typesData = asm.GetTypes()
-            .Where(t => t.Namespace is "Chronos.Services" or "Chronos.Models")
+            .Where(EstTypeNeutre)
             .Where(t => !AdaptateursWpfAutorises.Contains(t.Name));
 
         foreach (var t in typesData)
@@ -49,6 +50,38 @@ public class ServicesLayerPurityTests
 
             Assert.DoesNotContain(assembliesTouches, n => interdits.Contains(n));
         }
+    }
+
+    /// <summary>
+    /// Le filtre de la garde, extrait pour être PROUVÉ. Phase 32 (D-32-14) : la couche neutre a désormais
+    /// des sous-dossiers (<c>Services/Historique</c>, <c>Models/Historique</c>) portant des sous-namespaces.
+    /// Une égalité stricte sur le namespace les laisserait échapper à la garde sans qu'aucun test ne rougisse
+    /// — c'est le « piège de garde » de la recherche 32. D'où le préfixe, et le test qui suit.
+    /// </summary>
+    private static bool EstTypeNeutre(Type t)
+        => t.Namespace is { } n
+           && (n == "Chronos.Services" || n.StartsWith("Chronos.Services.", StringComparison.Ordinal)
+               || n == "Chronos.Models" || n.StartsWith("Chronos.Models.", StringComparison.Ordinal));
+
+    /// <summary>
+    /// JRN-03 / D-32-14 — la garde VOIT le nouveau quartier. Si le balayage redevenait plat (égalité stricte
+    /// du namespace), ce test rougit : les types du journal sortiraient de la surveillance en silence.
+    /// </summary>
+    [Fact]
+    public void La_garde_de_purete_voit_les_sous_namespaces_Historique()
+    {
+        var asm = typeof(Chronos.Services.IUsageProvider).Assembly;
+
+        Assert.Contains(asm.GetTypes(), t => t.Namespace == "Chronos.Services.Historique");
+        Assert.Contains(asm.GetTypes(), t => t.Namespace == "Chronos.Models.Historique");
+
+        Assert.True(EstTypeNeutre(typeof(Chronos.Services.Historique.LigneJournal)),
+            "Le filtre de la garde de pureté ne voit pas Chronos.Services.Historique : le journal échappe à la garde.");
+        Assert.True(EstTypeNeutre(typeof(Chronos.Models.Historique.ReleveJournal)),
+            "Le filtre de la garde de pureté ne voit pas Chronos.Models.Historique : les types du journal échappent à la garde.");
+
+        // Et il ne s'élargit pas au-delà : un ViewModel ou une vue n'est pas un type neutre.
+        Assert.False(EstTypeNeutre(typeof(Chronos.ViewModels.MainViewModel)));
     }
 
     /// <summary>
