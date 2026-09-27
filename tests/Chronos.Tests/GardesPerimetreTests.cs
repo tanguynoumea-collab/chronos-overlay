@@ -466,7 +466,7 @@ public class GardesPerimetreTests
         Assert.Contains("Source app-bureau", texte, StringComparison.Ordinal);
         Assert.Contains("lecture.AppBureau", texte, StringComparison.Ordinal);
 
-        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("Inspecter(")).Count);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("Inspecter(")));   // xUnit2013 : même assertion (exactement une occurrence)
         Assert.DoesNotContain("new LecteurAppBureau", texte, StringComparison.Ordinal);
         Assert.DoesNotContain(".Lire(", texte, StringComparison.Ordinal);
         Assert.DoesNotContain("RacinesEtat", texte, StringComparison.Ordinal);

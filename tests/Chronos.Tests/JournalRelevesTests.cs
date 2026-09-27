@@ -125,7 +125,7 @@ public class JournalRelevesTests : IDisposable
     // --- Deux écrivains ---
 
     [Fact]
-    public void Deux_ecrivains_concurrents_200_ecritures_zero_doublon_zero_troncature()
+    public async Task Deux_ecrivains_concurrents_200_ecritures_zero_doublon_zero_troncature()
     {
         const int n = 100;
         var sequence = Enumerable.Range(0, n).Select(i => Releve(Now.AddMinutes(5 * i), u5: i / 100.0)).ToArray();
@@ -139,7 +139,7 @@ public class JournalRelevesTests : IDisposable
         var ta = Task.Run(() => Ecrire(a));
         var tb = Task.Run(() => Ecrire(b));
         pret.Set();
-        Task.WaitAll(ta, tb);
+        await Task.WhenAll(ta, tb);   // xUnit1031 : pas d'attente bloquante dans un test ; la sémantique (deux écrivains, un fichier) est inchangée
 
         var chemin = a.CheminDuMois(Now);
         var lignes = Lignes(chemin);
