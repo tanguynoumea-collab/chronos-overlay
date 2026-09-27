@@ -84,7 +84,7 @@ mirrorées dans `Properties/PublishProfiles/win-x64.pubxml`.
 
 ## 5. Autostart — chemin stable et limite
 
-Le toggle « Lancer au démarrage » (fenêtre de réglages, clic droit sur le cadran) crée un
+Le toggle « Lancer au démarrage » (réglages → Comportement, clic droit sur le cadran) crée un
 raccourci `Chronos.lnk` dans `shell:startup` (per-user, sans droit admin). Le raccourci cible
 **`Environment.ProcessPath`**, c'est-à-dire **l'exe qui l'a créé** (voir
 `src/Chronos/Services/AutostartService.cs`).
@@ -130,7 +130,7 @@ C'est l'utilisateur qui lance le nouvel exe, par l'Explorateur (double-clic) ou 
 depuis un terminal ouvert dans l'app Claude. Depuis la 3.2.2, **une seule instance** de l'overlay
 tourne par session Windows (mutex `Local\Chronos-overlay`, `VerrouInstanceUnique`) : un second exe
 affiche « Chronos tourne déjà… » et se retire sans toucher à l'autre. Le verrou ne connaît pas les exe
-ANTÉRIEURS à la 3.2.2 : quitter d'abord ceux-là (réglages → « Quitter Chronos »). Les modes `--hook`
+ANTÉRIEURS à la 3.2.2 : quitter d'abord ceux-là (réglages → « Quitter Chronos », en bas du rail depuis la 3.4.0). Les modes `--hook`
 et `--statusline` restent multi-instances.
 
 Au premier lancement en mode overlay, `ClaudeSettingsReconciler` repointe les huit groupes de hooks
@@ -155,3 +155,17 @@ l'exe qui l'a créé.
   bandeau de progression tant qu'elle tourne.
 - **Historique** : il s'ouvre par un double-clic au centre du cadran ou par Réglages → Historique d'utilisation → Ouvrir.
   Les pourcentages ne se reconstruisent pas : ils commencent à la première ligne du journal.
+
+### Premier lancement de la 3.4.0
+
+- **Avant** : quitter la version en cours (clic droit sur le cadran → « Quitter Chronos »). Depuis la 3.3.1 l'arrêt est
+  borné : le processus disparaît en moins d'une seconde (sinon, sortie forcée au bout de 10 s au plus). Sans cela, le verrou
+  d'instance unique ferait répondre « Chronos tourne déjà » à la 3.4.0.
+- **Réglages refondus** : le clic droit ouvre une fenêtre classique (860 × 580 par défaut, 640 × 440 au minimum),
+  redimensionnable, agrandissable, dans la barre des tâches, qui ne se ferme plus quand on clique ailleurs. Six sections
+  (Données, Historique, Apparence, Sessions, Comportement, Diagnostic) ; « Source terminal » s'appelle désormais « Barre de
+  statut de Claude Code » (Données) ; le diagnostic s'affiche dans la fenêtre (Actualiser, Copier) au lieu d'une boîte de
+  message.
+- **Nouveaux champs de `settings.json`** : `ReglagesX`, `ReglagesY`, `ReglagesWidth`, `ReglagesHeight`, `ReglagesSection`.
+  Absents d'un ancien fichier → fenêtre centrée, section Données ; bornés à l'écran au rétablissement.
+- **Réconciliation inchangée** (chemins des hooks et de la statusLine réécrits vers le nouvel exe, sauvegarde préalable).

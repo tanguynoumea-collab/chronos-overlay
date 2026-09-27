@@ -25,14 +25,21 @@ Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau
 2. Double-clique dessus. C'est tout — pas de .NET à installer, pas de droits administrateur, rien n'est écrit hors de ton profil utilisateur.
 3. Windows SmartScreen affichera peut-être « Éditeur inconnu » (l'exe n'est pas signé) : clique **Informations complémentaires → Exécuter quand même**.
 
-L'overlay apparaît dans un coin de l'écran. **Clic droit** dessus pour le menu :
+L'overlay apparaît dans un coin de l'écran. **Clic droit** dessus ouvre les **Réglages** : une fenêtre classique,
+redimensionnable (bords et poignée ◢), agrandissable, présente dans la barre des tâches, qui retient sa taille, sa
+position et la dernière section ouverte. Elle ne se ferme plus quand tu cliques ailleurs : **Échap** ou **✕** la
+ferment, et un second clic droit la ramène au premier plan. Six sections dans le rail de gauche (clic, **↑ / ↓**,
+**Ctrl+1…6**) :
 
-- **Arrière-plan** — bascule l'overlay au fond / au premier plan.
-- **Recalibrer le reset hebdo…** — cale la date de reset hebdomadaire (utile en mode estimation).
-- **Calibrer les plafonds…** — renseigne tes plafonds de tokens pour colorer les arcs en mode estimation.
-- **Lancer au démarrage** — ajoute/retire un raccourci dans le dossier Démarrage de Windows.
-- **Usage exact (OAuth)** — active/désactive la récupération des chiffres exacts (voir ci-dessous).
-- **Quitter**.
+- **Données** — connexion à Claude, sonde d'en-têtes (son coût est écrit), **barre de statut de Claude Code** (installe
+  ou retire le pont statusLine, utile en terminal).
+- **Historique** — ouvre la fenêtre Historique, choisit le style de la vue Semaine.
+- **Apparence** — thème (9) et style du cadran (5), avec un **aperçu en direct** du vrai cadran ; mode étendu (Anneaux).
+- **Sessions** — widget des sessions Claude Code, son style (8) avec aperçu, disposition verticale.
+- **Comportement** — arrière-plan, lancer au démarrage, recalibrer le reset hebdomadaire.
+- **Diagnostic** — ce que Chronos voit en ce moment, dans la fenêtre : **↻ Actualiser**, **⧉ Copier**.
+
+**« ⏻ Quitter Chronos »** est isolé en bas du rail.
 
 Déplace l'overlay en le **glissant** par les anneaux ; il s'accroche au coin d'écran le plus proche (multi-écrans géré).
 
@@ -53,7 +60,7 @@ L'endpoint `/api/oauth/usage` n'est pas documenté publiquement : il peut change
 ## Widget de sessions Claude Code
 
 Un second petit panneau, à côté du cadran, dit **quelle session Claude Code t'attend** — dans l'app bureau Claude
-comme en terminal. Active-le dans les réglages (clic droit sur le cadran) : **« Widget sessions Claude Code »**.
+comme en terminal. Active-le dans les réglages (clic droit sur le cadran → **Sessions**) : **« Widget sessions Claude Code »**.
 Chronos inscrit alors 8 hooks dans `~/.claude/settings.json`, sans toucher à ceux des autres outils, et les tient à
 jour à chaque lancement (le fichier est sauvegardé avant toute réécriture) ; seules les sessions ouvertes ensuite sont
 suivies.
@@ -73,7 +80,7 @@ quelque chose, et une session qui se remet à travailler est toujours visible. *
 session remplace le nom du dossier ; le dossier reste dans l'info-bulle.
 
 Clic droit sur une ligne : **« Marquer traitée »** (elle revient si elle te redemande) ou **« Archiver
-définitivement »**. Réglages → **« Diagnostic… »** dit, pour chaque session masquée, pourquoi.
+définitivement »**. Réglages → **Diagnostic** dit, pour chaque session masquée, pourquoi.
 
 Limites connues : une session de terminal sans l'app bureau n'a pas de lecture automatique (elle reste « En attente »
 jusqu'à ta réponse, ton geste ou 8 h) ; une session Cowork dans sa machine virtuelle n'est pas détectée ; l'accueil ou
@@ -90,8 +97,8 @@ tâches, redimensionnable, qui retient sa position et sa taille.
 
 ### Ouvrir
 
-- Deux gestes : **double-clic au centre du cadran**, ou **Réglages** (clic droit sur le cadran) → carte **« Historique
-  d'utilisation »** → **« Ouvrir »**.
+- Deux gestes : **double-clic au centre du cadran**, ou **Réglages** (clic droit sur le cadran) → section **Historique**
+  → carte **« Historique d'utilisation »** → **« Ouvrir »**.
 - Si la fenêtre est déjà ouverte, elle revient au premier plan (et se rouvre si elle était réduite). **Échap** ou
   **✕** la ferment.
 - Le prix du double-clic : au centre, le simple clic attend le délai de double-clic de Windows (≈ 0,5 s) avant de
@@ -151,7 +158,7 @@ le même réglage.
 
 - `%APPDATA%\Chronos\historique\` : relevés dans `releves-AAAA-MM.jsonl`, tokens dans `tokens-AAAA-MM.jsonl`
   (format et lecture : [`docs/data-sources.md`](docs/data-sources.md), §7 à §9).
-- La carte des réglages et **« Diagnostic… »** (section « Journal d'historique ») disent la **dernière écriture** du
+- La carte des réglages (section Historique) et le **Diagnostic** (bloc « Journal d'historique ») disent la **dernière écriture** du
   journal, avec une alerte au-delà de 15 min sans écriture alors que Chronos tourne.
 - Au premier lancement de la 3.3.0, les tokens des transcripts sont reconstruits en arrière-plan, du plus récent au
   plus ancien ; un bandeau dans la fenêtre suit la progression. Les pourcentages, eux, ne se reconstruisent pas : ils
