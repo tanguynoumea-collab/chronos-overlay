@@ -56,7 +56,8 @@ public class ReglagesBindingTests
     /// Measure/Arrange. Motif du helper <c>MonterPastille</c> de <see cref="CadranBindingTests"/>.
     /// </summary>
     private static (SettingsWindow fenetre, MainViewModel vm) MonterReglages(
-        bool sondeActivee, StatutServeur? statutCinqHeures = null)
+        bool sondeActivee, StatutServeur? statutCinqHeures = null,
+        FakeEtatJournal? journal = null, FakeClock? clock = null)
     {
         var paths = TempPaths();
         var settings = new SettingsService(paths);
@@ -64,13 +65,13 @@ public class ReglagesBindingTests
 
         var provider = new FakeUsageProvider();
         var orch = new RefreshOrchestrator(provider, paths, RefreshOptions.Default); // JAMAIS démarré : aucun I/O
-        var clock = new FakeClock(Now);
+        clock ??= new FakeClock(Now);
         var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             settings,
             new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
-            new FakeAuthStatus(), new FakeEtatServeur());
+            new FakeAuthStatus(), new FakeEtatServeur(), journal);
 
         // Le statut est appliqué AVANT le montage : les bindings s'évaluent alors une seule fois, sur
         // l'état final, et le test ne dépend pas d'un second aller-retour de Dispatcher.
@@ -213,4 +214,69 @@ public class ReglagesBindingTests
                     $"libellé tronqué : la cellule ne fait que {recalibrer.ActualWidth:F1} px");
         Assert.True(sourceTerm.ActualWidth > 0);
     }
+    // --- JRN-04 (phase 32, 32-05) : carte « Journal des relevés » — dernière écriture, pastille Alerte ---
+
+    private static UsageSnapshot SnapshotSimple() => new()
+    {
+        FiveHour = new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.5,
+            ResetsAt = Now + TimeSpan.FromHours(2),
+        },
+        SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        SourceCapturedAt = Now,
+    };
+
+    /// <summary>Purge la file du Dispatcher : les réévaluations de binding déclenchées par un changement de propriété
+    /// après le montage peuvent être différées (même raison qu'au montage, voir <see cref="MonterReglages"/>).</summary>
+    private static void Purger(SettingsWindow fenetre)
+        => ((FrameworkElement)fenetre.Content!).Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+    /// <summary>
+    /// JRN-04 — la ligne d'état du journal est LIÉE au ViewModel (même texte que <c>TexteEtatJournal</c>), et ce texte porte
+    /// l'âge de la dernière écriture et le compte de relevés. Un XAML qui binderait une autre propriété (ou un texte figé)
+    /// compilerait sans bruit : c'est ce que ce test attrape.
+    /// </summary>
+    [WpfFact]
+    public void La_ligne_d_etat_du_journal_est_liee_au_ViewModel()
+    {
+        var clock = new FakeClock(Now);
+        var journal = new FakeEtatJournal { RelevesEcrits = 2 };
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock);
+
+        journal.DerniereEcriture = Now + TimeSpan.FromMinutes(1);
+        clock.UtcNow = Now + TimeSpan.FromMinutes(5);
+        vm.ApplySnapshot(SnapshotSimple());
+        Purger(fenetre);
+
+        var ligne = Assert.IsType<TextBlock>(fenetre.FindName("LigneEtatJournal"));
+        Assert.Equal(vm.TexteEtatJournal, ligne.Text);
+        Assert.Contains("dernière écriture il y a 4 min", ligne.Text);
+        Assert.Contains("2 relevés depuis le démarrage", ligne.Text);
+    }
+
+    /// <summary>
+    /// JRN-04 — la pastille <c>Alerte</c> ne se voit QU'EN alerte : 16 min sans écriture alors que Chronos tourne. Vérifié sur la
+    /// <c>Visibility</c> RÉSOLUE après montage (piège du plan 17-05 : sans montage, elle resterait à son défaut Visible).
+    /// </summary>
+    [WpfFact]
+    public void La_pastille_du_journal_ne_se_voit_qu_en_alerte()
+    {
+        var clock = new FakeClock(Now);
+        var journal = new FakeEtatJournal { DerniereEcriture = Now, RelevesEcrits = 1 };
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock);
+
+        var pastille = Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleJournal"));
+        Assert.False(vm.AlerteJournal);
+        Assert.Equal(Visibility.Collapsed, pastille.Visibility);
+
+        clock.UtcNow = Now + TimeSpan.FromMinutes(16);
+        vm.ApplySnapshot(SnapshotSimple());
+        Purger(fenetre);
+
+        Assert.True(vm.AlerteJournal);
+        Assert.Equal(Visibility.Visible, pastille.Visibility);
+        Assert.StartsWith("journal muet depuis 16 min", vm.TexteEtatJournal);
+    }
+
 }

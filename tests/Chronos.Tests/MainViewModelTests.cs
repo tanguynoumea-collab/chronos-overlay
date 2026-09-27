@@ -77,7 +77,8 @@ public class MainViewModelTests
         FakeWindowController controller, FakeAutostartService autostart,
         FakeRecalibrationPrompt prompt, SettingsService settings,
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
-        RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null)
+        RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null,
+        FakeEtatJournal? journal = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
@@ -89,7 +90,7 @@ public class MainViewModelTests
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
             new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
-            auth ?? new FakeAuthStatus(), etatServeur);
+            auth ?? new FakeAuthStatus(), etatServeur, journal);
     }
 
     private static MainViewModel NewVmFull(
@@ -1061,4 +1062,91 @@ public class MainViewModelTests
         Assert.True(vm.AfficherInvitationConnexion);    // hors ligne est informatif : il n'efface rien
         Assert.True(vm.AfficherPastilleHorsLigne);
     }
+    // --- JRN-04 (phase 32, 32-05) : l'âge de la dernière écriture du journal, en première classe ---
+    // D-32-21 : « muet » se mesure depuis max(démarrage, dernière écriture) — sinon l'alerte s'allumerait à chaque lancement
+    // sur l'écriture de la veille, ce qui n'est pas « muet alors que Chronos tourne ». D-32-22 : mêmes mots que le diagnostic.
+
+    private static UsageSnapshot SnapSimple() => new()
+    {
+        FiveHour = Readable(WindowKind.FiveHour, Now, util: 0.5),
+        SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+        SourceCapturedAt = Now,
+    };
+
+    /// <summary>VM construit à <see cref="Now"/> (= instant de démarrage retenu par le VM), horloge rendue pour avancer le temps.</summary>
+    private static MainViewModel VmAvecJournal(FakeEtatJournal? journal, out FakeClock clock)
+    {
+        clock = new FakeClock(Now);
+        return Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
+                     new FakeAutostartService(), new FakeRecalibrationPrompt(), new SettingsService(TempPaths()), journal: journal);
+    }
+
+    [Fact]
+    public void Sans_journal_injecte_la_carte_est_masquee()
+    {
+        var vm = VmAvecJournal(journal: null, out _);
+
+        vm.ApplySnapshot(SnapSimple());
+
+        Assert.False(vm.AfficherEtatJournal);
+        Assert.Equal("", vm.TexteEtatJournal);
+        Assert.False(vm.AlerteJournal);
+    }
+
+    [Fact]
+    public void Une_ecriture_recente_donne_l_age_et_le_compte_sans_alerte()
+    {
+        // Démarrage à Now ; une écriture 6 min plus tard ; on regarde 10 min après le démarrage → « il y a 4 min ».
+        var journal = new FakeEtatJournal { RelevesEcrits = 3 };
+        var vm = VmAvecJournal(journal, out var clock);
+        journal.DerniereEcriture = Now + TimeSpan.FromMinutes(6);
+        clock.UtcNow = Now + TimeSpan.FromMinutes(10);
+
+        vm.ApplySnapshot(SnapSimple());
+
+        Assert.Equal("dernière écriture il y a 4 min · 3 relevés depuis le démarrage", vm.TexteEtatJournal);
+        Assert.False(vm.AlerteJournal);
+        Assert.True(vm.AfficherEtatJournal);
+    }
+
+    [Fact]
+    public void Seize_minutes_sans_ecriture_alors_que_Chronos_tourne_allument_l_alerte()
+    {
+        var journal = new FakeEtatJournal { DerniereEcriture = Now, RelevesEcrits = 1 };
+        var vm = VmAvecJournal(journal, out var clock);
+        clock.UtcNow = Now + TimeSpan.FromMinutes(16);
+
+        vm.ApplySnapshot(SnapSimple());
+
+        Assert.True(vm.AlerteJournal);
+        Assert.StartsWith("journal muet depuis 16 min", vm.TexteEtatJournal);
+        Assert.Contains("dernière écriture il y a 16 min", vm.TexteEtatJournal);
+        Assert.Equal("journal muet depuis 16 min · dernière écriture il y a 16 min · 1 relevé depuis le démarrage", vm.TexteEtatJournal);
+    }
+
+    [Fact]
+    public void L_alerte_ne_s_allume_pas_sur_l_ecriture_de_la_veille_juste_apres_le_demarrage()
+    {
+        var journal = new FakeEtatJournal { DerniereEcriture = Now - TimeSpan.FromDays(1) };
+        var vm = VmAvecJournal(journal, out var clock);
+
+        // 5 min après le démarrage : la référence est le démarrage, pas l'écriture d'hier — aucune alerte.
+        clock.UtcNow = Now + TimeSpan.FromMinutes(5);
+        vm.ApplySnapshot(SnapSimple());
+        Assert.False(vm.AlerteJournal);
+        Assert.Equal("aucune écriture depuis le démarrage · dernière écriture il y a 1 j", vm.TexteEtatJournal);
+
+        // Une panne d'écriture se dit avec sa cause, à la place de l'âge.
+        journal.DerniereErreur = "IOException : x";
+        vm.ApplySnapshot(SnapSimple());
+        Assert.StartsWith("dernière écriture : ÉCHEC — IOException : x", vm.TexteEtatJournal);
+        journal.DerniereErreur = null;
+
+        // 16 min après le DÉMARRAGE sans écriture : là, Chronos tourne et se tait.
+        clock.UtcNow = Now + TimeSpan.FromMinutes(16);
+        vm.ApplySnapshot(SnapSimple());
+        Assert.True(vm.AlerteJournal);
+        Assert.StartsWith("journal muet depuis 16 min", vm.TexteEtatJournal);
+    }
+
 }
