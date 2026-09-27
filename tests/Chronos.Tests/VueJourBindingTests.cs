@@ -98,7 +98,9 @@ public class VueJourBindingTests
 
         var pistes = PistesVisibles(vue);
         Assert.Equal(new[] { typeof(PisteNiveau), typeof(PisteRythme), typeof(PisteTokens), typeof(PisteCouverture) }, pistes.Select(p => p.GetType()).ToArray());
-        Assert.Equal(new[] { 190d, 64d, 64d, 12d }, pistes.Select(p => p.ActualHeight).ToArray());
+        // Le token → la DP Height, exacte ; l'ActualHeight est arrondie au pixel physique (UseLayoutRounding, 125 % DPI : 190 → 190,4).
+        Assert.Equal(new[] { 190d, 64d, 64d, 12d }, pistes.Select(p => p.Height).ToArray());
+        Assert.All(pistes.Zip(new[] { 190d, 64d, 64d, 12d }), x => Assert.InRange(x.First.ActualHeight, x.Second - 0.5, x.Second + 0.5));
 
         var niveau = (PisteNiveau)pistes[0];
         Assert.Equal(VariantePisteNiveau.Jour, niveau.Variante);
