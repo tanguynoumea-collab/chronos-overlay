@@ -1,0 +1,8 @@
+<UserControl x:Class="Chronos.Views.Historique.VueSemaineView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Vue « Semaine de forfait » (HIS-02 / HIS-03, DESIGN_PLAN §2.2) : rempli en 34-06 — ne rien mettre ici.
+         DataContext attendu : HistoriqueViewModel, hérité de HistoriqueWindow (DonneesSemaine, LibellesJours, Annotations*, Style, Theme).
+         Tokens : fusionnés au niveau de la fenêtre hôte (DesignTokens.xaml + pinceaux du thème dans ses ressources). -->
+    <Grid x:Name="Racine"/>
+</UserControl>

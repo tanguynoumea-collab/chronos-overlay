@@ -1,0 +1,8 @@
+<UserControl x:Class="Chronos.Views.Historique.VueJourView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Vue « Jour » (HIS-04, DESIGN_PLAN §2.3) : rempli en 34-07 — ne rien mettre ici.
+         DataContext attendu : HistoriqueViewModel, hérité de HistoriqueWindow (DonneesJour, LibellesHeures, Annotations*, Maintenant, Theme).
+         Tokens : fusionnés au niveau de la fenêtre hôte (DesignTokens.xaml + pinceaux du thème dans ses ressources). -->
+    <Grid x:Name="Racine"/>
+</UserControl>

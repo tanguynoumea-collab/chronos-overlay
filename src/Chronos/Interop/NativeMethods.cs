@@ -62,4 +62,13 @@ internal static class NativeMethods
     public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdc, ref RECT lprc, IntPtr data);
     [DllImport("user32.dll")]
     public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc callback, IntPtr data);
+
+    // Coins arrondis DWM de la fenêtre Historique (D-34-22, HIS-01) : attribut DWMWA_WINDOW_CORNER_PREFERENCE (33), valeur
+    // DWMWCP_ROUND (2). Honoré par Windows 11 (build ≥ 22000) seulement ; ailleurs DWM rend un HRESULT d'échec (E_INVALIDARG)
+    // que l'appelant IGNORE (best-effort : coins droits sur Windows 10, jamais d'exception grâce à PreserveSig = true).
+    public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    public const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 }

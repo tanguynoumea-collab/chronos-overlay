@@ -1,0 +1,294 @@
+<Window x:Class="Chronos.Views.Historique.HistoriqueWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:hv="clr-namespace:Chronos.Views.Historique"
+        xmlns:mh="clr-namespace:Chronos.Models.Historique"
+        xmlns:svc="clr-namespace:Chronos.Services"
+        xmlns:txt="clr-namespace:Chronos.Text"
+        WindowStyle="None" AllowsTransparency="False" Topmost="False" ShowInTaskbar="True" ResizeMode="CanResize"
+        UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Segoe UI"
+        Title="Chronos — Historique" WindowStartupLocation="CenterScreen">
+    <!--
+        HIS-01 — coquille de la fenêtre Historique (DESIGN_PLAN §2, §2.0, §2.1, §3).
+        D-34-22 : fenêtre de CONSULTATION, pas d'overlay — sans transparence (aucune fenêtre layered), bords de redimensionnement et
+        ombre par WindowChrome, coins arrondis DWM best-effort posés dans le code-behind (rayon système ≈ 8 px, Windows 11 seulement).
+        D-34-23 : pas d'Owner, pas de Topmost, pas de fermeture à la désactivation. D-34-25 : toutes les tailles viennent des tokens.
+        Aucune logique métier ici : tout est dans HistoriqueViewModel ; les vues Semaine / Jour sont remplies par 34-06 / 34-07.
+    -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Palette du chrome, tokens Histo*, tailles sys:Double et BoolToVis : fusion au niveau fenêtre pour que les
+                     StaticResource résolvent sans Application (smoke tests). Ne PAS redéclarer BoolToVis ici (34-01). -->
+                <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Épaisseurs de bordure (Thickness) et diamètres locaux : le dictionnaire commun n'expose que des sys:Double
+                 (contrat fermé à 38 tokens en 34-01) ; nommés ici pour que la garde « aucune valeur en dur » reste vraie
+                 et qu'une promotion en 34-08 soit un simple déplacement. HistoBordureActive = HistoEpaisseurBordureActive (1,5). -->
+            <Thickness x:Key="HistoBordureFenetre">1</Thickness>
+            <Thickness x:Key="HistoBordureActive">1.5</Thickness>
+            <Thickness x:Key="HistoBordureBandeau">0,1,0,1</Thickness>
+            <Thickness x:Key="HistoBordureNulle">0</Thickness>
+            <sys:Double x:Key="HistoDiametrePointLogo">8</sys:Double>
+            <sys:Double x:Key="HistoDiametrePastille">7</sys:Double>
+            <sys:Double x:Key="HistoHauteurCaption">0</sys:Double>
+
+            <!-- Bouton plat : ‹ › / ✕ / retour au présent (copie du style Flat des réglages, chaque littéral remplacé par un token). -->
+            <Style x:Key="Plat" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsGrand}"/>
+                <Setter Property="Padding" Value="9,3"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Panel2}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="{StaticResource HistoOpaciteCouverture}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Segment de vue : actif = bordure Accent 1,5 px sur Panel (§2.1). La bordure est portée par le Button lui-même
+                 (BorderBrush / BorderThickness) pour être observable ; le template ne fait que la dessiner. -->
+            <Style x:Key="Segment" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                <Setter Property="Background" Value="{StaticResource Panel}"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="{StaticResource HistoBordureActive}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsMoyen}"/>
+                <Setter Property="Padding" Value="12,4"/>
+                <Setter Property="Margin" Value="0,0,4,0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Panel2}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                        <Setter Property="Opacity" Value="{StaticResource HistoOpaciteCouverture}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="SegmentJour" TargetType="Button" BasedOn="{StaticResource Segment}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsVueJour}" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="SegmentSemaine" TargetType="Button" BasedOn="{StaticResource Segment}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsVueSemaine}" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Puce du sélecteur de style (§2.2) : Ink2, sélection = Ink + bordure Accent. -->
+            <Style x:Key="Puce" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="{StaticResource HistoBordureActive}"/>
+                <Setter Property="FontSize" Value="{StaticResource HistoCorpsPetit}"/>
+                <Setter Property="Padding" Value="8,2"/>
+                <Setter Property="Margin" Value="4,0,0,0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Panel2}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="PucePistes" TargetType="Button" BasedOn="{StaticResource Puce}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsStylePistes}" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="PuceSimplifie" TargetType="Button" BasedOn="{StaticResource Puce}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsStyleSimplifie}" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="PuceTuiles" TargetType="Button" BasedOn="{StaticResource Puce}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsStyleTuiles}" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <!-- D-34-25 : tailles en éléments-propriétés APRÈS Window.Resources (un StaticResource en attribut de la racine ne voit pas
+         encore son propre dictionnaire). Background = Panel : les coins « carrés » de Windows 10 ont la couleur du fond. -->
+    <Window.MinWidth><StaticResource ResourceKey="HistoLargeurMin"/></Window.MinWidth>
+    <Window.MinHeight><StaticResource ResourceKey="HistoHauteurMin"/></Window.MinHeight>
+    <Window.Width><StaticResource ResourceKey="HistoLargeurDefaut"/></Window.Width>
+    <Window.Height><StaticResource ResourceKey="HistoHauteurDefaut"/></Window.Height>
+    <Window.Background><StaticResource ResourceKey="Panel"/></Window.Background>
+
+    <!-- D-34-22 : bords de redimensionnement invisibles (6 px) et ombre DWM ; caption 0 (ressource nommée : la garde 34-01
+         refuse tout Height="n" littéral) → le drag se fait sur l'en-tête. -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="{StaticResource HistoHauteurCaption}" ResizeBorderThickness="{StaticResource HistoBordRedimensionnement}"
+                            GlassFrameThickness="{StaticResource HistoBordureNulle}" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding FermerCommand}"/>
+    </Window.InputBindings>
+
+    <Border BorderBrush="{StaticResource Line}" BorderThickness="{StaticResource HistoBordureFenetre}" Background="{StaticResource Panel}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ================= En-tête commun §2.1 (zone de drag) ================= -->
+            <Grid x:Name="EnTete" Grid.Row="0" Height="{StaticResource HistoHauteurEnTete}" Background="{StaticResource Panel}"
+                  MouseLeftButtonDown="EnTete_Drag" Margin="16,8,16,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Ligne 1 : ● Chronos  Historique  (badge de version omis en phase 34 — affaire de la release 35)          ✕ -->
+                <Grid Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="{StaticResource HistoDiametrePointLogo}" Height="{StaticResource HistoDiametrePointLogo}"
+                                 Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
+                        <TextBlock Text="Chronos" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsPetit}"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBlock Text="{x:Static txt:TextesHistorique.Titre}" Foreground="{StaticResource Ink}"
+                                   FontSize="{StaticResource HistoCorpsTitre}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+                    <Button Content="✕" Style="{StaticResource Plat}" Command="{Binding FermerCommand}" HorizontalAlignment="Right"
+                            FontSize="{StaticResource HistoCorpsMoyen}" Padding="8,3"/>
+                </Grid>
+
+                <!-- Ligne 2 : [ Jour | Semaine | 4 semaines ]   ‹  période  ›                          [ Cette semaine / Aujourd'hui ] -->
+                <Grid Grid.Row="1">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource SegmentJour}" Content="{x:Static txt:TextesHistorique.SegmentJour}"
+                                Command="{Binding ChoisirVueCommand}" CommandParameter="{x:Static mh:VueHistorique.Jour}"/>
+                        <Button Style="{StaticResource SegmentSemaine}" Content="{x:Static txt:TextesHistorique.SegmentSemaine}"
+                                Command="{Binding ChoisirVueCommand}" CommandParameter="{x:Static mh:VueHistorique.Semaine}"/>
+                        <!-- D-34-24 : présent mais désactivé tant que la vue n'existe pas (phase 35) — jamais un clic inerte. -->
+                        <Button Style="{StaticResource Segment}" Content="{x:Static txt:TextesHistorique.SegmentQuatreSemaines}"
+                                IsEnabled="False" ToolTip="{x:Static txt:TextesHistorique.InfobulleBientot}" ToolTipService.ShowOnDisabled="True"/>
+
+                        <Button Style="{StaticResource Plat}" Content="‹" Command="{Binding PrecedentCommand}" Margin="12,0,0,0"/>
+                        <TextBlock Text="{Binding LibellePeriode}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsGrand}"
+                                   VerticalAlignment="Center" Margin="4,0,4,0"/>
+                        <Button Style="{StaticResource Plat}" Content="›" Command="{Binding SuivantCommand}"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource Plat}" Content="{Binding TexteRetourPresent}" Command="{Binding RetourPresentCommand}"
+                            HorizontalAlignment="Right" FontSize="{StaticResource HistoCorpsMoyen}" Background="{StaticResource Panel2}"/>
+                </Grid>
+
+                <!-- Ligne 3 : fraîcheur · pastille « journal muet »                                     Style : Pistes · Simplifié · Tuiles -->
+                <Grid Grid.Row="2">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TexteFraicheur}" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsPetit}"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel x:Name="PastilleAlerte" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0"
+                                    Visibility="{Binding AlerteJournal, Converter={StaticResource BoolToVis}}">
+                            <!-- Alerte en DynamicResource : la pastille suit le thème injecté dans les ressources de la fenêtre. -->
+                            <Ellipse Width="{StaticResource HistoDiametrePastille}" Height="{StaticResource HistoDiametrePastille}"
+                                     Fill="{DynamicResource Alerte}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TexteAlerteJournal}" Foreground="{DynamicResource Alerte}"
+                                       FontSize="{StaticResource HistoCorpsPetit}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel x:Name="SelecteurStyle" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Visibility="{Binding IsVueSemaine, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{x:Static txt:TextesHistorique.StylePrefixe}" Foreground="{StaticResource Ink2}"
+                                   FontSize="{StaticResource HistoCorpsPetit}" VerticalAlignment="Center"/>
+                        <Button Style="{StaticResource PucePistes}" Content="{x:Static txt:TextesHistorique.StylePistes}"
+                                Command="{Binding ChoisirStyleCommand}" CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Pistes}"/>
+                        <Button Style="{StaticResource PuceSimplifie}" Content="{x:Static txt:TextesHistorique.StyleSimplifie}"
+                                Command="{Binding ChoisirStyleCommand}" CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Simplifie}"/>
+                        <Button Style="{StaticResource PuceTuiles}" Content="{x:Static txt:TextesHistorique.StyleTuiles}"
+                                Command="{Binding ChoisirStyleCommand}" CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Tuiles}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ================= Bandeau F2 (§3) : visible pendant la reconstruction, disparaît ensuite ================= -->
+            <Border x:Name="BandeauF2" Grid.Row="1" Background="{StaticResource Panel2}" BorderBrush="{StaticResource Line}"
+                    BorderThickness="{StaticResource HistoBordureBandeau}" Padding="16,7,16,7"
+                    Visibility="{Binding AfficherBandeauF2, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <TextBlock Text="{Binding TexteBandeauF2}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsMoyen}"/>
+                    <!-- Barre sans converter : la ProgressBar dimensionne elle-même PART_Indicator sur PART_Track. -->
+                    <ProgressBar x:Name="BarreF2" Minimum="0" Maximum="1" Value="{Binding FractionBandeauF2, Mode=OneWay}"
+                                 Height="{StaticResource HistoEpaisseurBordureActive}" Margin="0,5,0,4">
+                        <ProgressBar.Template>
+                            <ControlTemplate TargetType="ProgressBar">
+                                <Grid>
+                                    <Border x:Name="PART_Track" Background="{StaticResource Line}"/>
+                                    <Border x:Name="PART_Indicator" Background="{StaticResource Accent}" HorizontalAlignment="Left"/>
+                                </Grid>
+                            </ControlTemplate>
+                        </ProgressBar.Template>
+                    </ProgressBar>
+                    <TextBlock Text="{Binding SousTexteBandeauF2}" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsMini}"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= Corps : une vue à la fois (stubs remplis par 34-06 / 34-07) ================= -->
+            <Grid Grid.Row="2" Margin="16,6,16,12">
+                <hv:VueSemaineView Visibility="{Binding IsVueSemaine, Converter={StaticResource BoolToVis}}"/>
+                <hv:VueJourView Visibility="{Binding IsVueJour, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

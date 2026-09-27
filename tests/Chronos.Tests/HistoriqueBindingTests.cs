@@ -67,7 +67,7 @@ public class HistoriqueBindingTests
         => Tous<TextBlock>(racine).Where(tb => tb.IsVisible || tb.Visibility == Visibility.Visible);
 
     private static Button Bouton(DependencyObject racine, string contenu)
-        => Assert.Single(Tous<Button>(racine).Where(b => b.Content as string == contenu));
+        => Assert.Single(Tous<Button>(racine), b => b.Content as string == contenu);
 
     private static Color CouleurDe(Brush? b) => Assert.IsType<SolidColorBrush>(b).Color;
 
@@ -94,6 +94,9 @@ public class HistoriqueBindingTests
         Assert.False(chrome.UseAeroCaptionButtons);
 
         Assert.Equal(Color.FromRgb(0x15, 0x13, 0x22), CouleurDe(fenetre.Background));   // Panel : les coins « carrés » ont la couleur du fond
+
+        // Coins DWM best-effort (D-34-22) : un handle nul (ou Windows 10) échoue EN SILENCE — jamais d'exception.
+        Assert.False(HistoriqueWindow.ArrondirCoinsDwm(IntPtr.Zero));
     }
 
     [WpfFact]
@@ -113,7 +116,7 @@ public class HistoriqueBindingTests
     {
         var (fenetre, vm, _, _) = Monter();
 
-        var echap = Assert.Single(fenetre.InputBindings.OfType<KeyBinding>().Where(k => k.Key == Key.Escape));
+        var echap = Assert.Single(fenetre.InputBindings.OfType<KeyBinding>(), k => k.Key == Key.Escape);
         Assert.Same(vm.FermerCommand, echap.Command);
 
         // La fenêtre n'a jamais été montrée : le code-behind compte la demande et n'appelle Close() que si IsLoaded.
