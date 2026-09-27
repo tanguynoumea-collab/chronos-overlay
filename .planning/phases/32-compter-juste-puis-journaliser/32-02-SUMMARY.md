@@ -148,6 +148,10 @@ SHA d'entrée : `c9d65cf`. Chaque tâche est commitée atomiquement (`--no-verif
 |---|---|---|
 | 1 (01:38:08Z) | `cb1bfaf` | **0 échec, 1271 réussis, 1271 au total**, 9 s |
 | 2 (01:38:21Z) | `cb1bfaf` | **0 échec, 1271 réussis, 1271 au total**, 9 s |
+| 3 (01:40:40Z, relance demandée par le coordinateur) | `ea717c3` | **0 échec, 1271 réussis, 1271 au total**, 9 s |
+| 4 (01:40:55Z) | `ea717c3` | **0 échec, 1271 réussis, 1271 au total**, 9 s |
+
+**Tests avant / après :** 1200 (entrée de v1.8, `0bd27cb`) → **1271** en fin de vague 1, dont **12** apportés par ce plan (1200 → 1212 isolément dans l'instantané `c9d65cf`) ; le reste vient de 32-01, 32-03 et 32-04.
 
 Avant : 20 relances automatiques (01:14Z → 01:36Z) le temps que 32-01, 32-03 et 32-04 passent au vert dans le même arbre — jamais un rouge de ce plan.
 
