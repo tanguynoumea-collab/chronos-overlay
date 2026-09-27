@@ -188,6 +188,9 @@ Voir `key-decisions` : D-32-25 à D-32-30 (écrites dans le plan) plus trois dé
 
 ---
 
+**9. [Commit de docs] `dfc6e1d` porte aussi les lignes JRN-04 de 32-05 dans `REQUIREMENTS.md`**
+- Entre mon diff de contrôle (2 lignes : JRN-05 seul) et le `git commit`, l'agent 32-05 a exécuté son `requirements mark-complete JRN-04` dans l'arbre partagé ; le fichier commité coche donc JRN-04 et JRN-05. Le contenu est exact (JRN-04 est livré par `1eada40`), seule l'attribution du commit est mixte. Pas d'amend sur un arbre partagé ; consigné ici. Le commit de docs de 32-05 ne trouvera aucun diff sur `REQUIREMENTS.md` pour JRN-04.
+
 **Total deviations:** 4 auto-fixes (Rule 1 × 1, Rule 2 × 3) + 4 écarts de forme. Aucune modification de `JournalReleves.cs`, `JournalisationUsageProvider.cs`, `App.xaml.cs`, `DiagnosticService.cs`, des VM/XAML, de `ROADMAP.md` ni de `STATE.md` (vérifié sur les 6 commits `(32-06)`).
 
 ## Issues Encountered
