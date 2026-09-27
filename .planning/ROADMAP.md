@@ -325,9 +325,9 @@ diagnostic (âge de dernière écriture, événements, progression N / M). **Con
 vague 2 : 35-04 ∥ 35-05 — vue XAML, docs ; vague 3 : 35-06 release ; vague 4 : 35-07 constat, `autonomous: false`).
 
 Plans:
-- [ ] 35-01-PLAN.md — HIS-05 (contribue) : données, VM et mots de la vue 4 semaines ; semaine épuisée par fixture dérivée ; veille de minuit en vue Jour ; réouverture fiable du VM singleton (reconstruction réabonnée, thème relu, `FermetureDemandee` désabonné)
-- [ ] 35-02-PLAN.md — ACC-01, ACC-02 : double-clic au centre sans double bascule (arbitre pur, `GetDoubleClickTime`), `IOuvreurHistorique` (fenêtre singleton recréée), carte F1 fusionnée avec la carte du journal, sélecteur synchronisé
-- [ ] 35-03-PLAN.md — ACC-03 : section `[Journal d'historique]` du diagnostic via la façade `LireJour` et un helper neutre (aucun `.Lire(`), une seule relève des processus, fuseau injecté
+- [x] 35-01-PLAN.md — HIS-05 (contribue) : données, VM et mots de la vue 4 semaines ; semaine épuisée par fixture dérivée ; veille de minuit en vue Jour ; réouverture fiable du VM singleton (reconstruction réabonnée, thème relu, `FermetureDemandee` désabonné)
+- [x] 35-02-PLAN.md — ACC-01, ACC-02 : double-clic au centre sans double bascule (arbitre pur, `GetDoubleClickTime`), `IOuvreurHistorique` (fenêtre singleton recréée), carte F1 fusionnée avec la carte du journal, sélecteur synchronisé
+- [x] 35-03-PLAN.md — ACC-03 : section `[Journal d'historique]` du diagnostic via la façade `LireJour` et un helper neutre (aucun `.Lire(`), une seule relève des processus, fuseau injecté
 - [ ] 35-04-PLAN.md — HIS-05 : `PisteQuatreSemaines`, `VueQuatreSemainesView`, tokens 38 → 45, segment actif, infobulle bornée, annotations Jour sur deux rangées, tâche réservée aux écarts de la revue DAEDALUS
 - [ ] 35-05-PLAN.md — ACC-04 (contribue) : README « Historique d'utilisation », `docs/data-sources.md` §9, garde de vocabulaire limitée à ces sections, câblage du fuseau du diagnostic
 - [ ] 35-06-PLAN.md — ACC-04 : release 3.3.0 (procédure 32-07, csproj × 4, publish, contrôles, smoke `--hook`), sans tag ni push ni lancement
@@ -349,7 +349,7 @@ commencer pendant que la Phase 32 attend son constat (32-08), le constat ne touc
 | 32. Compter juste, puis journaliser | 7/8 | In Progress|  |
 | 33. Agrégats de tokens | 5/5 | Complete    | 2026-09-27 |
 | 34. Fenêtre Historique : Semaine et Jour | 8/8 | Complete    | 2026-09-27 |
-| 35. 4 semaines, accès, release 3.3.0 | 0/5 | Not started | - |
+| 35. 4 semaines, accès, release 3.3.0 | 3/7 | In Progress|  |
 
 ### Couverture des exigences
 
