@@ -17,7 +17,7 @@ internal sealed class FakeSourceHistorique : ISourceHistorique
 
     public FakeSourceHistorique(TimeZoneInfo tz) => _interne = new SourceHistoriqueDemonstration(tz);
 
-    /// <summary>Nombre d'appels à <see cref="LireSemaine"/> + <see cref="LireJour"/> (thread-safe).</summary>
+    /// <summary>Nombre d'appels à <see cref="LireSemaine"/> + <see cref="LireJour"/> + <see cref="LireQuatreSemaines"/> (thread-safe).</summary>
     public int Lectures => Volatile.Read(ref _lectures);
 
     /// <summary>Le repère hebdo rendu ; <c>null</c> = aucun relevé récent (le VM se replie sur l'ancre puis le calendrier).</summary>
@@ -25,6 +25,9 @@ internal sealed class FakeSourceHistorique : ISourceHistorique
 
     /// <summary>Transformation appliquée aux données Semaine avant de les rendre (ex. : retirer les divergences).</summary>
     public Func<DonneesSemaine, DonneesSemaine>? TransformerSemaine { get; set; }
+
+    /// <summary>35-01 — transformation appliquée aux données 4 semaines avant de les rendre (ex. : la fixture « S-1 épuisée »).</summary>
+    public Func<DonneesQuatreSemaines, DonneesQuatreSemaines>? TransformerQuatreSemaines { get; set; }
 
     /// <summary>Si non nulle, <see cref="LireSemaine"/> attend le signal AVANT de rendre : permet de faire courir deux lectures.</summary>
     public ManualResetEventSlim? Barriere { get; set; }
@@ -44,5 +47,13 @@ internal sealed class FakeSourceHistorique : ISourceHistorique
         Interlocked.Increment(ref _lectures);
         Barriere?.Wait();
         return _interne.LireJour(jour, now);
+    }
+
+    public DonneesQuatreSemaines LireQuatreSemaines(IReadOnlyList<Plage> semaines, DateTimeOffset now)
+    {
+        Interlocked.Increment(ref _lectures);
+        Barriere?.Wait();
+        var d = _interne.LireQuatreSemaines(semaines, now);
+        return TransformerQuatreSemaines is { } f ? f(d) : d;
     }
 }

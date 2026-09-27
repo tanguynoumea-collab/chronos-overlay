@@ -112,4 +112,41 @@ public class EchellesHistoriqueTests
         // change pas en silence.
         Assert.Equal(0.25, EchelleValeur.MaxRythme);
     }
+
+    // ------------------------------------------------------------------ 35-01 : report d'une semaine sur l'axe d'une autre (D-35-02)
+
+    [Fact]
+    public void Reporter_projette_par_fraction_de_la_plage_source()
+    {
+        // Le scénario : S-1 = sam. 12 → sam. 19 sept., S = sam. 19 → sam. 26 sept. (168 h chacune).
+        var semaines = BornesPlage.QuatreSemaines(Utc("2026-09-24T15:12:00Z"), Utc("2026-09-25T22:00:00Z"), null, Tz);
+        var source = semaines[2];
+        var cible = semaines[3];
+
+        Assert.Equal(cible.Debut, EchelleTemps.Reporter(source.Debut, source, cible));
+        var milieu = source.Debut + TimeSpan.FromTicks(source.Duree.Ticks / 2);
+        var milieuCible = cible.Debut + TimeSpan.FromTicks(cible.Duree.Ticks / 2);
+        Assert.True(Math.Abs((EchelleTemps.Reporter(milieu, source, cible) - milieuCible).TotalSeconds) <= 1);
+        Assert.Equal(cible.Fin, EchelleTemps.Reporter(source.Fin, source, cible));
+    }
+
+    [Fact]
+    public void Reporter_absorbe_la_semaine_de_169_h()
+    {
+        // Source : sam. 24 oct. 2026 00:00 Paris → sam. 31 oct. 00:00 (169 h : passage à l'heure d'hiver le 25/10).
+        var source = BornesPlage.SemaineDeForfait(Utc("2026-10-27T12:00:00Z"), null, null, Tz);
+        var cible = BornesPlage.SemaineDeForfait(source.Debut.AddTicks(-1), source.Debut, null, Tz);   // 17 → 24 oct. : 168 h
+        Assert.Equal(TimeSpan.FromHours(169), source.Duree);
+        Assert.Equal(TimeSpan.FromHours(168), cible.Duree);
+
+        // Le mercredi 28 oct. 12:00 LOCAL (heure d'hiver = 11:00Z) : 109 h après le début de la source.
+        var mercredi = Utc("2026-10-28T11:00:00Z");
+        Assert.Equal(TimeSpan.FromHours(109), mercredi - source.Debut);
+
+        var reporte = EchelleTemps.Reporter(mercredi, source, cible);
+        var attendu = cible.Debut + TimeSpan.FromHours(168.0 * 109.0 / 169.0);
+        Assert.True(Math.Abs((reporte - attendu).TotalSeconds) <= 1, $"reporté {reporte:o}, attendu {attendu:o}");
+        Assert.True(Math.Abs((reporte - (mercredi - TimeSpan.FromDays(7))).TotalMinutes) > 30, "Le report n'est pas un simple recul de 7 jours.");
+        Assert.Equal(cible.Fin, EchelleTemps.Reporter(source.Fin, source, cible));
+    }
 }

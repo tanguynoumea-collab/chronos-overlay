@@ -230,6 +230,14 @@ public class TextesHistoriqueTests
             TextesHistorique.BandeauF2(886, 1603, true),
             TextesHistorique.SousTexteF2(null, Tz),
             TextesHistorique.LibelleStyle(HistoriqueStyleSemaine.Simplifie),
+            // 35-01 : les mots de la vue 4 semaines
+            TextesHistorique.LibelleJourCourt(now, Tz),
+            TextesHistorique.LibellePeriodeQuatreSemaines(new Plage(Utc("2026-08-28T22:00:00Z"), Utc("2026-09-25T22:00:00Z")), Tz),
+            TextesHistorique.RangSemaine(3),
+            TextesHistorique.EtiquetteSemaine(0, CetteSemaine, 0.43, false, false, Tz),
+            TextesHistorique.EtiquetteSemaine(2, CetteSemaine, null, true, true, Tz),
+            TextesHistorique.EtiquetteSemaine(1, CetteSemaine, null, false, true, Tz),
+            TextesHistorique.EpuiseeSemaine(now, Tz),
         };
 
         foreach (var texte in constantes.Concat(sorties))
@@ -246,5 +254,36 @@ public class TextesHistoriqueTests
         Assert.Equal("Pistes", TextesHistorique.StylePistes);
         Assert.Equal("Simplifié", TextesHistorique.StyleSimplifie);
         Assert.Equal("Tuiles", TextesHistorique.StyleTuiles);
+    }
+
+    // ------------------------------------------------------------------ 35-01 : la vue 4 semaines (DESIGN_PLAN §2.4, mot pour mot)
+
+    [Fact]
+    public void Les_mots_de_la_vue_quatre_semaines()
+    {
+        var samedi = Utc("2026-09-18T22:00:00Z");   // sam. 19 sept. 00:00 Paris
+        var jours = Enumerable.Range(0, 7).Select(i => TextesHistorique.LibelleJourCourt(samedi + TimeSpan.FromDays(i), Tz)).ToList();
+        Assert.Equal(new[] { "sam.", "dim.", "lun.", "mar.", "mer.", "jeu.", "ven." }, jours);
+
+        Assert.Equal("4 semaines de forfait · du sam. 29 août au sam. 26 sept. 2026",
+            TextesHistorique.LibellePeriodeQuatreSemaines(new Plage(Utc("2026-08-28T22:00:00Z"), Utc("2026-09-25T22:00:00Z")), Tz));
+
+        Assert.Equal("S", TextesHistorique.RangSemaine(0));
+        Assert.Equal("S-1", TextesHistorique.RangSemaine(1));
+        Assert.Equal("S-2", TextesHistorique.RangSemaine(2));
+
+        var s = new Plage(Utc("2026-09-18T22:00:00Z"), Utc("2026-09-25T22:00:00Z"));
+        var sMoinsUn = new Plage(Utc("2026-09-11T22:00:00Z"), Utc("2026-09-18T22:00:00Z"));
+        var sMoinsDeux = new Plage(Utc("2026-09-04T22:00:00Z"), Utc("2026-09-11T22:00:00Z"));
+        Assert.Equal("S · 19 sept. · 43 %", TextesHistorique.EtiquetteSemaine(0, s, 0.43, false, false, Tz));
+        Assert.Equal("S-2 · 5 sept. · pas de relevés (avant le journal)", TextesHistorique.EtiquetteSemaine(2, sMoinsDeux, null, true, true, Tz));
+        Assert.Equal("S-1 · 12 sept. · pas de relevés", TextesHistorique.EtiquetteSemaine(1, sMoinsUn, null, false, true, Tz));
+
+        Assert.Equal("épuisée jeu. 20:00 → bloquée jusqu'au reset", TextesHistorique.EpuiseeSemaine(Utc("2026-09-17T18:00:00Z"), Tz));
+        Assert.Equal("Rien n'est inventé avant l'ouverture du journal.", TextesHistorique.PiedQuatreSemaines);
+        Assert.Equal("avant le journal — aucun relevé", TextesHistorique.AvantJournalAucunReleve);
+        Assert.Equal("aucun relevé", TextesHistorique.AucunReleve);
+        Assert.Equal("COUVERTURE PAR SEMAINE", TextesHistorique.CouvertureParSemaine);
+        Assert.Equal("bientôt (phase 35)", TextesHistorique.InfobulleBientot);   // Pitfall 6 : retirée par 35-04, pas ici
     }
 }

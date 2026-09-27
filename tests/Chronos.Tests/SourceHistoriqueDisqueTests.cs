@@ -1,5 +1,7 @@
 using System.IO;
 using System.Runtime.CompilerServices;
+using Chronos.Models;
+using Chronos.Models.Historique;
 using Chronos.Models.Historique.Tokens;
 using Chronos.Services;
 using Chronos.Services.Historique;
@@ -126,5 +128,92 @@ public sealed class SourceHistoriqueDisqueTests : IDisposable
         Assert.Empty(d.Analyse.Serie);
         Assert.Equal(jour, d.Plage);
         Assert.Contains(d.Colonnes, c => c.ParModele.Count > 0);
+    }
+
+    // ------------------------------------------------------------------ 35-01 : quatre semaines (D-35-01)
+
+    // Le « now » du scénario (jeu. 24 sept. 17:12 Paris) et ses quatre semaines : S-3 = 29 août, S-2 = 5 sept., S-1 = 12 sept., S = 19 sept.
+    private static readonly DateTimeOffset NowQuatre = Utc("2026-09-24T15:12:00Z");
+    private static IReadOnlyList<Plage> QuatreSemaines() => BornesPlage.QuatreSemaines(NowQuatre, Utc("2026-09-25T22:00:00Z"), null, Tz);
+
+    private static ReleveJournal ReleveSonde(DateTimeOffset t, double u7)
+        => new(t, SourceUsage.SondeEnTetes, 0.10, t + TimeSpan.FromHours(1), StatutServeur.Autorise,
+               u7, Utc("2026-09-25T22:00:00Z"), StatutServeur.Autorise, null, null);
+
+    // Un journal réel (écrit par JournalReleves) : quelques relevés dans S-1 (le premier ouvre le journal, le dernier à S-1.Fin − 5 min)
+    // et dans S ; rien dans S-3 ni S-2.
+    private DateTimeOffset EcrireJournalQuatreSemaines(Plage semaineMoinsUn, Plage semaine)
+    {
+        var horloge = new FakeClock(NowQuatre);
+        var journal = new JournalReleves(DossierHistorique(), horloge);
+        var premier = Utc("2026-09-14T10:00:00Z");
+        var instants = new[]
+        {
+            premier, premier + TimeSpan.FromMinutes(5), premier + TimeSpan.FromMinutes(10),
+            semaineMoinsUn.Fin - TimeSpan.FromMinutes(10), semaineMoinsUn.Fin - TimeSpan.FromMinutes(5),
+            semaine.Debut + TimeSpan.FromHours(12), semaine.Debut + TimeSpan.FromHours(12) + TimeSpan.FromMinutes(5),
+            NowQuatre - TimeSpan.FromMinutes(5),
+        };
+        var u7 = 0.10;
+        foreach (var t in instants)
+        {
+            horloge.UtcNow = t;
+            Assert.True(journal.AjouterReleve(ReleveSonde(t, u7)));
+            u7 += 0.01;
+        }
+        return premier;
+    }
+
+    [Fact]
+    public void Quatre_semaines_une_lecture_quatre_analyses_dans_l_ordre()
+    {
+        var semaines = QuatreSemaines();
+        var premier = EcrireJournalQuatreSemaines(semaines[2], semaines[3]);
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+
+        var d = source.LireQuatreSemaines(semaines, NowQuatre);
+
+        Assert.Equal(4, d.Semaines.Count);
+        for (var i = 0; i < 4; i++) Assert.Equal(semaines[i], d.Semaines[i].Plage);
+        Assert.Empty(d.Semaines[0].Serie);
+        Assert.Empty(d.Semaines[1].Serie);
+        Assert.Equal(5, d.Semaines[2].Serie.Count);
+        Assert.Equal(3, d.Semaines[3].Serie.Count);
+        Assert.All(d.Semaines[2].Serie, r => Assert.True(semaines[2].Contient(r.T)));
+        Assert.Equal(premier, d.JournalOuvertLe);
+        Assert.Equal(NowQuatre, d.LueA);
+        Assert.Same(d.Semaines[3], d.Courante);
+    }
+
+    [Fact]
+    public void Quatre_semaines_revolues_ne_finissent_pas_par_un_faux_trou_ouvert()
+    {
+        var semaines = QuatreSemaines();
+        EcrireJournalQuatreSemaines(semaines[2], semaines[3]);
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+
+        var d = source.LireQuatreSemaines(semaines, NowQuatre);
+
+        Assert.Equal(semaines[2].Fin - TimeSpan.FromMinutes(5), d.Semaines[2].Serie[^1].T);
+        Assert.DoesNotContain(d.Semaines[2].Trous, t => t.Fin is null);
+        Assert.DoesNotContain(d.Semaines[3].Trous, t => t.Fin is null);   // dernier relevé de S à now − 5 min
+    }
+
+    [Fact]
+    public void Quatre_semaines_sur_un_dossier_absent_rendent_quatre_semaines_vides()
+    {
+        var semaines = QuatreSemaines();
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+
+        var d = source.LireQuatreSemaines(semaines, NowQuatre);
+
+        Assert.Equal(4, d.Semaines.Count);
+        Assert.All(d.Semaines, a => Assert.Empty(a.Serie));
+        for (var i = 0; i < 4; i++) Assert.Equal(semaines[i], d.Semaines[i].Plage);
+        Assert.Null(d.JournalOuvertLe);
+        Assert.Equal(NowQuatre, d.LueA);
+        Assert.False(Directory.Exists(_paths.HistoriqueDir), "Une lecture ne crée jamais le dossier de l'historique.");
+
+        Assert.Throws<ArgumentException>(() => source.LireQuatreSemaines(semaines.Take(3).ToList(), NowQuatre));
     }
 }
