@@ -1553,4 +1553,137 @@ public class DiagnosticServiceTests : IDisposable
         Assert.EndsWith(" o)", ligne);
         Assert.DoesNotContain("aucune écriture", ligne);
     }
+
+    // ------------------------------------------------------------------ ACC-03 (phase 35, 35-03) : [Journal d'historique]
+    // Le rapport dit, sans ouvrir la fenêtre, ce que le journal sait de lui-même : ses fichiers, sa dernière écriture, la journée
+    // lue par la MÊME façade que la vue Jour et dite par les MÊMES mots, ses cinq derniers événements, où en est la reconstruction
+    // des tokens et combien de Chronos tournent. Journal écrit par le VRAI écrivain sous %TEMP% ; AUCUN relevé la veille (le
+    // résultat ne dépend pas de la lecture de la veille). Fuseau de Paris injecté (jamais TimeZoneInfo.Local en test).
+
+    private static readonly DateTimeOffset Now35 = new(2026, 9, 27, 12, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset Demarrage35 = new(2026, 9, 27, 6, 7, 10, TimeSpan.Zero);
+
+    /// <summary>Un <c>demarrage</c> 3.2.2 à 06:07:10Z puis un relevé toutes les 5 min jusqu'à 11:57:10Z (71 relevés) ; le fichier
+    /// du mois est daté de 11:57:10Z, et un <c>curseurs.json</c> de 11:00Z l'accompagne.</summary>
+    private static ChronosPaths JournalDuJour35()
+    {
+        var paths = TempPaths();
+        var journal = new Chronos.Services.Historique.JournalReleves(paths.HistoriqueDir, new FakeClock(Now35));
+        Assert.True(journal.AjouterEvenement(new Chronos.Models.Historique.EvenementJournal(Demarrage35, Chronos.Models.Historique.TypeEvenement.Demarrage, Version: "3.2.2")));
+        for (var t = Demarrage35; t < Now35; t += TimeSpan.FromMinutes(5))
+            Assert.True(journal.AjouterReleve(new Chronos.Models.Historique.ReleveJournal(t, SourceUsage.SondeEnTetes,
+                U5: 0.20, R5: new DateTimeOffset(2026, 9, 27, 14, 0, 0, TimeSpan.Zero), Statut5: StatutServeur.Autorise,
+                U7: 0.40, R7: new DateTimeOffset(2026, 10, 2, 22, 0, 0, TimeSpan.Zero), Statut7: StatutServeur.Autorise,
+                Overage: null, OverageStatut: null)));
+        System.IO.File.SetLastWriteTimeUtc(System.IO.Path.Combine(paths.HistoriqueDir, "releves-2026-09.jsonl"), new DateTime(2026, 9, 27, 11, 57, 10, DateTimeKind.Utc));
+        var curseurs = System.IO.Path.Combine(paths.HistoriqueDir, "curseurs.json");
+        System.IO.File.WriteAllText(curseurs, "{}");
+        System.IO.File.SetLastWriteTimeUtc(curseurs, new DateTime(2026, 9, 27, 11, 0, 0, DateTimeKind.Utc));
+        return paths;
+    }
+
+    private static DiagnosticService Diag35(ChronosPaths paths, IEtatReconstruction? reconstruction, TimeZoneInfo? fuseau)
+        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), new FakeClock(Now35), machine: new FakeInventaireMachine(),
+               reconstruction: reconstruction, fuseau: fuseau);
+
+    /// <summary>Les lignes de la section : de l'en-tête à la ligne vide qui la clôt (en-tête exclu), sans l'indentation.</summary>
+    private static List<string> SectionJournal35(string report)
+    {
+        var lignes = Lignes(report);
+        var debut = lignes.FindIndex(l => l == "[Journal d'historique]");
+        Assert.True(debut >= 0, report);
+        var fin = lignes.FindIndex(debut, l => l.Trim().Length == 0);
+        return lignes.GetRange(debut + 1, (fin < 0 ? lignes.Count : fin) - debut - 1).Select(l => l.Trim()).ToList();
+    }
+
+    [Fact]
+    public async Task La_section_journal_d_historique_suit_les_magasins_persistants()
+    {
+        var report = await Diag35(JournalDuJour35(), reconstruction: null, Chronos.Services.Historique.BornesPlage.FuseauParisPourTests()).BuildReportAsync();
+
+        Assert.Single(Lignes(report), l => l == "[Journal d'historique]");
+        var magasins = report.IndexOf("[Magasins persistants]", StringComparison.Ordinal);
+        var journal = report.IndexOf("[Journal d'historique]", StringComparison.Ordinal);
+        var affiche = report.IndexOf("[Ce qui est affiché maintenant]", StringComparison.Ordinal);
+        Assert.True(magasins >= 0 && magasins < journal && journal < affiche, report);
+    }
+
+    [Fact]
+    public async Task La_section_dit_les_fichiers_leur_taille_et_la_derniere_ecriture()
+    {
+        var paths = JournalDuJour35();
+        var tailleReleves = new System.IO.FileInfo(System.IO.Path.Combine(paths.HistoriqueDir, "releves-2026-09.jsonl")).Length;
+        var ligneReleves = $"releves-2026-09.jsonl — {tailleReleves} o — modifié il y a 2 min";
+        const string ligneCurseurs = "curseurs.json — 2 o — modifié il y a 1 h 00";
+
+        var section = SectionJournal35(await Diag35(paths, reconstruction: null, Chronos.Services.Historique.BornesPlage.FuseauParisPourTests()).BuildReportAsync());
+
+        Assert.Contains("Dossier : " + paths.HistoriqueDir, section);
+        Assert.Contains("Fichiers : 2", section);
+        Assert.Contains(ligneReleves, section);
+        Assert.Contains(ligneCurseurs, section);
+        Assert.True(section.IndexOf(ligneReleves) < section.IndexOf(ligneCurseurs), string.Join("\n", section));   // familles : relevés d'abord
+        Assert.Contains("Dernière écriture du journal (disque) : il y a 2 min — releves-2026-09.jsonl", section);
+    }
+
+    [Fact]
+    public async Task La_section_dit_la_journee_avec_les_mots_de_la_vue_Jour()
+    {
+        var paths = JournalDuJour35();
+        var fuseau = Chronos.Services.Historique.BornesPlage.FuseauParisPourTests();
+        // La façade de la fenêtre, appelée ICI : le rapport doit rendre exactement la même ligne que la vue Jour.
+        var plage = Chronos.Services.Historique.BornesPlage.Jour(Now35, fuseau);
+        var donnees = new Chronos.Services.Historique.SourceHistoriqueDisque(paths, fuseau).LireJour(plage, Now35);
+        var attendu = Chronos.Text.TextesHistorique.LigneFraicheurJour(plage, donnees.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, fuseau);
+        Assert.StartsWith("288 relevés attendus · 71 présents · 0 interruption", attendu);
+
+        var section = SectionJournal35(await Diag35(paths, reconstruction: null, fuseau).BuildReportAsync());
+
+        Assert.Contains("Jour (27 sept. 2026) : " + attendu, section);
+        Assert.Contains("journal ouvert le 27 sept. 2026", section);
+    }
+
+    [Fact]
+    public async Task La_section_dit_les_cinq_derniers_evenements_et_la_reconstruction()
+    {
+        var paths = JournalDuJour35();
+        var fuseau = Chronos.Services.Historique.BornesPlage.FuseauParisPourTests();
+        var terminee = new FakeEtatReconstruction
+        {
+            Phase = PhaseReconstruction.Incremental, FichiersTraites = 1603, FichiersTotal = 1603,
+            DerniereReconstructionTerminee = new DateTimeOffset(2026, 9, 27, 6, 8, 0, TimeSpan.Zero),
+        };
+
+        var section = SectionJournal35(await Diag35(paths, terminee, fuseau).BuildReportAsync());
+
+        var entete = section.IndexOf("Événements récents (5 derniers) :");
+        Assert.True(entete >= 0, string.Join("\n", section));
+        Assert.Equal("2026-09-27 08:07 demarrage (3.2.2)", section[entete + 1]);   // heure de Paris (UTC+2)
+        Assert.Contains("Reconstruction des tokens : terminée le 27 sept. 08:08 (détail sous [Magasins persistants])", section);
+        Assert.Contains(section, l => System.Text.RegularExpressions.Regex.IsMatch(l,
+            @"^Instances Chronos : (\d+ \(détail sous \[Magasins persistants\]\)|relevé impossible)$"));
+
+        var enCours = new FakeEtatReconstruction { Phase = PhaseReconstruction.Reconstruction, FichiersTraites = 886, FichiersTotal = 1603 };
+        section = SectionJournal35(await Diag35(paths, enCours, fuseau).BuildReportAsync());
+        Assert.Contains("Reconstruction des tokens : en cours — 886 / 1603 fichiers (détail sous [Magasins persistants])", section);
+
+        section = SectionJournal35(await Diag35(paths, reconstruction: null, fuseau).BuildReportAsync());
+        Assert.Contains("Reconstruction des tokens : non câblée", section);
+    }
+
+    [Fact]
+    public async Task Sans_fuseau_la_section_parle_en_UTC_et_le_dit()
+    {
+        var paths = JournalDuJour35();
+
+        var sansFuseau = SectionJournal35(await Diag35(paths, reconstruction: null, fuseau: null).BuildReportAsync());
+        Assert.Contains("Fuseau : UTC (fuseau non injecté)", sansFuseau);
+        Assert.Contains("2026-09-27 06:07 demarrage (3.2.2)", sansFuseau);
+
+        var fuseau = Chronos.Services.Historique.BornesPlage.FuseauParisPourTests();
+        var avecFuseau = SectionJournal35(await Diag35(paths, reconstruction: null, fuseau).BuildReportAsync());
+        Assert.Contains("Fuseau : " + fuseau.Id, avecFuseau);
+        Assert.DoesNotContain("Fuseau : UTC (fuseau non injecté)", avecFuseau);
+    }
 }
