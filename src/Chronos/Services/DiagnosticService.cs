@@ -34,6 +34,7 @@ public sealed class DiagnosticService
     private readonly IEtatServeur? _etatServeur;
     private readonly IInventaireMachine _machine;
     private readonly SessionMonitor? _moniteurSessions;
+    private readonly IReadOnlyList<IEtatMagasin>? _magasins;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
@@ -61,11 +62,17 @@ public sealed class DiagnosticService
     /// qu'il n'a rien observé. Fabriquer un moniteur de secours ici, c'est exactement le défaut corrigé.
     /// OPTIONNEL et en DERNIÈRE position à dessein : les 11 sites de construction préexistants compilent
     /// sans retouche. Précédents : authStatus (17), etatServeur (18), machine (20).</para></param>
+    /// <param name="magasins">CPT-02 — état des magasins persistants (dernier exact, journal des relevés) tel que le
+    /// processus le connaît : âge de la dernière écriture, dernière erreur. OPTIONNEL et en DERNIÈRE position à
+    /// dessein : les sites de construction préexistants compilent sans retouche. Précédents : authStatus (17),
+    /// etatServeur (18), machine (20), moniteurSessions (26). Repli : les faits disque seuls (existence, taille,
+    /// mtime) — le rapport reste utile sans câblage DI, mais ne peut alors pas dire POURQUOI une écriture a raté.</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
                              IInventaireMachine? machine = null,
-                             SessionMonitor? moniteurSessions = null)
+                             SessionMonitor? moniteurSessions = null,
+                             IReadOnlyList<IEtatMagasin>? magasins = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -76,6 +83,7 @@ public sealed class DiagnosticService
         _etatServeur = etatServeur;
         _machine = machine ?? new InventaireMachine();
         _moniteurSessions = moniteurSessions;   // pas de repli : voir le XML-doc ci-dessus
+        _magasins = magasins;
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -402,6 +410,19 @@ public sealed class DiagnosticService
         sb.AppendLine("  Dossier ~/.claude/projects : " + (Directory.Exists(projects) ? jsonl + " fichier(s) .jsonl" : "ABSENT (aucun historique local)"));
         sb.AppendLine();
 
+        // 3b) CPT-02 — magasins persistants : où l'on écrit, quand, et depuis quelle VUE d'AppData on regarde.
+        // La ligne « Vue AppData » d'abord : lue depuis une session Claude Code, cette section décrit la copie
+        // virtualisée du paquet MSIX, pas les fichiers de l'overlay — c'est ce qui a fait croire à un « gel ».
+        sb.AppendLine("[Magasins persistants]");
+        sb.AppendLine("  Vue AppData : " + DetecteurVueAppData.Libelle(
+            DetecteurVueAppData.Detecter(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData))));
+        sb.AppendLine("  " + LigneMagasin(NomsMagasins.DernierExact, _paths.LastExactFile, "fichier"));
+        var fichierDuMois = Path.Combine(_paths.HistoriqueDir, "releves-" + _clock.UtcNow.UtcDateTime.ToString("yyyy-MM") + ".jsonl");
+        sb.AppendLine("  " + LigneMagasin(NomsMagasins.JournalReleves, fichierDuMois,
+            Directory.Exists(_paths.HistoriqueDir) ? "fichier du mois" : "dossier"));
+        sb.AppendLine("  " + NomsMagasins.AgregatsTokens + " : aucun (phase 33)");
+        sb.AppendLine();
+
         // 4) Résultat effectivement affiché (via le composite réel)
         sb.AppendLine("[Ce qui est affiché maintenant]");
         // Consomme le snapshot obtenu EN TÊTE de la méthode — ne relance pas la chaîne, sans quoi la
@@ -651,6 +672,46 @@ public sealed class DiagnosticService
     };
 
     // Heure LOCALE à la seconde (D-30-11) : le relevé travaille à la seconde, « 16:00 > 16:00 » serait illisible.
+    /// <summary>
+    /// CPT-02 — une ligne par magasin persistant (D-32-08). Les faits DISQUE d'abord (existence, taille, mtime : ce
+    /// qu'une sonde hors arbre lirait), enrichis par l'état injecté du magasin (âge connu du processus, dernière
+    /// erreur). L'âge connu du PROCESSUS prime sur le mtime : dans la vue virtualisée, le fichier que l'on lit n'est
+    /// pas celui que l'on a écrit, et c'est précisément cet écart que la ligne doit rendre visible.
+    /// </summary>
+    private string LigneMagasin(string nom, string chemin, string nature)
+    {
+        var etat = _magasins?.FirstOrDefault(m => m.Nom == nom);
+
+        bool existe = false;
+        long taille = 0;
+        DateTimeOffset? mtime = null;
+        try
+        {
+            if (File.Exists(chemin))
+            {
+                var info = new FileInfo(chemin);
+                existe = true;
+                taille = info.Length;
+                mtime = new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero);
+            }
+        }
+        catch { /* faits disque best-effort : un chemin inaccessible se lit « absent », l'erreur du magasin dit le reste */ }
+
+        var derniere = etat?.DerniereEcriture ?? mtime;
+        var age = LibelleSource.Anciennete(derniere, _clock.UtcNow);
+
+        var texte = existe
+            ? $"{nom} : {chemin} — dernière écriture {age} ({taille} o)"
+            : derniere is not null
+                ? $"{nom} : {chemin} — dernière écriture {age} ({nature} absent sur cette vue)"   // écrit ici, invisible là : l'écart des deux vues
+                : $"{nom} : {chemin} — aucune écriture ({nature} absent)";
+
+        if (etat?.DerniereErreur is { } err)
+            texte += Environment.NewLine + "    ÉCHEC de la dernière écriture : " + err;
+
+        return texte;
+    }
+
     private static string Heure(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss");
 
     // La source NOMMÉE AVEC SON DOSSIER, exactement comme un filtre est nommé avec son fichier : « hook »
