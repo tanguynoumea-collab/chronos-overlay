@@ -134,6 +134,6 @@ des cartes dans DONNÉES, découpage du README.
 ## Deferred Ideas
 
 - Heatmap jour × heure, export CSV, compaction, dimension projet, projection conditionnelle, `DayTimeline` sur resets observés,
-  dérive `WeeklyWindow` (test d'acceptation 25/10/2026), trou chevauchant minuit en vue Jour si non traité en 34-08 → v1.9.
+  dérive `WeeklyWindow` (test d'acceptation 25/10/2026) → v1.9. (Le trou qui chevauche minuit en vue Jour est traité EN PHASE 35, plan 35-01 — décision 3.)
 
 </deferred>
