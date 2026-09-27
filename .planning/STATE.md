@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: — Historique d'utilisation
 status: executing
-last_updated: "2026-09-27T00:58:16.167Z"
-last_activity: 2026-09-27 -- Phase 32 execution started
+last_updated: "2026-09-27T10:27:43.538Z"
+last_activity: 2026-09-27 -- Phase 33 execution started
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 8
-  completed_plans: 0
+  total_plans: 13
+  completed_plans: 7
 ---
 
 # Project State
@@ -21,17 +21,19 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend. v1.8 : comprendre
 sa façon d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Phase 32 — Compter juste, puis journaliser
+**Current focus:** Phase 33 — Agrégats de tokens
 
 ## Current Position
 
 Milestone: v1.8 — Historique d'utilisation
-Phase: 32 (Compter juste, puis journaliser) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 32
-Last activity: 2026-09-27 -- Phase 32 execution started
+Phase: 33 (Agrégats de tokens) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 33
+Last activity: 2026-09-27 -- Phase 33 execution started
 
 Progress: [░░░░░░░░░░] 0 %
+
+> Phase 32 : 7 plans / 8 exécutés, `Chronos-v3.2.2.exe` publié ; le plan 32-08 (constat VAL-04) attend les gestes de l'utilisateur (quitter 3.1.0 / 3.2.0 / 3.2.1, second lancement, tableau des gestes). La phase 33 démarre en parallèle sur décision de l'orchestrateur (vague 1 de la 33 indépendante du constat, cf. ROADMAP « Execution Order »).
 
 ## Accumulated Context
 
