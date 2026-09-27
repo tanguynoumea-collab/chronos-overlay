@@ -108,6 +108,13 @@ public class CompositionRootTests
         // 33-05 (TOK-02) : le VM est inscrit SANS fabrique en production — c'est le conteneur qui injecte IEtatReconstruction
         // (paramètre optionnel, dernière position). Un faux en phase Reconstruction prouve l'injection : le texte s'affiche.
         services.AddSingleton<IEtatReconstruction>(_ => new FakeEtatReconstruction { Phase = PhaseReconstruction.Reconstruction, FichiersTotal = 3 });
+        // 35-02 (ACC-01 / D-35-08) : les cinq lignes Historique d'App.xaml.cs — le conteneur injecte dans MainViewModel l'ouvreur ET
+        // le VM singleton de la fenêtre (paramètres optionnels, sans fabrique) : la carte des réglages pilote la MÊME instance.
+        services.AddSingleton(TimeZoneInfo.Local);
+        services.AddSingleton<ISourceHistorique>(sp => new SourceHistoriqueDisque(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<TimeZoneInfo>()));
+        services.AddSingleton<IReglagesHistorique>(sp => new ReglagesHistoriqueSurDisque(sp.GetRequiredService<SettingsService>()));
+        services.AddSingleton<HistoriqueViewModel>();
+        services.AddSingleton<IOuvreurHistorique>(sp => new OuvreurHistorique(() => new HistoriqueWindow(sp.GetRequiredService<HistoriqueViewModel>())));
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MarqueurDisposable>();   // marqueur pour prouver la disposition
@@ -120,6 +127,8 @@ public class CompositionRootTests
         // TOK-02 : IEtatReconstruction a bien été injecté dans le VM par le conteneur (pas de fabrique, pas d'argument nommé).
         Assert.True(provider.GetRequiredService<MainViewModel>().AfficherReconstruction, "le conteneur doit injecter IEtatReconstruction dans MainViewModel");
         Assert.Equal("reconstruction des tokens — 0 / 3 fichiers", provider.GetRequiredService<MainViewModel>().TexteReconstruction);
+        // ACC-01 : la carte F1 et la fenêtre partagent LE singleton HistoriqueViewModel (synchronisation par construction).
+        Assert.Same(provider.GetRequiredService<HistoriqueViewModel>(), provider.GetRequiredService<MainViewModel>().Historique);
 
         // EXA-01 : le décorateur de persistance est bien en TÊTE de chaîne, pas enterré au milieu.
         Assert.NotNull(provider.GetRequiredService<IUsageProvider>());

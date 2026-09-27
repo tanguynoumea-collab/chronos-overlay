@@ -5,7 +5,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Chronos.Models;
 using Chronos.Services;
+using Chronos.Services.Historique;
 using Chronos.ViewModels;
+using Chronos.ViewModels.Historique;
 using Chronos.Views;
 using Xunit;
 using WindowState = Chronos.Models.WindowState; // lève l'ambiguïté avec System.Windows.WindowState
@@ -57,7 +59,8 @@ public class ReglagesBindingTests
     /// </summary>
     private static (SettingsWindow fenetre, MainViewModel vm) MonterReglages(
         bool sondeActivee, StatutServeur? statutCinqHeures = null,
-        FakeEtatJournal? journal = null, FakeClock? clock = null)
+        FakeEtatJournal? journal = null, FakeClock? clock = null,
+        HistoriqueViewModel? historique = null, IOuvreurHistorique? ouvreur = null)
     {
         var paths = TempPaths();
         var settings = new SettingsService(paths);
@@ -71,7 +74,7 @@ public class ReglagesBindingTests
             settings,
             new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
-            new FakeAuthStatus(), new FakeEtatServeur(), journal);
+            new FakeAuthStatus(), new FakeEtatServeur(), journal, ouvreurHistorique: ouvreur, historique: historique);
 
         // Le statut est appliqué AVANT le montage : les bindings s'évaluent alors une seule fois, sur
         // l'état final, et le test ne dépend pas d'un second aller-retour de Dispatcher.
@@ -277,6 +280,130 @@ public class ReglagesBindingTests
         Assert.True(vm.AlerteJournal);
         Assert.Equal(Visibility.Visible, pastille.Visibility);
         Assert.StartsWith("journal muet depuis 16 min", vm.TexteEtatJournal);
+    }
+
+    // --- ACC-01 (35-02) : carte F1 « Historique d'utilisation » — fusion avec le journal, même HistoriqueViewModel que la fenêtre ---
+
+    /// <summary>Le VM de la fenêtre Historique tel que la DI le fournit (singleton), sur réglages en mémoire et fuseau Paris.</summary>
+    private static (HistoriqueViewModel vm, ReglagesHistoriqueMemoire reglages) NouvelHistorique(FakeClock clock)
+    {
+        var tz = BornesPlage.FuseauParisPourTests();
+        var reglages = new ReglagesHistoriqueMemoire();
+        var vm = new HistoriqueViewModel(new FakeSourceHistorique(tz), new FakeUiDispatcher { OnUiThread = true }, clock, tz, reglages);
+        return (vm, reglages);
+    }
+
+    /// <summary>Remonte de <paramref name="d"/> jusqu'à l'enfant direct de <paramref name="panneau"/> qui le contient.</summary>
+    private static UIElement EnfantDirect(Panel panneau, DependencyObject d)
+    {
+        while (VisualTreeHelper.GetParent(d) is { } parent && !ReferenceEquals(parent, panneau)) d = parent;
+        return Assert.IsAssignableFrom<UIElement>(d);
+    }
+
+    /// <summary>Visible au sens résolu : l'élément ET tous ses ancêtres jusqu'à la racine ont <c>Visibility.Visible</c>.</summary>
+    private static bool EstAffiche(UIElement e, DependencyObject racine)
+    {
+        for (DependencyObject? d = e; d is not null && !ReferenceEquals(d, racine); d = VisualTreeHelper.GetParent(d))
+            if (d is UIElement u && u.Visibility != Visibility.Visible) return false;
+        return true;
+    }
+
+    [WpfFact]
+    public void La_carte_Historique_remplace_la_carte_du_journal()
+    {
+        var clock = new FakeClock(Now);
+        var (historique, _) = NouvelHistorique(clock);
+        var journal = new FakeEtatJournal { DerniereEcriture = Now, RelevesEcrits = 1 };
+        var (fenetre, _) = MonterReglages(sondeActivee: false, journal: journal, clock: clock,
+                                          historique: historique, ouvreur: new FakeOuvreurHistorique());
+        var racine = (FrameworkElement)fenetre.Content!;
+        var textes = TousLesTextBlocks(racine).ToList();
+
+        var titre = Assert.Single(textes, t => t.Text == "Historique d'utilisation");
+        Assert.DoesNotContain(textes, t => (t.Text ?? "").Contains("Journal des relevés"));
+        Assert.DoesNotContain(textes, t => (t.Text ?? "").Contains("sans interface"));
+        Assert.IsType<TextBlock>(fenetre.FindName("LigneEtatJournal"));
+        Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleJournal"));
+
+        var carte = Assert.IsType<Border>(fenetre.FindName("CarteHistorique"));
+        Assert.True(EstAffiche(carte, racine));
+        Assert.True(EstAffiche(titre, racine));
+        Assert.Equal(((SolidColorBrush)fenetre.FindResource("Accent")).Color, Assert.IsType<SolidColorBrush>(carte.BorderBrush).Color);
+        Assert.Equal(new Thickness(1.5), carte.BorderThickness);
+
+        // DONNÉES : Connexion Claude → Sonde d'en-têtes → Historique d'utilisation (la carte vient JUSTE après la sonde).
+        var panneau = Assert.IsAssignableFrom<Panel>(VisualTreeHelper.GetParent(carte));
+        var carteSonde = EnfantDirect(panneau, (DependencyObject)fenetre.FindName("InterrupteurSonde"));
+        Assert.Equal(panneau.Children.IndexOf(carteSonde) + 1, panneau.Children.IndexOf(carte));
+
+        var mention = Assert.Single(textes, t => t.Text == "Aussi : double-clic au centre du cadran");
+        Assert.True(EstAffiche(mention, racine));
+    }
+
+    [WpfFact]
+    public void La_carte_Historique_pilote_le_meme_style_que_la_fenetre()
+    {
+        var clock = new FakeClock(Now);
+        var (historique, reglages) = NouvelHistorique(clock);
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: new FakeOuvreurHistorique());
+
+        Assert.Same(historique, vm.Historique);   // MÊME instance que la fenêtre : aucun état de style dupliqué (D-35-08)
+
+        var tuiles = Assert.IsType<Button>(fenetre.FindName("PuceStyleTuiles"));
+        Assert.Same(historique.ChoisirStyleCommand, tuiles.Command);
+        Assert.Equal(HistoriqueStyleSemaine.Tuiles, tuiles.CommandParameter);
+        tuiles.Command!.Execute(tuiles.CommandParameter);
+        Assert.Equal(HistoriqueStyleSemaine.Tuiles, historique.Style);
+        Assert.Equal(HistoriqueStyleSemaine.Tuiles, reglages.Lire().HistoriqueStyleSemaine);
+
+        historique.ChoisirStyleCommand.Execute(HistoriqueStyleSemaine.Simplifie);   // comme le sélecteur de la fenêtre
+        Purger(fenetre);
+
+        var simplifie = Assert.IsType<Button>(fenetre.FindName("PuceStyleSimplifie"));
+        Assert.Equal(true, simplifie.Tag);
+        Assert.Equal(false, tuiles.Tag);
+        var bordure = Assert.IsType<Border>(simplifie.Template.FindName("puce", simplifie));
+        Assert.Equal(((SolidColorBrush)fenetre.FindResource("Accent")).Color, Assert.IsType<SolidColorBrush>(bordure.BorderBrush).Color);
+    }
+
+    [WpfFact]
+    public void Le_bouton_Ouvrir_ouvre_la_fenetre()
+    {
+        var clock = new FakeClock(Now);
+        var (historique, _) = NouvelHistorique(clock);
+        var ouvreur = new FakeOuvreurHistorique();
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: ouvreur);
+
+        var bouton = Assert.IsType<Button>(fenetre.FindName("BoutonOuvrirHistorique"));
+        Assert.Equal("Ouvrir", bouton.Content);
+        Assert.Same(vm.OuvrirHistoriqueCommand, bouton.Command);
+        Assert.True(EstAffiche(bouton, (FrameworkElement)fenetre.Content!));
+        bouton.Command!.Execute(null);
+        Assert.Equal(1, ouvreur.Ouvertures);
+
+        // Sans Historique ni journal injectés (tests historiques) : la carte entière reste masquée.
+        var (nue, _) = MonterReglages(sondeActivee: false);
+        Assert.Equal(Visibility.Collapsed, Assert.IsType<Border>(nue.FindName("CarteHistorique")).Visibility);
+    }
+
+    [WpfFact]
+    public void Le_sous_texte_dit_le_jour_d_ouverture_du_journal_ou_rien()
+    {
+        var clock = new FakeClock(Now);
+        var (historique, _) = NouvelHistorique(clock);
+        var journal = new FakeEtatJournal { JournalOuvertLe = new DateTimeOffset(2026, 9, 27, 6, 7, 10, TimeSpan.Zero) };
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock,
+                                           historique: historique, ouvreur: new FakeOuvreurHistorique());
+
+        Assert.Equal("hebdo / 5 h / tokens · journal du 27 sept. 2026", vm.SousTexteHistorique);
+        Assert.Equal(vm.SousTexteHistorique, Assert.IsType<TextBlock>(fenetre.FindName("SousTexteHistorique")).Text);
+
+        journal.JournalOuvertLe = null;   // inconnu : le segment est OMIS, jamais inventé
+        vm.ApplySnapshot(SnapshotSimple());
+        Purger(fenetre);
+
+        Assert.Equal("hebdo / 5 h / tokens", vm.SousTexteHistorique);
+        Assert.Equal("hebdo / 5 h / tokens", Assert.IsType<TextBlock>(fenetre.FindName("SousTexteHistorique")).Text);
     }
 
 }

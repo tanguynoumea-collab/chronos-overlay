@@ -12,4 +12,5 @@ public sealed class FakeEtatJournal : IEtatJournal
     public DateTimeOffset? DerniereEcriture { get; set; }
     public string? DerniereErreur { get; set; }
     public int RelevesEcrits { get; set; }
+    public DateTimeOffset? JournalOuvertLe { get; set; }
 }

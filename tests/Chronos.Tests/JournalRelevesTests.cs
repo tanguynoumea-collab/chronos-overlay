@@ -240,6 +240,65 @@ public class JournalRelevesTests : IDisposable
         Assert.Equal(new BilanRetention(0, 0, 0), new JournalReleves(Path.Combine(_dir, "inexistant"), _clock).Purger());
     }
 
+    // --- ACC-01 (35-02) : « journal ouvert le » — amorcé hors du thread UI, posé à la première écriture, le plus ANCIEN gagne ---
+
+    private static readonly DateTimeOffset Aout3 = new(2026, 08, 03, 10, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void L_amorce_lit_la_premiere_ligne_valide_du_plus_ancien_fichier_mensuel()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(Path.Combine(_dir, "releves-2026-08.jsonl"), "{pas du json\n");   // illisible : ignorée, pas « ouverture »
+        var ecrivain = Journal();
+        Assert.True(ecrivain.AjouterReleve(Releve(Aout3)));
+        Assert.True(ecrivain.AjouterReleve(Releve(new DateTimeOffset(2026, 09, 20, 10, 0, 0, TimeSpan.Zero))));
+        Assert.True(File.Exists(Path.Combine(_dir, "releves-2026-09.jsonl")));
+
+        var j = Journal();                    // un autre processus : n'a rien écrit, ne sait rien
+        Assert.Null(j.JournalOuvertLe);
+        j.AmorcerJournalOuvertLe();
+
+        Assert.Equal(Aout3, j.JournalOuvertLe);
+        Assert.Equal(Aout3, LecteurJournal.JournalOuvertLe(_dir));
+    }
+
+    [Fact]
+    public void Dossier_vide_inconnu_puis_la_premiere_ecriture_pose_l_ouverture_et_dossier_absent_ne_leve_pas()
+    {
+        Directory.CreateDirectory(_dir);
+        var j = Journal();
+        j.AmorcerJournalOuvertLe();
+        Assert.Null(j.JournalOuvertLe);       // inconnu : jamais inventé
+
+        var t1 = new DateTimeOffset(2026, 09, 27, 9, 55, 0, TimeSpan.Zero);
+        Assert.True(j.AjouterReleve(Releve(t1)));
+        Assert.Equal(t1, j.JournalOuvertLe);
+
+        var absent = new JournalReleves(Path.Combine(_dir, "inexistant"), _clock);
+        absent.AmorcerJournalOuvertLe();
+        Assert.Null(absent.JournalOuvertLe);
+        Assert.Null(LecteurJournal.JournalOuvertLe(Path.Combine(_dir, "inexistant")));
+    }
+
+    [Fact]
+    public void Une_amorce_qui_revient_apres_l_ecriture_du_demarrage_garde_le_plus_ancien()
+    {
+        var j = Journal();
+        var t1 = new DateTimeOffset(2026, 09, 27, 9, 55, 0, TimeSpan.Zero);
+        Assert.True(j.AjouterEvenement(new EvenementJournal(t1, TypeEvenement.Demarrage)));   // StartAsync écrit `demarrage` d'abord
+        Assert.Equal(t1, j.JournalOuvertLe);
+
+        j.RetenirJournalOuvertLe(null);                       // amorce qui a lu le dossier AVANT l'écriture : n'efface rien
+        Assert.Equal(t1, j.JournalOuvertLe);
+        j.RetenirJournalOuvertLe(t1 + TimeSpan.FromHours(1)); // plus récent : jamais retenu
+        Assert.Equal(t1, j.JournalOuvertLe);
+        j.RetenirJournalOuvertLe(Aout3);                      // plus ancien : retenu
+        Assert.Equal(Aout3, j.JournalOuvertLe);
+
+        j.AmorcerJournalOuvertLe();                           // relit t1 sur le disque : garde Aout3
+        Assert.Equal(Aout3, j.JournalOuvertLe);
+    }
+
     // --- Seuils dérivés ---
 
     [Fact]
