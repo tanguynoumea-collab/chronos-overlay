@@ -179,6 +179,7 @@ public class PistesHistoriqueTests
             var dps = type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
                 .Where(f => f.FieldType == typeof(DependencyProperty))
                 .Select(f => (DependencyProperty)f.GetValue(null)!)
+                .Where(dp => typeof(PisteBase).IsAssignableFrom(dp.OwnerType))   // les DP des pistes, pas celles héritées de FrameworkElement
                 .ToList();
             Assert.NotEmpty(dps);
 
@@ -221,7 +222,7 @@ public class PistesHistoriqueTests
         var (fA0, fA1) = (Fr(trouA.Debut, d.Plage), Fr(trouA.Fin!.Value, d.Plage));
         Assert.Equal(fA0, Nombres(trous[0])[0], 3);
         Assert.Equal(fA1, Nombres(trous[0])[1], 3);
-        Assert.Equal(Fr(Utc(22, 21), d.Plage), Nombres(trous[0])[0], 2);
+        Assert.True(Math.Abs(Fr(Utc(22, 21), d.Plage) - Nombres(trous[0])[0]) <= 0.001);   // ± 0,001 de la fraction de 21:00Z
 
         // Aucun palier de rampe n'entre dans l'INTÉRIEUR strict d'un trou.
         var paliers = Lignes(piste, "palier ");
@@ -232,7 +233,7 @@ public class PistesHistoriqueTests
             foreach (var l in paliers)
             {
                 var n = Nombres(l);
-                Assert.False(n[0] < t1 - 1e-6 && n[1] > t0 + 1e-6, $"palier dans un trou : {l}");
+                Assert.False(n[0] < t1 - 0.001 && n[1] > t0 + 0.001, $"palier dans un trou : {l}");   // la trace arrondit à 3 décimales
             }
         }
 
