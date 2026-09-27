@@ -63,7 +63,7 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 - [x] **TOK-03**: La mise à jour est **incrémentale par curseurs** (`curseurs.json` : chemin → offset de la dernière ligne
   complète, taille, mtime) : seuls les fichiers dont (taille, mtime) ont changé sont relus depuis leur offset ; un fichier
   raccourci ou renommé est réingéré de zéro et ses tranches réécrites (pas ajoutées) ; la reprise après arrêt est idempotente.
-- [ ] **TOK-04**: Les tranches UTC sont **rendues en heure locale** correctement aux changements d'heure (25 h le 25/10/2026,
+- [x] **TOK-04**: Les tranches UTC sont **rendues en heure locale** correctement aux changements d'heure (25 h le 25/10/2026,
   23 h le 28/03/2027) — testé ; les tranches antérieures au plus vieux transcript sont « hors couverture », un mois purgé par
   Claude Code est « transcripts absents », jamais « zéro token ».
 - [ ] **TOK-05**: **Aucun pourcentage dérivé de tokens** : une garde structurelle de test interdit à tout type de la couche
@@ -178,7 +178,7 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | TOK-01 | Phase 33 | Complete |
 | TOK-02 | Phase 33 | Pending |
 | TOK-03 | Phase 33 | Complete |
-| TOK-04 | Phase 33 | Pending |
+| TOK-04 | Phase 33 | Complete |
 | TOK-05 | Phase 33 | Pending |
 | HIS-01 | Phase 34 | Pending |
 | HIS-02 | Phase 34 | Pending |
