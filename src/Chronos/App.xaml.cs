@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Windows;
 using Chronos.Services;
 using Chronos.Services.Historique;
+using Chronos.Services.Historique.Tokens;
 using Chronos.ViewModels;
 using Chronos.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -437,6 +438,18 @@ public partial class App : Application
             clock: sp.GetRequiredService<IClock>()));                // version : lue de l'assembly (null ici)
         services.AddHostedService(sp => sp.GetRequiredService<JournalisationUsageProvider>());
 
+        // TOK-01..03 (phase 33) — les agrégats de tokens : magasin mensuel, index d'ids (mémoire d'idempotence) et reconstruction de fond.
+        // Hosted service inscrit AVANT RefreshOrchestrator (démarrage dans l'ordre d'inscription, arrêt en ordre inverse) : le thread
+        // BelowNormal reçoit l'annulation et fait son dernier flush AVANT que la tête ne s'arrête. Dossier = HistoriqueDir (à côté du
+        // journal, jamais en dur) ; racine = ProjectsRoot, en LECTURE SEULE stricte. IndexMessages n'existait pas encore dans le graphe :
+        // il est construit ici, explicitement, pour que la reconstruction et les tests partagent le même dossier.
+        services.AddSingleton(sp => new MagasinAgregats(sp.GetRequiredService<ChronosPaths>().HistoriqueDir, sp.GetRequiredService<IClock>()));
+        services.AddSingleton(sp => new IndexMessages(sp.GetRequiredService<ChronosPaths>().HistoriqueDir, sp.GetRequiredService<IClock>()));
+        services.AddSingleton(sp => new ReconstructionTokens(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<MagasinAgregats>(),
+                                                             sp.GetRequiredService<IndexMessages>(), sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IEtatReconstruction>(sp => sp.GetRequiredService<ReconstructionTokens>());   // le VM et le diagnostic ne voient que l'état (TOK-02)
+        services.AddHostedService(sp => sp.GetRequiredService<ReconstructionTokens>());
+
         // Le decorateur EXA-01 reste en TETE, et il est desormais LA COUCHE DE DOCTRINE de la chaine
         // (phase 19) : la sonde herite gratuitement de la persistance du dernier releve exact, et c'est
         // cette couche — seule a detenir horloge, magasin ET source d'activite — qui statue sur l'age de
@@ -483,8 +496,10 @@ public partial class App : Application
             // comportement du widget aurait rouvert l'écart dès la phase suivante.
             // `machine` est sauté par argument NOMMÉ : la production conserve son repli réel (phase 20).
             moniteurSessions: sp.GetRequiredService<SessionMonitor>(),
-            // CPT-02 — les deux magasins persistants RÉELS (mêmes instances que la chaîne) : âge de la dernière écriture,
-            // dernière erreur, « journal muet depuis N min » dans [Magasins persistants].
-            magasins: new IEtatMagasin[] { sp.GetRequiredService<LastExactStore>(), sp.GetRequiredService<JournalReleves>() }));
+            // CPT-02 — les TROIS magasins persistants RÉELS (mêmes instances que la chaîne) : âge de la dernière écriture,
+            // dernière erreur, « journal muet depuis N min » dans [Magasins persistants] ; le troisième est celui des agrégats (TOK-01).
+            magasins: new IEtatMagasin[] { sp.GetRequiredService<LastExactStore>(), sp.GetRequiredService<JournalReleves>(), sp.GetRequiredService<MagasinAgregats>() },
+            // TOK-02 — l'état de la reconstruction (même instance que le service hébergé) : N / M fichiers, phase, dernier fichier, périmètre.
+            reconstruction: sp.GetRequiredService<IEtatReconstruction>()));
     }
 }

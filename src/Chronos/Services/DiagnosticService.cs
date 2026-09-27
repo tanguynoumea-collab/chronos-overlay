@@ -4,7 +4,9 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Chronos.Models;
+using Chronos.Models.Historique.Tokens;
 using Chronos.Services.Historique;
+using Chronos.Services.Historique.Tokens;
 using Chronos.Text;
 
 namespace Chronos.Services;
@@ -36,6 +38,7 @@ public sealed class DiagnosticService
     private readonly IInventaireMachine _machine;
     private readonly SessionMonitor? _moniteurSessions;
     private readonly IReadOnlyList<IEtatMagasin>? _magasins;
+    private readonly IEtatReconstruction? _reconstruction;
     private readonly DateTimeOffset _demarrage;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
@@ -74,13 +77,17 @@ public sealed class DiagnosticService
     /// lancement sur l'écriture de la veille, ce qui n'est pas « muet alors que Chronos tourne ». OPTIONNEL et en DERNIÈRE
     /// position à dessein ; repli = l'instant de construction du rapport (≈ démarrage, le diagnostic étant un singleton
     /// construit au lancement). Les tests injectent un démarrage ancien ou récent pour épingler la règle.</param>
+    /// <param name="reconstruction">TOK-02 — progression et état de la reconstruction des agrégats de tokens (phase, N / M fichiers,
+    /// dernier fichier, dernière erreur), en ENTIERS. OPTIONNEL et en DERNIÈRE position à dessein (même protocole que les précédents) ;
+    /// null dans les tests qui ne s'y intéressent pas : la ligne du magasin des agrégats et le périmètre se disent quand même.</param>
     public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
                              SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
                              IInventaireMachine? machine = null,
                              SessionMonitor? moniteurSessions = null,
                              IReadOnlyList<IEtatMagasin>? magasins = null,
-                             DateTimeOffset? demarrageProcessus = null)
+                             DateTimeOffset? demarrageProcessus = null,
+                             IEtatReconstruction? reconstruction = null)
     {
         _tokenReader = tokenReader;
         _paths = paths;
@@ -93,6 +100,7 @@ public sealed class DiagnosticService
         _moniteurSessions = moniteurSessions;   // pas de repli : voir le XML-doc ci-dessus
         _magasins = magasins;
         _demarrage = demarrageProcessus ?? clock.UtcNow;   // D-32-21 : référence basse de « journal muet »
+        _reconstruction = reconstruction;
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -453,7 +461,21 @@ public sealed class DiagnosticService
         {
             sb.AppendLine("  Processus Chronos : relevé impossible (" + ex.GetType().Name + " : " + ex.Message + ")");
         }
-        sb.AppendLine("  " + NomsMagasins.AgregatsTokens + " : aucun (phase 33)");
+        // TOK-01/CPT-02 — troisième magasin : les agrégats de tokens (fichier du mois UTC courant), même moule que le journal.
+        var fichierTokensDuMois = Path.Combine(_paths.HistoriqueDir, MagasinAgregats.NomFichier(_clock.UtcNow));
+        sb.AppendLine("  " + LigneMagasin(NomsMagasins.AgregatsTokens, fichierTokensDuMois,
+            Directory.Exists(_paths.HistoriqueDir) ? "fichier du mois" : "dossier"));
+        // TOK-02 — où en est la reconstruction, en ENTIERS (jamais une fraction : la barre est l'affaire de la fenêtre Historique), et le
+        // PÉRIMÈTRE mot pour mot (D-33-23) : ces tokens sont un comptage local partiel, jamais un pourcentage du forfait.
+        if (_reconstruction is { } rec)
+        {
+            sb.AppendLine("    Reconstruction : " + LibellePhase(rec.Phase) + " — " + rec.FichiersTraites + " / " + rec.FichiersTotal + " fichiers"
+                          + " · semaine courante : " + (rec.SemaineCouranteDisponible ? "complète" : "en cours")
+                          + (rec.DernierFichier is { } dernier ? " · dernier fichier : " + dernier : ""));
+            sb.AppendLine("    Fichiers disparus : " + rec.FichiersDisparus + " · lignes ignorées : " + rec.LignesIgnorees + " · ids connus : " + rec.IdsConnus);
+            if (rec.DerniereErreur is { } erreurRec) sb.AppendLine("    ÉCHEC : " + erreurRec);
+        }
+        sb.AppendLine("    Périmètre : " + LigneAgregat.Perimetre);
         sb.AppendLine();
 
         // 4) Résultat effectivement affiché (via le composite réel)
@@ -702,6 +724,17 @@ public sealed class DiagnosticService
             ? $"treated.json — répondue : attente à {Heure(cause.Attente)}, puis travail observé sur la même source (réversible)"
             : "treated.json — répondue (réversible)",
         _ => "un filtre non nommé",
+    };
+
+    /// <summary>TOK-02 — la phase de la reconstruction en mots du §4 (vocabulaire unique fenêtre / réglages / diagnostic / docs).</summary>
+    private static string LibellePhase(PhaseReconstruction phase) => phase switch
+    {
+        PhaseReconstruction.JamaisLancee => "jamais lancée",
+        PhaseReconstruction.Reconstruction => "reconstruction en cours",
+        PhaseReconstruction.Incremental => "à jour (incrémental)",
+        PhaseReconstruction.Arretee => "arrêtée",
+        PhaseReconstruction.EnEchec => "EN ÉCHEC",
+        _ => phase.ToString(),
     };
 
     // Heure LOCALE à la seconde (D-30-11) : le relevé travaille à la seconde, « 16:00 > 16:00 » serait illisible.
