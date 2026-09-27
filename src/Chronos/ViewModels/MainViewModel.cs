@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Threading;
 using Chronos.Models;
 using Chronos.Models.Historique.Tokens;
 using Chronos.Services;
@@ -39,6 +40,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IEtatServeur? _etatServeur;
     private readonly IEtatJournal? _journal;       // JRN-04 : ce que le journal des relevés dit de lui-même (optionnel)
     private readonly IEtatReconstruction? _reconstruction;   // TOK-02 : ce que la reconstruction des agrégats dit d'elle-même (optionnel, bandeau F2 en phase 34)
+    private readonly IOuvreurHistorique? _ouvreurHistorique;   // ACC-02 : ouvre / ramène la fenêtre Historique (optionnel)
     private readonly DateTimeOffset _demarrage;    // JRN-04 / D-32-21 : référence basse de « muet » (instant de construction du VM)
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
@@ -148,8 +150,72 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ShowPercent => !ShowCountdown;
     partial void OnShowCountdownChanged(bool value) => OnPropertyChanged(nameof(ShowPercent));
 
-    /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic au centre du cadran).</summary>
+    /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic au centre du cadran, à l'échéance
+    /// de l'arbitre — <see cref="ClicCentre"/>).</summary>
     public void ToggleCenterMode() => ShowCountdown = !ShowCountdown;
+
+    // ACC-02 / D-35-06 : l'arbitre PUR décide (simple clic = bascule à l'échéance, double = Historique) ; la minuterie
+    // one-shot n'est qu'un réveil. 500 ms = défaut Windows, remplacé par le délai réel lu par la vue (GetDoubleClickTime).
+    private ArbitreClicCentre _arbitreClic = new(TimeSpan.FromMilliseconds(500));
+    private DispatcherTimer? _minuterieClic;
+
+    /// <summary>Délai de double-clic du système, lu par la VUE (P/Invoke) et transmis ici ; ignoré s'il n'est pas positif.</summary>
+    public void DefinirDelaiDoubleClic(TimeSpan delai)
+    {
+        if (delai > TimeSpan.Zero) _arbitreClic = new ArbitreClicCentre(delai);
+    }
+
+    /// <summary>
+    /// ACC-02 — clic au centre du cadran, avec le <c>ClickCount</c> de WPF (délai ET rectangle système déjà appliqués).
+    /// Un simple clic ARME la bascule, qui n'a lieu qu'à l'échéance du délai de double-clic (≈ 0,5 s, coût assumé) ;
+    /// un double-clic la désarme et ouvre l'Historique : jamais deux bascules, jamais une bascule avant l'ouverture
+    /// (sauf le cas limite de l'échéance traitée avant le second clic — une bascule au plus, Pitfall 7).
+    /// </summary>
+    public void ClicCentre(int clickCount)
+    {
+        switch (_arbitreClic.Clic(clickCount, _clock.UtcNow))
+        {
+            case ActionClicCentre.OuvrirHistorique:
+                _minuterieClic?.Stop();
+                _ouvreurHistorique?.Ouvrir();
+                break;
+            case ActionClicCentre.Rien:
+                ArmerMinuterieClic(_arbitreClic.Delai);
+                break;
+        }
+    }
+
+    // Créée ICI, au premier clic, sur le thread UI — jamais dans le ctor (Pitfall 4 : les tests construisent le VM en [Fact]).
+    private void ArmerMinuterieClic(TimeSpan intervalle)
+    {
+        if (_minuterieClic is null)
+        {
+            _minuterieClic = new DispatcherTimer();
+            _minuterieClic.Tick += (_, _) =>
+            {
+                _minuterieClic.Stop();
+                EcheanceClicCentre();
+                // Minuterie à la granularité du système, parfois un peu en avance : on réarme pour le reste, un simple
+                // clic ne se perd jamais.
+                if (_arbitreClic.EnAttente) ArmerMinuterieClic(_arbitreClic.Restant(_clock.UtcNow) + TimeSpan.FromMilliseconds(1));
+            };
+        }
+
+        _minuterieClic.Stop();
+        _minuterieClic.Interval = intervalle;
+        _minuterieClic.Start();
+    }
+
+    /// <summary>Échéance de la minuterie (ou appel direct des tests, horloge injectée) : bascule si l'arbitre le décide.</summary>
+    internal void EcheanceClicCentre()
+    {
+        if (_arbitreClic.Echeance(_clock.UtcNow) == ActionClicCentre.Basculer) ToggleCenterMode();
+    }
+
+    /// <summary>ACC-01 / ACC-02 — ouvre ou ramène la fenêtre Historique (bouton « Ouvrir » de la carte des réglages).
+    /// Sans ouvreur injecté (tests), ne fait rien.</summary>
+    [RelayCommand]
+    private void OuvrirHistorique() => _ouvreurHistorique?.Ouvrir();
 
     // Mode d'affichage du cadran : false = Normal (défaut, 2 anneaux : hebdo + timeline 24 h), true = Étendu
     // (3 anneaux). Bindé aux Visibility des groupes d'anneaux (MainWindow.xaml). Persisté dans settings.json.
@@ -260,7 +326,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// compilent sans une retouche. Même protocole d'extension qu'au plan 17-05 pour <c>IAuthStatus</c>,
     /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
     /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position, puis
-    /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui.
+    /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui, puis <paramref name="ouvreurHistorique"/> (ACC-02, 35-02).
     /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
@@ -270,7 +336,8 @@ public sealed partial class MainViewModel : ObservableObject
         ISessionsController sessions, IAuthStatus authStatus,
         IEtatServeur? etatServeur = null,
         IEtatJournal? journal = null,
-        IEtatReconstruction? reconstruction = null)
+        IEtatReconstruction? reconstruction = null,
+        IOuvreurHistorique? ouvreurHistorique = null)
     {
         _ui = ui;
         _clock = clock;
@@ -284,6 +351,7 @@ public sealed partial class MainViewModel : ObservableObject
         _statusLineSetup = statusLineSetup;
         _oauthLogin = oauthLogin;
         _sessions = sessions;
+        _ouvreurHistorique = ouvreurHistorique;   // ACC-02 : optionnel, en fin de liste (motif 32-05 / 33-05)
         _settings = settings.Load();
 
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).

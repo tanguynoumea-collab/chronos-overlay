@@ -50,6 +50,11 @@ internal static class NativeMethods
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
 
+    // ACC-02 : délai de double-clic de l'utilisateur (ms), réglage Windows. P/Invoke plutôt que
+    // SystemInformation.DoubleClickTime : WinForms n'est pas référencé par le projet.
+    [DllImport("user32.dll")]
+    internal static extern uint GetDoubleClickTime();
+
     // Rectangle PHYSIQUE de la fenêtre (centre fenêtre pour le calcul de coin — contourne Window.Left/Top cassés).
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);

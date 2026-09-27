@@ -21,6 +21,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;          // MVVM : la vue reçoit son VM par injection
         _vm = viewModel;
+
+        // ACC-02 : le délai de double-clic de l'UTILISATEUR (réglage Windows) arbitre le clic au centre ; 500 ms si illisible.
+        var ms = Interop.NativeMethods.GetDoubleClickTime();
+        viewModel.DefinirDelaiDoubleClic(System.TimeSpan.FromMilliseconds(ms > 0 ? ms : 500));
         _topmostGuard = topmostGuard;
         _controller = controller;
 
@@ -62,11 +66,12 @@ public partial class MainWindow : Window
         _controller.SnapToNearestCorner();   // snap AU RETOUR de DragMove (pas de handler MouseUp — Pitfall 3)
     }
 
-    // Clic au CENTRE : bascule pourcentages ↔ temps avant reset. On marque l'événement Handled pour
-    // qu'il ne remonte PAS au handler de fenêtre (Cadran_MouseLeftButtonDown) → pas de DragMove parasite.
+    // Clic au CENTRE (ACC-02) : la vue ne fait que TRANSMETTRE le compte de clics — simple clic = bascule
+    // pourcentages ↔ temps à l'échéance du délai de double-clic ; double-clic = Historique (l'arbitre pur décide).
+    // Handled : l'événement ne remonte PAS au handler de fenêtre (Cadran_MouseLeftButtonDown) → pas de DragMove depuis le centre.
     private void CentreHit_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        (DataContext as MainViewModel)?.ToggleCenterMode();
+        (DataContext as MainViewModel)?.ClicCentre(e.ClickCount);
         e.Handled = true;
     }
 
