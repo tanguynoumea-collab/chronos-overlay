@@ -155,6 +155,55 @@ public class MagasinAgregatsTests : IDisposable
         Assert.Null(magasin.DerniereErreur);
     }
 
+    /// <summary>
+    /// La PREUVE de l'atomicité (mutation m2 du plan : un <c>WriteAllText</c> direct à la place du <c>Move</c> reste vert
+    /// sur les autres tests). Fait mesuré le 2026-09-27 (.NET 8, Windows 11) : face à un lecteur qui tient le fichier en
+    /// <c>FileShare.ReadWrite | Delete</c> — le partage même du lecteur tolérant —, <c>File.Move(overwrite)</c> ÉCHOUE
+    /// (<c>UnauthorizedAccessException</c>) et l'ancien fichier reste intact, alors qu'une écriture directe RÉUSSIT et fait
+    /// lire le nouveau contenu au lecteur déjà ouvert (<c>FileShare.None</c> ne discrimine pas : les deux échouent).
+    /// Ce que le magasin garantit donc : échec PROPRE (false, erreur consignée, aucun temp, octets intacts, mois toujours
+    /// sale), jamais un fichier partiel sous un lecteur ; le lot suivant rattrape.
+    /// </summary>
+    [Fact]
+    public void Un_lecteur_concurrent_fait_echouer_l_ecriture_proprement_sans_fichier_partiel()
+    {
+        var magasin = Magasin();
+        magasin.Appliquer(Delta(S1, "claude-opus-5", false, 1, 1, 1, 1, true));
+        magasin.Appliquer(Delta(S1, "claude-opus-5", true, 1, 1, 1, 1, true));
+        magasin.Appliquer(Delta(S2, "claude-opus-5", false, 1, 1, 1, 1, true));
+        Assert.True(magasin.EcrireMoisSales());
+        var chemin = magasin.CheminDuMois(S1);
+        var avant = Sha256(chemin);
+
+        magasin.Appliquer(Delta(S2, "claude-sonnet-5", false, 1, 1, 1, 1, true));
+
+        bool ok;
+        string luSousLecteur;
+        using (var lecteur = new FileStream(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        {
+            ok = magasin.EcrireMoisSales();
+            using var sr = new StreamReader(lecteur, Encoding.UTF8);
+            luSousLecteur = sr.ReadToEnd();
+        }
+
+        Assert.False(ok, "Une réécriture sous un lecteur ouvert doit échouer proprement, jamais réussir en place.");
+        Assert.NotNull(magasin.DerniereErreur);
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp-*"));
+        Assert.Equal(avant, Sha256(chemin));   // octets intacts
+        Assert.Contains(Septembre, magasin.MoisSales);   // toujours sale : le lot suivant rattrape
+
+        // Le lecteur déjà ouvert n'a vu que l'ANCIEN état, complet : 3 lignes, toutes lisibles.
+        var lignes = luSousLecteur.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(3, lignes.Length);
+        Assert.All(lignes, l => Assert.True(LigneAgregat.Parser(l, out _), l));
+
+        // Lecteur parti : la réécriture passe, l'erreur s'efface, les 4 tranches sont là.
+        Assert.True(magasin.EcrireMoisSales());
+        Assert.Null(magasin.DerniereErreur);
+        Assert.Equal(4, Lignes(chemin).Length);
+        Assert.Empty(magasin.MoisSales);
+    }
+
     [Fact]
     public void Deux_ecritures_du_meme_etat_donnent_des_octets_identiques()
     {

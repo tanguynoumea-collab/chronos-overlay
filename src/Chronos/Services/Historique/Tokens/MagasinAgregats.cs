@@ -29,7 +29,11 @@ namespace Chronos.Services.Historique.Tokens;
 /// <para><see cref="IEtatMagasin"/> (CPT-02) : troisième magasin de la section « [Magasins persistants] » du diagnostic ;
 /// <see cref="Chemin"/> est le DOSSIER ; <see cref="DerniereEcriture"/> = mtime du fichier après le <c>Move</c> (D-32-05),
 /// le chiffre même qu'une sonde hors arbre lit. Un échec d'écriture pose <see cref="DerniereErreur"/> et rend false,
-/// jamais d'exception vers l'appelant. Entiers seulement (garde TOK-05). Aucune E/S hors du dossier injecté.
+/// jamais d'exception vers l'appelant. <b>Fait mesuré</b> (2026-09-27, .NET 8, Windows 11) : un lecteur qui tient le
+/// fichier — même en <c>FileShare.ReadWrite | Delete</c>, le partage du lecteur tolérant — fait ÉCHOUER le <c>Move</c>
+/// (<c>UnauthorizedAccessException</c>) ; l'ancien fichier reste intact, le mois reste sale, le lot suivant rattrape.
+/// C'est le prix de « jamais un fichier partiel sous un lecteur » (phase 23 : 290 pertes sur 500 avec un Move nu face à
+/// des lecteurs ; ici la perte est un report, pas une corruption). Entiers seulement (garde TOK-05). Aucune E/S hors du dossier injecté.
 /// Type NEUTRE (aucun WPF). Un seul verrou, sections courtes : <see cref="Appliquer"/> vient du thread de fond,
 /// <see cref="TranchesDuMois"/> du lecteur.</para>
 /// </summary>
