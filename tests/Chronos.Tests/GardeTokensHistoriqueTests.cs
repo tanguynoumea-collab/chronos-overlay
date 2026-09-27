@@ -226,9 +226,13 @@ public class GardeTokensHistoriqueTests
     // ------------------------------------------------------------------------------------------------
 
     /// <summary>Couleur hexadécimale ou taille écrite en chiffres dans un XAML de l'historique : tout passe par
-    /// <c>{StaticResource Histo…}</c>. (<c>Viewport="0,0,4,4"</c> n'existe que dans <c>DesignTokens.xaml</c>, hors périmètre.)</summary>
+    /// <c>{StaticResource Histo…}</c>. (<c>Viewport="0,0,4,4"</c> n'existe que dans <c>DesignTokens.xaml</c>, hors périmètre.)
+    /// 34-08 : les DP numériques NOMMÉES des pistes (<c>OpaciteTrou</c>, <c>EpaisseurFine</c>, <c>LongueurTiretReset</c>, <c>Plafond</c>,
+    /// <c>NbBandes</c>…) sont aussi couvertes — la mutation n4 de 34-06 (<c>OpaciteTrou="0.5"</c>) passait sous l'ancienne garde. Les
+    /// ressources locales nommées des vues (<c>&lt;sys:Double x:Key="HistoDecalageInfobulle"&gt;8&lt;/sys:Double&gt;</c>) ne sont pas des
+    /// attributs : elles restent permises (motif 34-05).</summary>
     private static readonly Regex InterditXaml = new(
-        "#[0-9A-Fa-f]{6,8}|(FontSize|Height|MinHeight|StrokeThickness|Thickness|Opacity)=\"[0-9]",
+        "#[0-9A-Fa-f]{6,8}|(FontSize|Height|MinHeight|StrokeThickness|Thickness|Opacity|Opacite\\w*|Epaisseur\\w*|Longueur\\w*|Plafond|NbBandes)=\"[0-9]",
         RegexOptions.Compiled);
 
     /// <summary>Pinceau ou couleur fabriqués en C# dans une piste : la piste reçoit ses brosses par DP liée à un token.
@@ -247,8 +251,9 @@ public class GardeTokensHistoriqueTests
         var xamls = Directory.Exists(vues) ? Directory.EnumerateFiles(vues, "*.xaml", SearchOption.AllDirectories).ToList() : new List<string>();
         var cs = Directory.Exists(pistes) ? Directory.EnumerateFiles(pistes, "*.cs", SearchOption.AllDirectories).ToList() : new List<string>();
 
-        // En vague 1 les deux dossiers n'existent pas encore : la liste est vide et la garde passe, prête à rougir
-        // dès qu'une vue triche. Anti-mutisme relevé en 34-08 (HIS-06) : ≥ 3 xaml et ≥ 7 cs.
+        // Anti-mutisme (34-08) : une garde qui ne lit rien passerait toujours — la fenêtre, les deux vues et les sept pistes.
+        Assert.True(xamls.Count >= 3, $"la garde ne voit pas les XAML de la fenêtre Historique ({xamls.Count}, attendu >= 3) : {vues}");
+        Assert.True(cs.Count >= 7, $"la garde ne voit pas les pistes de l'historique ({cs.Count}, attendu >= 7) : {pistes}");
 
         var infractions = new List<string>();
         foreach (var (fichiers, motif) in new[] { (xamls, InterditXaml), (cs, InterditCs) })
