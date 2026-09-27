@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -312,5 +313,170 @@ public sealed class ReconstructionTokensTests : IDisposable
         Assert.Null(service.DerniereErreur);
         Assert.False(Directory.Exists(paths.HistoriqueDir) && Directory.EnumerateFiles(paths.HistoriqueDir, "tokens-*.jsonl").Any(),
                      "aucun fichier d'agrégats ne doit naître d'une passe vide");
+    }
+
+    // --- Task 3 : les preuves de fond — le thread, l'annulation, la reprise sur les octets, la panne entre deux étapes ---
+
+    /// <summary>Pitfall 1, écrit en test : la priorité et le nom sont capturés SUR le thread qui lit les fichiers. Une continuation
+    /// asynchrone (pool) rendrait Normal et un autre nom — c'est la mutation (a).</summary>
+    [Fact]
+    public async Task Le_thread_de_fond_est_IsBackground_BelowNormal_nomme_et_StartAsync_rend_la_main_avant_la_fin()
+    {
+        var (paths, _) = Contexte("thread");
+        using var atteint = new ManualResetEventSlim(false);
+        using var liberer = new ManualResetEventSlim(false);
+        (ThreadPriority Priorite, bool Fond, string? Nom)? capture = null;
+        var service = Service(paths, apresFichier: _ =>
+        {
+            if (capture is not null) return;
+            capture = (Thread.CurrentThread.Priority, Thread.CurrentThread.IsBackground, Thread.CurrentThread.Name);
+            atteint.Set();
+            liberer.Wait(TimeSpan.FromSeconds(10));   // le premier fichier reste « en cours » tant que le test ne libère pas
+        });
+
+        var chrono = Stopwatch.StartNew();
+        await service.StartAsync(CancellationToken.None);
+        chrono.Stop();
+
+        Assert.True(chrono.ElapsedMilliseconds < 50, $"StartAsync a pris {chrono.ElapsedMilliseconds} ms : la passe ne doit pas s'exécuter inline");
+        Assert.True(atteint.Wait(TimeSpan.FromSeconds(10)), "le thread de fond n'a pas atteint le premier fichier");
+        Assert.Equal(1, service.FichiersTraites);   // le callback est encore bloqué : rien n'a avancé au-delà du premier fichier
+
+        liberer.Set();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await service.StopAsync(cts.Token);
+
+        Assert.Equal((ThreadPriority.BelowNormal, true, ReconstructionTokens.NomThread), capture);
+        Assert.Equal(PhaseReconstruction.Arretee, service.Phase);
+        service.Dispose();
+    }
+
+    [Fact]
+    public void L_annulation_entre_deux_fichiers_est_honoree_en_moins_de_200_ms_et_un_dernier_flush_a_lieu()
+    {
+        var (paths, racine) = Contexte("annulation", peupler: false);
+        var source = File.ReadAllBytes(Fixture("fork-copie", "session-a.jsonl"));
+        var proj = Path.Combine(racine, "proj");
+        Directory.CreateDirectory(proj);
+        for (var i = 0; i < 300; i++)
+        {
+            var chemin = Path.Combine(proj, "c" + i.ToString("000", System.Globalization.CultureInfo.InvariantCulture) + ".jsonl");
+            File.WriteAllBytes(chemin, source);
+            File.SetLastWriteTimeUtc(chemin, (Now - TimeSpan.FromMinutes(i + 1)).UtcDateTime);   // mtimes décroissants distincts
+        }
+        using var cts = new CancellationTokenSource();
+        var appels = 0;
+        var service = Service(paths, apresFichier: _ => { if (++appels == 3) cts.Cancel(); });
+
+        var chrono = Stopwatch.StartNew();
+        var bilan = service.ExecuterUnePasse(cts.Token);
+        chrono.Stop();
+
+        Assert.True(chrono.ElapsedMilliseconds < 200, $"l'annulation a été honorée en {chrono.ElapsedMilliseconds} ms");
+        Assert.False(bilan.Complete);
+        Assert.Equal(300, service.FichiersTotal);
+        Assert.InRange(service.FichiersTraites, 3, 4);
+        Assert.NotEqual(PhaseReconstruction.EnEchec, service.Phase);
+
+        // Dernier flush : les curseurs des fichiers lus sont là ; une passe annulée ne garantit aucune couverture.
+        Assert.True(File.Exists(CheminCurseurs(paths)));
+        Assert.Equal(service.FichiersTraites, LireCurseurs(CheminCurseurs(paths)).Count);
+        Assert.True(!File.Exists(CheminCouverture(paths)) || CouvertureTokens.Charger(CheminCouverture(paths)).Intervalles.Count == 0,
+                    "une passe annulée ne doit garantir aucun intervalle de couverture");
+    }
+
+    /// <summary>TOK-03 prouvée de bout en bout : annulée après k fichiers, puis une instance NEUVE (nouveaux magasin et index, même
+    /// dossier) — les octets de <c>tokens-2026-09.jsonl</c> sont ceux d'une passe ininterrompue, et les k fichiers déjà persistés ne
+    /// sont pas rouverts.</summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void Une_reprise_apres_annulation_donne_des_fichiers_identiques_octet_pour_octet(int k)
+    {
+        var (reference, _) = Contexte("reference-" + k);
+        Assert.True(Service(reference).ExecuterUnePasse(CancellationToken.None).Complete);
+        var shaReference = Sha256(CheminTokens(reference));
+        var lignesIdsReference = File.ReadAllLines(Path.Combine(reference.HistoriqueDir, "ids-2026-09.jsonl")).Length;
+
+        var (paths, _) = Contexte("reprise-" + k);
+        using var cts = new CancellationTokenSource();
+        var appels = 0;
+        var premiere = Service(paths, apresFichier: _ => { if (++appels == k) cts.Cancel(); });
+        var bilan1 = premiere.ExecuterUnePasse(cts.Token);
+        Assert.False(bilan1.Complete);
+        Assert.Equal(k, premiere.FichiersTraites);
+
+        var seconde = Service(paths);
+        var bilan2 = seconde.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.True(bilan2.Complete);
+        Assert.Equal(shaReference, Sha256(CheminTokens(paths)));
+        Assert.Equal(6, Curseurs.Charger(CheminCurseurs(paths), paths.ProjectsRoot).Count);
+        Assert.Equal(6 - k, seconde.FichiersOuvertsDernierePasse);   // les k fichiers persistés par la première instance sont « inchangés »
+        Assert.True(File.ReadAllLines(Path.Combine(paths.HistoriqueDir, "ids-2026-09.jsonl")).Length >= lignesIdsReference);
+        Assert.Equal(13, seconde.IdsConnus);   // des lignes en plus sont possibles, jamais un id compté deux fois
+    }
+
+    [Fact]
+    public void Une_panne_juste_apres_l_ecriture_des_ids_puis_une_reprise_donnent_les_memes_agregats()
+        => PanneEntreDeuxEtapes(rang: 1, etapeAttendue: "ids", fichierJamaisEcrit: CheminTokens);
+
+    [Fact]
+    public void Une_panne_juste_apres_l_ecriture_des_agregats_puis_une_reprise_donnent_les_memes_agregats()
+        => PanneEntreDeuxEtapes(rang: 2, etapeAttendue: "agregats", fichierJamaisEcrit: CheminCurseurs);
+
+    // D-33-14 prouvé par l'ordre observé des étapes ET par les octets après reprise.
+    private void PanneEntreDeuxEtapes(int rang, string etapeAttendue, Func<ChronosPaths, string> fichierJamaisEcrit)
+    {
+        var (reference, _) = Contexte("reference-panne-" + etapeAttendue);
+        Assert.True(Service(reference).ExecuterUnePasse(CancellationToken.None).Complete);
+        var shaReference = Sha256(CheminTokens(reference));
+
+        var (paths, _) = Contexte("panne-" + etapeAttendue);
+        var appels = 0;
+        string? etapeVue = null;
+        var premiere = Service(paths, apresEtapeFlush: etape =>
+        {
+            if (++appels != rang) return;
+            etapeVue = etape;
+            throw new IOException("panne simulée");
+        });
+
+        var bilan1 = premiere.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.False(bilan1.Complete);
+        Assert.Equal(PhaseReconstruction.EnEchec, premiere.Phase);
+        Assert.NotNull(premiere.DerniereErreur);
+        Assert.Contains("IOException", premiere.DerniereErreur);
+        Assert.Equal(etapeAttendue, etapeVue);
+        Assert.False(File.Exists(fichierJamaisEcrit(paths)), fichierJamaisEcrit(paths) + " n'aurait jamais dû être écrit");
+
+        var seconde = Service(paths);
+        var bilan2 = seconde.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.True(bilan2.Complete);
+        Assert.Equal(PhaseReconstruction.Incremental, seconde.Phase);
+        Assert.Equal(shaReference, Sha256(CheminTokens(paths)));
+        Assert.Equal(13, seconde.IdsConnus);
+    }
+
+    [Fact]
+    public void Un_jeton_deja_annule_ne_lit_rien_et_ne_compte_rien()
+    {
+        var (paths, _) = Contexte("deja-annule");
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var service = Service(paths);
+
+        var bilan = service.ExecuterUnePasse(cts.Token);
+
+        Assert.False(bilan.Complete);
+        Assert.Equal(0, bilan.FichiersOuverts);
+        Assert.Equal(0, service.FichiersTraites);
+        Assert.Equal(6, service.FichiersTotal);
+        Assert.False(File.Exists(CheminTokens(paths)));
+        Assert.NotEqual(PhaseReconstruction.EnEchec, service.Phase);
+        Assert.Null(service.DerniereErreur);
     }
 }
