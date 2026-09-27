@@ -55,8 +55,8 @@ public class GardeTokensHistoriqueTests
         ("HistoGris",      "#5A5960"),
     };
 
-    /// <summary>Les 38 tokens de taille (D-34-02) : corps §2, hauteurs de pistes §2.2 / §2.3, épaisseurs, opacités,
-    /// rayon, tailles de fenêtre et gabarits de mise en page.</summary>
+    /// <summary>Les 45 tokens de taille (D-34-02, puis D-35-14 : +7 pour la vue 4 semaines) : corps §2, hauteurs de pistes
+    /// §2.2 / §2.3 / §2.4, épaisseurs, opacités, rayon, tailles de fenêtre et gabarits de mise en page.</summary>
     private static readonly (string Cle, double Valeur)[] TaillesHisto =
     {
         ("HistoCorpsTitre", 16),
@@ -97,6 +97,15 @@ public class GardeTokensHistoriqueTests
         ("HistoHauteurDefaut", 610),
         ("HistoHauteurAnnotations", 18),
         ("HistoHauteurEnTete", 92),
+        // Vue 4 semaines (DESIGN_PLAN §2.4, frame E, D-35-14) : opacités des fantômes S-1 / S-2 / S-3, hauteur NIVEAU, colonne
+        // des étiquettes, rangée de couverture et pas haut-à-haut entre deux rangées.
+        ("HistoOpaciteSemaine1", 0.8),
+        ("HistoOpaciteSemaine2", 0.45),
+        ("HistoOpaciteSemaine3", 0.25),
+        ("HistoHauteurNiveauQuatreSemaines", 250),
+        ("HistoLargeurEtiquettesSemaines", 140),
+        ("HistoHauteurCouvertureSemaine", 10),
+        ("HistoPasCouvertureSemaines", 16),
     };
 
     private static string Racine()

@@ -579,6 +579,84 @@ public class PistesHistoriqueTests
         Assert.DoesNotContain(tuiles, l => l.Contains(" grise "));
     }
 
+    // ------------------------------------------------------------------------------------------------
+    // 35-04 — PisteQuatreSemaines (DESIGN_PLAN §2.4, D-35-13)
+    // ------------------------------------------------------------------------------------------------
+
+    /// <summary>Les quatre semaines du scénario (S-3 … S), lues par la façade de démonstration comme le ferait le VM.</summary>
+    private static DonneesQuatreSemaines QuatreSemaines() => new SourceHistoriqueDemonstration(Tz)
+        .LireQuatreSemaines(BornesPlage.QuatreSemaines(Now, ScenariosHistorique.RepereHebdo, null, Tz), Now);
+
+    /// <summary>La piste 4 semaines telle que la vue la pose : gris « épuisé » #5A5960, rampe du thème réel « minuit », opacités des tokens.</summary>
+    private static PisteQuatreSemaines PisteQuatre(DonneesQuatreSemaines d)
+    {
+        var piste = new PisteQuatreSemaines
+        {
+            Plage = d.Courante.Plage, Semaines = d.Semaines, Rampe = ThemeCatalog.ByKey("minuit"),
+            Gris = B(Color.FromRgb(0x5A, 0x59, 0x60)), Grille = B(Colors.DarkSlateGray),
+            EpaisseurFine = 1, EpaisseurEscalier = 2.2, OpaciteS1 = 0.8, OpaciteS2 = 0.45, OpaciteS3 = 0.25,
+        };
+        Rendre(piste, 700, 250);
+        return piste;
+    }
+
+    [WpfFact]
+    public void Quatre_semaines_fantomes_gris_aux_opacites_des_tokens()
+    {
+        var piste = PisteQuatre(QuatreSemaines());
+
+        // S-1 : le journal s'ouvre le lun. 14 sept. — un escalier gris à 0,8.
+        var s1 = Assert.Single(Lignes(piste, "semaine 1 "));
+        var n = Nombres(s1);
+        Assert.True(n[1] >= 1, s1);
+        Assert.Equal(0.8, n[2], 3);
+        Assert.True(n[3] > 0 && n[3] <= 1, s1);
+        Assert.EndsWith(" gris", s1);
+
+        // S-2 et S-3 sont antérieures au journal : rien n'est dessiné (rien n'est inventé).
+        Assert.Empty(Lignes(piste, "semaine 2 "));
+        Assert.Empty(Lignes(piste, "semaine 3 "));
+
+        // S : la courante, en rampe (le scénario ne l'épuise pas).
+        Assert.Contains(Lignes(piste, "bande "), l => l.Contains(" rampe "));
+
+        // Une grille, pas quatre.
+        foreach (var f in new[] { "grille 0.000", "grille 0.500", "grille 1.000" })
+            Assert.Single(piste.TraceRendu, l => l == f);
+    }
+
+    [WpfFact]
+    public void La_courante_est_peinte_en_dernier()
+    {
+        var piste = PisteQuatre(QuatreSemaines());
+        var trace = piste.TraceRendu;
+        var derniereSemaine = trace.FindLastIndex(l => l.StartsWith("semaine ", StringComparison.Ordinal));
+        var premiereBande = trace.FindIndex(l => l.StartsWith("bande ", StringComparison.Ordinal));
+        Assert.True(derniereSemaine >= 0, "aucun fantôme tracé");
+        Assert.True(premiereBande >= 0, "aucune bande de la courante tracée");
+        Assert.True(derniereSemaine < premiereBande, $"la courante doit être peinte en dernier (semaine @{derniereSemaine}, bande @{premiereBande})");
+    }
+
+    [WpfFact]
+    public void La_semaine_courante_epuisee_est_un_plateau_gris()
+    {
+        var piste = PisteQuatre(FixturesQuatreSemaines.SemaineCouranteEpuisee(QuatreSemaines(), Tz));
+        var paliers = Lignes(piste, "palier ");
+        Assert.Contains(paliers, l => l.EndsWith(" 1.000 gris", StringComparison.Ordinal));
+        Assert.DoesNotContain(paliers, l => l.EndsWith(" 1.000 rampe", StringComparison.Ordinal));
+    }
+
+    [WpfFact]
+    public void La_semaine_un_epuisee_monte_a_cent_pour_cent_en_gris()
+    {
+        var piste = PisteQuatre(FixturesQuatreSemaines.SemaineUnEpuisee(QuatreSemaines(), Tz));
+        var s1 = Assert.Single(Lignes(piste, "semaine 1 "));
+        var n = Nombres(s1);
+        Assert.Equal(0.8, n[2], 3);
+        Assert.Equal(1.0, n[3], 3);
+        Assert.EndsWith(" gris", s1);
+    }
+
     [WpfFact]
     public void Toutes_les_pistes_survivent_a_une_taille_nulle_et_a_des_listes_vides()
     {

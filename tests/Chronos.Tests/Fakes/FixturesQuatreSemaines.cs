@@ -32,4 +32,24 @@ internal static class FixturesQuatreSemaines
         var epuisee = AnalyseReleves.Analyser(lecture with { Releves = releves }, plage.Fin, RateLimitHeaderUsageProvider.CadenceNominale);
         return d with { Semaines = new[] { d.Semaines[0], d.Semaines[1], epuisee, d.Semaines[3] } };
     }
+
+    /// <summary>jeu. 24 sept. 2026 10:00 Paris : à partir de ce relevé, la semaine COURANTE est à 100 % et le serveur refuse (35-04).</summary>
+    public static readonly DateTimeOffset DebutCouranteEpuisee = new(2026, 9, 24, 8, 0, 0, TimeSpan.Zero);
+
+    /// <summary>
+    /// 35-04 — comme <see cref="SemaineUnEpuisee"/>, mais sur la semaine courante S (<c>Semaines[3]</c>) à partir de
+    /// <see cref="DebutCouranteEpuisee"/> ; l'analyse se fait à <c>InstantDAnalyse(d.LueA, plage)</c> (la semaine est en cours).
+    /// </summary>
+    public static DonneesQuatreSemaines SemaineCouranteEpuisee(DonneesQuatreSemaines d, TimeZoneInfo tz)
+    {
+        ArgumentNullException.ThrowIfNull(d);
+        var plage = d.Semaines[3].Plage;
+        var lecture = ScenariosHistorique.Journal(plage, tz);
+        var releves = lecture.Releves
+            .Select(r => r.T >= DebutCouranteEpuisee ? r with { U7 = 1.0, Statut7 = StatutServeur.Rejete } : r)
+            .ToList();
+        var epuisee = AnalyseReleves.Analyser(lecture with { Releves = releves }, InstantsHistorique.InstantDAnalyse(d.LueA, plage),
+            RateLimitHeaderUsageProvider.CadenceNominale);
+        return d with { Semaines = new[] { d.Semaines[0], d.Semaines[1], d.Semaines[2], epuisee } };
+    }
 }
