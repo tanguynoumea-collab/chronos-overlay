@@ -1,0 +1,6 @@
+<Window x:Class="Chronos.Views.Reglages.ReglagesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- RED — squelette de la fenêtre de réglages v2. -->
+    <Grid/>
+</Window>

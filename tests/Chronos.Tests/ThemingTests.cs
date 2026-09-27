@@ -100,10 +100,10 @@ public class ThemingTests
         Assert.Equal("aurore", svc.Load().ThemeKey);
     }
 
-    // --- Smoke test XAML de la fenêtre de réglages (STA) ---
+    // --- Smoke test XAML de la fenêtre de réglages v2 (STA) ---
 
     [WpfFact]
-    public void SettingsWindow_se_construit_et_se_met_en_page_sans_crash()
+    public void ReglagesWindow_se_construit_et_se_met_en_page_sans_crash()
     {
         var settings = new SettingsService(TempPaths());
         var provider = new FakeUsageProvider();
@@ -115,7 +115,7 @@ public class ThemingTests
             new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
 
-        var win = new SettingsWindow(vm);
+        var win = new Chronos.Views.Reglages.ReglagesWindow(vm);
         win.Measure(new Size(1000, 1000));
         win.Arrange(new Rect(0, 0, 1000, 1000));
 

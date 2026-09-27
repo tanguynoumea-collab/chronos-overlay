@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Xunit;
 
@@ -90,5 +91,117 @@ public class GardeTokensReglagesTests
         var danger = Tokens().Descendants(Xaml + "SolidColorBrush").SingleOrDefault(e => e.Attribute(X + "Key")?.Value == "Danger");
         Assert.True(danger is not null, "DesignTokens.xaml : la brosse « Danger » manque.");
         Assert.Equal("#E8907F", danger!.Attribute("Color")?.Value, StringComparer.OrdinalIgnoreCase);
+    }
+
+    // ------------------------------------------------------------------ Fenêtre : aucune valeur en dur, une seule fusion, vocabulaire
+
+    private static string DossierReglages() => Path.Combine(Racine(), "Views", "Reglages");
+
+    private static List<string> XamlDesReglages()
+    {
+        var xamls = Directory.Exists(DossierReglages())
+            ? Directory.EnumerateFiles(DossierReglages(), "*.xaml", SearchOption.AllDirectories).ToList()
+            : new List<string>();
+        Assert.True(xamls.Count >= 1, $"la garde ne voit pas la fenêtre de réglages : {DossierReglages()}");   // anti-mutisme
+        Assert.Contains(xamls, x => Path.GetFileName(x) == "ReglagesWindow.xaml");
+        return xamls;
+    }
+
+    /// <summary>Une couleur ou une taille écrite en chiffres : tout passe par <c>{StaticResource …}</c> (DesignTokens.xaml pour les
+    /// tailles et les couleurs ; ressources locales NOMMÉES pour les épaisseurs et les rayons, motif 34-05). Les marges et
+    /// rembourrages (grille de 4 px) restent littéraux, comme dans la fenêtre Historique.</summary>
+    private static readonly Regex InterditXaml = new(
+        @"#[0-9A-Fa-f]{6,8}|\b(FontSize|Width|Height|MinWidth|MinHeight|MaxWidth|MaxHeight|StrokeThickness|BorderThickness|Opacity|CornerRadius)=""[0-9.]",
+        RegexOptions.Compiled);
+
+    [Fact]
+    public void Aucune_couleur_ni_taille_en_dur_dans_la_fenetre_de_reglages()
+    {
+        var infractions = new List<string>();
+        foreach (var fichier in XamlDesReglages())
+        {
+            var lignes = File.ReadAllLines(fichier);
+            for (var i = 0; i < lignes.Length; i++)
+                foreach (Match m in InterditXaml.Matches(lignes[i]))
+                    infractions.Add($"{Path.GetFileName(fichier)}:{i + 1}: {m.Value} — {lignes[i].Trim()}");
+        }
+
+        Assert.True(infractions.Count == 0,
+            "Réglages v2 : une couleur ou une taille est écrite EN DUR dans la fenêtre de réglages — la source unique est "
+            + "Resources/DesignTokens.xaml.\n  " + string.Join("\n  ", infractions));
+    }
+
+    /// <summary>La palette du chrome (34-01) est FUSIONNÉE une fois au niveau fenêtre — les StaticResource résolvent sans
+    /// Application — et aucune brosse n'est redéclarée localement (elle changerait de teinte en silence).</summary>
+    [Fact]
+    public void La_fenetre_fusionne_les_tokens_une_fois_et_ne_redeclare_aucune_brosse()
+    {
+        var doc = XDocument.Load(Path.Combine(DossierReglages(), "ReglagesWindow.xaml"));
+        var fusion = doc.Descendants(Xaml + "ResourceDictionary")
+            .Count(e => e.Attribute("Source")?.Value == "pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml");
+        Assert.Equal(1, fusion);
+        Assert.Empty(doc.Descendants(Xaml + "SolidColorBrush"));
+    }
+
+    /// <summary>La garde de vocabulaire de l'historique (34-08) étendue aux textes des réglages : aucun mot de projection.</summary>
+    private static readonly Regex Projection = new(@"épuisé[e]? vers|à ce rythme|projection|prévision|estim(é|ation|er)|tendance|dans \d+ ?h\b",
+                                                   RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static List<string> CodeDesReglages()
+    {
+        var fichiers = Directory.EnumerateFiles(DossierReglages(), "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+            .Append(Path.Combine(Racine(), "ViewModels", "ReglagesViewModel.cs"))
+            .ToList();
+        Assert.True(fichiers.Count >= 4, "la garde ne voit pas le code des réglages : " + fichiers.Count);
+        return fichiers;
+    }
+
+    [Fact]
+    public void Aucun_mot_de_projection_dans_les_textes_des_reglages()
+    {
+        var infractions = new List<string>();
+        foreach (var fichier in CodeDesReglages())
+        {
+            var lignes = File.ReadAllLines(fichier);
+            for (var i = 0; i < lignes.Length; i++)
+                if (Projection.Match(lignes[i]) is { Success: true } m)
+                    infractions.Add($"{Path.GetFileName(fichier)}:{i + 1}: « {m.Value} » — {lignes[i].Trim()}");
+        }
+        Assert.True(infractions.Count == 0, "un mot de projection est entré dans les réglages :\n  " + string.Join("\n  ", infractions));
+    }
+
+    /// <summary>§5 : le diagnostic vit dans la fenêtre — plus de boîte de message, et sa génération part sur le pool.</summary>
+    [Fact]
+    public void Le_diagnostic_n_ouvre_plus_de_boite_de_message_et_se_genere_sur_le_pool()
+    {
+        var fichiers = CodeDesReglages().Append(Path.Combine(Racine(), "ViewModels", "MainViewModel.cs")).ToList();
+        foreach (var fichier in fichiers)
+            Assert.DoesNotContain("MessageBox", File.ReadAllText(fichier), StringComparison.Ordinal);
+
+        var vm = File.ReadAllText(Path.Combine(Racine(), "ViewModels", "MainViewModel.cs"));
+        Assert.Contains("() => Task.Run(() => _diagnostic.BuildReportAsync())", vm, StringComparison.Ordinal);
+    }
+
+    /// <summary>L'ancienne fenêtre a disparu, et personne ne pose d'<c>Owner</c> sur les réglages : ni la vue du cadran, ni
+    /// l'ouvreur, ni la fabrique de l'App (DESIGN_PLAN §4 : la fenêtre n'est plus possédée par le cadran topmost).</summary>
+    [Fact]
+    public void L_ancienne_fenetre_a_disparu_et_personne_ne_pose_d_Owner()
+    {
+        Assert.False(File.Exists(Path.Combine(Racine(), "Views", "SettingsWindow.xaml")), "SettingsWindow.xaml doit être supprimée");
+        Assert.False(File.Exists(Path.Combine(Racine(), "Views", "SettingsWindow.xaml.cs")), "SettingsWindow.xaml.cs doit être supprimée");
+
+        var cadran = File.ReadAllText(Path.Combine(Racine(), "Views", "MainWindow.xaml.cs"));
+        Assert.DoesNotContain("Owner", cadran, StringComparison.Ordinal);
+        Assert.DoesNotContain("new ReglagesWindow", cadran, StringComparison.Ordinal);
+        Assert.DoesNotContain("SettingsWindow", cadran, StringComparison.Ordinal);
+
+        foreach (var cs in Directory.EnumerateFiles(DossierReglages(), "*.cs"))
+            Assert.DoesNotMatch(@"\bOwner\s*=", File.ReadAllText(cs));
+
+        var app = File.ReadAllLines(Path.Combine(Racine(), "App.xaml.cs"));
+        var fabrique = Assert.Single(app, l => l.Contains("new ReglagesWindow(", StringComparison.Ordinal));
+        Assert.Contains("OuvreurReglages", fabrique, StringComparison.Ordinal);
+        Assert.DoesNotContain("Owner", fabrique, StringComparison.Ordinal);
     }
 }

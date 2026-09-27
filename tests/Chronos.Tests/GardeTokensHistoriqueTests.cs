@@ -15,7 +15,7 @@ namespace Chronos.Tests;
 ///   <item>la palette du chrome des réglages (<c>Panel/Panel2/Line/Ink/Ink2/Accent/Ok</c>) promue dans
 ///         <c>DesignTokens.xaml</c> avec une valeur qui bouge d'un caractère — la fenêtre de réglages
 ///         changerait de teinte en silence ;</item>
-///   <item>la fusion du dictionnaire oubliée dans <c>SettingsWindow.xaml</c> : ses <c>StaticResource</c> ne
+///   <item>la fusion du dictionnaire oubliée dans la fenêtre de réglages : ses <c>StaticResource</c> ne
 ///         résolvent plus sans <c>Application</c> (les smoke tests rougiraient, mais tard et de loin) ;</item>
 ///   <item>un token de taille réécrit (150 → 148) : les hauteurs §2.2 / §2.3 du plan de design sont le
 ///         CONTRAT que 34-04 à 34-07 consomment par <c>{StaticResource …}</c>, sans jamais taper un chiffre.</item>
@@ -117,7 +117,8 @@ public class GardeTokensHistoriqueTests
     }
 
     private static string CheminDesignTokens() => Path.Combine(Racine(), "Resources", "DesignTokens.xaml");
-    private static string CheminSettingsWindow() => Path.Combine(Racine(), "Views", "SettingsWindow.xaml");
+    // Réglages v2 (quick 260927) : la fenêtre de réglages est désormais Views/Reglages/ReglagesWindow.xaml.
+    private static string CheminFenetreReglages() => Path.Combine(Racine(), "Views", "Reglages", "ReglagesWindow.xaml");
 
     private static XDocument Charger(string chemin)
     {
@@ -138,7 +139,7 @@ public class GardeTokensHistoriqueTests
     public void La_palette_des_reglages_est_promue_sans_changer_une_valeur()
     {
         var tokens = Charger(CheminDesignTokens());
-        var reglages = Charger(CheminSettingsWindow());
+        var reglages = Charger(CheminFenetreReglages());
 
         foreach (var (cle, couleur) in PalettePromue)
         {
@@ -149,36 +150,18 @@ public class GardeTokensHistoriqueTests
                 $"DesignTokens.xaml : « {cle} » vaut {reelle ?? "(absent)"} au lieu de {couleur} — la promotion ne doit changer AUCUNE valeur.");
 
             Assert.True(BrosseUnie(reglages, cle) is null,
-                $"SettingsWindow.xaml déclare encore localement la brosse « {cle} » : elle doit venir du dictionnaire fusionné.");
+                $"ReglagesWindow.xaml déclare localement la brosse « {cle} » : elle doit venir du dictionnaire fusionné.");
         }
 
         // La fusion au niveau fenêtre (motif MainWindow.xaml) : sans elle, les StaticResource ne résolvent pas sans Application.
         var fusion = reglages.Descendants(Xaml + "ResourceDictionary")
             .Count(e => e.Attribute("Source")?.Value == PackUriDesignTokens);
         Assert.True(fusion == 1,
-            $"SettingsWindow.xaml doit fusionner exactement une fois « {PackUriDesignTokens} » (trouvé {fusion}).");
+            $"ReglagesWindow.xaml doit fusionner exactement une fois « {PackUriDesignTokens} » (trouvé {fusion}).");
     }
 
-    [Fact]
-    public void SettingsWindow_garde_ses_douze_litteraux_et_pas_un_de_plus()
-    {
-        var texte = File.ReadAllText(CheminSettingsWindow());
-        var litteraux = Regex.Matches(texte, "#[0-9A-Fa-f]{6,8}").Select(m => m.Value.ToUpperInvariant()).ToList();
-
-        // 19 avant la promotion − 7 promues = 12 : aucune valeur ajoutée ni retirée hors des sept.
-        Assert.True(litteraux.Count == 12,
-            $"SettingsWindow.xaml contient {litteraux.Count} littéraux hexadécimaux au lieu de 12 : "
-            + string.Join(", ", litteraux));
-
-        foreach (var (cle, couleur) in PalettePromue)
-        {
-            var occurrences = litteraux.Count(l => l == couleur.ToUpperInvariant());
-            // #2C2942 (Line) reste UNE fois : la piste du Switch, hors du périmètre de la promotion.
-            var tolere = cle == "Line" ? 1 : 0;
-            Assert.True(occurrences == tolere,
-                $"SettingsWindow.xaml : l'hexadécimal {couleur} ({cle}) apparaît {occurrences} fois, attendu {tolere}.");
-        }
-    }
+    // Réglages v2 (quick 260927) : « SettingsWindow garde ses douze littéraux » est retiré avec l'ancienne fenêtre. La nouvelle
+    // n'en garde AUCUN : GardeTokensReglagesTests.Aucune_couleur_ni_taille_en_dur_dans_la_fenetre_de_reglages le prouve.
 
     [Fact]
     public void Les_tokens_couleur_de_l_historique_existent_avec_leurs_valeurs()
@@ -320,7 +303,7 @@ public class GardeTokensHistoriqueTests
 }
 
 /// <summary>
-/// Le dictionnaire des tokens se charge SEUL (sans <c>Application</c>), comme le fait <c>SettingsWindow</c> par sa fusion
+/// Le dictionnaire des tokens se charge SEUL (sans <c>Application</c>), comme le fait <c>ReglagesWindow</c> par sa fusion
 /// pack URI : un <c>sys:Double</c> mal typé, un <c>StaticResource HistoGris</c> déclaré avant sa cible ou un
 /// <c>BoolToVis</c> en double ne se voient qu'au chargement BAML — pas dans l'XML. Classe séparée : charge du BAML,
 /// donc collection sérialisée (voir <see cref="XamlWpfCollection"/>).
@@ -345,7 +328,7 @@ public class GardeTokensHistoriqueXamlTests
         Assert.True(dict["HistoHachure"] is System.Windows.Media.DrawingBrush,
             "HistoHachure doit être un DrawingBrush.");
 
-        // Les sept brosses promues résolvent aussi par le dictionnaire (c'est ce que SettingsWindow fusionne).
+        // Les sept brosses promues résolvent aussi par le dictionnaire (c'est ce que ReglagesWindow fusionne).
         Assert.True(dict["Panel"] is System.Windows.Media.SolidColorBrush panel
                     && panel.Color == System.Windows.Media.Color.FromRgb(0x15, 0x13, 0x22));
     }

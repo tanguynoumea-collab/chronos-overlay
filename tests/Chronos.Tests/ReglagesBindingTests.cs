@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -8,14 +7,16 @@ using Chronos.Services;
 using Chronos.Services.Historique;
 using Chronos.ViewModels;
 using Chronos.ViewModels.Historique;
-using Chronos.Views;
+using Chronos.Views.Reglages;
 using Xunit;
 using WindowState = Chronos.Models.WindowState; // lève l'ambiguïté avec System.Windows.WindowState
 
 namespace Chronos.Tests;
 
 /// <summary>
-/// Smoke test BAML de la fenêtre de RÉGLAGES (HDR-06, HDR-03/HDR-04).
+/// Smoke test BAML de la fenêtre de RÉGLAGES (HDR-06, HDR-03/HDR-04, JRN-04, ACC-01) — porté sur la fenêtre refondue du quick
+/// 260927-reglages-v2 (<see cref="ReglagesWindow"/>) sans perdre une assertion de fond : chaque test monte la fenêtre sur la
+/// SECTION où le plan range désormais le réglage (Données pour la sonde, Historique pour la carte F1).
 ///
 /// Ce que ces tests attrapent et que <c>dotnet build</c> ne voit pas :
 /// <list type="bullet">
@@ -35,46 +36,21 @@ namespace Chronos.Tests;
 [Collection("XAML WPF")]
 public class ReglagesBindingTests
 {
-    private static readonly DateTimeOffset Now = new(2026, 9, 12, 12, 0, 0, TimeSpan.Zero);
-
-    /// <summary>Chemins de test sous <c>Path.GetTempPath()</c> : AUCUN test n'écrit dans le vrai
-    /// <c>%APPDATA%\Chronos</c>, ni ne lit le coffre de jetons réel.</summary>
-    private static ChronosPaths TempPaths()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "ChronosReglagesTest_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        Assert.StartsWith(Path.GetTempPath(), dir);
-        return new ChronosPaths(Path.Combine(dir, "usage.json"), Path.Combine(dir, "projects"));
-    }
+    private static readonly DateTimeOffset Now = MontageReglages.Now;
 
     /// <summary>
-    /// Monte la fenêtre de réglages dans l'état voulu et met en page sa GRILLE RACINE.
-    ///
-    /// Une Window jamais affichée n'a pas de template appliqué : son <c>Content</c> n'a AUCUN parent
-    /// visuel, donc le DataContext ne se propage pas et AUCUN binding ne s'évalue (<c>Command</c> reste
-    /// null, <c>Visibility</c> reste à son défaut <c>Visible</c>) — les tests seraient verts pour de
-    /// mauvaises raisons. D'où : DataContext posé sur la racine du contenu, purge de la file du
-    /// Dispatcher (la réévaluation déclenchée par un changement de DataContext est DIFFÉRÉE), puis
-    /// Measure/Arrange. Motif du helper <c>MonterPastille</c> de <see cref="CadranBindingTests"/>.
+    /// Monte la fenêtre de réglages dans l'état voulu, sur la section voulue, et met en page sa racine (voir
+    /// <see cref="MontageReglages"/> : DataContext posé sur la racine du contenu, purge du Dispatcher, Measure/Arrange — sans quoi
+    /// les bindings ne s'évaluent pas et les tests seraient verts pour de mauvaises raisons).
     /// </summary>
-    private static (SettingsWindow fenetre, MainViewModel vm) MonterReglages(
+    private static (ReglagesWindow fenetre, MainViewModel vm) MonterReglages(
         bool sondeActivee, StatutServeur? statutCinqHeures = null,
         FakeEtatJournal? journal = null, FakeClock? clock = null,
-        HistoriqueViewModel? historique = null, IOuvreurHistorique? ouvreur = null)
+        HistoriqueViewModel? historique = null, IOuvreurHistorique? ouvreur = null,
+        SectionReglages section = SectionReglages.Donnees)
     {
-        var paths = TempPaths();
-        var settings = new SettingsService(paths);
-        settings.Save(settings.Load() with { SondeEnTetesActivee = sondeActivee });
-
-        var provider = new FakeUsageProvider();
-        var orch = new RefreshOrchestrator(provider, paths, RefreshOptions.Default); // JAMAIS démarré : aucun I/O
-        clock ??= new FakeClock(Now);
-        var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
-            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, provider, clock),
-            new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
-            new FakeAuthStatus(), new FakeEtatServeur(), journal, ouvreurHistorique: ouvreur, historique: historique);
+        var vm = MontageReglages.NouveauVm(s => s with { SondeEnTetesActivee = sondeActivee },
+                                           journal: journal, clock: clock ?? new FakeClock(Now), historique: historique, ouvreur: ouvreur);
 
         // Le statut est appliqué AVANT le montage : les bindings s'évaluent alors une seule fois, sur
         // l'état final, et le test ne dépend pas d'un second aller-retour de Dispatcher.
@@ -90,23 +66,12 @@ public class ReglagesBindingTests
                 SourceCapturedAt = Now,
             });
 
-        var fenetre = new SettingsWindow(vm);
-        var racine = (FrameworkElement)fenetre.Content!;
-        racine.DataContext = vm;
-        racine.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-        racine.Measure(new Size(400, 1400));
-        racine.Arrange(new Rect(0, 0, 400, 1400));
-        return (fenetre, vm);
+        return (MontageReglages.Monter(vm, section), vm);
     }
 
     /// <summary>Parcourt l'arbre VISUEL (seul peuplé après Arrange) et rend tous les TextBlock.</summary>
     private static IEnumerable<TextBlock> TousLesTextBlocks(DependencyObject racine)
-    {
-        if (racine is TextBlock tb) yield return tb;
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(racine); i++)
-            foreach (var t in TousLesTextBlocks(VisualTreeHelper.GetChild(racine, i)))
-                yield return t;
-    }
+        => MontageReglages.Descendants(racine).OfType<TextBlock>();
 
     /// <summary>
     /// HDR-06 — LE piège du plan, verrouillé au niveau du XAML et non du seul ViewModel : les deux
@@ -145,15 +110,17 @@ public class ReglagesBindingTests
     /// <summary>
     /// HDR-06 — le coût est ÉCRIT, noir sur blanc, là où l'utilisateur décide. La sonde est la seule
     /// source du projet qui dépense du quota pour en mesurer : le cacher ferait de Chronos un outil qui
-    /// prélève sans le dire. Si quelqu'un retire le libellé ou son chiffre, ce test tombe.
+    /// prélève sans le dire. Si quelqu'un retire le libellé ou son chiffre, ce test tombe. Il doit être
+    /// AFFICHÉ dans la section Données, pas seulement présent dans l'arbre.
     /// </summary>
     [WpfFact]
     public void Le_cout_de_la_sonde_est_ECRIT_dans_les_reglages()
     {
         var (fenetre, _) = MonterReglages(sondeActivee: true);
-        var racine = (FrameworkElement)fenetre.Content!;
+        var racine = MontageReglages.Racine(fenetre);
 
         var libelle = TousLesTextBlocks(racine)
+            .Where(t => MontageReglages.EstAffiche(t, racine))
             .Select(t => t.Text ?? "")
             .FirstOrDefault(t => t.Contains("micro-requête") && t.Contains("288"));
 
@@ -182,42 +149,7 @@ public class ReglagesBindingTests
         Assert.Contains("AUTORISÉ (avertissement)", ligneParlante.Text);
     }
 
-    /// <summary>
-    /// Le trou de la grille des réglages (phase 20). L'ancien conteneur était une <c>UniformGrid</c>
-    /// à 2 colonnes pour 3 boutons : depuis le retrait du bouton « Plafonds… » (phase 16), la cellule
-    /// bas-droite était VIDE. Le piège à connaître : <c>UniformGrid</c> ignore SILENCIEUSEMENT
-    /// <c>Grid.ColumnSpan</c> — annoter l'enfant compile, s'affiche sans erreur et ne fait RIEN. Seul
-    /// le remplacement du conteneur corrige la mise en page.
-    ///
-    /// D'où une assertion sur la LARGEUR MESURÉE et non sur la présence de l'attribut : un
-    /// <c>ColumnSpan</c> ignoré donnerait un rapport de largeurs ≈ 1, jamais &gt; 1,8. Aucun
-    /// <c>dotnet build</c> n'attrape cela.
-    /// </summary>
-    [WpfFact]
-    public void Le_bouton_Diagnostic_occupe_toute_la_largeur_et_aucun_libelle_n_est_tronque()
-    {
-        var (fenetre, _) = MonterReglages(sondeActivee: false);
-
-        var diagnostic  = Assert.IsType<Button>(fenetre.FindName("BoutonDiagnostic"));
-        var recalibrer  = Assert.IsType<Button>(fenetre.FindName("BoutonRecalibrerHebdo"));
-        var sourceTerm  = Assert.IsType<Button>(fenetre.FindName("BoutonSourceTerminal"));
-
-        Assert.Equal(Visibility.Visible, diagnostic.Visibility);
-        Assert.Equal(Visibility.Visible, recalibrer.Visibility);
-        Assert.Equal(Visibility.Visible, sourceTerm.Visibility);
-
-        // Il enjambe RÉELLEMENT les deux colonnes (ColumnSpan honoré) : plus de cellule vide.
-        Assert.True(diagnostic.ActualWidth > recalibrer.ActualWidth * 1.8,
-                    $"Diagnostic devrait enjamber les 2 colonnes : {diagnostic.ActualWidth:F1} px " +
-                    $"contre {recalibrer.ActualWidth:F1} px pour une demi-colonne");
-
-        // La cellule laisse la place aux ≈ 107 px du libellé « Recalibrer hebdo… » à FontSize=12 :
-        // c'est la mesure qui EXCLUT Columns=3 (98,7 px de cellule, 74,7 px utiles).
-        Assert.True(recalibrer.ActualWidth >= 120,
-                    $"libellé tronqué : la cellule ne fait que {recalibrer.ActualWidth:F1} px");
-        Assert.True(sourceTerm.ActualWidth > 0);
-    }
-    // --- JRN-04 (phase 32, 32-05) : carte « Journal des relevés » — dernière écriture, pastille Alerte ---
+    // --- JRN-04 (phase 32, 32-05) : ligne d'état du journal — dernière écriture, pastille Alerte ---
 
     private static UsageSnapshot SnapshotSimple() => new()
     {
@@ -231,9 +163,8 @@ public class ReglagesBindingTests
     };
 
     /// <summary>Purge la file du Dispatcher : les réévaluations de binding déclenchées par un changement de propriété
-    /// après le montage peuvent être différées (même raison qu'au montage, voir <see cref="MonterReglages"/>).</summary>
-    private static void Purger(SettingsWindow fenetre)
-        => ((FrameworkElement)fenetre.Content!).Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    /// après le montage peuvent être différées (même raison qu'au montage).</summary>
+    private static void Purger(ReglagesWindow fenetre) => MontageReglages.Purger(MontageReglages.Racine(fenetre));
 
     /// <summary>
     /// JRN-04 — la ligne d'état du journal est LIÉE au ViewModel (même texte que <c>TexteEtatJournal</c>), et ce texte porte
@@ -245,7 +176,7 @@ public class ReglagesBindingTests
     {
         var clock = new FakeClock(Now);
         var journal = new FakeEtatJournal { RelevesEcrits = 2 };
-        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock);
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock, section: SectionReglages.Historique);
 
         journal.DerniereEcriture = Now + TimeSpan.FromMinutes(1);
         clock.UtcNow = Now + TimeSpan.FromMinutes(5);
@@ -267,7 +198,7 @@ public class ReglagesBindingTests
     {
         var clock = new FakeClock(Now);
         var journal = new FakeEtatJournal { DerniereEcriture = Now, RelevesEcrits = 1 };
-        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock);
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock, section: SectionReglages.Historique);
 
         var pastille = Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleJournal"));
         Assert.False(vm.AlerteJournal);
@@ -293,21 +224,11 @@ public class ReglagesBindingTests
         return (vm, reglages);
     }
 
-    /// <summary>Remonte de <paramref name="d"/> jusqu'à l'enfant direct de <paramref name="panneau"/> qui le contient.</summary>
-    private static UIElement EnfantDirect(Panel panneau, DependencyObject d)
-    {
-        while (VisualTreeHelper.GetParent(d) is { } parent && !ReferenceEquals(parent, panneau)) d = parent;
-        return Assert.IsAssignableFrom<UIElement>(d);
-    }
-
-    /// <summary>Visible au sens résolu : l'élément ET tous ses ancêtres jusqu'à la racine ont <c>Visibility.Visible</c>.</summary>
-    private static bool EstAffiche(UIElement e, DependencyObject racine)
-    {
-        for (DependencyObject? d = e; d is not null && !ReferenceEquals(d, racine); d = VisualTreeHelper.GetParent(d))
-            if (d is UIElement u && u.Visibility != Visibility.Visible) return false;
-        return true;
-    }
-
+    /// <summary>
+    /// D-35-09 conservé : la carte « Historique d'utilisation » ABSORBE la ligne d'état du journal (plus de carte « Journal des
+    /// relevés »), porte sa bordure Accent 1,5 et la mention du double-clic. Réglages v2 : elle est désormais la PREMIÈRE carte de
+    /// la section Historique (juste après le titre et la phrase d'aide), et non plus la troisième carte de Données.
+    /// </summary>
     [WpfFact]
     public void La_carte_Historique_remplace_la_carte_du_journal()
     {
@@ -315,8 +236,8 @@ public class ReglagesBindingTests
         var (historique, _) = NouvelHistorique(clock);
         var journal = new FakeEtatJournal { DerniereEcriture = Now, RelevesEcrits = 1 };
         var (fenetre, _) = MonterReglages(sondeActivee: false, journal: journal, clock: clock,
-                                          historique: historique, ouvreur: new FakeOuvreurHistorique());
-        var racine = (FrameworkElement)fenetre.Content!;
+                                          historique: historique, ouvreur: new FakeOuvreurHistorique(), section: SectionReglages.Historique);
+        var racine = MontageReglages.Racine(fenetre);
         var textes = TousLesTextBlocks(racine).ToList();
 
         var titre = Assert.Single(textes, t => t.Text == "Historique d'utilisation");
@@ -326,18 +247,24 @@ public class ReglagesBindingTests
         Assert.IsType<System.Windows.Shapes.Ellipse>(fenetre.FindName("PastilleJournal"));
 
         var carte = Assert.IsType<Border>(fenetre.FindName("CarteHistorique"));
-        Assert.True(EstAffiche(carte, racine));
-        Assert.True(EstAffiche(titre, racine));
+        Assert.True(MontageReglages.EstAffiche(carte, racine));
+        Assert.True(MontageReglages.EstAffiche(titre, racine));
         Assert.Equal(((SolidColorBrush)fenetre.FindResource("Accent")).Color, Assert.IsType<SolidColorBrush>(carte.BorderBrush).Color);
         Assert.Equal(new Thickness(1.5), carte.BorderThickness);
 
-        // DONNÉES : Connexion Claude → Sonde d'en-têtes → Historique d'utilisation (la carte vient JUSTE après la sonde).
-        var panneau = Assert.IsAssignableFrom<Panel>(VisualTreeHelper.GetParent(carte));
-        var carteSonde = EnfantDirect(panneau, (DependencyObject)fenetre.FindName("InterrupteurSonde"));
-        Assert.Equal(panneau.Children.IndexOf(carteSonde) + 1, panneau.Children.IndexOf(carte));
+        // HISTORIQUE : titre → aide → carte « Historique d'utilisation » (la première carte de la section).
+        var section = Assert.IsType<StackPanel>(fenetre.FindName("SectionHistorique"));
+        Assert.Equal(section, VisualTreeHelper.GetParent(carte));
+        var premiereCarte = section.Children.OfType<Border>().First();
+        Assert.Same(carte, premiereCarte);
+        Assert.Equal("Historique", Assert.IsType<TextBlock>(section.Children[0]).Text);
 
         var mention = Assert.Single(textes, t => t.Text == "Aussi : double-clic au centre du cadran");
-        Assert.True(EstAffiche(mention, racine));
+        Assert.True(MontageReglages.EstAffiche(mention, racine));
+
+        // Et la section Données ne la montre plus : un réglage, un seul endroit.
+        var donnees = Assert.IsType<StackPanel>(fenetre.FindName("SectionDonnees"));
+        Assert.DoesNotContain(carte, donnees.Children.OfType<Border>());
     }
 
     [WpfFact]
@@ -345,7 +272,8 @@ public class ReglagesBindingTests
     {
         var clock = new FakeClock(Now);
         var (historique, reglages) = NouvelHistorique(clock);
-        var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: new FakeOuvreurHistorique());
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: new FakeOuvreurHistorique(),
+                                           section: SectionReglages.Historique);
 
         Assert.Same(historique, vm.Historique);   // MÊME instance que la fenêtre : aucun état de style dupliqué (D-35-08)
 
@@ -372,17 +300,18 @@ public class ReglagesBindingTests
         var clock = new FakeClock(Now);
         var (historique, _) = NouvelHistorique(clock);
         var ouvreur = new FakeOuvreurHistorique();
-        var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: ouvreur);
+        var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: ouvreur,
+                                           section: SectionReglages.Historique);
 
         var bouton = Assert.IsType<Button>(fenetre.FindName("BoutonOuvrirHistorique"));
         Assert.Equal("Ouvrir", bouton.Content);
         Assert.Same(vm.OuvrirHistoriqueCommand, bouton.Command);
-        Assert.True(EstAffiche(bouton, (FrameworkElement)fenetre.Content!));
+        Assert.True(MontageReglages.EstAffiche(bouton, MontageReglages.Racine(fenetre)));
         bouton.Command!.Execute(null);
         Assert.Equal(1, ouvreur.Ouvertures);
 
         // Sans Historique ni journal injectés (tests historiques) : la carte entière reste masquée.
-        var (nue, _) = MonterReglages(sondeActivee: false);
+        var (nue, _) = MonterReglages(sondeActivee: false, section: SectionReglages.Historique);
         Assert.Equal(Visibility.Collapsed, Assert.IsType<Border>(nue.FindName("CarteHistorique")).Visibility);
     }
 
@@ -393,7 +322,7 @@ public class ReglagesBindingTests
         var (historique, _) = NouvelHistorique(clock);
         var journal = new FakeEtatJournal { JournalOuvertLe = new DateTimeOffset(2026, 9, 27, 6, 7, 10, TimeSpan.Zero) };
         var (fenetre, vm) = MonterReglages(sondeActivee: false, journal: journal, clock: clock,
-                                           historique: historique, ouvreur: new FakeOuvreurHistorique());
+                                           historique: historique, ouvreur: new FakeOuvreurHistorique(), section: SectionReglages.Historique);
 
         Assert.Equal("hebdo / 5 h / tokens · journal du 27 sept. 2026", vm.SousTexteHistorique);
         Assert.Equal(vm.SousTexteHistorique, Assert.IsType<TextBlock>(fenetre.FindName("SousTexteHistorique")).Text);
@@ -405,5 +334,4 @@ public class ReglagesBindingTests
         Assert.Equal("hebdo / 5 h / tokens", vm.SousTexteHistorique);
         Assert.Equal("hebdo / 5 h / tokens", Assert.IsType<TextBlock>(fenetre.FindName("SousTexteHistorique")).Text);
     }
-
 }
