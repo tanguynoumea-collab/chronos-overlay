@@ -16,7 +16,7 @@ namespace Chronos.Views.Historique;
 /// indépendante, rappelée par les gestes de la phase 35.</para>
 ///
 /// <para>Aucune logique métier ici : tout est dans <see cref="HistoriqueViewModel"/>. Le code-behind ne fait que : poser le
-/// DataContext, injecter les pinceaux du thème, restaurer / persister la géométrie (bornée par <see cref="PlacementHistorique"/>,
+/// DataContext, injecter les pinceaux du thème (fenêtre et vues hébergées), restaurer / persister la géométrie (bornée par <see cref="PlacementHistorique"/>,
 /// écrite en <c>Normal</c> seulement), le drag de l'en-tête, la fermeture demandée par le VM, l'horloge du VM dans <c>Loaded</c>.</para>
 /// </summary>
 public partial class HistoriqueWindow : Window
@@ -32,9 +32,15 @@ public partial class HistoriqueWindow : Window
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
         DataContext = vm;
 
-        // Pinceaux du thème actif (Alerte, TickReset, …) → résout les DynamicResource de la fenêtre et des futures pistes (motif MainWindow).
+        // Pinceaux du thème actif (Alerte, …) → résout les DynamicResource de la fenêtre (motif MainWindow) ET des deux vues : chaque vue
+        // fusionne DesignTokens.xaml (elle se monte seule en test), dont le repli statique « Alerte » serait trouvé AVANT celui de la
+        // fenêtre par un DynamicResource posé dans la vue. Une entrée locale de la vue prime sur son dictionnaire fusionné (34-08).
         foreach (var kv in vm.Theme.BrushTokens())
+        {
             Resources[kv.Key] = kv.Value;
+            VueSemaine.Resources[kv.Key] = kv.Value;
+            VueJour.Resources[kv.Key] = kv.Value;
+        }
 
         RestaurerGeometrie();
 

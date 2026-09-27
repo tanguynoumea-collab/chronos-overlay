@@ -284,10 +284,12 @@
                 </StackPanel>
             </Border>
 
-            <!-- ================= Corps : une vue à la fois (stubs remplis par 34-06 / 34-07) ================= -->
+            <!-- ================= Corps : une vue à la fois (34-06 / 34-07) ================= -->
+            <!-- Nommées : le code-behind leur injecte aussi les pinceaux du thème (chaque vue fusionne DesignTokens.xaml pour se monter
+                 seule ; sans cette injection, son repli statique « Alerte » ombrerait l'ambre du thème actif — 34-08). -->
             <Grid Grid.Row="2" Margin="16,6,16,12">
-                <hv:VueSemaineView Visibility="{Binding IsVueSemaine, Converter={StaticResource BoolToVis}}"/>
-                <hv:VueJourView Visibility="{Binding IsVueJour, Converter={StaticResource BoolToVis}}"/>
+                <hv:VueSemaineView x:Name="VueSemaine" Visibility="{Binding IsVueSemaine, Converter={StaticResource BoolToVis}}"/>
+                <hv:VueJourView x:Name="VueJour" Visibility="{Binding IsVueJour, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Grid>
     </Border>
