@@ -115,10 +115,10 @@ fusionnent jamais et ne partagent ni axe ni palette ; un trou n'est jamais inter
 
 ### Accès, diagnostic, livraison (ACC)
 
-- [ ] **ACC-01**: La fenêtre de réglages gagne, dans la section DONNÉES, la carte **« Historique d'utilisation »** (F1) : bouton
+- [x] **ACC-01**: La fenêtre de réglages gagne, dans la section DONNÉES, la carte **« Historique d'utilisation »** (F1) : bouton
   « Ouvrir », sous-texte « hebdo / 5 h / tokens · journal du <date> · dernière écriture il y a N min », sélecteur de style
   Pistes / Simplifié / Tuiles, mention du double-clic, et la carte d'état « Dernière écriture du journal » avec l'alerte > 15 min.
-- [ ] **ACC-02**: Un **double-clic au centre du cadran** (`CentreHit`) ouvre ou ramène au premier plan la fenêtre Historique, sans
+- [x] **ACC-02**: Un **double-clic au centre du cadran** (`CentreHit`) ouvre ou ramène au premier plan la fenêtre Historique, sans
   déclencher deux fois la bascule % / temps du simple clic (temporisation ou annulation) ; le drag et le clic droit sont inchangés.
 - [ ] **ACC-03**: Le diagnostic gagne une section **« Journal d'historique »** : chemin des fichiers, âge de la dernière écriture,
   relevés du jour, événements récents, état de la reconstruction des tokens (N / M), taille des fichiers, nombre d'instances.
@@ -188,8 +188,8 @@ Rempli par le roadmapper le 2026-09-27 (phases 32 à 35, numérotation continue 
 | HIS-06 | Phase 34 | Complete |
 | HIS-07 | Phase 34 | Complete |
 | HIS-08 | Phase 34 | Complete |
-| ACC-01 | Phase 35 | Pending |
-| ACC-02 | Phase 35 | Pending |
+| ACC-01 | Phase 35 | Complete |
+| ACC-02 | Phase 35 | Complete |
 | ACC-03 | Phase 35 | Pending |
 | ACC-04 | Phase 35 | Pending |
 | VAL-04 | Phase 32 | Pending |
