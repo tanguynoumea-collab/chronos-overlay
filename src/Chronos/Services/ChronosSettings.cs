@@ -21,6 +21,11 @@ public enum CadranStyle { Arcs, Braises, Fusible, Maree, Volets }
 /// Loi commune : mouvement réservé à l'attente ; « à toi » (respire) vs « tour fini » (fixe) ; déduit = fantôme.</summary>
 public enum SessionStyle { Pastilles, Marge, Jetons, Sonar, Facade, Etagere, Annonciateur, Veilleurs }
 
+/// <summary>Style de la vue Semaine de forfait de la fenêtre Historique (DESIGN_PLAN §2.2) : <see cref="Pistes"/> (A, défaut :
+/// NIVEAU / RYTHME / TOKENS / COUVERTURE), <see cref="Simplifie"/> (B : NIVEAU / TOKENS / COUVERTURE), <see cref="Tuiles"/>
+/// (C : NIVEAU / FENÊTRES 5 H / RYTHME / TOKENS / COUVERTURE). Sérialisé en TEXTE ; absent d'un ancien settings.json → Pistes.</summary>
+public enum HistoriqueStyleSemaine { Pistes, Simplifie, Tuiles }
+
 /// <summary>
 /// Schéma persisté de settings.json (FEN-07). Décision verrouillée : le COIN + le nom du
 /// moniteur (<see cref="MonitorDeviceName"/>) sont la VÉRITÉ pour restaurer la position ;
@@ -106,4 +111,15 @@ public sealed record ChronosSettings
     /// <summary>Styles « en rangée » (Sonar / Jetons / Veilleurs) disposés en COLONNE plutôt qu'en rangée
     /// horizontale (défaut false = horizontal). N'a d'effet que sur ces trois styles.</summary>
     public bool VerticalLayout { get; init; }
+
+    /// <summary>Style de la vue Semaine de forfait de la fenêtre Historique (phase 34, HIS-08). Défaut
+    /// <see cref="HistoriqueStyleSemaine.Pistes"/> (A) ; sérialisé en TEXTE ; absent d'un ancien settings.json → Pistes.</summary>
+    public HistoriqueStyleSemaine HistoriqueStyleSemaine { get; init; } = HistoriqueStyleSemaine.Pistes;
+
+    /// <summary>Position / taille de la fenêtre Historique en DIU (DESIGN_PLAN §2). null = défaut 920 × 610 centré.
+    /// Ne persister qu'en <c>WindowState.Normal</c> (jamais la géométrie d'une fenêtre agrandie ou réduite).</summary>
+    public double? HistoriqueX { get; init; }
+    public double? HistoriqueY { get; init; }
+    public double? HistoriqueWidth { get; init; }
+    public double? HistoriqueHeight { get; init; }
 }
