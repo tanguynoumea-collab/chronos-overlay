@@ -1,5 +1,7 @@
 using Chronos.Models;
+using Chronos.Models.Historique.Tokens;
 using Chronos.Services;
+using Chronos.Services.Historique.Tokens;
 using Xunit;
 
 namespace Chronos.Tests;
@@ -1351,7 +1353,7 @@ public class DiagnosticServiceTests : IDisposable
         Assert.True(vue.Contains("réelle") || vue.Contains("virtualisée"), vue);
         Assert.EndsWith("aucune écriture (fichier absent)", Ligne(report, "dernier exact : "));
         Assert.Contains("aucune écriture (dossier absent)", Ligne(report, "journal des relevés : "));
-        Assert.Contains("agrégats de tokens : aucun (phase 33)", report);
+        Assert.Contains("aucune écriture (dossier absent)", Ligne(report, "agrégats de tokens : "));   // 33-05 : troisième magasin réel
         Assert.True(report.IndexOf("[Magasins persistants]", StringComparison.Ordinal)
                     < report.IndexOf("[Ce qui est affiché maintenant]", StringComparison.Ordinal),
                     "la section des magasins précède « Ce qui est affiché maintenant »");
@@ -1463,4 +1465,92 @@ public class DiagnosticServiceTests : IDisposable
                     "les lignes de processus et de verrou appartiennent à [Magasins persistants]");
     }
 
+    // ------------------------------------------------------------------ TOK-01/TOK-02 (phase 33, 33-05) : le troisième magasin et la reconstruction
+    // La ligne « agrégats de tokens » devient une vraie ligne de magasin (même moule que le journal : faits disque + état injecté), suivie
+    // d'une sous-section qui dit où en est la reconstruction — en ENTIERS (N / M, jamais une fraction) — et le PÉRIMÈTRE mot pour mot
+    // (D-33-23) : ces tokens sont un comptage local partiel, jamais un pourcentage du forfait.
+
+    private static DiagnosticService DiagAvecReconstruction(ChronosPaths paths, FakeClock clock, IReadOnlyList<IEtatMagasin>? magasins,
+                                                            IEtatReconstruction? reconstruction)
+        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(), magasins: magasins,
+               reconstruction: reconstruction);
+
+    /// <summary>Les lignes de la sous-section des agrégats : de la ligne du magasin à la ligne vide qui clôt [Magasins persistants].</summary>
+    private static List<string> SousSectionAgregats(string report)
+    {
+        var lignes = Lignes(report);
+        var debut = lignes.FindIndex(l => l.TrimStart().StartsWith("agrégats de tokens : ", StringComparison.Ordinal));
+        Assert.True(debut >= 0, report);
+        var fin = lignes.FindIndex(debut, l => l.Trim().Length == 0);
+        return lignes.GetRange(debut, (fin < 0 ? lignes.Count : fin) - debut);
+    }
+
+    [Fact]
+    public async Task La_section_des_agregats_dit_la_progression_le_dernier_fichier_et_le_perimetre()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var etat = new FakeEtatReconstruction
+        {
+            Phase = PhaseReconstruction.Reconstruction,
+            FichiersTraites = 12,
+            FichiersTotal = 1603,
+            SemaineCouranteDisponible = true,
+            DernierFichier = "proj-a/<s>/subagents/agent-x.jsonl",
+            FichiersDisparus = 2,
+            LignesIgnorees = 3,
+            IdsConnus = 118401,
+        };
+        var magasins = new IEtatMagasin[] { new MagasinAgregats(paths.HistoriqueDir, clock) };
+
+        var report = await DiagAvecReconstruction(paths, clock, magasins, etat).BuildReportAsync();
+
+        var sous = SousSectionAgregats(report);
+        Assert.Contains(sous, l => l.Trim() == "Reconstruction : reconstruction en cours — 12 / 1603 fichiers · semaine courante : complète · dernier fichier : proj-a/<s>/subagents/agent-x.jsonl");
+        Assert.Contains(sous, l => l.Trim() == "Fichiers disparus : 2 · lignes ignorées : 3 · ids connus : 118401");
+        Assert.Contains(sous, l => l.Trim() == "Périmètre : Claude Code seulement — hors Cowork et claude.ai ; bruts, non pondérés");
+        Assert.Contains(sous, l => l.Trim() == "Périmètre : " + LigneAgregat.Perimetre);
+        Assert.DoesNotContain(sous, l => l.Contains('%') || l.Contains("pour cent", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(sous, l => l.TrimStart().StartsWith("ÉCHEC", StringComparison.Ordinal));
+
+        // En échec : la cause est dite, sur sa ligne, dans la même sous-section.
+        etat.Phase = PhaseReconstruction.EnEchec;
+        etat.DerniereErreur = "IOException : x";
+        var rapportEchec = await DiagAvecReconstruction(paths, clock, magasins, etat).BuildReportAsync();
+        var sousEchec = SousSectionAgregats(rapportEchec);
+        Assert.Contains(sousEchec, l => l.Trim() == "ÉCHEC : IOException : x");
+        Assert.Contains(sousEchec, l => l.TrimStart().StartsWith("Reconstruction : EN ÉCHEC — 12 / 1603 fichiers", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Sans_etat_de_reconstruction_la_ligne_des_agregats_dit_le_dossier_ou_le_fichier_du_mois()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+
+        // 1) Dossier historique absent : rien n'a jamais été écrit, et aucune ligne de progression (aucun état injecté).
+        var report = await DiagAvecReconstruction(paths, clock, magasins: null, reconstruction: null).BuildReportAsync();
+        Assert.EndsWith("aucune écriture (dossier absent)", Ligne(report, "agrégats de tokens : "));
+        Assert.DoesNotContain(Lignes(report), l => l.TrimStart().StartsWith("Reconstruction : ", StringComparison.Ordinal));
+        Assert.Contains(Lignes(report), l => l.Trim() == "Périmètre : " + LigneAgregat.Perimetre);   // le périmètre se dit TOUJOURS
+
+        // 2) Dossier présent, fichier du mois absent : la ligne nomme le fichier du mois UTC courant.
+        System.IO.Directory.CreateDirectory(paths.HistoriqueDir);
+        var nomDuMois = MagasinAgregats.NomFichier(clock.UtcNow);
+        report = await DiagAvecReconstruction(paths, clock, magasins: null, reconstruction: null).BuildReportAsync();
+        var ligne = Ligne(report, "agrégats de tokens : ");
+        Assert.Contains(nomDuMois, ligne);
+        Assert.EndsWith("aucune écriture (fichier du mois absent)", ligne);
+
+        // 3) Fichier du mois écrit à l'instant : âge et taille, motif LigneMagasin (faits disque sans état injecté).
+        System.IO.File.WriteAllText(System.IO.Path.Combine(paths.HistoriqueDir, nomDuMois),
+            "{\"v\":1,\"slot\":\"2026-09-01T00:00:00.0000000+00:00\",\"model\":\"m\",\"sub\":false,\"in\":1,\"out\":1,\"cache_w\":0,\"cache_r\":0,\"n\":1}\n");
+        report = await DiagAvecReconstruction(paths, clock, magasins: null, reconstruction: null).BuildReportAsync();
+        ligne = Ligne(report, "agrégats de tokens : ");
+        Assert.Contains(nomDuMois, ligne);
+        Assert.Contains("dernière écriture à l'instant", ligne);
+        Assert.EndsWith(" o)", ligne);
+        Assert.DoesNotContain("aucune écriture", ligne);
+    }
 }

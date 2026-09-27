@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using System.Windows.Threading;
 using Chronos.Models;
 using Chronos.Services;
+using Chronos.Models.Historique.Tokens;
 using Chronos.Services.Historique;
+using Chronos.Services.Historique.Tokens;
 using Chronos.ViewModels;
 using Chronos.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -554,5 +557,107 @@ public class CompositionRootTests
         // Rien n'a changé pour l'utilisateur : la tête rend l'exact de l'inner, le magasin en panne n'affirme rien (EXA-05).
         Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
         Assert.Equal(0.30, snap.FiveHour.Utilization);
+    }
+
+    // ------------------------------------------------------------------ TOK-02 / CPT-02 (phase 33, 33-05) : les agrégats de tokens dans le graphe
+    // La reconstruction de fond (33-03) entre dans le graphe DI réel : mêmes lambdas qu'App.xaml.cs, dossier = HistoriqueDir de ChronosPaths
+    // (ici TEMPORAIRE), racine des transcripts INJECTÉE (jamais le vrai ~/.claude/projects), et hosted service inscrit AVANT l'orchestrateur
+    // (démarrage dans l'ordre d'inscription, arrêt en ordre inverse : le thread BelowNormal fait son dernier flush avant que la tête ne s'arrête).
+
+    /// <summary>
+    /// Miroir des inscriptions RÉELLES des agrégats (App.xaml.cs, 33-05), ligne pour ligne, précédées des inscriptions minimales
+    /// que <see cref="RefreshOrchestrator"/> exige. Tous les chemins sont TEMPORAIRES : la racine des transcripts est un dossier
+    /// de test, jamais <c>~/.claude/projects</c> ; le dossier historique vit sous le dossier temporaire de <paramref name="dossierTemp"/>.
+    /// </summary>
+    private static ServiceProvider ConteneurAvecTokens(string racineTranscripts, string dossierTemp)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IClock>(new FakeClock(new System.DateTimeOffset(2026, 9, 27, 12, 0, 0, System.TimeSpan.Zero)));
+        services.AddSingleton(new ChronosPaths(System.IO.Path.Combine(dossierTemp, "usage.json"), racineTranscripts));
+        services.AddSingleton<IUsageProvider>(_ => new FakeUsageProvider());
+
+        // --- À partir d'ici : mêmes lignes et même ORDRE qu'App.xaml.cs (33-05) ---
+        services.AddSingleton(sp => new MagasinAgregats(sp.GetRequiredService<ChronosPaths>().HistoriqueDir, sp.GetRequiredService<IClock>()));
+        services.AddSingleton(sp => new IndexMessages(sp.GetRequiredService<ChronosPaths>().HistoriqueDir, sp.GetRequiredService<IClock>()));
+        services.AddSingleton(sp => new ReconstructionTokens(sp.GetRequiredService<ChronosPaths>(), sp.GetRequiredService<MagasinAgregats>(),
+                                                             sp.GetRequiredService<IndexMessages>(), sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IEtatReconstruction>(sp => sp.GetRequiredService<ReconstructionTokens>());
+        services.AddHostedService(sp => sp.GetRequiredService<ReconstructionTokens>());
+
+        services.AddSingleton(RefreshOptions.Default);
+        services.AddSingleton<RefreshOrchestrator>();
+        services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
+        return services.BuildServiceProvider();
+    }
+
+    /// <summary>
+    /// TOK-02 câblée (33-05) — la reconstruction est un service hébergé inscrit AVANT l'orchestrateur (elle démarre avec la tête et
+    /// s'arrête AVANT elle : l'annulation atteint le thread de fond pendant que le host tourne encore), <see cref="IEtatReconstruction"/>
+    /// est la MÊME instance que le service (le VM et le diagnostic lisent l'état de CE thread, pas d'un second exemplaire), et les
+    /// briques à état de fichier (<see cref="MagasinAgregats"/>, <see cref="IndexMessages"/>) sont des singletons uniques posés sur
+    /// <c>ChronosPaths.HistoriqueDir</c> — à côté du journal, jamais un chemin en dur.
+    /// </summary>
+    [Fact]
+    public void La_reconstruction_des_tokens_est_un_service_heberge_avant_l_orchestrateur_et_la_meme_instance_que_son_etat()
+    {
+        var temp = DossierTemp();
+        var racine = System.IO.Path.Combine(temp, "projects");
+        System.IO.Directory.CreateDirectory(racine);
+        using var provider = ConteneurAvecTokens(racine, temp);
+
+        var heberges = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>().ToList();
+        var reconstruction = provider.GetRequiredService<ReconstructionTokens>();
+        var iReconstruction = heberges.IndexOf(reconstruction);
+        var iOrchestrateur = heberges.IndexOf(provider.GetRequiredService<RefreshOrchestrator>());
+
+        Assert.True(iReconstruction >= 0, "la reconstruction des agrégats doit être un service hébergé (démarre avec la tête, s'arrête proprement)");
+        Assert.True(iOrchestrateur >= 0, "l'orchestrateur doit rester un service hébergé");
+        Assert.True(iReconstruction < iOrchestrateur, "la reconstruction s'inscrit AVANT l'orchestrateur : arrêt en ordre inverse, dernier flush avant la tête");
+
+        Assert.Same(reconstruction, provider.GetRequiredService<IEtatReconstruction>());
+
+        var paths = provider.GetRequiredService<ChronosPaths>();
+        var magasin = provider.GetRequiredService<MagasinAgregats>();
+        var index = provider.GetRequiredService<IndexMessages>();
+        Assert.Equal(paths.HistoriqueDir, magasin.Dossier);
+        Assert.Equal(paths.HistoriqueDir, index.Dossier);
+        Assert.StartsWith(System.IO.Path.GetTempPath(), magasin.Dossier);
+        Assert.Same(magasin, provider.GetRequiredService<MagasinAgregats>());
+        Assert.Same(index, provider.GetRequiredService<IndexMessages>());
+    }
+
+    /// <summary>
+    /// TOK-02 — cycle de vie hébergé de bout en bout sur une racine VIDE : <c>StartAsync</c> lance le thread, la passe vide se
+    /// termine (phase Incrémental), <c>StopAsync</c> annule et attend le thread en moins de 2 s (phase Arrêtée). Une passe vide
+    /// ne fait naître aucun <c>tokens-*.jsonl</c>, mais l'initialisation crée le dossier historique et la passe COMPLÈTE écrit
+    /// <c>couverture.json</c> : « rien lu » est un état daté, pas un silence.
+    /// </summary>
+    [Fact]
+    public async Task Le_service_de_reconstruction_demarre_et_s_arrete_proprement_sur_une_racine_vide()
+    {
+        var temp = DossierTemp();
+        var racine = System.IO.Path.Combine(temp, "projects");
+        System.IO.Directory.CreateDirectory(racine);   // racine présente et VIDE : aucun transcript
+        using var provider = ConteneurAvecTokens(racine, temp);
+        var reconstruction = provider.GetRequiredService<ReconstructionTokens>();
+        var paths = provider.GetRequiredService<ChronosPaths>();
+
+        await reconstruction.StartAsync(CancellationToken.None);
+        var attente = Stopwatch.StartNew();
+        while (reconstruction.Phase != PhaseReconstruction.Incremental && attente.Elapsed < System.TimeSpan.FromSeconds(5))
+            await Task.Delay(20);
+        Assert.Equal(PhaseReconstruction.Incremental, reconstruction.Phase);
+
+        using var cts = new CancellationTokenSource(System.TimeSpan.FromSeconds(5));
+        var arret = Stopwatch.StartNew();
+        await reconstruction.StopAsync(cts.Token);
+        arret.Stop();
+
+        Assert.True(arret.Elapsed < System.TimeSpan.FromSeconds(2), $"StopAsync a pris {arret.ElapsedMilliseconds} ms : l'annulation doit atteindre le thread de fond sans attendre la cadence");
+        Assert.Equal(PhaseReconstruction.Arretee, reconstruction.Phase);
+        Assert.True(System.IO.Directory.Exists(paths.HistoriqueDir), "l'initialisation crée le dossier historique");
+        Assert.Empty(System.IO.Directory.EnumerateFiles(paths.HistoriqueDir, "tokens-*.jsonl"));
+        Assert.True(System.IO.File.Exists(System.IO.Path.Combine(paths.HistoriqueDir, CouvertureTokens.NomFichier)),
+                    "une passe complète, même vide, persiste la couverture");
     }
 }
