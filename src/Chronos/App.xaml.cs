@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Windows;
 using Chronos.Services;
+using Chronos.Services.Historique;
 using Chronos.ViewModels;
 using Chronos.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -407,6 +408,10 @@ public partial class App : Application
             sp.GetRequiredService<ChronosOAuthClient>(),
             sp.GetRequiredService<ChronosOAuthStore>()));
 
+        // JRN-01/JRN-03 — le journal des relevés exacts : dossier %APPDATA%\Chronos\historique (ChronosPaths, jamais en dur), horloge injectée.
+        services.AddSingleton(sp => new JournalReleves(sp.GetRequiredService<ChronosPaths>().HistoriqueDir, sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IEtatJournal>(sp => sp.GetRequiredService<JournalReleves>());   // le VM et les réglages ne voient que l'âge (JRN-04)
+
         // Chaîne exacte par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
         //   sonde d'en-têtes → login OAuth Chronos → OAuth coffre app (gated) → pont statusLine.
         // LA SONDE EST EN PRIMAIRE, et c'est une contrainte mécanique, pas un goût : Best() ne retient le
@@ -414,11 +419,11 @@ public partial class App : Application
         // ne gagnerait JAMAIS tant que /api/oauth/usage répond — or son snapshot est le SEUL porteur du statut
         // serveur et du dépassement : HDR-03/HDR-04 seraient morts-nés à chaque tick nominal.
         // CompositeUsageProvider.cs n'est PAS modifié (c'est la phase 19) : on l'INSTANCIE, c'est tout.
-        // Le decorateur EXA-01 reste en TETE, et il est desormais LA COUCHE DE DOCTRINE de la chaine
-        // (phase 19) : la sonde herite gratuitement de la persistance du dernier releve exact, et c'est
-        // cette couche — seule a detenir horloge, magasin ET source d'activite — qui statue sur l'age de
-        // chaque fenetre, la re-habilite sans activite (DEL-03) ou la degrade en plancher marque (DEL-04).
-        services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
+        //
+        // JRN-01/JRN-02 — le décorateur de journalisation, ENTRE la tête (LastExactUsageProvider, doctrine) et le composite : il voit l'inner BRUT,
+        // donc jamais le magasin ni un plancher. Hosted service inscrit AVANT RefreshOrchestrator : « demarrage » précède le premier relevé,
+        // « arret » suit le dernier (ordre d'inscription au Start, inverse au Stop). Aucun appel réseau : il observe ce que la chaîne produit.
+        services.AddSingleton(sp => new JournalisationUsageProvider(
             inner: new CompositeUsageProvider(
                 primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
                 fallback: new CompositeUsageProvider(
@@ -426,9 +431,29 @@ public partial class App : Application
                     fallback: new CompositeUsageProvider(
                         primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
                         fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>()))),
-            store: sp.GetRequiredService<LastExactStore>(),
-            clock: sp.GetRequiredService<IClock>(),
-            activite: sp.GetRequiredService<ITranscriptActivitySource>()));
+            journal: sp.GetRequiredService<JournalReleves>(),
+            etatServeur: sp.GetRequiredService<IEtatServeur>(),      // sonde_refusee (transition)
+            authStatus: sp.GetRequiredService<IAuthStatus>(),        // jeton_invalide (transition vers Deconnecte)
+            clock: sp.GetRequiredService<IClock>()));                // version : lue de l'assembly (null ici)
+        services.AddHostedService(sp => sp.GetRequiredService<JournalisationUsageProvider>());
+
+        // Le decorateur EXA-01 reste en TETE, et il est desormais LA COUCHE DE DOCTRINE de la chaine
+        // (phase 19) : la sonde herite gratuitement de la persistance du dernier releve exact, et c'est
+        // cette couche — seule a detenir horloge, magasin ET source d'activite — qui statue sur l'age de
+        // chaque fenetre, la re-habilite sans activite (DEL-03) ou la degrade en plancher marque (DEL-04).
+        // Son inner est désormais le décorateur de journalisation (32-05), qui enveloppe lui-même le composite.
+        services.AddSingleton<IUsageProvider>(sp =>
+        {
+            var store = sp.GetRequiredService<LastExactStore>();
+            var journalisation = sp.GetRequiredService<JournalisationUsageProvider>();
+            // CPT-02 — une écriture ratée du dernier exact n'est plus muette : elle devient une ligne « ecriture_ratee » du journal.
+            store.EcritureRatee += (_, cause) => journalisation.SignalerEcritureRatee("last-exact", cause);
+            return new LastExactUsageProvider(
+                inner: journalisation,
+                store: store,
+                clock: sp.GetRequiredService<IClock>(),
+                activite: sp.GetRequiredService<ITranscriptActivitySource>());
+        });
 
         // Horloge DONNÉES Phase 4 : l'orchestrateur est enregistré UNE fois (Singleton, pour l'abonnement
         // du VM) et réexposé comme IHostedService via la MÊME instance (cycle de vie Start/Stop du host).
@@ -457,6 +482,9 @@ public partial class App : Application
             // à 26 changeront le câblage du widget sans qu'une ligne du diagnostic ne change. Une copie du
             // comportement du widget aurait rouvert l'écart dès la phase suivante.
             // `machine` est sauté par argument NOMMÉ : la production conserve son repli réel (phase 20).
-            moniteurSessions: sp.GetRequiredService<SessionMonitor>()));
+            moniteurSessions: sp.GetRequiredService<SessionMonitor>(),
+            // CPT-02 — les deux magasins persistants RÉELS (mêmes instances que la chaîne) : âge de la dernière écriture,
+            // dernière erreur, « journal muet depuis N min » dans [Magasins persistants].
+            magasins: new IEtatMagasin[] { sp.GetRequiredService<LastExactStore>(), sp.GetRequiredService<JournalReleves>() }));
     }
 }

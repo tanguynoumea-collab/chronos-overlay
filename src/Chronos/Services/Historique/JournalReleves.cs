@@ -34,9 +34,16 @@ public sealed record BilanRetention(int FichiersSupprimes, int Echecs, int Ignor
 /// <para>Une écriture qui échoue pose <see cref="DerniereErreur"/> et n'est PAS relancée : le prochain relevé arrive
 /// dans cinq minutes, et le canal d'observabilité (JRN-04) est là pour le dire. Ne lève jamais vers l'appelant.
 /// Type NEUTRE ; horloge injectée ; chemin injecté (<c>ChronosPaths.HistoriqueDir</c> en production, 32-05).</para>
+///
+/// <para><see cref="IEtatMagasin"/> (CPT-02, câblé en 32-05) : le journal est le deuxième des trois magasins persistants de la
+/// section « [Magasins persistants] » du diagnostic — <see cref="Nom"/> l'apparie, <see cref="Chemin"/> est le DOSSIER
+/// (il n'a pas de fichier unique : la règle « dernière écriture = mtime » du dernier exact ne s'applique pas, l'horloge injectée date).</para>
 /// </summary>
-public sealed class JournalReleves : IEtatJournal
+public sealed class JournalReleves : IEtatJournal, IEtatMagasin
 {
+    public string Nom => NomsMagasins.JournalReleves;
+    public string Chemin => Dossier;
+
     /// <summary>Au-delà, un fichier mensuel est supprimé au démarrage. 24 mois : deux fois la plage la plus longue affichée (4 semaines) fois douze.</summary>
     public const int RetentionMois = 24;
 

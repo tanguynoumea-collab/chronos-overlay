@@ -571,6 +571,57 @@ public class GardesPerimetreTests
         Assert.Contains("_verrou?.Liberer()", onExit, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GARDE DE CÂBLAGE (JRN-01/JRN-02, CPT-02, phase 32 — 32-05). Le journal ne vaut que par sa POSITION dans la chaîne :
+    /// au-dessus de la tête, il verrait les planchers et les fenêtres du magasin (jamais un exact frais) ; au-dessous du
+    /// composite, il ne verrait qu'une source. Il doit envelopper le composite et être enveloppé par la tête. Et son service
+    /// hébergé doit être inscrit AVANT l'orchestrateur : sinon « demarrage » suivrait le premier relevé et « arret »
+    /// précéderait le dernier. Enfin, l'écriture ratée du dernier exact doit être ABONNÉE au journal — c'est le canal qui
+    /// aurait dit, deux semaines plus tôt, que rien ne se figeait (CPT-02). Contrôle de SOURCE, comme les gardes voisines :
+    /// <c>ConfigureServices</c> n'est pas instanciable sous test sans toucher au vrai %APPDATA%.
+    /// </summary>
+    [Fact]
+    public void Le_journal_enveloppe_le_composite_et_la_tete_enveloppe_le_journal()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        // 1) La chaîne exacte est l'inner du décorateur de journalisation.
+        var iDecorateur = texte.IndexOf("new JournalisationUsageProvider(", StringComparison.Ordinal);
+        var iComposite  = texte.IndexOf("inner: new CompositeUsageProvider(", StringComparison.Ordinal);
+        Assert.True(iDecorateur >= 0, "Le décorateur de journalisation n'est plus instancié dans App.xaml.cs");
+        Assert.True(iComposite >= 0, "La chaîne composite n'est plus l'inner de quiconque dans App.xaml.cs");
+        Assert.True(iDecorateur < iComposite, "La chaîne exacte doit être l'inner du décorateur de journalisation (le journal voit l'inner BRUT)");
+
+        // 2) La tête enveloppe le décorateur (et pas le composite directement).
+        var iTete = texte.IndexOf("new LastExactUsageProvider(", StringComparison.Ordinal);
+        Assert.True(iTete >= 0, "La tête LastExactUsageProvider n'est plus instanciée dans App.xaml.cs");
+        var blocTete = texte.Substring(iTete, Math.Min(600, texte.Length - iTete));
+        Assert.True(blocTete.Contains("inner: journalisation", StringComparison.Ordinal)
+                    || blocTete.Contains("inner: sp.GetRequiredService<JournalisationUsageProvider>()", StringComparison.Ordinal),
+                    "L'inner de la tête doit être le décorateur de journalisation");
+        Assert.True(iComposite < iTete, "Le composite est construit AVANT la tête (il est enterré sous le journal)");
+
+        // 3) Service hébergé du journal inscrit UNE fois, AVANT celui de l'orchestrateur.
+        const string hebergeJournal = "AddHostedService(sp => sp.GetRequiredService<JournalisationUsageProvider>())";
+        const string hebergeOrchestrateur = "AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>())";
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape(hebergeJournal)));
+        var iHebergeJournal = texte.IndexOf(hebergeJournal, StringComparison.Ordinal);
+        var iHebergeOrchestrateur = texte.IndexOf(hebergeOrchestrateur, StringComparison.Ordinal);
+        Assert.True(iHebergeOrchestrateur >= 0, "L'orchestrateur n'est plus un service hébergé dans App.xaml.cs");
+        Assert.True(iHebergeJournal < iHebergeOrchestrateur,
+                    "Le service hébergé du journal doit être inscrit AVANT celui de l'orchestrateur (« demarrage » avant le premier relevé)");
+
+        // 4) L'écriture ratée du dernier exact est abonnée au journal (CPT-02).
+        Assert.Contains("EcritureRatee +=", texte, StringComparison.Ordinal);
+        Assert.Contains("SignalerEcritureRatee(\"last-exact\"", texte, StringComparison.Ordinal);
+
+        // 5) Un seul composite par niveau — trois au total, comme avant le journal : rien n'a été dupliqué en déplaçant la chaîne.
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("new CompositeUsageProvider(")).Count);
+    }
+
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE
     /// en publication mono-fichier). Motif recopié de <c>GardesDoctrineTests</c>.</summary>
     internal static string CheminSources()

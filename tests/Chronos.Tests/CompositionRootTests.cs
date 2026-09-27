@@ -1,6 +1,7 @@
 using System.Windows.Threading;
 using Chronos.Models;
 using Chronos.Services;
+using Chronos.Services.Historique;
 using Chronos.ViewModels;
 using Chronos.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -430,5 +431,128 @@ public class CompositionRootTests
         // Et le statut serveur traverse réellement les deux composites imbriqués ET le décorateur :
         // c'est ce voyage par référence qui rend HDR-03/HDR-04 vivants en production.
         Assert.Equal(StatutServeur.Autorise, snap.FiveHour.StatutServeur);
+    }
+    // ------------------------------------------------------------------ 32-05 (JRN-01/02/04, CPT-02) : le journal dans le graphe
+
+    /// <summary>
+    /// Miroir du câblage 32-05 d'App.xaml.cs, réduit à ce qui compte et copié LIGNE POUR LIGNE : le journal des relevés
+    /// (dossier dérivé de <c>ChronosPaths.HistoriqueDir</c>), le décorateur de journalisation ENTRE la tête
+    /// (<see cref="LastExactUsageProvider"/>) et la chaîne exacte (ici un faux en bout de chaîne), son inscription en
+    /// service hébergé AVANT <see cref="RefreshOrchestrator"/>, et l'abonnement de l'écriture ratée du dernier exact.
+    /// Tous les chemins sont TEMPORAIRES : aucun test n'écrit dans le vrai <c>%APPDATA%\Chronos</c>.
+    /// </summary>
+    private static ServiceProvider ConteneurAvecJournal(string cheminLastExact, FakeUsageProvider boutDeChaine)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IClock, SystemClock>();
+        var tmpUsage = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "ChronosDI_" + System.Guid.NewGuid().ToString("N"), "usage.json");
+        services.AddSingleton(ChronosPaths.Default() with { UsageFile = tmpUsage });
+        services.AddSingleton<ITranscriptActivitySource>(_ => new FakeTranscriptActivitySource());
+        services.AddSingleton(_ => new LastExactStore(cheminLastExact));
+        services.AddSingleton<IEtatServeur>(_ => new FakeEtatServeur());
+        services.AddSingleton<IAuthStatus>(_ => new FakeAuthStatus());
+
+        // --- À partir d'ici : mêmes lignes et même ORDRE qu'App.xaml.cs (32-05) ---
+        services.AddSingleton(sp => new JournalReleves(sp.GetRequiredService<ChronosPaths>().HistoriqueDir, sp.GetRequiredService<IClock>()));
+        services.AddSingleton<IEtatJournal>(sp => sp.GetRequiredService<JournalReleves>());
+        services.AddSingleton(sp => new JournalisationUsageProvider(
+            inner: boutDeChaine,   // la chaîne exacte de production, réduite à son bout
+            journal: sp.GetRequiredService<JournalReleves>(),
+            etatServeur: sp.GetRequiredService<IEtatServeur>(),
+            authStatus: sp.GetRequiredService<IAuthStatus>(),
+            clock: sp.GetRequiredService<IClock>()));
+        services.AddHostedService(sp => sp.GetRequiredService<JournalisationUsageProvider>());
+        services.AddSingleton<IUsageProvider>(sp =>
+        {
+            var store = sp.GetRequiredService<LastExactStore>();
+            var journalisation = sp.GetRequiredService<JournalisationUsageProvider>();
+            store.EcritureRatee += (_, cause) => journalisation.SignalerEcritureRatee("last-exact", cause);
+            return new LastExactUsageProvider(inner: journalisation, store: store,
+                clock: sp.GetRequiredService<IClock>(), activite: sp.GetRequiredService<ITranscriptActivitySource>());
+        });
+        services.AddSingleton(RefreshOptions.Default);
+        services.AddSingleton<RefreshOrchestrator>();
+        services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
+        return services.BuildServiceProvider();
+    }
+
+    private static string DossierTemp()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosDI_" + System.Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    /// <summary>
+    /// JRN-01/JRN-02 (32-05) — le journal est BRANCHÉ, et au bon endroit. L'ordre des services hébergés est l'ordre de
+    /// <c>StartAsync</c> (et l'inverse au <c>StopAsync</c>) : inscrit avant l'orchestrateur, le décorateur écrit
+    /// « demarrage » avant le premier relevé et « arret » après le dernier. La tête reste <see cref="LastExactUsageProvider"/>
+    /// (doctrine), le dossier du journal vient de <c>ChronosPaths</c> (ici temporaire), et <see cref="IEtatJournal"/> est
+    /// la MÊME instance que l'écrivain — pas un second exemplaire qui ne verrait jamais une écriture.
+    /// </summary>
+    [Fact]
+    public void Le_journal_est_branche_entre_la_tete_et_le_composite_et_demarre_avant_l_orchestrateur()
+    {
+        using var provider = ConteneurAvecJournal(System.IO.Path.Combine(DossierTemp(), "last-exact.json"), new FakeUsageProvider());
+
+        var heberges = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>().ToList();
+        var journalisation = provider.GetRequiredService<JournalisationUsageProvider>();
+        var iJournal = heberges.IndexOf(journalisation);
+        var iOrchestrateur = heberges.IndexOf(provider.GetRequiredService<RefreshOrchestrator>());
+
+        Assert.True(iJournal >= 0, "le décorateur de journalisation doit être un service hébergé (demarrage / arret)");
+        Assert.True(iOrchestrateur >= 0, "l'orchestrateur doit rester un service hébergé");
+        Assert.True(iJournal < iOrchestrateur, "le journal démarre AVANT l'orchestrateur : « demarrage » précède le premier relevé");
+
+        Assert.IsType<LastExactUsageProvider>(provider.GetRequiredService<IUsageProvider>());
+
+        var journal = provider.GetRequiredService<JournalReleves>();
+        Assert.StartsWith(System.IO.Path.GetTempPath(), journal.Dossier);
+        Assert.Same(journal, provider.GetRequiredService<IEtatJournal>());
+    }
+
+    /// <summary>
+    /// CPT-02 (32-05) — une écriture ratée du dernier exact n'est plus muette : le magasin lève <c>EcritureRatee</c>, l'abonnement
+    /// du graphe la transmet au décorateur, et le journal porte une ligne <c>ecriture_ratee</c> avec <c>magasin = last-exact</c>.
+    /// Panne DURE et déterministe (motif de <c>LastExactUsageProviderTests</c>) : le dossier parent du magasin est un FICHIER.
+    /// Le rendu reste identique pour l'utilisateur (EXA-05) : c'est le journal qui parle, pas le cadran.
+    /// </summary>
+    [Fact]
+    public async Task Une_ecriture_ratee_du_dernier_exact_ecrit_ecriture_ratee_dans_le_journal()
+    {
+        var dir = DossierTemp();
+        var poison = System.IO.Path.Combine(dir, "poison");
+        System.IO.File.WriteAllText(poison, "je suis un fichier, pas un dossier");
+
+        var now = System.DateTimeOffset.UtcNow;
+        var boutDeChaine = new FakeUsageProvider
+        {
+            Next = new UsageSnapshot
+            {
+                FiveHour = new WindowState
+                {
+                    Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.30,
+                    ResetsAt = now.AddHours(3), CapturedAt = now, Source = SourceUsage.SondeEnTetes,
+                },
+                SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+                SourceCapturedAt = now,
+            },
+        };
+        using var provider = ConteneurAvecJournal(System.IO.Path.Combine(poison, "last-exact.json"), boutDeChaine);
+
+        var snap = await provider.GetRequiredService<IUsageProvider>().GetAsync();
+
+        var journal = provider.GetRequiredService<JournalReleves>();
+        Assert.True(System.IO.Directory.Exists(journal.Dossier), "le journal a dû créer son dossier pour écrire l'événement");
+        var lignes = System.IO.Directory.EnumerateFiles(journal.Dossier, "releves-*.jsonl")
+            .SelectMany(System.IO.File.ReadAllLines)
+            .ToList();
+        var ratees = lignes.Where(l => l.Contains("\"ev\":\"ecriture_ratee\"", StringComparison.Ordinal)).ToList();
+        Assert.Contains(ratees, l => l.Contains("\"magasin\":\"last-exact\"", StringComparison.Ordinal));
+
+        // Rien n'a changé pour l'utilisateur : la tête rend l'exact de l'inner, le magasin en panne n'affirme rien (EXA-05).
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(0.30, snap.FiveHour.Utilization);
     }
 }
