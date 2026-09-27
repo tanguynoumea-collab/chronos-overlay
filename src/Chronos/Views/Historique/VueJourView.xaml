@@ -183,8 +183,8 @@
                 <!-- Rangée 1 : NIVEAU — le % 5 h au premier plan (gris quand épuisée / refusée), l'hebdo en trait fin, un trait par reset observé. -->
                 <Grid Grid.Row="1" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
-                    <TextBlock Style="{StaticResource Repere}" Text="100 %" VerticalAlignment="Top"/>
-                    <TextBlock Style="{StaticResource Repere}" Text="0" VerticalAlignment="Bottom"/>
+                    <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereCent}" VerticalAlignment="Top"/>
+                    <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereZero}" VerticalAlignment="Bottom"/>
                 </Grid>
                 <hc:PisteNiveau Grid.Row="1" Grid.Column="1" Height="{StaticResource HistoHauteurNiveauJour}" Variante="Jour"
                                 Plage="{Binding DonneesJour.Plage}" Analyse="{Binding DonneesJour.Analyse}" InstantLecture="{Binding DonneesJour.LueA}"

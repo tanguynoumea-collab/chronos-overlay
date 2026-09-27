@@ -70,6 +70,20 @@
                 <Setter Property="FontSize" Value="{StaticResource HistoCorpsInfime}"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
             </Style>
+            <!-- Cellule de NIVEAU : même largeur et marge que CelluleLibelles, mais pleine hauteur de la rangée pour poser les repères de
+                 l'axe (« 100 % » en haut, « 0 » en bas, à droite de la colonne — grille 0 / 50 / 100 % de la piste, D-34-29). -->
+            <Style x:Key="CelluleNiveau" TargetType="Grid">
+                <Setter Property="Width" Value="{StaticResource HistoLargeurLibelles}"/>
+                <Setter Property="Margin" Value="{StaticResource HistoMargeLibelle}"/>
+            </Style>
+            <Style x:Key="RepereHaut" TargetType="TextBlock" BasedOn="{StaticResource Repere}">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+            </Style>
+            <Style x:Key="RepereBas" TargetType="TextBlock" BasedOn="{StaticResource Repere}">
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="VerticalAlignment" Value="Bottom"/>
+            </Style>
             <Style x:Key="Annotation" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
                 <Setter Property="FontSize" Value="{StaticResource HistoCorpsInfime}"/>
@@ -279,9 +293,11 @@
                                   ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplAnnotation}"/>
 
                     <!-- NIVEAU -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
+                    <Grid Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleNiveau}">
                         <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
-                    </StackPanel>
+                        <TextBlock Style="{StaticResource RepereHaut}" Text="{x:Static txt:TextesHistorique.RepereCent}"/>
+                        <TextBlock Style="{StaticResource RepereBas}" Text="{x:Static txt:TextesHistorique.RepereZero}"/>
+                    </Grid>
                     <Grid Grid.Row="1" Grid.Column="1" Margin="{StaticResource HistoMargePiste}">
                         <Rectangle x:Name="ZoneAvantJournalPistes" Style="{StaticResource ZoneAvantJournal}" Fill="{StaticResource HistoHachure}"/>
                         <hc:PisteNiveau Height="{StaticResource HistoHauteurNiveauPistes}" Variante="SemaineComplete"
@@ -385,9 +401,11 @@
                                   ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplAnnotation}"/>
 
                     <!-- NIVEAU -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
+                    <Grid Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleNiveau}">
                         <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
-                    </StackPanel>
+                        <TextBlock Style="{StaticResource RepereHaut}" Text="{x:Static txt:TextesHistorique.RepereCent}"/>
+                        <TextBlock Style="{StaticResource RepereBas}" Text="{x:Static txt:TextesHistorique.RepereZero}"/>
+                    </Grid>
                     <Grid Grid.Row="1" Grid.Column="1" Margin="{StaticResource HistoMargePiste}">
                         <Rectangle x:Name="ZoneAvantJournalSimplifie" Style="{StaticResource ZoneAvantJournal}" Fill="{StaticResource HistoHachure}"/>
                         <hc:PisteNiveau Height="{StaticResource HistoHauteurNiveauSimplifie}" Variante="SemaineComplete"
@@ -484,9 +502,11 @@
                                   ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplAnnotation}"/>
 
                     <!-- NIVEAU : hebdo seul (les fenêtres 5 h ont leur propre piste en C) -->
-                    <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
+                    <Grid Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleNiveau}">
                         <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
-                    </StackPanel>
+                        <TextBlock Style="{StaticResource RepereHaut}" Text="{x:Static txt:TextesHistorique.RepereCent}"/>
+                        <TextBlock Style="{StaticResource RepereBas}" Text="{x:Static txt:TextesHistorique.RepereZero}"/>
+                    </Grid>
                     <Grid Grid.Row="1" Grid.Column="1" Margin="{StaticResource HistoMargePiste}">
                         <Rectangle x:Name="ZoneAvantJournalTuiles" Style="{StaticResource ZoneAvantJournal}" Fill="{StaticResource HistoHachure}"/>
                         <hc:PisteNiveau Height="{StaticResource HistoHauteurNiveauTuiles}" Variante="SemaineHebdoSeul"

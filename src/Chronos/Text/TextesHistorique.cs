@@ -40,6 +40,9 @@ public static class TextesHistorique
     public const string StyleTuiles = "Tuiles";
 
     public const string ResetHebdo = "reset hebdo →";
+    /// <summary>Repères de l'axe NIVEAU (grille 0 / 50 / 100 %, DESIGN_PLAN §2.2 ; D-34-29) : haut et bas de la piste.</summary>
+    public const string RepereCent = "100 %";
+    public const string RepereZero = "0";
     public const string EchelleRythme = "0 – 25 %";
     public const string LegendeTokens = "▮ principal ▮ sous-agents";
     public const string Epuisee = "épuisée à 100 % — le serveur refuse (statut rejected)";
