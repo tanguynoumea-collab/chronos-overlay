@@ -1310,4 +1310,88 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Single(sonde.Appels);
         Assert.Contains("Premier plan : claude depuis", report);
     }
+
+    // ------------------------------------------------------------------ CPT-02 (phase 32) : [Magasins persistants]
+    // Le rapport dit désormais, sans qu'on le lui demande, depuis quelle VUE d'AppData il lit et quand chaque
+    // magasin persistant a écrit pour la dernière fois — ou pourquoi il n'a pas pu. C'est l'absence de ces deux
+    // lignes qui a laissé prendre la copie virtualisée du paquet MSIX pour un « gel » de last-exact.json.
+
+    /// <summary>Faux magasin : la forme que 32-05 injectera (LastExactStore, journal des relevés).</summary>
+    private sealed class FauxMagasin : IEtatMagasin
+    {
+        public string Nom { get; init; } = "";
+        public string Chemin { get; init; } = "";
+        public DateTimeOffset? DerniereEcriture { get; init; }
+        public string? DerniereErreur { get; init; }
+    }
+
+    /// <summary>Montage à Token = null : la sonde réseau est gardée par <c>if (token is not null)</c>, donc AUCUNE
+    /// requête n'est émise ; le composite est un stub. Seul le paramètre <c>magasins</c> varie.</summary>
+    private static DiagnosticService DiagAvecMagasins(ChronosPaths paths, FakeClock clock, IReadOnlyList<IEtatMagasin>? magasins)
+        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(), magasins: magasins);
+
+    private static List<string> Lignes(string report)
+        => report.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+
+    private static string Ligne(string report, string debut)
+        => Lignes(report).Single(l => l.TrimStart().StartsWith(debut, StringComparison.Ordinal));
+
+    [Fact]
+    public async Task La_section_Magasins_persistants_dit_la_vue_et_les_trois_magasins()
+    {
+        var paths = TempPaths();
+
+        var report = await DiagAvecMagasins(paths, new FakeClock(DateTimeOffset.UtcNow), magasins: null).BuildReportAsync();
+
+        Assert.Contains("[Magasins persistants]", report);
+        // Les tests tournent tantôt SOUS l'app bureau (vue virtualisée), tantôt non : la ligne existe toujours,
+        // sa valeur est l'une des deux — on n'épingle pas la machine qui exécute la suite.
+        var vue = Ligne(report, "Vue AppData : ");
+        Assert.True(vue.Contains("réelle") || vue.Contains("virtualisée"), vue);
+        Assert.EndsWith("aucune écriture (fichier absent)", Ligne(report, "dernier exact : "));
+        Assert.Contains("aucune écriture (dossier absent)", Ligne(report, "journal des relevés : "));
+        Assert.Contains("agrégats de tokens : aucun (phase 33)", report);
+        Assert.True(report.IndexOf("[Magasins persistants]", StringComparison.Ordinal)
+                    < report.IndexOf("[Ce qui est affiché maintenant]", StringComparison.Ordinal),
+                    "la section des magasins précède « Ce qui est affiché maintenant »");
+    }
+
+    [Fact]
+    public async Task Un_magasin_injecte_donne_son_age_et_sa_derniere_erreur()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        System.IO.File.WriteAllText(paths.LastExactFile, "{}");   // le fichier existe ; l'âge INJECTÉ prime sur le mtime
+        var magasin = new FauxMagasin
+        {
+            Nom = NomsMagasins.DernierExact,
+            Chemin = paths.LastExactFile,
+            DerniereEcriture = clock.UtcNow.AddMinutes(-4),
+            DerniereErreur = "IOException : disque plein",
+        };
+
+        var report = await DiagAvecMagasins(paths, clock, new[] { magasin }).BuildReportAsync();
+
+        var lignes = Lignes(report);
+        var i = lignes.FindIndex(l => l.TrimStart().StartsWith("dernier exact : ", StringComparison.Ordinal));
+        Assert.True(i >= 0, report);
+        Assert.Contains("dernière écriture il y a 4 min", lignes[i]);
+        Assert.Contains("ÉCHEC de la dernière écriture : IOException : disque plein", lignes[i + 1]);
+    }
+
+    [Fact]
+    public async Task Un_fichier_sur_disque_sans_magasin_injecte_donne_quand_meme_son_age()
+    {
+        var paths = TempPaths();
+        System.IO.File.WriteAllText(paths.LastExactFile, "{ \"version\": 1 }");
+
+        var report = await DiagAvecMagasins(paths, new FakeClock(DateTimeOffset.UtcNow), magasins: null).BuildReportAsync();
+
+        // Repli D-32-08 : sans état injecté (aucun câblage DI), les faits disque suffisent — âge et taille.
+        var ligne = Ligne(report, "dernier exact : ");
+        Assert.Contains("dernière écriture", ligne);
+        Assert.Contains("o)", ligne);
+        Assert.DoesNotContain("aucune écriture", ligne);
+    }
 }
