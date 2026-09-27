@@ -101,7 +101,8 @@ d'acceptation le 25/10/2026 avec le journal).
 - Phases décimales (32.1, 32.2) : insertions urgentes (marquées INSERTED)
 
 - [ ] **Phase 32: Compter juste, puis journaliser** - Le parser dédoublonne par `message.id`, plus aucune écriture ne se tait, une seule instance tourne, un journal des relevés exacts s'écrit toutes les 5 min avec ses événements de couverture ; publié seul en 3.2.2, sans interface, et constaté en production avec l'utilisateur
-- [x] **Phase 33: Agrégats de tokens** - Les tokens des transcripts sont agrégés par tranche de 15 min UTC × modèle × sous-agent, reconstruits en arrière-plan depuis 2,2 Go puis tenus à jour par curseurs, justes au changement d'heure, jamais convertis en pourcentage (completed 2026-09-27)
+- [x] **Phase 33: Agrégats de tokens** - Les tokens des transcripts sont agrégés par tranche de 15 min UTC × modèle × sous-agent, reconstruits en arrière-plan depuis 2,2 Go puis tenus à jour par curseurs, justes au changement d'heure, jamais convertis en pourcentage
+ (completed 2026-09-27)
 - [ ] **Phase 34: Fenêtre Historique : Semaine et Jour** - Une fenêtre opaque séparée montre la semaine de forfait dans trois styles et le jour au grain de 5 min, avec des trous qui restent des trous, sur un rendu `OnRender` gouverné par les tokens de design
 - [ ] **Phase 35: 4 semaines, accès, release 3.3.0** - La vue 4 semaines, les deux gestes d'ouverture, la section du diagnostic, les docs, l'exe 3.3.0 publié et le constat avec l'utilisateur
 
@@ -277,15 +278,14 @@ pas encore de geste d'ouverture (Phase 35) — la **galerie `--historique`** sur
 sans réconciliation des hooks) sert à la revue visuelle par l'utilisateur (DESIGN_PLAN §8) ; l'agent ne la lance pas.
 
 Plans:
-- [ ] 34-01-PLAN.md — HIS-07 : palette de `SettingsWindow` promue dans `Resources/DesignTokens.xaml` sans changer les valeurs ; nouveaux tokens `HistoTokens`, `HistoSousAgent`, `HistoModele1/2/3`, `HistoGris` ; garde « aucune valeur en dur » sur les vues de l'historique
-- [ ] 34-02-PLAN.md — HIS-07, HIS-06 (géométrie) : classes pures de `Rendering/` — échelles temps → x et valeur → y, escalier, binning horaire et quart d'heure, trous > 2 cadences, saut non localisé, tuiles, segments par bande de rampe, réduction min/max > 4 000 points ; fixtures (trou arrêté, trou jeton, épuisée, divergence, S-1)
-- [ ] 34-03-PLAN.md — HIS-01, HIS-08 (ViewModel) : `HistoriqueViewModel` sans XAML — vues Jour / Semaine, ‹ ›, retour au présent, libellés de période (§2.1), ligne de fraîcheur, style, bandeau F2 depuis la progression de TOK-02, consommation de JRN-05 et TOK-04 hors UI
-- [ ] 34-04-PLAN.md — HIS-07, HIS-02 : pistes `FrameworkElement` `OnRender` + `StreamGeometry` gelée (Niveau, Rythme, Tokens, Couverture, Fenêtres 5 h), réticule commun et infobulle, redessin sur données ou plage jamais au tick 1 s (test)
-- [ ] 34-05-PLAN.md — HIS-01, HIS-08 : `HistoriqueWindow.xaml` — chrome opaque non topmost, grip, coins 16, min / défaut, mémorisation `HistoriqueX/Y/Width/Height`, en-tête commun, bandeau F2, Échap ; galerie `--historique` sur fixtures
-- [ ] 34-06-PLAN.md — HIS-02, HIS-03 : vue Semaine de forfait assemblée dans les trois styles (Pistes / Simplifié / Tuiles, hauteurs §2.2), réglage `HistoriqueStyleSemaine` et sélecteur, semaine précédente en fantôme, bornes par `resets_at` 7 j
-- [ ] 34-07-PLAN.md — HIS-04 : vue Jour — grain 5 min, % 5 h gris à 100 % et libellé, resets observés, tokens par quart d'heure empilés par modèle, ligne « maintenant », ligne de fraîcheur « 288 relevés attendus … »
-- [ ] 34-08-PLAN.md — HIS-06 : honnêteté de bout en bout — trous, saut, divergence, « journal ouvert le », libellés permanents et pied de page mot pour mot sur les deux vues et les trois styles ; garde sur le vocabulaire §4 ; aucune projection
-**UI hint**: yes
+- [ ] 34-01-PLAN.md — HIS-07 (contribue) : palette `Panel/Panel2/Line/Ink/Ink2/Accent/Ok` promue dans `DesignTokens.xaml` sans changer une valeur (SettingsWindow fusionne par pack URI), tokens `Histo*` (+ `HistoGris #5A5960`, `HistoHachure`), 38 tokens de taille `sys:Double`, garde « aucune valeur en dur »
+- [ ] 34-02-PLAN.md — HIS-02 (contribue) : géométrie pure `Rendering/Historique` — `EchelleTemps`, `EchelleValeur`, `Escalier` (paliers coupés aux trous, bandes de rampe, rectangles de trous, blocs de sauts), `Binning` (Δ/h, min/max > 4 000), `Tuiles5h`, `Reticule`
+- [ ] 34-03-PLAN.md — HIS-08 : réglages (`HistoriqueStyleSemaine`, géométrie), `Divergences` (seuil 0,01 nommé), `GraduationsCalendrier`, `ISourceHistorique`/`SourceHistoriqueDisque`, `TextesHistorique` (mots §4), `ScenariosHistorique` (semaine des maquettes), `HistoriqueViewModel` (lecture hors UI, tick 60 s sans relecture, F2 coalescé)
+- [ ] 34-04-PLAN.md — HIS-07 : six `FrameworkElement` à `OnRender` + `StreamGeometry` gelée (`PisteBase` avec compteur de rendus, Niveau, Rythme, Tokens, Couverture, Fenêtres 5 h, `SurcoucheReticule`), test « jamais au tick » niveau contrôle
+- [ ] 34-05-PLAN.md — HIS-01 : `HistoriqueWindow` (WindowChrome, coins DWM best-effort, en-tête §2.1 avec « 4 semaines » désactivé, F2, Échap, géométrie bornée et persistée), stubs `VueSemaineView`/`VueJourView`, mode `--historique`, DI + miroir + garde
+- [ ] 34-06-PLAN.md — HIS-02, HIS-03 : vue Semaine — trois grilles Pistes / Simplifié / Tuiles aux hauteurs 150/72/72/12 · 200/90/12 · 120/62/58/58/12 vérifiées par Measure/Arrange, annotations d'honnêteté, zone avant journal, surcouche + infobulle, 760 → 1 400
+- [ ] 34-07-PLAN.md — HIS-04 : vue Jour — 190/64/64/12, % 5 h au premier plan (gris si épuisée), hebdo trait fin, resets observés, tokens par quart d'heure par modèle + légende, « maintenant » aujourd'hui seulement
+- [ ] 34-08-PLAN.md — HIS-06 : honnêteté de bout en bout sur la galerie (2 vues × 3 styles, mots + trace de rendu), garde de vocabulaire « aucune projection », garde tokens durcie, mutations h1–h5, GATE TESTS (suite × 2, Release 0 warning)
 
 ### Phase 35: 4 semaines, accès, release 3.3.0
 **Goal**: La **vue 4 semaines** compare quatre semaines de forfait sur le même axe et dit lesquelles sont antérieures au
