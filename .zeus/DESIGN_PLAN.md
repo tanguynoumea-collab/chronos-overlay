@@ -32,6 +32,19 @@ double-clic au centre du cadran) ; **phase 32 publiée seule en 3.2.2** avant to
 | Police | Segoe UI (comme les réglages) ; tailles 16 / 14 / 11,5 / 11 / 10,5 / 9,5 / 9 / 8,5 | maquettes en Inter, mêmes corps |
 | Fermeture | ✕, Échap ; position/taille sauvegardées à la fermeture | |
 
+### 2.0 Amendements techniques (orchestrateur, 2026-09-27, après la recherche de phase 34)
+- **Coins et ombre** : `AllowsTransparency=False` (voulu : pas de fenêtre layered) interdit les coins 16 px dessinés et l'ombre WPF.
+  Retenu : `System.Windows.Shell.WindowChrome` (bords de redimensionnement, ombre DWM) + coins arrondis DWM best-effort sur
+  Windows 11 (`DWMWCP_ROUND`, rayon système ≈ 8 px) ; coins droits sur Windows 10. Pas de NuGet.
+- **Rampe des pistes** : `ChronosTheme.ArcColor` du thème ACTIF (même loi que le cadran), pas `UtilizationToBrushConverter` (rampe
+  Minuit fixe). `HistoGris = #5A5960` (le gris « épuisé » déjà utilisé par le cadran).
+- **Segment « 4 semaines »** : présent mais désactivé avec l'infobulle « bientôt (phase 35) » tant que la vue n'existe pas — jamais
+  un clic inerte.
+- **Tokens de taille** : les corps de texte, hauteurs de pistes (§2.2) et épaisseurs deviennent des `sys:Double` de
+  `DesignTokens.xaml` ; les hauteurs sont vérifiées par un test de mise en page réel (Measure/Arrange), pas dupliquées en C#.
+- **Divergence « consommé ailleurs »** : Δ hebdo ≥ 0,01 sur une heure sans tranche de tokens couverte — constante nommée,
+  recalable après le constat de la phase 35.
+
 ### 2.1 En-tête (identique sur toutes les vues)
 
 ```
