@@ -2,6 +2,7 @@ using System.Windows.Threading;
 using Chronos.Models;
 using Chronos.Models.Historique;
 using Chronos.Models.Historique.Tokens;
+using Chronos.Rendering.Historique;
 using Chronos.Services;
 using Chronos.Services.Historique;
 using Chronos.Services.Historique.Tokens;
@@ -363,8 +364,7 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
         LibellePermanentTokens = TextesHistorique.LibellePermanentTokens(TextesHistorique.GrainHeure);
         LegendeModeles = "";   // en Semaine, la piste empile principal / sous-agents, pas les modèles
-        PlafondTokens = PlafondJoli(d.Barres.Count == 0 ? 0 : d.Barres.Max(b => b.Principal.Out + b.SousAgents.Out));
-        EchelleTokens = TextesHistorique.EchelleTokens(PlafondTokens);
+        PoserPlafondTokens(d.Barres.Count == 0 ? 0 : d.Barres.Max(b => b.Principal.Out + b.SousAgents.Out));
 
         MajFraicheur(_clock.UtcNow);
         MajBandeauF2();
@@ -396,8 +396,7 @@ public sealed partial class HistoriqueViewModel : ObservableObject
             .Select(x => x.Model)
             .ToList();
         LegendeModeles = TextesHistorique.LegendeModeles(parModele);
-        PlafondTokens = PlafondJoli(d.Colonnes.Count == 0 ? 0 : d.Colonnes.Max(c => c.ParModele.Sum(p => p.Totaux.Out)));
-        EchelleTokens = TextesHistorique.EchelleTokens(PlafondTokens);
+        PoserPlafondTokens(d.Colonnes.Count == 0 ? 0 : d.Colonnes.Max(c => c.ParModele.Sum(p => p.Totaux.Out)));
 
         MajFraicheur(_clock.UtcNow);
         MajBandeauF2();
@@ -450,18 +449,12 @@ public sealed partial class HistoriqueViewModel : ObservableObject
         return new AnnotationHistorique(TypeAnnotation.Epuisee, debut, fin, TextesHistorique.Epuisee);
     }
 
-    // Plafond « joli » de l'axe des tokens de sortie (mantisses 1 / 1,2 / 1,5 / 2 / 2,5 / 3 / 4 / 5 / 6 / 8 / 10 × 10^n). Copie locale
-    // minimale : à remplacer par EchelleValeur.MaxArrondi (34-02) lors du branchement des vues (34-06).
-    private static long PlafondJoli(long max)
+    // L'axe des tokens de SORTIE (D-34-12) : plafond « joli » de EchelleValeur (source unique, 34-02 ; dette de 34-03 soldée en 34-08)
+    // et son libellé « 0 – 1,2 M (sortie) ». Un maximum nul donne 1 : un axe a toujours une hauteur, même sur une période sans tokens.
+    private void PoserPlafondTokens(long maxSortie)
     {
-        if (max <= 0) return 0;
-        var puissance = Math.Pow(10, Math.Floor(Math.Log10(max)));
-        foreach (var m in new[] { 1.0, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 })
-        {
-            var candidat = (long)Math.Round(m * puissance);
-            if (candidat >= max) return candidat;
-        }
-        return max;
+        PlafondTokens = EchelleValeur.MaxArrondi(maxSortie);
+        EchelleTokens = TextesHistorique.EchelleTokens(PlafondTokens);
     }
 
     // ------------------------------------------------------------------ Fraîcheur et alerte D-32-21
