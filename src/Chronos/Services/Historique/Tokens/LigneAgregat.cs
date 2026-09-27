@@ -25,7 +25,7 @@ namespace Chronos.Services.Historique.Tokens;
 /// sur 15 min → refusée (elle ne correspond à aucune tranche). Seul <c>sub</c> est optionnel : absent = false
 /// (l'origine « principal » est le défaut naturel). Une ligne refusée est COMPTÉE par l'appelant, jamais tue.</para>
 ///
-/// <para>Le texte ISO → instant passe par <see cref="UsageNormalization.InstantDepuisIso"/>, point unique HDR-05.
+/// <para>Le texte ISO → instant passe par le point unique HDR-05 (<c>InstantDepuisIso</c> de <see cref="UsageNormalization"/>).
 /// Entiers seulement (garde TOK-05). Type NEUTRE (aucun WPF).</para>
 /// </summary>
 public static class LigneAgregat
