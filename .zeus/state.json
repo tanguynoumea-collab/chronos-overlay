@@ -50,7 +50,8 @@
       "Projection conditionnelle 'a ce rythme' (seulement si visuellement distincte)",
       "DayTimeline : grille 5 h theorique -> resets observes",
       "WeeklyWindow : derive d'une heure au changement d'heure (test d'acceptation 25/10)",
-      "Diagnostic : libelle perime « menu clic droit → Se connecter a Claude » (le chemin est desormais Reglages → Donnees → Se connecter) — mineur, releve en revue des rendus 3.4.0"
+      "Diagnostic : libelle perime « menu clic droit → Se connecter a Claude » (le chemin est desormais Reglages → Donnees → Se connecter) — mineur, releve en revue des rendus 3.4.0",
+      "2026-10-01 (utilisateur) — VERSION SUIVANTE, detail dans .zeus/ROADMAP-PROCHAINE-VERSION.md (R1-R7, rien de code) : R1 Fusible/Maree/Volets en horizontal ET vertical, selectionnable ; R2 Fusible et Volets +20 % ; R3 Braises : delimitations des tranches 5 h ; R4 Historique : Pistes seul style + plein ecran general ; R5 purge des reliquats de recuperation des donnees + methodologie claire ; R6 themes en Pale / Classique / Vive + nouvelles palettes proposees ; R7 zones de clic et d'attrape recalculees par cadran"
     ]
   },
   "artefacts": {
