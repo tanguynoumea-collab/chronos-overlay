@@ -36,7 +36,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
   `ClaudeTokenReader`, `WindowsCredentialStore`, `InventaireMachine`), `ClaudeUsageObjectProvider` / `usage.json` et sa
   surveillance, inférence 5 h, `WeeklyWindow`, recalibrage hebdo (carte « Recalibrer… » comprise), réglages orphelins ; la
   chaîne devient `LastExact( Journal( Composite(sonde d'en-têtes, OAuth Chronos) ) )`, gardée par test (un seul composite).
-- [ ] **DAT-03**: La **barre statusLine est retirée** : au premier lancement de la 3.5, Chronos sauvegarde puis retire sa
+- [x] **DAT-03**: La **barre statusLine est retirée** : au premier lancement de la 3.5, Chronos sauvegarde puis retire sa
   `statusLine` de `~/.claude/settings.json` (idempotent, journalisé, testé sur fichiers témoins) ; le mode `--statusline`, le
   pont, l'installeur et la carte des réglages disparaissent ; les hooks restent réconciliés.
 - [x] **DAT-04**: Le diagnostic décrit **exactement** la chaîne réelle (section « Chaîne de données » : sonde d'en-têtes,
@@ -135,7 +135,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | SOC-02 | Phase 36 | Complete |
 | DAT-01 | Phase 37 | Complete |
 | DAT-02 | Phase 37 | Complete |
-| DAT-03 | Phase 37 | Pending |
+| DAT-03 | Phase 37 | Complete |
 | DAT-04 | Phase 37 | Complete |
 | DAT-05 | Phase 37 | Complete |
 | HIS-09 | Phase 38 | Pending |
