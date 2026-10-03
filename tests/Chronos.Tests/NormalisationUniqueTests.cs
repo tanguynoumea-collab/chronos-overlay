@@ -38,7 +38,6 @@ public class NormalisationUniqueTests
     private static readonly (string Fichier, string Pourquoi)[] Exemptions =
     {
         ("UsageNormalization.cs",        "LE point unique — c'est ici que les conversions doivent vivre"),
-        ("ClaudeTokenReader.cs",         "expiration de JETON (expiresAt), jamais un quota"),
         ("SessionMonitor.cs",            "horodatage de SESSION Claude Code, jamais un quota"),
         ("TranscriptActivityProvider.cs","horodatage de MESSAGE de transcript, jamais un quota"),
     };

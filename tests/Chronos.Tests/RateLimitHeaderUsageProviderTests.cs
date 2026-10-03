@@ -111,20 +111,12 @@ public class RateLimitHeaderUsageProviderTests
 
     // --- Le réglage : défaut assumé, et un interrupteur DISTINCT ---
 
-    /// <summary>Défaut TRUE, par cohérence avec OAuthUsageEnabled (« vrais chiffres dès l'installation »).
-    /// Champ DISTINCT à dessein : mélanger les deux empêcherait l'utilisateur de couper la seule source
-    /// qui dépense réellement du quota.</summary>
+    /// <summary>Défaut TRUE : vrais chiffres dès l'installation. L'interrupteur reste le moyen de couper
+    /// la seule source qui dépense réellement du quota.</summary>
     [Fact]
-    public void Le_reglage_de_sonde_est_actif_par_defaut_et_distinct_de_celui_d_OAuth()
+    public void Le_reglage_de_sonde_est_actif_par_defaut()
     {
-        var defauts = new ChronosSettings();
-
-        Assert.True(defauts.SondeEnTetesActivee);
-        Assert.True(defauts.OAuthUsageEnabled);
-        // Couper la sonde ne coupe PAS la source OAuth, et réciproquement : deux interrupteurs, deux
-        // profils de coût (la sonde dépense une micro-requête, l'autre source ne dépense rien).
-        Assert.True(new ChronosSettings { SondeEnTetesActivee = false }.OAuthUsageEnabled);
-        Assert.True(new ChronosSettings { OAuthUsageEnabled = false }.SondeEnTetesActivee);
+        Assert.True(new ChronosSettings().SondeEnTetesActivee);
     }
 
     // --- Inertie : avant tout appel, et quand il ne faut rien envoyer ---
@@ -142,7 +134,7 @@ public class RateLimitHeaderUsageProviderTests
 
     /// <summary>Interrupteur à false : ZÉRO envoi HTTP, et le jeton n'est même pas DEMANDÉ — l'autorité
     /// reste à NonConnecte alors qu'un coffre parfaitement valide est présent. C'est la preuve que le
-    /// court-circuit est bien AVANT l'accès au jeton (motif GatedOAuthUsageProvider).</summary>
+    /// court-circuit est bien AVANT l'accès au jeton.</summary>
     [Fact]
     public async Task L_interrupteur_a_false_rend_la_sonde_totalement_inerte()
     {
@@ -1280,7 +1272,7 @@ public class RateLimitHeaderUsageProviderTests
     }
 
     /// <summary>L'interrupteur coupe l'accès RÉSEAU et l'accès au JETON, et sa relecture est FRAÎCHE à chaque
-    /// appel (motif <c>GatedOAuthUsageProvider</c>) : basculer le réglage prend effet au prochain passage,
+    /// appel (via SettingsService) : basculer le réglage prend effet au prochain passage,
     /// sans redémarrer l'exe et sans reconstruire la sonde.</summary>
     [Fact]
     public async Task L_interrupteur_coupe_tout_acces_reseau_ET_tout_acces_au_jeton()

@@ -201,7 +201,7 @@ conformes sont ignorés et comptés ; **aucune compaction** (JRN-07 différé).
 | `statut5`, `statut7` | `Autorise` · `AutoriseAvertissement` · `Rejete` · `NonReconnu`, ou absent | statut serveur de la fenêtre |
 | `overage` | fraction du dépassement (HDR-04), ou absent | en-têtes d'overage |
 | `overage_statut` | statut du dépassement (mêmes valeurs que `statut5`) ; peut exister SEUL, ou absent | idem |
-| `source` | `SondeEnTetes` · `EndpointOAuthChronos` · `EndpointOAuthClaude` · `PontStatusLine` | producteur ; **jamais** `MagasinDernierExact` |
+| `source` | `SondeEnTetes` · `EndpointOAuthChronos` · `PontStatusLine` | producteur ; **jamais** `MagasinDernierExact` |
 
 Les `null` sont omis à l'écriture ; un champ absent est `null` à la lecture, **jamais 0**. Un snapshot mixte (5 h de la
 sonde, hebdo d'un repli) fait UNE ligne par couple `(t, source)`, les fenêtres de l'autre couple restant absentes.

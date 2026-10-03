@@ -52,7 +52,7 @@ internal static class MontageReglages
         return new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, provider, clock, machine: new FakeInventaireMachine()),
+            new DiagnosticService(paths, settings, provider, clock),
             barreStatut ?? new FakeStatusLineSetup(), new FakeOAuthLogin(), sessions ?? new FakeSessionsController(),
             new FakeAuthStatus(), new FakeEtatServeur(), journal, ouvreurHistorique: ouvreur, historique: historique,
             pressePapiers: pressePapiers);

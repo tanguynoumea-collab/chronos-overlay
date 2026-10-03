@@ -201,6 +201,35 @@ public class LigneJournalTests
         Assert.Equal(4, lecture.LignesIgnorees);
     }
 
+    /// <summary>DAT-02 (37-03) — la source « jeton de l'app bureau » est retirée de l'enum, mais un journal écrit avant
+    /// la purge la cite encore. Sa ligne est ignorée (comptée, jamais devinée) sans exception, et la ligne suivante est lue.</summary>
+    [Fact]
+    public void Une_source_retiree_EndpointOAuthClaude_est_ignoree_sans_exception()
+    {
+        const string retiree = "{\"v\":1,\"t\":\"2026-09-27T10:00:00.0000000+00:00\",\"u5\":0.2,\"source\":\"EndpointOAuthClaude\"}";
+        const string valide  = "{\"v\":1,\"t\":\"2026-09-27T10:05:00.0000000+00:00\",\"u5\":0.3,\"source\":\"SondeEnTetes\"}";
+
+        Assert.False(LigneJournal.Parser(retiree, out var releveNul, out var evenementNul));
+        Assert.Null(releveNul);
+        Assert.Null(evenementNul);
+
+        var dossier = Path.Combine(Path.GetTempPath(), "ChronosJournal_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dossier);
+        try
+        {
+            var chemin = Path.Combine(dossier, "releves-2026-09.jsonl");
+            File.WriteAllText(chemin, retiree + "\n" + valide + "\n");
+
+            var lecture = LecteurJournal.LireFichier(chemin);
+
+            Assert.Single(lecture.Releves);
+            Assert.Equal(SourceUsage.SondeEnTetes, lecture.Releves[0].Source);
+            Assert.Equal(0.3, lecture.Releves[0].U5);
+            Assert.Equal(1, lecture.LignesIgnorees);
+        }
+        finally { Directory.Delete(dossier, recursive: true); }
+    }
+
     [Fact]
     public void LireFichier_sur_un_fichier_absent_rend_une_lecture_vide_sans_lever()
     {

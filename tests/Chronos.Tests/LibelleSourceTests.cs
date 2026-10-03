@@ -22,12 +22,11 @@ public class LibelleSourceTests
 
     // ==================== Le nom du producteur ====================
 
-    /// <summary>Les cinq membres de l'enum, nommés un par un. Ce sont ces chaînes que l'utilisateur
+    /// <summary>Les quatre membres de l'enum, nommés un par un. Ce sont ces chaînes que l'utilisateur
     /// lira dans le diagnostic : « alimenté par la sonde d'en-têtes de rate-limit ».</summary>
     [Theory]
     [InlineData(SourceUsage.SondeEnTetes, "sonde d'en-têtes de rate-limit")]
     [InlineData(SourceUsage.EndpointOAuthChronos, "endpoint OAuth (login Chronos)")]
-    [InlineData(SourceUsage.EndpointOAuthClaude, "endpoint OAuth (jeton app bureau / CLI)")]
     [InlineData(SourceUsage.PontStatusLine, "pont statusLine Claude Code")]
     [InlineData(SourceUsage.MagasinDernierExact, "dernier exact persisté")]
     public void Chaque_source_a_son_libelle_francais(SourceUsage source, string attendu)
@@ -56,7 +55,8 @@ public class LibelleSourceTests
     {
         var membres = System.Enum.GetValues<SourceUsage>();
 
-        Assert.True(membres.Length >= 5, $"Seulement {membres.Length} membres vus : la garde est muette.");
+        // 4 depuis 37-03 (la source « jeton de l'app bureau » est retirée) ; 3 après le retrait du pont statusLine (étape 5).
+        Assert.True(membres.Length >= 4,$"Seulement {membres.Length} membres vus : la garde est muette.");
 
         foreach (var m in membres)
         {

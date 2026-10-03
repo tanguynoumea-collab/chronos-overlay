@@ -57,8 +57,7 @@ public class CadranBindingTests
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, prov, new FakeClock(Now),
-                                  machine: new FakeInventaireMachine()),
+            new DiagnosticService(paths, settings, prov, new FakeClock(Now)),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
 
         // Neutralisation EXPLICITE des deux réglages qui pilotent le rendu : aucun test de cette phase

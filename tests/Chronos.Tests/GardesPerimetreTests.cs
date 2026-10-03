@@ -58,6 +58,9 @@ public class GardesPerimetreTests
         {
             // étape 2 — orphelins
             "FiveHourWindowInference", "WeeklyWindow",
+            // étape 3 — jeton de l'app bureau
+            "ClaudeOAuthUsageProvider", "GatedOAuthUsageProvider", "ClaudeTokenReader",
+            "IClaudeTokenReader", "WindowsCredentialStore", "InventaireMachine", "IInventaireMachine",
         };
         var revenants = asm.GetTypes().Where(t => retires.Contains(t.Name)).Select(t => t.FullName).ToList();
         Assert.True(revenants.Count == 0,
@@ -68,6 +71,8 @@ public class GardesPerimetreTests
         var vm = typeof(Chronos.ViewModels.MainViewModel);
         Assert.Null(vm.GetProperty("IsOAuthUsageEnabled"));
         Assert.Null(vm.GetProperty("ToggleOAuthUsageCommand"));
+        Assert.Null(typeof(Chronos.Services.ChronosSettings).GetProperty("OAuthUsageEnabled"));
+        Assert.DoesNotContain("EndpointOAuthClaude", Enum.GetNames(typeof(Chronos.Models.SourceUsage)));
     }
 
     // Une garde qui ne verrait AUCUN type serait muette (assembly mal résolu, réflexion cassée).
@@ -701,8 +706,9 @@ public class GardesPerimetreTests
         Assert.Contains("EcritureRatee +=", texte, StringComparison.Ordinal);
         Assert.Contains("SignalerEcritureRatee(\"last-exact\"", texte, StringComparison.Ordinal);
 
-        // 5) Un seul composite par niveau — trois au total, comme avant le journal : rien n'a été dupliqué en déplaçant la chaîne.
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("new CompositeUsageProvider(")).Count);
+        // 5) Un seul composite par niveau, rien de dupliqué en déplaçant la chaîne : 2 jusqu'au retrait du pont statusLine
+        //    (étape 5 de la purge), 1 ensuite.
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("new CompositeUsageProvider(")).Count);
     }
 
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE

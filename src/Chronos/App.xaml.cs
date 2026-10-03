@@ -404,18 +404,6 @@ public partial class App : Application
         services.AddSingleton(sp => new LastExactStore(
             sp.GetRequiredService<ChronosPaths>().LastExactFile));
 
-        // v1.2 (INT-01/03) : source EXACTE OAuth en tête de chaîne. Le reader cible le coffre de l'app
-        // bureau (%APPDATA%/Claude) ; il n'est JAMAIS sollicité tant que le portillon gated est fermé.
-        services.AddSingleton<IClaudeTokenReader>(_ => ClaudeTokenReader.Default());
-        services.AddSingleton(sp => new ClaudeOAuthUsageProvider(
-            sp.GetRequiredService<IClaudeTokenReader>(),
-            new HttpClient(),                                    // long-lived, une seule destination (constante)
-            sp.GetRequiredService<IClock>()));
-        // Portillon gated : OAuthUsageEnabled==false → Empty sans toucher au token (INT-03).
-        services.AddSingleton(sp => new GatedOAuthUsageProvider(
-            sp.GetRequiredService<ClaudeOAuthUsageProvider>(),
-            sp.GetRequiredService<SettingsService>()));
-
         // v2.1 : SOURCE EXACTE PRIMAIRE = login OAuth propre à Chronos (jeton obtenu par login
         // navigateur, stocké chiffré DPAPI). Marche que l'utilisateur soit en app bureau OU terminal.
         services.AddSingleton<ChronosOAuthStore>(_ => new ChronosOAuthStore());
@@ -450,7 +438,7 @@ public partial class App : Application
         // un compte sain (anthropics/claude-code#25609).
         // HDR-06 — la cadence est bornée par le provider lui-même (300 s), pas par sa position dans la chaîne :
         // le composite appelle les deux GetAsync sans court-circuit. L'interrupteur SondeEnTetesActivee est
-        // relu FRAIS à chaque appel via SettingsService (motif GatedOAuthUsageProvider).
+        // relu FRAIS à chaque appel via SettingsService.
         services.AddSingleton(sp => new RateLimitHeaderUsageProvider(
             sp.GetRequiredService<ChronosTokenAuthority>(),
             new HttpClient(),
@@ -472,7 +460,7 @@ public partial class App : Application
         services.AddSingleton<IEtatJournal>(sp => sp.GetRequiredService<JournalReleves>());   // le VM et les réglages ne voient que l'âge (JRN-04)
 
         // Chaîne exacte par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
-        //   sonde d'en-têtes → login OAuth Chronos → OAuth coffre app (gated) → pont statusLine.
+        //   sonde d'en-têtes → login OAuth Chronos → pont statusLine (retiré à l'étape suivante de la purge).
         // LA SONDE EST EN PRIMAIRE, et c'est une contrainte mécanique, pas un goût : Best() ne retient le
         // fallback que s'il est STRICTEMENT plus fiable, et les deux produisent Exact. En fallback, la sonde
         // ne gagnerait JAMAIS tant que /api/oauth/usage répond — or son snapshot est le SEUL porteur du statut
@@ -487,9 +475,7 @@ public partial class App : Application
                 primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
                 fallback: new CompositeUsageProvider(
                     primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
-                    fallback: new CompositeUsageProvider(
-                        primary:  sp.GetRequiredService<GatedOAuthUsageProvider>(),
-                        fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>()))),
+                    fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>())),
             journal: sp.GetRequiredService<JournalReleves>(),
             etatServeur: sp.GetRequiredService<IEtatServeur>(),      // sonde_refusee (transition)
             authStatus: sp.GetRequiredService<IAuthStatus>(),        // jeton_invalide (transition vers Deconnecte)
@@ -538,9 +524,8 @@ public partial class App : Application
         services.AddSingleton<RefreshOrchestrator>();
         services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
 
-        // Diagnostic auto-explicatif (menu « Diagnostic… ») : consomme le lecteur de token + le composite réel.
+        // Diagnostic auto-explicatif (menu « Diagnostic… ») : consomme le composite réel.
         services.AddSingleton(sp => new DiagnosticService(
-            sp.GetRequiredService<IClaudeTokenReader>(),
             sp.GetRequiredService<ChronosPaths>(),
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IUsageProvider>(),
@@ -552,7 +537,6 @@ public partial class App : Application
             // C'est ce qui rend le rapport vrai à chaque commit ultérieur PAR CONSTRUCTION : les phases 23
             // à 26 changeront le câblage du widget sans qu'une ligne du diagnostic ne change. Une copie du
             // comportement du widget aurait rouvert l'écart dès la phase suivante.
-            // `machine` est sauté par argument NOMMÉ : la production conserve son repli réel (phase 20).
             moniteurSessions: sp.GetRequiredService<SessionMonitor>(),
             // CPT-02 — les TROIS magasins persistants RÉELS (mêmes instances que la chaîne) : âge de la dernière écriture,
             // dernière erreur, « journal muet depuis N min » dans [Magasins persistants] ; le troisième est celui des agrégats (TOK-01).

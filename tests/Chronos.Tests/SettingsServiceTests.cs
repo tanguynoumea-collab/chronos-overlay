@@ -56,7 +56,7 @@ public sealed class SettingsServiceTests : IDisposable
             Background = true,
             RefreshIntervalSeconds = 30,
             WeeklyAnchor = new DateTimeOffset(2026, 07, 06, 10, 00, 00, TimeSpan.Zero),
-            OAuthUsageEnabled = false, // valeur ≠ défaut pour prouver la persistance du flag (INT-03)
+            SondeEnTetesActivee = false, // valeur ≠ défaut pour prouver la persistance d'un interrupteur (HDR-06)
         };
 
         _service.Save(original);
@@ -75,7 +75,20 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(s.Background);
         Assert.Null(s.MonitorDeviceName);
         Assert.Null(s.WeeklyAnchor);
-        Assert.True(s.OAuthUsageEnabled); // défaut true : source exacte active dès l'install (INT-03)
+        Assert.True(s.SondeEnTetesActivee); // défaut true : vrais chiffres dès l'installation (HDR-06)
+    }
+
+    /// <summary>DAT-02 (37-03) — le réglage du jeton de l'app bureau est retiré du schéma. Un settings.json qui le porte
+    /// encore se charge sans erreur : membre inconnu ignoré, les autres préférences conservées (tolérance de la phase 36).</summary>
+    [Fact]
+    public void Un_ancien_OAuthUsageEnabled_est_ignore_sans_perdre_le_reste()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_paths.SettingsFile)!);
+        File.WriteAllText(_paths.SettingsFile, "{\"OAuthUsageEnabled\": false, \"ThemeKey\": \"nord\"}");
+
+        var s = _service.Load(); // ne doit PAS lever
+
+        Assert.Equal("nord", s.ThemeKey);
     }
 
     [Fact]
@@ -152,7 +165,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.False(s.Background);
         Assert.Equal(60, s.RefreshIntervalSeconds);
         Assert.Equal(new DateTimeOffset(2026, 07, 11, 00, 00, 00, TimeSpan.FromHours(2)), s.WeeklyAnchor);
-        Assert.True(s.OAuthUsageEnabled);
+        // « OAuthUsageEnabled » est encore dans la fixture : depuis 37-03 c'est un membre inconnu, ignoré sans erreur.
         Assert.Null(s.InnerStatusLineCommand);
         Assert.False(s.StatusLinePromptDismissed);
         Assert.Equal("ardoise", s.ThemeKey);

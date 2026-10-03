@@ -197,7 +197,7 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
     {
         var now = _clock.UtcNow;
 
-        // INTERRUPTEUR, relu FRAIS à chaque appel (motif GatedOAuthUsageProvider) : une bascule dans les
+        // INTERRUPTEUR, relu FRAIS à chaque appel via SettingsService : une bascule dans les
         // réglages prend effet au prochain passage, sans redémarrage. Court-circuit AVANT toute demande de
         // jeton et avant tout accès réseau — couper la seule source qui DÉPENSE doit réellement tout
         // couper. Et l'on ne sert PAS le cache ici : couper la sonde doit la faire taire, pas la faire

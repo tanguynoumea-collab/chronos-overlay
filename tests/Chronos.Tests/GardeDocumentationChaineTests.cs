@@ -27,6 +27,8 @@ public sealed class GardeDocumentationChaineTests
         "InventaireMachine", "ClaudeUsageObjectProvider", "StatusLineBridge", "StatusLineInstaller",
         "WeeklyRecalibration", "WeeklyWindow", "FiveHourWindowInference",
         "Usage exact (OAuth)", "Estimation (repli)", "estimation par transcripts", "repli JSONL",
+        // étape 3 — la valeur d'enum de la source retirée (jeton de l'app bureau)
+        "EndpointOAuthClaude",
     };
 
     private static string CheminDocs()

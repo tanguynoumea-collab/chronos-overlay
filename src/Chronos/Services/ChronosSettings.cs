@@ -69,16 +69,9 @@ public sealed record ChronosSettings
     /// <summary>Ancre du recalibrage hebdomadaire best-effort (ROB-03). null = pas d'ancre.</summary>
     public DateTimeOffset? WeeklyAnchor { get; init; }
 
-    /// <summary>Active la source EXACTE OAuth (INT-03). Défaut TRUE : vrais chiffres dès l'installation.
-    /// false → comportement v1.1 strict, AUCUN accès au token (le portillon gated court-circuite).</summary>
-    public bool OAuthUsageEnabled { get; init; } = true;
-
-    /// <summary>HDR-06 — sonde d'en-têtes de rate-limit activée. Défaut TRUE, par cohérence avec
-    /// <see cref="OAuthUsageEnabled"/> (« vrais chiffres dès l'installation ») et parce que le coût annoncé
-    /// est de l'ordre du centime par mois. CHAMP DISTINCT d'OAuthUsageEnabled à dessein : ce dernier garde
-    /// le jeton de l'app bureau et son profil de coût est NUL, alors que la sonde consomme une vraie
-    /// micro-requête sur le compte. Les mélanger empêcherait l'utilisateur de couper la seule source qui
-    /// dépense. Champ absent d'un ancien settings.json -> défaut true (System.Text.Json ignore les membres
+    /// <summary>HDR-06 — sonde d'en-têtes de rate-limit activée. Défaut true : vrais chiffres dès
+    /// l'installation, pour un coût annoncé de l'ordre du centime par mois. La sonde consomme une vraie
+    /// micro-requête sur le compte : cet interrupteur permet de couper la seule source qui dépense. Champ absent d'un ancien settings.json -> défaut true (System.Text.Json ignore les membres
     /// non mappés, précédent DEL-06).</summary>
     public bool SondeEnTetesActivee { get; init; } = true;
 

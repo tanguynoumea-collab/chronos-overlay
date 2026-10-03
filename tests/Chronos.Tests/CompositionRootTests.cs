@@ -87,9 +87,7 @@ public class CompositionRootTests
         services.AddSingleton<IRecalibrationPrompt>(_ => new FakeRecalibrationPrompt());
 
         // v1.4 : le ctor de MainViewModel dépend désormais aussi de DiagnosticService (menu « Diagnostic… »).
-        services.AddSingleton<IClaudeTokenReader>(_ => new FakeClaudeTokenReader());
         services.AddSingleton(sp => new DiagnosticService(
-            sp.GetRequiredService<IClaudeTokenReader>(),
             sp.GetRequiredService<ChronosPaths>(),
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IUsageProvider>(),

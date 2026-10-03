@@ -38,20 +38,18 @@ public class DiagnosticServiceTests : IDisposable
     {
         var paths = TempPaths();
         var settings = new SettingsService(paths);
-        var reader = new FakeClaudeTokenReader { Token = "SECRET-TOKEN-NE-DOIT-PAS-APPARAITRE" };
         var snap = new UsageSnapshot
         {
             FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Estimated, Utilization = null },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(reader, paths, settings, new StubProvider(snap), new FakeClock(DateTimeOffset.UtcNow),
-                                         machine: new FakeInventaireMachine());
+        var diag = new DiagnosticService(paths, settings, new StubProvider(snap), new FakeClock(DateTimeOffset.UtcNow));
 
         var report = await diag.BuildReportAsync();
 
         Assert.Contains("Diagnostic", report);
         Assert.Contains("[Chaîne de données]", report);
-        Assert.DoesNotContain("SECRET-TOKEN", report);              // JAMAIS la valeur d'un jeton
+        Assert.DoesNotContain("SECRET-TOKEN", report);              // JAMAIS la valeur d'un jeton (le rapport n'en lit plus aucun depuis 37-03)
         // 19-04/20-05 : le mot « estimé » n'existe plus, et le tilde non plus — l'incertitude d'un
         // plancher est UNILATÉRALE. Forme DÉGRADÉE (ni Source ni Provenance), qui doit rester lisible.
         Assert.Contains("PLANCHER", report);                        // résultat affiché décrit
@@ -64,9 +62,8 @@ public class DiagnosticServiceTests : IDisposable
     public async Task Le_rapport_ne_contient_plus_les_sections_mortes()
     {
         var paths = TempPaths();
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
-            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
-                                         machine: new FakeInventaireMachine());
+        var diag = new DiagnosticService(paths,
+            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
 
         var report = await diag.BuildReportAsync();
 
@@ -85,9 +82,8 @@ public class DiagnosticServiceTests : IDisposable
     public async Task Le_rapport_finit_par_sa_duree_de_construction()
     {
         var paths = TempPaths();
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
-            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
-                                         machine: new FakeInventaireMachine());
+        var diag = new DiagnosticService(paths,
+            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
 
         var report = await diag.BuildReportAsync();
 
@@ -103,9 +99,8 @@ public class DiagnosticServiceTests : IDisposable
     public async Task Le_rapport_decrit_la_chaine_dans_l_ordre()
     {
         var paths = TempPaths();
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
-            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
-                                         machine: new FakeInventaireMachine());
+        var diag = new DiagnosticService(paths,
+            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
 
         var report = await diag.BuildReportAsync();
 
@@ -154,10 +149,9 @@ public class DiagnosticServiceTests : IDisposable
         var paths = TempPaths();
         var settings = new SettingsService(paths);
         var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          settings, new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), auth,
-                                         machine: new FakeInventaireMachine());
+                                         new FakeClock(DateTimeOffset.UtcNow), auth);
 
         var report = await diag.BuildReportAsync();
 
@@ -185,10 +179,9 @@ public class DiagnosticServiceTests : IDisposable
                 EnTetesDeReference.H7dUtil, EnTetesDeReference.H7dReset,
             },
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), null, etat,
-                                         new FakeInventaireMachine());
+                                         new FakeClock(DateTimeOffset.UtcNow), null, etat);
 
         var report = await diag.BuildReportAsync();
 
@@ -215,10 +208,9 @@ public class DiagnosticServiceTests : IDisposable
             DernierResultat = ResultatSonde.SuccesSansEnTetes,
             NomsEnTetesRecus = Array.Empty<string>(),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), null, etat,
-                                         new FakeInventaireMachine());
+                                         new FakeClock(DateTimeOffset.UtcNow), null, etat);
 
         var report = await diag.BuildReportAsync();
 
@@ -243,10 +235,9 @@ public class DiagnosticServiceTests : IDisposable
                 Statut = StatutServeur.Rejete,
             },
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(DateTimeOffset.UtcNow), null, etat,
-                                         new FakeInventaireMachine());
+                                         new FakeClock(DateTimeOffset.UtcNow), null, etat);
 
         var report = await diag.BuildReportAsync();
 
@@ -267,10 +258,9 @@ public class DiagnosticServiceTests : IDisposable
             FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Estimated, Utilization = null },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(snap),
-                                         new FakeClock(DateTimeOffset.UtcNow),
-                                         machine: new FakeInventaireMachine());
+                                         new FakeClock(DateTimeOffset.UtcNow));
 
         var report = await diag.BuildReportAsync();
 
@@ -304,9 +294,9 @@ public class DiagnosticServiceTests : IDisposable
                 Utilization = 0.10, Source = SourceUsage.MagasinDernierExact, CapturedAt = now,
             },
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(snap),
-                                         new FakeClock(now), machine: new FakeInventaireMachine());
+                                         new FakeClock(now));
 
         var report = await diag.BuildReportAsync();
 
@@ -331,9 +321,9 @@ public class DiagnosticServiceTests : IDisposable
             },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(snap),
-                                         new FakeClock(now), machine: new FakeInventaireMachine());
+                                         new FakeClock(now));
 
         var report = await diag.BuildReportAsync();
 
@@ -357,9 +347,9 @@ public class DiagnosticServiceTests : IDisposable
             },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(snap),
-                                         new FakeClock(now), machine: new FakeInventaireMachine());
+                                         new FakeClock(now));
 
         var report = await diag.BuildReportAsync();
 
@@ -387,9 +377,9 @@ public class DiagnosticServiceTests : IDisposable
             },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(snap),
-                                         new FakeClock(now), machine: new FakeInventaireMachine());
+                                         new FakeClock(now));
 
         var report = await diag.BuildReportAsync();
 
@@ -453,11 +443,10 @@ public class DiagnosticServiceTests : IDisposable
             },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths),
                                          new ProviderQuiDeclencheLaSonde(snap, etat),
-                                         new FakeClock(now), etatServeur: etat,
-                                         machine: new FakeInventaireMachine());
+                                         new FakeClock(now), etatServeur: etat);
 
         var report = await diag.BuildReportAsync();
 
@@ -494,11 +483,10 @@ public class DiagnosticServiceTests : IDisposable
             },
             SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
         };
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(snap),
                                          new FakeClock(now),
-                                         etatServeur: new EtatServeurFige { Depassement = dep },
-                                         machine: new FakeInventaireMachine());
+                                         etatServeur: new EtatServeurFige { Depassement = dep });
         return await diag.BuildReportAsync();
     }
 
@@ -587,9 +575,9 @@ public class DiagnosticServiceTests : IDisposable
     private static async Task<string> Rapport(SessionMonitor? moniteur)
     {
         var paths = TempPaths();
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(T22), machine: new FakeInventaireMachine(),
+                                         new FakeClock(T22),
                                          moniteurSessions: moniteur);
         return await diag.BuildReportAsync();
     }
@@ -999,9 +987,9 @@ public class DiagnosticServiceTests : IDisposable
     private static async Task<string> RapportA(SessionMonitor moniteur, DateTimeOffset maintenant)
     {
         var paths = TempPaths();
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+        var diag = new DiagnosticService(paths,
                                          new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
-                                         new FakeClock(maintenant), machine: new FakeInventaireMachine(),
+                                         new FakeClock(maintenant),
                                          moniteurSessions: moniteur);
         return await diag.BuildReportAsync();
     }
@@ -1394,8 +1382,8 @@ public class DiagnosticServiceTests : IDisposable
     /// <summary>Le rapport n'émet aucune requête (phase 37) ; le composite est un stub. Seul le paramètre
     /// <c>magasins</c> varie.</summary>
     private static DiagnosticService DiagAvecMagasins(ChronosPaths paths, FakeClock clock, IReadOnlyList<IEtatMagasin>? magasins)
-        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
-               new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(), magasins: magasins);
+        => new(paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), clock, magasins: magasins);
 
     private static List<string> Lignes(string report)
         => report.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
@@ -1466,8 +1454,8 @@ public class DiagnosticServiceTests : IDisposable
     // lancement sur l'écriture de la veille), et il compte les processus Chronos et nomme l'état du verrou (câblage de 32-03).
 
     private static DiagnosticService DiagAvecJournal(ChronosPaths paths, FakeClock clock, DateTimeOffset? derniereEcriture, DateTimeOffset demarrage)
-        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
-               new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(),
+        => new(paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), clock,
                magasins: new[] { new FauxMagasin { Nom = NomsMagasins.JournalReleves, Chemin = paths.HistoriqueDir, DerniereEcriture = derniereEcriture } },
                demarrageProcessus: demarrage);
 
@@ -1536,8 +1524,8 @@ public class DiagnosticServiceTests : IDisposable
 
     private static DiagnosticService DiagAvecReconstruction(ChronosPaths paths, FakeClock clock, IReadOnlyList<IEtatMagasin>? magasins,
                                                             IEtatReconstruction? reconstruction)
-        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
-               new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(), magasins: magasins,
+        => new(paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), clock, magasins: magasins,
                reconstruction: reconstruction);
 
     /// <summary>Les lignes de la sous-section des agrégats : de la ligne du magasin à la ligne vide qui clôt [Magasins persistants].</summary>
@@ -1647,8 +1635,8 @@ public class DiagnosticServiceTests : IDisposable
     }
 
     private static DiagnosticService Diag35(ChronosPaths paths, IEtatReconstruction? reconstruction, TimeZoneInfo? fuseau)
-        => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
-               new StubProvider(UsageSnapshot.Empty), new FakeClock(Now35), machine: new FakeInventaireMachine(),
+        => new(paths, new SettingsService(paths),
+               new StubProvider(UsageSnapshot.Empty), new FakeClock(Now35),
                reconstruction: reconstruction, fuseau: fuseau);
 
     /// <summary>Les lignes de la section : de l'en-tête à la ligne vide qui la clôt (en-tête exclu), sans l'indentation.</summary>
@@ -1759,9 +1747,8 @@ public class DiagnosticServiceTests : IDisposable
         var paths = TempPaths();
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(paths.SettingsFile)!);
         System.IO.File.WriteAllText(paths.SettingsFile, json);
-        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
-                                         new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
-                                         machine: new FakeInventaireMachine());
+        var diag = new DiagnosticService(paths, new SettingsService(paths),
+                                         new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
         return await diag.BuildReportAsync();
     }
 

@@ -112,7 +112,7 @@ public class ThemingTests
         var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
             settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
+            new DiagnosticService(TempPaths(), settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
 
         var win = new Chronos.Views.Reglages.ReglagesWindow(vm);

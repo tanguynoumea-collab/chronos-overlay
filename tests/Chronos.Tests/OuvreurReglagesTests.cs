@@ -112,7 +112,7 @@ public class OuvreurReglagesTests
         var clock = new FakeClock(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
         var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
             new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(), settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), paths, settings, prov, clock, machine: new FakeInventaireMachine()),
+            new DiagnosticService(paths, settings, prov, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
         var guard = new TopmostGuard();
         var ouvreur = new FakeOuvreurReglages();

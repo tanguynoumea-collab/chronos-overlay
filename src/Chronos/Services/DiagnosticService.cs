@@ -38,20 +38,12 @@ public sealed class DiagnosticService
     private readonly TimeZoneInfo? _fuseau;
     private readonly DateTimeOffset _demarrage;
 
-    /// <param name="tokenReader">Inutilisé depuis la phase 37 (étape 1) ; retiré à l'étape 3 avec son type.</param>
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
     /// tests) compilent sans retouche, et la DI passe le vrai service.</param>
     /// <param name="etatServeur">Canal latéral de la sonde d'en-têtes (HDR-03/HDR-04) et son issue.
     /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants (1 en
     /// production, 9 en tests) compilent sans retouche. Précédent : authStatus, phase 17.</param>
-    /// <param name="machine">Inutilisé depuis la phase 37 (étape 1) ; retiré à l'étape 3 avec son type.
-    /// Historique : les deux sondages d'environnement MESURÉS chers (coffres OAuth 17 703 ms,
-    /// poll UIA 936 ms — 99,4 % du coût d'un rapport ; 7 tests payaient 2 min 8 s pour cela seul).
-    /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants
-    /// compilent sans retouche. Le repli <c>?? new InventaireMachine()</c> laisse la PRODUCTION
-    /// strictement inchangée — aucune inscription DI, aucune mémoïsation. Précédents : authStatus
-    /// (phase 17), etatServeur (phase 18).</param>
     /// <param name="moniteurSessions">OBS-01 — LE moniteur du widget, partagé par le conteneur DI, jamais
     /// un second exemplaire. Le rapport décrivait jusqu'ici un moniteur fabriqué ici même, donc nu : sans le
     /// magasin d'archives de l'application, sans le filtre « traité », sans le détecteur d'hystérésis. Il
@@ -62,14 +54,14 @@ public sealed class DiagnosticService
     /// rapport suivra chaque changement futur du câblage du widget sans qu'une ligne de ce fichier ne
     /// change. Une copie du comportement du widget rouvrirait l'écart le lendemain.</para>
     ///
-    /// <para>AUCUN REPLI, contrairement à <paramref name="machine"/> : nul n'est absent, le rapport dit
-    /// qu'il n'a rien observé. Fabriquer un moniteur de secours ici, c'est exactement le défaut corrigé.
-    /// OPTIONNEL et en DERNIÈRE position à dessein : les 11 sites de construction préexistants compilent
-    /// sans retouche. Précédents : authStatus (17), etatServeur (18), machine (20).</para></param>
+    /// <para>AUCUN REPLI : nul n'est absent, le rapport dit qu'il n'a rien observé. Fabriquer un moniteur
+    /// de secours ici, c'est exactement le défaut corrigé. OPTIONNEL et en DERNIÈRE position à dessein :
+    /// les sites de construction préexistants compilent sans retouche. Précédents : authStatus (17),
+    /// etatServeur (18).</para></param>
     /// <param name="magasins">CPT-02 — état des magasins persistants (dernier exact, journal des relevés) tel que le
     /// processus le connaît : âge de la dernière écriture, dernière erreur. OPTIONNEL et en DERNIÈRE position à
     /// dessein : les sites de construction préexistants compilent sans retouche. Précédents : authStatus (17),
-    /// etatServeur (18), machine (20), moniteurSessions (26). Repli : les faits disque seuls (existence, taille,
+    /// etatServeur (18), moniteurSessions (26). Repli : les faits disque seuls (existence, taille,
     /// mtime) — le rapport reste utile sans câblage DI, mais ne peut alors pas dire POURQUOI une écriture a raté.</param>
     /// <param name="demarrageProcessus">JRN-04 — instant de démarrage du processus. D-32-21 : l'alerte « journal muet » se
     /// mesure depuis max(démarrage, dernière écriture) ; mesurée depuis la seule dernière écriture, elle s'allumerait à chaque
@@ -83,10 +75,8 @@ public sealed class DiagnosticService
     /// fin de reconstruction), celui de la fenêtre Historique. OPTIONNEL et en DERNIÈRE position à dessein (même protocole que les
     /// précédents) ; câblé par la racine de composition (35-05). <c>null</c> → la section parle en UTC et le DIT (« Fuseau : UTC
     /// (fuseau non injecté) ») : jamais le fuseau local de la machine deviné ici (décision 5 de la phase 35).</param>
-    public DiagnosticService(IClaudeTokenReader tokenReader, ChronosPaths paths,
-                             SettingsService settings, IUsageProvider composite, IClock clock,
+    public DiagnosticService(ChronosPaths paths, SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
-                             IInventaireMachine? machine = null,
                              SessionMonitor? moniteurSessions = null,
                              IReadOnlyList<IEtatMagasin>? magasins = null,
                              DateTimeOffset? demarrageProcessus = null,

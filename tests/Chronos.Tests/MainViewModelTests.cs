@@ -87,7 +87,7 @@ public class MainViewModelTests
         // l'orchestrateur et en comptant les GetAsync. Sans cette prise, « un rafraîchissement a été
         // demandé » serait invérifiable depuis l'extérieur du VM.
         var orch = orchestrator ?? new RefreshOrchestrator(provider, TempPaths(), options);
-        var diag = new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock);
+        var diag = new DiagnosticService(TempPaths(), settings, provider, clock);
         // etatServeur passe par le helper et NON par un nouveau site de construction : le 13e paramètre
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
@@ -135,7 +135,7 @@ public class MainViewModelTests
         var vm = new MainViewModel(orch, ui, clock,
             new FakeWindowController(), new FakeAutostartService(),
             new FakeRecalibrationPrompt(), settings,
-            new DiagnosticService(new FakeClaudeTokenReader(), TempPaths(), settings, provider, clock),
+            new DiagnosticService(TempPaths(), settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
             new FakeAuthStatus());
         try
