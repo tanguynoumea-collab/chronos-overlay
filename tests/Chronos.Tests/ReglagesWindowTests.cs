@@ -485,6 +485,28 @@ public class ReglagesWindowTests
         Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "CarteModeEtendu").Visibility);   // Anneaux seulement
     }
 
+    /// <summary>§11 B1 : la fenêtre des cadrans rectangulaires porte, sous l'empreinte, la bande de 14 px des pastilles. L'aperçu
+    /// des réglages reste cadré sur l'EMPREINTE du cadran (bande exclue) ; Arcs (bande 0) garde tout son carré.</summary>
+    [WpfFact]
+    public void L_apercu_exclut_la_bande_des_pastilles()
+    {
+        var vm = NouveauVm();
+        vm.CadranStyle = CadranStyle.Fusible;   // horizontal par défaut : empreinte 190 × 92, fenêtre 190 × 106
+        var cadran = new Grid { UseLayoutRounding = false };
+        cadran.Measure(new Size(190, 106));
+        cadran.Arrange(new Rect(0, 0, 190, 106));
+        var f = Monter(vm, SectionReglages.Apparence, ParDefaut, cadran);
+
+        var pinceau = Assert.IsType<VisualBrush>(Nomme<Shape>(f, "ApercuCadran").Fill);
+        Assert.Equal(new Rect(0, 0, 190, 92), pinceau.Viewbox);
+
+        vm.CadranStyle = CadranStyle.Arcs;
+        cadran.Measure(new Size(170, 170));
+        cadran.Arrange(new Rect(0, 0, 170, 170));
+        cadran.UpdateLayout();
+        Assert.Equal(new Rect(0, 0, 170, 170), pinceau.Viewbox);
+    }
+
     // ================================================================== Orientation (phase 40, CAD-04)
 
     private static Border BordurePuce(Button b)

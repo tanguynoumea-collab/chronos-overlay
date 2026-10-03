@@ -98,15 +98,17 @@ public partial class ReglagesWindow : Window
         ApercuCadran.Fill = brosse;
         ApercuCadranAbsent.Visibility = Visibility.Collapsed;
 
-        // Cadrage sur l'EMPREINTE du cadran (170 × 170), pas sur la boîte englobante de ce qu'il dessine : celle-ci est asymétrique
+        // Cadrage sur l'EMPREINTE du cadran, pas sur la boîte englobante de ce qu'il dessine : celle-ci est asymétrique
         // (graduations, pastilles en bas à droite) et changerait dès qu'une pastille apparaît — l'aperçu se décentrerait et sauterait.
+        // La bande des pastilles des cadrans rectangulaires (§11 B1), sous l'empreinte, est exclue : l'aperçu ne saute pas quand
+        // une pastille apparaît.
         if (cadranReel is FrameworkElement empreinte)
         {
             void Cadrer()
             {
                 if (empreinte.ActualWidth <= 0 || empreinte.ActualHeight <= 0) return;
                 brosse.ViewboxUnits = BrushMappingMode.Absolute;
-                brosse.Viewbox = new Rect(0, 0, empreinte.ActualWidth, empreinte.ActualHeight);
+                brosse.Viewbox = new Rect(0, 0, empreinte.ActualWidth, Math.Max(0, empreinte.ActualHeight - _vm.HauteurBandePastilles));
             }
             SizeChangedEventHandler surTaille = (_, _) => Cadrer();
             Cadrer();
