@@ -55,4 +55,17 @@ public static class CornerSnap
         double y = top ? workArea.Y + margin : workArea.Bottom - window.Height - margin;
         return (x, y);
     }
+
+    /// <summary>
+    /// Recalage après changement d'empreinte (CAD-02) : le coin est IMPOSÉ (jamais recalculé depuis la
+    /// position courante), puis la position est bornée à la zone de travail pour ne jamais déborder, même
+    /// si la fenêtre dépasse la zone (elle est alors calée en haut à gauche).
+    /// </summary>
+    public static (double X, double Y) RecalerSurCoin(OverlayCorner coin, RectD fenetre, RectD travail, double marge)
+    {
+        var (x, y) = CornerToTopLeft(coin, fenetre, travail, marge);
+        x = Math.Max(travail.X, Math.Min(x, travail.Right - fenetre.Width));
+        y = Math.Max(travail.Y, Math.Min(y, travail.Bottom - fenetre.Height));
+        return (x, y);
+    }
 }
