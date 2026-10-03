@@ -113,7 +113,7 @@ observés).
 - [x] **Phase 36: Socle** - Une valeur inconnue dans `settings.json` ne coûte plus que cette valeur, et tout argument `--xxx` inconnu ou retiré sort en silence avant le verrou mono-instance (completed 2026-10-03)
 - [x] **Phase 37: Une chaîne de données claire** - Les sources mortes, le pont statusLine et le recalibrage disparaissent en commits réversibles ; la barre est retirée de Claude Code avec sauvegarde ; le diagnostic et les docs décrivent exactement la chaîne réelle (completed 2026-10-03)
 - [x] **Phase 38: Historique : Pistes seul et plein écran** - L'Historique n'a plus qu'un style, et un plein écran sur l'écran courant agrandit pistes et textes sans défilement, avec une sortie toujours à portée (completed 2026-10-03)
-- [ ] **Phase 39: Thèmes Pâle / Classique / Vive** - Quinze thèmes rangés en trois groupes, un gris épuisé et un rouge lisibles partout (≥ 3:1), et les quatre cadrans alternatifs qui suivent le thème
+- [x] **Phase 39: Thèmes Pâle / Classique / Vive** - Quinze thèmes rangés en trois groupes, un gris épuisé et un rouge lisibles partout (≥ 3:1), et les quatre cadrans alternatifs qui suivent le thème (completed 2026-10-03)
 - [ ] **Phase 40: Cadrans à l'échelle 1 et orientations** - Chaque cadran a son empreinte réelle (+20 % pour Fusible et Volets), la fenêtre reste collée à son coin, et Fusible vertical, Marée horizontale, Volets vertical existent
 - [ ] **Phase 41: Braises** - L'anneau 5 h montre 20 braises en 5 heures séparées par un vide, une flèche fixe à midi, et l'heure du reset en mode temps
 - [ ] **Phase 42: Un geste sur toute la silhouette** - Bascule, double-clic, glisser et clic droit marchent sur toute la silhouette des huit variantes, le clic traverse en dehors, et c'est prouvé par rendu
@@ -373,7 +373,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 36. Socle | v1.9 | 2/2 | Complete    | 2026-10-03 |
 | 37. Une chaîne de données claire | v1.9 | 6/6 | Complete    | 2026-10-03 |
 | 38. Historique : Pistes seul et plein écran | v1.9 | 6/6 | Complete    | 2026-10-03 |
-| 39. Thèmes Pâle / Classique / Vive | v1.9 | 3/4 | In Progress|  |
+| 39. Thèmes Pâle / Classique / Vive | v1.9 | 4/4 | Complete   | 2026-10-03 |
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 0/? | Not started | - |
 | 41. Braises | v1.9 | 0/? | Not started | - |
 | 42. Un geste sur toute la silhouette | v1.9 | 0/? | Not started | - |
