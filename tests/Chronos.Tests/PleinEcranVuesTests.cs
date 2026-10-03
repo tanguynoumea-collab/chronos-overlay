@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Chronos.Controls.Historique;
+using Chronos.Models.Historique;
 using Chronos.Rendering.Historique;
 using Chronos.Services;
 using Chronos.Services.Historique;
@@ -231,10 +232,141 @@ public class PleinEcranVuesTests
         Assert.Equal(2.2, p.Niveau.EpaisseurEscalier);
     }
 
+    // ------------------------------------------------------------------ Vue Jour (plan 04) : montage et aides
+
+    /// <summary>Monte la vue Jour seule (920 × 900) sur le jour de référence — même montage que <c>VueJourBindingTests.Monter</c>.</summary>
+    private static VueJourView MonterJour()
+    {
+        var vm = new HistoriqueViewModel(new SourceHistoriqueDemonstration(Tz), new FakeUiDispatcher { OnUiThread = true },
+                                         ScenariosHistorique.HorlogeFigee(Tz), Tz, new ReglagesHistoriqueMemoire());
+        vm.Ouvrir();
+        vm.AttendreLecture().GetAwaiter().GetResult();
+        vm.ChoisirVueCommand.Execute(VueHistorique.Jour);
+        vm.AttendreLecture().GetAwaiter().GetResult();
+        var vue = new VueJourView { DataContext = vm };
+        MettreEnPage(vue, 920, 900);
+        MettreEnPage(vue, 920, 900);
+        return vue;
+    }
+
+    private static (PisteNiveau Niveau, PisteRythme Rythme, PisteTokens Tokens, PisteCouverture Couverture) PistesJour(VueJourView vue)
+        => (Assert.Single(Tous<PisteNiveau>(vue)), Assert.Single(Tous<PisteRythme>(vue)),
+            Assert.Single(Tous<PisteTokens>(vue)), Assert.Single(Tous<PisteCouverture>(vue)));
+
+    /// <summary>Le seul ScrollViewer de la vue (le corps).</summary>
+    private static ScrollViewer DefilementUnique(FrameworkElement vue) => Assert.Single(Tous<ScrollViewer>(vue));
+
+    /// <summary>Entre en plein écran et remet en page deux fois (ressources dynamiques, puis bindings sur ActualWidth).</summary>
+    private static ResourceDictionary PleinEcranEnPage(FrameworkElement vue, double largeur, double hauteur)
+    {
+        var d = PleinEcran(vue);
+        MettreEnPage(vue, largeur, hauteur);
+        MettreEnPage(vue, largeur, hauteur);
+        return d;
+    }
+
+    /// <summary>Vérifie, sur un petit écran, que <paramref name="dernier"/> finit dans la zone visible et que le pied de page est dans la vue.</summary>
+    private static void RienNEstTronque(FrameworkElement vue, FrameworkElement dernier, double hauteurVue)
+    {
+        var defilement = DefilementUnique(vue);
+        Assert.Equal(0, defilement.ScrollableHeight);
+
+        var bas = dernier.TranslatePoint(new Point(0, dernier.ActualHeight), defilement).Y;
+        Assert.True(bas <= defilement.ActualHeight + 0.5,
+            $"{dernier.GetType().Name} finit à {bas}, sous le bas de la zone visible ({defilement.ActualHeight}) : tronqué.");
+
+        var pied = Texte(vue, TextesHistorique.PiedDePage);
+        Assert.Equal(Visibility.Visible, pied.Visibility);
+        Assert.True(pied.ActualHeight > 0, "le pied de page d'honnêteté doit être rendu.");
+        var hautPied = pied.TranslatePoint(new Point(0, 0), vue).Y;
+        Assert.True(hautPied >= 0 && hautPied + pied.ActualHeight <= hauteurVue + 0.5,
+            $"le pied de page ({hautPied} → {hautPied + pied.ActualHeight}) sort de la vue ({hauteurVue}).");
+    }
+
+    /// <summary>La cellule (Grid) qui porte le libellé « NIVEAU » : sa largeur est la colonne des libellés.</summary>
+    private static Grid CelluleNiveau(FrameworkElement vue) => Assert.IsType<Grid>(VisualTreeHelper.GetParent(Texte(vue, TextesHistorique.PisteNiveau)));
+
+    /// <summary>L'espaceur de la colonne de légende droite du corps du Jour (Border en colonne 2, enfant direct de « Corps »).</summary>
+    private static Border EspaceurLegendeJour(VueJourView vue)
+        => Assert.Single(Assert.IsType<Grid>(vue.FindName("Corps")).Children.OfType<Border>(), b => Grid.GetColumn(b) == 2);
+
+    // ------------------------------------------------------------------ Vue Jour : proportions, plafonds, petit écran, textes
+
+    [WpfFact]
+    public void En_plein_ecran_les_pistes_du_jour_se_partagent_la_hauteur_dans_leurs_proportions()
+    {
+        var vue = MonterJour();
+        PleinEcranEnPage(vue, 1400, 700);
+
+        var p = PistesJour(vue);
+        Assert.Equal(0, DefilementUnique(vue).ScrollableHeight);
+        Assert.Equal(190.0 / 64.0, p.Niveau.ActualHeight / p.Rythme.ActualHeight, 2);
+        Assert.True(Math.Abs(p.Rythme.ActualHeight - p.Tokens.ActualHeight) <= 0.5,
+            $"RYTHME {p.Rythme.ActualHeight} et TOKENS {p.Tokens.ActualHeight} doivent être égales (64* / 64*).");
+        Assert.Equal(12, p.Couverture.ActualHeight);
+        Assert.True(p.Niveau.ActualHeight > 190, $"NIVEAU {p.Niveau.ActualHeight} doit grandir au-delà de 190 en plein écran.");
+    }
+
+    [WpfFact]
+    public void En_plein_ecran_les_pistes_du_jour_s_arretent_a_leurs_plafonds()
+    {
+        var vue = MonterJour();
+        PleinEcranEnPage(vue, 2560, 1600);
+
+        var p = PistesJour(vue);
+        Assert.Equal(240, p.Rythme.ActualHeight, 0.5);
+        Assert.Equal(240, p.Tokens.ActualHeight, 0.5);
+        Assert.Equal(520, p.Niveau.ActualHeight, 0.5);
+        Assert.Equal(12, p.Couverture.ActualHeight);
+        Assert.Equal(0, DefilementUnique(vue).ScrollableHeight);
+    }
+
+    [WpfFact]
+    public void En_plein_ecran_sur_un_petit_ecran_le_jour_ne_tronque_rien()
+    {
+        var vue = MonterJour();
+        PleinEcranEnPage(vue, 1248, 560);   // fenêtre 1 280 × 720 moins l'en-tête
+
+        RienNEstTronque(vue, PistesJour(vue).Couverture, 560);
+    }
+
+    [WpfFact]
+    public void En_plein_ecran_les_textes_et_traits_du_jour_passent_aux_valeurs_du_contrat()
+    {
+        var vue = MonterJour();
+        var normalLibelle = Texte(vue, TextesHistorique.PisteNiveau).FontSize;
+        var normalColonne = CelluleNiveau(vue).Width;
+        var normalLegende = EspaceurLegendeJour(vue).Width;
+        var normalTrait = PistesJour(vue).Niveau.EpaisseurPremierPlan;
+        Assert.NotEqual(12, normalLibelle);
+
+        var d = PleinEcranEnPage(vue, 1400, 700);
+
+        Assert.Equal(12, Texte(vue, TextesHistorique.PisteNiveau).FontSize);
+        Assert.Equal(128, CelluleNiveau(vue).Width);
+        Assert.Equal(96, EspaceurLegendeJour(vue).Width);
+        Assert.Equal(3.2, PistesJour(vue).Niveau.EpaisseurPremierPlan);
+
+        // Retour exact au normal.
+        Normal(vue, d);
+        MettreEnPage(vue, 920, 900);
+        MettreEnPage(vue, 920, 900);
+
+        var p = PistesJour(vue);
+        Assert.Equal(190, p.Niveau.ActualHeight);
+        Assert.Equal(64, p.Rythme.ActualHeight);
+        Assert.Equal(64, p.Tokens.ActualHeight);
+        Assert.Equal(12, p.Couverture.ActualHeight);
+        Assert.Equal(normalLibelle, Texte(vue, TextesHistorique.PisteNiveau).FontSize);
+        Assert.Equal(normalColonne, CelluleNiveau(vue).Width);
+        Assert.Equal(normalLegende, EspaceurLegendeJour(vue).Width);
+        Assert.Equal(normalTrait, p.Niveau.EpaisseurPremierPlan);
+    }
+
     // ------------------------------------------------------------------ Garde textuelle (Pitfall 3)
 
     /// <summary>Vues de l'Historique déjà converties au plein écran (les plans 04 et 06 étendent la liste).</summary>
-    private static readonly string[] VuesConverties = { "VueSemaineView.xaml" };
+    private static readonly string[] VuesConverties = { "VueSemaineView.xaml", "VueJourView.xaml" };
 
     /// <summary>Une <c>StaticResource</c> sur une clé échelonnée est résolue une fois au chargement : elle ne bascule JAMAIS, sans erreur.</summary>
     [Fact]
