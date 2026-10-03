@@ -40,6 +40,34 @@ public class ThemingTests
     private static Color LerpTest(Color a, Color b, double t) => Color.FromArgb(0xFF,
         (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));
 
+    /// <summary>Gris pur de même luminance (copie indépendante, pour ne pas prouver le code par lui-même) : le plus petit
+    /// v (0..255) dont la luminance WCAG atteint celle de <paramref name="c"/> ; 255 si aucun.</summary>
+    private static Color GrisTest(Color c)
+    {
+        var cible = ContrasteWcag.Luminance(c);
+        for (int v = 0; v <= 255; v++)
+        {
+            var g = Color.FromRgb((byte)v, (byte)v, (byte)v);
+            if (ContrasteWcag.Luminance(g) >= cible) return g;
+        }
+        return Color.FromRgb(255, 255, 255);
+    }
+
+    /// <summary>Composition sRGB par canal d'une couleur translucide sur un fond opaque (copie indépendante) ; alpha FF.</summary>
+    private static Color ComposeTest(Color avant, Color fond)
+    {
+        double a = avant.A / 255.0;
+        byte Canal(byte x, byte y) => (byte)Math.Round(a * x + (1 - a) * y);
+        return Color.FromRgb(Canal(avant.R, fond.R), Canal(avant.G, fond.G), Canal(avant.B, fond.B));
+    }
+
+    /// <summary>Neutre attendu (§11 B3) : mi-chemin disque → piste.</summary>
+    private static Color NeutreAttendu(ChronosTheme t) => LerpTest(Disque(t), t.Piste5h, 0.5);
+
+    /// <summary>Les deux contraintes de l'épuisé (§11 B3) : ≥ 3:1 contre le disque opaque ET ≥ 2:1 contre le neutre.</summary>
+    private static bool EpuiseSuffit(Color g, ChronosTheme t) =>
+        ContrasteWcag.Ratio(g, Disque(t)) >= 3.0 && ContrasteWcag.Ratio(g, NeutreAttendu(t)) >= 2.0;
+
     /// <summary>Teinte HSV standard en degrés [0, 360) ; 0 pour un gris.</summary>
     private static double TeinteHsv(Color c)
     {
@@ -136,28 +164,99 @@ public class ThemingTests
         }
     }
 
-    /// <summary>THM-03 : le gris épuisé est le PLUS PETIT mélange piste → graduation (t ≥ 0,18, pas 0,01) qui atteint 3:1.</summary>
+    /// <summary>THM-03 (B3, DESIGN_PLAN_CYCLE2 §11) : l'épuisé est le gris de même luminance du PLUS PETIT mélange
+    /// piste → graduation (pas 0,18 à 1,00) qui satisfait les deux contraintes (≥ 3:1 disque, ≥ 2:1 neutre).</summary>
     [Fact]
     public void Le_gris_epuise_est_le_plus_petit_melange_qui_suffit()
     {
         foreach (var t in ThemeCatalog.All)
         {
-            var d = Disque(t);
-            int p = Enumerable.Range(18, 83).FirstOrDefault(i => LerpTest(t.Piste5h, t.TickVisible, i / 100.0) == t.Epuise, -1);
-            Assert.True(p >= 18, $"thème {t.Key} : épuisé {t.Epuise} n'est pas un mélange piste → graduation au pas de 0,01");
-            if (p > 18)
-                Assert.True(ContrasteWcag.Ratio(LerpTest(t.Piste5h, t.TickVisible, (p - 1) / 100.0), d) < 3.0,
-                    $"thème {t.Key} : le pas {p - 1} suffisait déjà, l'épuisé n'est pas minimal");
+            Color Gris(int pas) => GrisTest(LerpTest(t.Piste5h, t.TickVisible, pas / 100.0));
+            int p = Enumerable.Range(18, 83).FirstOrDefault(i => Gris(i) == t.Epuise && EpuiseSuffit(Gris(i), t), -1);
+            Assert.True(p >= 18, $"thème {t.Key} : épuisé {t.Epuise} n'est le gris d'aucun mélange piste → graduation qui suffit");
+            for (int q = 18; q < p; q++)
+                Assert.False(EpuiseSuffit(Gris(q), t),
+                    $"thème {t.Key} : le pas {q} suffisait déjà ({Gris(q)}), l'épuisé n'est pas minimal");
         }
     }
 
-    /// <summary>Ancrages calculés dans 39-RESEARCH (C# reproduit) : minuit, Lave (cas limite), Forêt (t le plus haut).</summary>
+    /// <summary>B3, DESIGN_PLAN_CYCLE2 §11 : le neutre (utilisation inconnue) vaut Lerp(disque, piste, 0,5) et est
+    /// strictement plus sombre que la piste — « rien » se lit comme du vide.</summary>
+    [Fact]
+    public void Le_neutre_est_plus_sombre_que_la_piste()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            Assert.True(t.Neutre == NeutreAttendu(t), $"thème {t.Key} : neutre {t.Neutre} ≠ {NeutreAttendu(t)} (Lerp disque → piste 0,5)");
+            Assert.True(ContrasteWcag.Luminance(t.Neutre) < ContrasteWcag.Luminance(t.Piste5h),
+                $"thème {t.Key} : neutre {t.Neutre} n'est pas plus sombre que la piste {t.Piste5h}");
+        }
+    }
+
+    /// <summary>B3, DESIGN_PLAN_CYCLE2 §11 : l'épuisé est un gris PUR (R = G = B) — il ne passe plus pour une teinte de la
+    /// rampe (plus de bleu sur Synthwave / Marine / Néon).</summary>
+    [Fact]
+    public void Le_gris_epuise_est_desature()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            Assert.True(t.Epuise.R == t.Epuise.G && t.Epuise.G == t.Epuise.B, $"thème {t.Key} : épuisé {t.Epuise} n'est pas un gris pur");
+            Assert.True(GrisTest(t.Epuise) == t.Epuise, $"thème {t.Key} : épuisé {t.Epuise} n'est pas son propre gris de même luminance");
+        }
+    }
+
+    /// <summary>B3, DESIGN_PLAN_CYCLE2 §11 : « épuisé » ne se confond plus avec « aucune donnée » (≥ 2:1 contre le neutre).</summary>
+    [Fact]
+    public void Le_gris_epuise_se_distingue_du_neutre()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var ratio = ContrasteWcag.Ratio(t.Epuise, t.Neutre);
+            Assert.True(ratio >= 2.0, $"thème {t.Key} : épuisé / neutre à {ratio:F4}:1 (< 2:1)");
+        }
+    }
+
+    /// <summary>B3, DESIGN_PLAN_CYCLE2 §11 : les chiffres de la plaque Volets restent lisibles (≥ 4,5:1) sur un quota épuisé.
+    /// Règle : le meilleur de PlaqueTexte / TextePrincipal s'il atteint 4,5:1, sinon le meilleur de noir / blanc.</summary>
+    [Fact]
+    public void Le_texte_de_plaque_reste_lisible_sur_epuise()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var ratio = ContrasteWcag.Ratio(t.PlaqueTexteEpuise, t.Epuise);
+            Assert.True(ratio >= 4.5, $"thème {t.Key} : texte de plaque sur épuisé à {ratio:F4}:1 (< 4,5:1)");
+
+            double rp = ContrasteWcag.Ratio(t.PlaqueTexte, t.Epuise), rt = ContrasteWcag.Ratio(t.TextePrincipal, t.Epuise);
+            Color attendu = Math.Max(rp, rt) >= 4.5
+                ? (rp >= rt ? t.PlaqueTexte : t.TextePrincipal)
+                : (ContrasteWcag.Ratio(Colors.Black, t.Epuise) >= ContrasteWcag.Ratio(Colors.White, t.Epuise) ? Colors.Black : Colors.White);
+            Assert.True(attendu == t.PlaqueTexteEpuise, $"thème {t.Key} : PlaqueTexteEpuise {t.PlaqueTexteEpuise} ≠ {attendu} attendu");
+        }
+    }
+
+    /// <summary>B2, DESIGN_PLAN_CYCLE2 §11 : la plaque « indisponible » (FondCadran, alpha E6) garantit ≥ 4,5:1 au texte
+    /// principal, que le bureau dessous soit noir ou blanc.</summary>
+    [Fact]
+    public void La_plaque_indisponible_garantit_le_texte_principal()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var surNoir = ContrasteWcag.Ratio(t.TextePrincipal, ComposeTest(t.FondCadran, Colors.Black));
+            var surBlanc = ContrasteWcag.Ratio(t.TextePrincipal, ComposeTest(t.FondCadran, Colors.White));
+            Assert.True(surNoir >= 4.5, $"thème {t.Key} : texte sur plaque (bureau noir) à {surNoir:F4}:1 (< 4,5:1)");
+            Assert.True(surBlanc >= 4.5, $"thème {t.Key} : texte sur plaque (bureau blanc) à {surBlanc:F4}:1 (< 4,5:1)");
+        }
+    }
+
+    /// <summary>Ancrages de l'épuisé : minuit, Lave, Forêt. Gris purs (B3, §11) ; valeurs exactes épinglées en tâche 2.</summary>
     [Fact]
     public void Ancrage_minuit()
     {
-        Assert.Equal(H("#FF63626C"), ThemeCatalog.Default.Epuise);
-        Assert.Equal(H("#FF7C5844"), ThemeCatalog.ByKey("lave").Epuise);
-        Assert.Equal(H("#FF758079"), ThemeCatalog.ByKey("foret").Epuise);
+        foreach (var cle in new[] { "minuit", "lave", "foret" })
+        {
+            var e = ThemeCatalog.ByKey(cle).Epuise;
+            Assert.True(e.R == e.G && e.G == e.B, $"{cle} : épuisé {e} n'est pas un gris pur");   // épinglé en tâche 2
+        }
     }
 
     /// <summary>THM-03 : le rouge de fin de rampe est bien ROUGE (teinte 335°–20°) et lisible (≥ 3:1) sur tout le catalogue.</summary>
@@ -181,7 +280,7 @@ public class ThemingTests
         foreach (var t in ThemeCatalog.All)
         {
             var tokens = t.BrushTokens();
-            foreach (var cle in new[] { "TickReset", "Epuise", "CadranTuile", "CadranAttente", "PlaqueTexte", "PlaqueFilet", "PlaqueHachure" })
+            foreach (var cle in new[] { "TickReset", "Epuise", "CadranTuile", "CadranAttente", "PlaqueTexte", "PlaqueTexteEpuise", "PlaqueFilet", "PlaqueHachure" })
                 Assert.True(tokens.ContainsKey(cle), $"thème {t.Key} : token {cle} manquant");
 
             Color Couleur(string cle)
@@ -198,6 +297,7 @@ public class ThemingTests
             Assert.Equal(LerpTest(d, t.Piste5h, 0.5), Couleur("CadranTuile"));
             Assert.Equal(Color.FromArgb(0x6E, t.TickVisible.R, t.TickVisible.G, t.TickVisible.B), Couleur("CadranAttente"));
             Assert.Equal(plaque, Couleur("PlaqueTexte"));
+            Assert.Equal(t.PlaqueTexteEpuise, Couleur("PlaqueTexteEpuise"));   // B3, §11
             Assert.Equal(Color.FromArgb(0x33, plaque.R, plaque.G, plaque.B), Couleur("PlaqueFilet"));
             var hachure = Assert.IsType<DrawingBrush>(tokens["PlaqueHachure"]);
             Assert.True(hachure.IsFrozen, $"thème {t.Key} : PlaqueHachure non gelé");
@@ -225,7 +325,7 @@ public class ThemingTests
         var dict = (ResourceDictionary)Application.LoadComponent(
             new Uri("/Chronos;component/Resources/DesignTokens.xaml", UriKind.Relative));
         var tokens = ThemeCatalog.Default.BrushTokens();
-        foreach (var cle in new[] { "TickReset", "Epuise", "CadranTuile", "CadranAttente", "PlaqueTexte", "PlaqueFilet" })
+        foreach (var cle in new[] { "TickReset", "Epuise", "CadranTuile", "CadranAttente", "PlaqueTexte", "PlaqueTexteEpuise", "PlaqueFilet" })
         {
             var repli = Assert.IsType<SolidColorBrush>(dict[cle]);
             Assert.True(((SolidColorBrush)tokens[cle]).Color == repli.Color, $"repli {cle} : {repli.Color} ≠ minuit");
