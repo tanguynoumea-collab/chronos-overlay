@@ -351,10 +351,10 @@ M1, M2, M3, M9, M10, M11, M15.
      `TexteSecondaireClair` ; Apparence : style et orientation avant les thèmes ; galerie sans vocabulaire d'estimation.
   5. Suite complète verte, build 0 avertissement ; rendus de contrôle régénérés pour la DESIGN-REVIEW 2.
 **Depends on:** Phase 42
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 42.1 to break down)
+- [x] TBD (run /gsd:plan-phase 42.1 to break down) (completed 2026-10-03)
 
 ### Phase 43: Release 3.5.0 et constat
 **Goal**: `Chronos-v3.5.0.exe` est publié et documenté ; le retrait de la barre est constaté dans `~/.claude/settings.json`
