@@ -85,7 +85,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 ### Braises (BRA) — R3
 
-- [ ] **BRA-01**: L'anneau 5 h de Braises montre **20 braises de 15 min en 5 groupes d'une heure** séparés par un vide, et
+- [x] **BRA-01**: L'anneau 5 h de Braises montre **20 braises de 15 min en 5 groupes d'une heure** séparés par un vide, et
   une **flèche fixe à midi** (couleur `TickReset`) qui marque la ligne d'arrivée du reset.
 - [ ] **BRA-02**: En mode temps, le centre de Braises affiche **l'heure du reset** (« ↻ HH:MM », issue de `resets_at`) sous les
   deux comptes à rebours ; rien d'autre ne change en mode pourcentages.
@@ -149,7 +149,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | CAD-02 | Phase 40 | Complete |
 | CAD-03 | Phase 40 | Complete |
 | CAD-04 | Phase 40 | Complete |
-| BRA-01 | Phase 41 | Pending |
+| BRA-01 | Phase 41 | Complete |
 | BRA-02 | Phase 41 | Pending |
 | GST-01 | Phase 42 | Pending |
 | GST-02 | Phase 42 | Pending |
