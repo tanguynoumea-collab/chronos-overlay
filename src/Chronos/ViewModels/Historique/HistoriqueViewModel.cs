@@ -2,6 +2,7 @@ using System.Windows.Threading;
 using Chronos.Models;
 using Chronos.Models.Historique;
 using Chronos.Models.Historique.Tokens;
+using Chronos.Placement;
 using Chronos.Rendering.Historique;
 using Chronos.Services;
 using Chronos.Services.Historique;
@@ -173,6 +174,25 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
     [RelayCommand]
     private void Fermer() => FermetureDemandee?.Invoke(this, EventArgs.Empty);
+
+    // ------------------------------------------------------------------ Plein écran (HIS-10 / HIS-11) — état de la fenêtre, jamais persisté
+
+    /// <summary>Vrai pendant le plein écran. La fenêtre observe cette propriété et applique géométrie + dictionnaire PleinEcran ;
+    /// jamais écrit dans les réglages (la fenêtre rouvre toujours en mode normal).</summary>
+    [ObservableProperty] private bool _estPleinEcran;
+
+    /// <summary>F11 et bouton « ⛶ Plein écran » / « ⤢ Quitter le plein écran · Échap ».</summary>
+    [RelayCommand]
+    private void BasculerPleinEcran() => EstPleinEcran = !EstPleinEcran;
+
+    /// <summary>Échap à deux niveaux : quitte d'abord le plein écran, puis ferme (décision pure PleinEcranHistorique.Echap).
+    /// Le bouton ✕ (FermerCommand) ferme toujours directement.</summary>
+    [RelayCommand]
+    private void Echap()
+    {
+        if (PleinEcranHistorique.Echap(EstPleinEcran) == ActionEchap.QuitterPleinEcran) EstPleinEcran = false;
+        else Fermer();
+    }
 
     // ------------------------------------------------------------------ Données (références immuables)
 

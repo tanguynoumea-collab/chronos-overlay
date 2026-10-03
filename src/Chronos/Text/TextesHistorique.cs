@@ -27,6 +27,10 @@ public static class TextesHistorique
     public const string Aujourdhui = "Aujourd'hui";
     public const string SemaineDeForfait = "Semaine de forfait";
 
+    // Bouton plein écran de l'en-tête (DESIGN_PLAN_CYCLE2 § 4.2) : le libellé change selon l'état.
+    public const string BoutonPleinEcran = "⛶ Plein écran";
+    public const string BoutonQuitterPleinEcran = "⤢ Quitter le plein écran · Échap";
+
     public const string PisteNiveau = "NIVEAU";
     public const string PisteRythme = "RYTHME";
     public const string PisteTokens = "TOKENS CLAUDE CODE";
