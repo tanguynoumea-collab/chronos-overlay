@@ -60,7 +60,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 ### Thèmes (THM) — R6
 
-- [ ] **THM-01**: La section Thème des réglages range les thèmes en trois groupes titrés **Pâle · Classique · Vive** (§5.1 du
+- [x] **THM-01**: La section Thème des réglages range les thèmes en trois groupes titrés **Pâle · Classique · Vive** (§5.1 du
   plan) ; chaque thème porte sa catégorie.
 - [x] **THM-02**: **Six nouvelles palettes** (Sauge, Lavande, Graphite, Marine, Synthwave, Lave) aux valeurs du plan §5.2 ;
   Néon et Aurore ont une rampe corrigée qui finit sur un vrai rouge (décors inchangés).
@@ -141,7 +141,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | HIS-09 | Phase 38 | Complete |
 | HIS-10 | Phase 38 | Complete |
 | HIS-11 | Phase 38 | Complete |
-| THM-01 | Phase 39 | Pending |
+| THM-01 | Phase 39 | Complete |
 | THM-02 | Phase 39 | Complete |
 | THM-03 | Phase 39 | Pending |
 | THM-04 | Phase 39 | Pending |
