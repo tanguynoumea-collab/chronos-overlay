@@ -5,13 +5,20 @@
              xmlns:hc="clr-namespace:Chronos.Controls.Historique"
              xmlns:conv="clr-namespace:Chronos.Converters"
              xmlns:txt="clr-namespace:Chronos.Text"
-             xmlns:mh="clr-namespace:Chronos.Models.Historique"
-             UseLayoutRounding="True" SnapsToDevicePixels="True">
+             xmlns:mh="clr-namespace:Chronos.Models.Historique">
     <!--
+        (Pas de UseLayoutRounding / SnapsToDevicePixels ici : hérités de la fenêtre hôte, comme la vue Semaine. Posés sur la vue,
+        ils arrondiraient les rangées étoilées du plein écran au pixel physique et fausseraient proportions et plafonds mesurés
+        sur la vue seule, en DIP.)
         HIS-04 — vue « Jour » (DESIGN_PLAN §2.3) : X = 0 h → 24 h locale (grille toutes les 3 h), grain 5 min.
         D-34-31 : UNE seule grille (pas de styles en Jour), trois colonnes libellés / pistes / légende droite, rangées
         [axe des heures] [annotations : resets + épuisée] [annotations : trous] [NIVEAU 190] [annotations : sauts 5 h] [RYTHME 64] [TOKENS 64]
         [légende des modèles + libellé permanent] [COUVERTURE 12] ; le corps défile (D-34-28), l'axe et le pied de page restent fixes.
+        HIS-10 (phase 38) : tailles échelonnées et rangées de pistes en DynamicResource — le dictionnaire PleinEcran
+                  (DictionnairePleinEcran) les remplace en bloc : NIVEAU / RYTHME / TOKENS en 190* / 64* / 64*, plafonnées
+                  (HistoPlafondNiveau / HistoPlafondPiste) ; espacements entre pistes en lignes fixes (HistoRangeeEspaceJour) pour que
+                  proportions et plafonds portent exactement sur les pistes ; défilement par ressource (HistoDefilementVertical :
+                  Auto en normal, Disabled en plein écran). Annotations, légende des modèles et couverture restent fixes.
         Aucune logique ici : les hauteurs sont des tokens, les mots viennent du VM / TextesHistorique, les positions des
         annotations viennent des convertisseurs de 34-04. DataContext : HistoriqueViewModel, hérité de HistoriqueWindow.
     -->
@@ -34,7 +41,7 @@
             <!-- Nom d'une piste : Ink2, corps légende, deux lignes acceptées à 96 px (« TOKENS CLAUDE CODE »). -->
             <Style x:Key="LibellePiste" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsLegende}"/>
+                <Setter Property="FontSize" Value="{DynamicResource HistoCorpsLegende}"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="VerticalAlignment" Value="Top"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
@@ -43,14 +50,14 @@
             <!-- Repère d'échelle (« 100 % », « 0 », « 0 – 25 % », « 0 – 1,2 M (sortie) ») : à droite de la colonne des libellés. -->
             <Style x:Key="Repere" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsInfime}"/>
+                <Setter Property="FontSize" Value="{DynamicResource HistoCorpsInfime}"/>
                 <Setter Property="HorizontalAlignment" Value="Right"/>
                 <Setter Property="Margin" Value="0,0,8,0"/>
             </Style>
             <!-- Annotation d'honnêteté posée à son instant (Ink2) ; ambre = causes « jeton » / « sonde » (D-34-33). -->
             <Style x:Key="Annotation" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsInfime}"/>
+                <Setter Property="FontSize" Value="{DynamicResource HistoCorpsInfime}"/>
             </Style>
             <Style x:Key="AnnotationAmbre" TargetType="TextBlock" BasedOn="{StaticResource Annotation}">
                 <Setter Property="Foreground" Value="{DynamicResource Alerte}"/>
@@ -58,7 +65,7 @@
             <!-- Pieds : libellé permanent des tokens, pied de page. -->
             <Style x:Key="Pied" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsMini}"/>
+                <Setter Property="FontSize" Value="{DynamicResource HistoCorpsMini}"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
             </Style>
 
@@ -105,8 +112,8 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>   <!-- largeur portée par l'espaceur : HistoLargeurLegendeDroite -->
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}"/>
-            <Border Grid.Column="2" Width="{StaticResource HistoLargeurLegendeDroite}"/>
+            <Border Grid.Column="0" Width="{DynamicResource HistoLargeurLibelles}"/>
+            <Border Grid.Column="2" Width="{DynamicResource HistoLargeurLegendeDroite}"/>
             <ItemsControl Grid.Column="1" ItemsSource="{Binding LibellesHeures}" ItemsPanel="{StaticResource PanneauCanvas}"
                           ItemContainerStyle="{StaticResource PoseeALInstant}" IsHitTestVisible="False">
                 <ItemsControl.ItemTemplate>
@@ -118,7 +125,7 @@
         </Grid>
 
         <!-- ================= [1] Corps défilant (D-34-28) : la grille unique du Jour (D-34-31) ================= -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="Defilement" Grid.Row="1" VerticalScrollBarVisibility="{DynamicResource HistoDefilementVertical}" HorizontalScrollBarVisibility="Disabled">
             <Grid x:Name="Corps">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>   <!-- largeur portée par les cellules : HistoLargeurLibelles -->
@@ -128,16 +135,18 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>   <!-- 0 : annotations resets / épuisée -->
                     <RowDefinition Height="Auto"/>   <!-- 1 : annotations trous (35-04 : leur propre rangée) -->
-                    <RowDefinition Height="Auto"/>   <!-- 2 : NIVEAU 190 -->
+                    <RowDefinition Height="{DynamicResource HistoRangeeNiveauJour}" MaxHeight="{DynamicResource HistoPlafondNiveau}"/>   <!-- 2 : NIVEAU 190 (190* en plein écran) -->
                     <RowDefinition Height="Auto"/>   <!-- 3 : annotations sauts 5 h -->
-                    <RowDefinition Height="Auto"/>   <!-- 4 : RYTHME 64 -->
-                    <RowDefinition Height="Auto"/>   <!-- 5 : TOKENS 64 -->
-                    <RowDefinition Height="Auto"/>   <!-- 6 : légende des modèles + libellé permanent -->
-                    <RowDefinition Height="Auto"/>   <!-- 7 : COUVERTURE 12 -->
+                    <RowDefinition Height="{StaticResource HistoRangeeEspaceJour}"/>   <!-- 4 : espacement fixe -->
+                    <RowDefinition Height="{DynamicResource HistoRangeeRythmeJour}" MaxHeight="{DynamicResource HistoPlafondPiste}"/>   <!-- 5 : RYTHME 64 (64*) -->
+                    <RowDefinition Height="{StaticResource HistoRangeeEspaceJour}"/>   <!-- 6 : espacement fixe -->
+                    <RowDefinition Height="{DynamicResource HistoRangeeTokensJour}" MaxHeight="{DynamicResource HistoPlafondPiste}"/>   <!-- 7 : TOKENS 64 (64*) -->
+                    <RowDefinition Height="Auto"/>   <!-- 8 : légende des modèles + libellé permanent -->
+                    <RowDefinition Height="Auto"/>   <!-- 9 : COUVERTURE 12 -->
                 </Grid.RowDefinitions>
 
                 <!-- Les colonnes Auto prennent la largeur des tokens par leurs cellules (un sys:Double ne devient pas un GridLength). -->
-                <Border Grid.Row="0" Grid.Column="2" Width="{StaticResource HistoLargeurLegendeDroite}"/>
+                <Border Grid.Row="0" Grid.Column="2" Width="{DynamicResource HistoLargeurLegendeDroite}"/>
 
                 <!-- Rangée 0 : annotations du haut — « reset 5 h HH:MM » à chaque reset observé (D-34-32 : même donnée que le trait de la
                      piste), « épuisée … » au début du plateau, tronquée à sa largeur (D-34-33). Les causes des trous ont leur propre rangée
@@ -188,16 +197,16 @@
                 </Grid>
 
                 <!-- Rangée 2 : NIVEAU — le % 5 h au premier plan (gris quand épuisée / refusée), l'hebdo en trait fin, un trait par reset observé. -->
-                <Grid Grid.Row="2" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}">
+                <Grid Grid.Row="2" Grid.Column="0" Width="{DynamicResource HistoLargeurLibelles}">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereCent}" VerticalAlignment="Top"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{x:Static txt:TextesHistorique.RepereZero}" VerticalAlignment="Bottom"/>
                 </Grid>
-                <hc:PisteNiveau Grid.Row="2" Grid.Column="1" Height="{StaticResource HistoHauteurNiveauJour}" Variante="Jour"
+                <hc:PisteNiveau Grid.Row="2" Grid.Column="1" Height="{DynamicResource HistoHauteurNiveauJour}" Variante="Jour"
                                 Plage="{Binding DonneesJour.Plage}" Analyse="{Binding DonneesJour.Analyse}" InstantLecture="{Binding DonneesJour.LueA}"
                                 Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}" Gris="{StaticResource HistoGris}"
                                 FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}" BordTrouJeton="{DynamicResource Alerte}" Grille="{StaticResource Line}"
-                                EpaisseurPremierPlan="{StaticResource HistoEpaisseurPremierPlan}" EpaisseurFine="{StaticResource HistoEpaisseurFin}" OpaciteTrou="{StaticResource HistoOpaciteTrou}"/>
+                                EpaisseurPremierPlan="{DynamicResource HistoEpaisseurPremierPlan}" EpaisseurFine="{StaticResource HistoEpaisseurFin}" OpaciteTrou="{StaticResource HistoOpaciteTrou}"/>
 
                 <!-- Rangée 3 : sauts 5 h non localisés (« +N % pendant l'absence (répartition inconnue) », « au moins un reset … »). -->
                 <Grid x:Name="RangeeSauts" Grid.Row="3" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False">
@@ -210,49 +219,50 @@
                     </ItemsControl>
                 </Grid>
 
-                <!-- Rangée 4 : RYTHME — Δ 5 h par heure, échelle fixe « 0 – 25 % ». -->
-                <Grid Grid.Row="4" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Margin="0,8,0,0">
+                <!-- Rangée 5 : RYTHME — Δ 5 h par heure, échelle fixe « 0 – 25 % » (l'espacement est la rangée 4). -->
+                <Grid Grid.Row="5" Grid.Column="0" Width="{DynamicResource HistoLargeurLibelles}">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteRythme}"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleRythme}" VerticalAlignment="Bottom"/>
                 </Grid>
-                <hc:PisteRythme Grid.Row="4" Grid.Column="1" Height="{StaticResource HistoHauteurRythmeJour}" Margin="0,8,0,0"
+                <hc:PisteRythme Grid.Row="5" Grid.Column="1" Height="{DynamicResource HistoHauteurRythmeJour}"
                                 Plage="{Binding DonneesJour.Plage}" Deltas="{Binding DonneesJour.Analyse.Deltas5h}" Serie="{Binding DonneesJour.Analyse.Serie}"
                                 Rampe="{Binding Theme}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
 
-                <!-- Rangée 5 : TOKENS CLAUDE CODE — par quart d'heure, empilés par modèle (trois tokens de modèle), sur LEUR axe (D-34-21). -->
-                <Grid Grid.Row="5" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Margin="0,8,0,0">
+                <!-- Rangée 7 : TOKENS CLAUDE CODE — par quart d'heure, empilés par modèle (trois tokens de modèle), sur LEUR axe (D-34-21) ;
+                     l'espacement est la rangée 6. -->
+                <Grid Grid.Row="7" Grid.Column="0" Width="{DynamicResource HistoLargeurLibelles}">
                     <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteTokens}"/>
                     <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleTokens}" VerticalAlignment="Bottom"/>
                 </Grid>
-                <hc:PisteTokens Grid.Row="5" Grid.Column="1" Height="{StaticResource HistoHauteurTokensJour}" Margin="0,8,0,0"
+                <hc:PisteTokens Grid.Row="7" Grid.Column="1" Height="{DynamicResource HistoHauteurTokensJour}"
                                 Plage="{Binding DonneesJour.Plage}" Colonnes="{Binding DonneesJour.Colonnes}" Plafond="{Binding PlafondTokens}" InstantLecture="{Binding DonneesJour.LueA}"
                                 Modele1="{StaticResource HistoModele1}"
                                 Modele2="{StaticResource HistoModele2}"
                                 Modele3="{StaticResource HistoModele3}"
                                 Hachure="{StaticResource HistoHachure}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
 
-                <!-- Rangée 6 : légende des modèles (D-34-34, ordre global du jour) + libellé permanent « par quart d'heure, … » (D-34-14). -->
-                <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,3,0,0">
+                <!-- Rangée 8 : légende des modèles (D-34-34, ordre global du jour) + libellé permanent « par quart d'heure, … » (D-34-14). -->
+                <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,3,0,0">
                     <TextBlock Style="{StaticResource Annotation}" Text="{Binding LegendeModeles}"/>
                     <TextBlock Style="{StaticResource Pied}" Text="{Binding LibellePermanentTokens}"/>
                 </StackPanel>
 
-                <!-- Rangée 7 : COUVERTURE — présent (Ok), trous par cause (gris / ambre). -->
-                <TextBlock Grid.Row="7" Grid.Column="0" Width="{StaticResource HistoLargeurLibelles}" Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteCouverture}" Margin="0,6,0,0"/>
-                <hc:PisteCouverture Grid.Row="7" Grid.Column="1" Height="{StaticResource HistoHauteurCouverture}" Margin="0,6,0,0"
+                <!-- Rangée 9 : COUVERTURE — présent (Ok), trous par cause (gris / ambre). Hauteur fixe 12, même en plein écran. -->
+                <TextBlock Grid.Row="9" Grid.Column="0" Width="{DynamicResource HistoLargeurLibelles}" Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteCouverture}" Margin="0,6,0,0"/>
+                <hc:PisteCouverture Grid.Row="9" Grid.Column="1" Height="{StaticResource HistoHauteurCouverture}" Margin="0,6,0,0"
                                     Plage="{Binding DonneesJour.Plage}" Serie="{Binding DonneesJour.Analyse.Serie}" Trous="{Binding DonneesJour.Analyse.Trous}"
                                     InstantLecture="{Binding DonneesJour.LueA}" Present="{StaticResource Ok}" OpacitePresent="{StaticResource HistoOpaciteCouverture}"
                                     Arrete="{StaticResource Line}" Jeton="{DynamicResource Alerte}"/>
 
                 <!-- Surcouche commune (réticule, infobulle, ligne « maintenant » — Ink à 60 % seulement si le jour affiché est aujourd'hui :
                      AfficherMaintenant = IsVueJour && EstAuPresent, côté VM). La seule à bouger au survol et au tick (HIS-07). -->
-                <hc:SurcoucheReticule x:Name="Surcouche" Grid.Row="2" Grid.RowSpan="6" Grid.Column="1"
+                <hc:SurcoucheReticule x:Name="Surcouche" Grid.Row="2" Grid.RowSpan="8" Grid.Column="1"
                                       Plage="{Binding DonneesJour.Plage}" Serie="{Binding DonneesJour.Analyse.Serie}"
                                       Maintenant="{Binding Maintenant}" AfficherMaintenant="{Binding AfficherMaintenant}"
                                       InstantLecture="{Binding DonneesJour.LueA}" Fuseau="{Binding Fuseau}"
                                       TraitReticule="{StaticResource Ink2}" TraitMaintenant="{StaticResource Ink}"
                                       OpaciteMaintenant="{StaticResource HistoOpaciteMaintenant}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-                <Canvas Grid.Row="2" Grid.RowSpan="6" Grid.Column="1" IsHitTestVisible="False">
+                <Canvas Grid.Row="2" Grid.RowSpan="8" Grid.Column="1" IsHitTestVisible="False">
                     <!-- Infobulle §2.3 : « HH:MM · relevé exact / 5 h : N % — reset à HH:MM / hebdo : N % / source · âge » (mots de la surcouche).
                          Posée à l'abscisse du relevé survolé ; au bord droit elle recule pour rester dans la piste (D-35-17, BorneInfobulle). -->
                     <Border x:Name="Infobulle" Background="{StaticResource Panel2}" BorderBrush="{StaticResource Line}"
@@ -266,7 +276,7 @@
                                 <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
                             </MultiBinding>
                         </Canvas.Left>
-                        <TextBlock Text="{Binding TexteInfobulle, ElementName=Surcouche}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsPetit}"/>
+                        <TextBlock Text="{Binding TexteInfobulle, ElementName=Surcouche}" Foreground="{StaticResource Ink}" FontSize="{DynamicResource HistoCorpsPetit}"/>
                     </Border>
                 </Canvas>
             </Grid>
