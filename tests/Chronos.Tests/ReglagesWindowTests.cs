@@ -314,7 +314,6 @@ public class ReglagesWindowTests
             ("LoginClaude", SectionReglages.Donnees, vm.LoginClaudeCommand),
             ("ToggleSondeEnTetes", SectionReglages.Donnees, vm.ToggleSondeEnTetesCommand),
             ("OuvrirHistorique", SectionReglages.Historique, vm.OuvrirHistoriqueCommand),
-            ("Historique.ChoisirStyle", SectionReglages.Historique, historique.ChoisirStyleCommand),
             ("SelectTheme", SectionReglages.Apparence, vm.SelectThemeCommand),
             ("SelectCadranStyle", SectionReglages.Apparence, vm.SelectCadranStyleCommand),
             ("ToggleCadranMode", SectionReglages.Apparence, vm.ToggleCadranModeCommand),

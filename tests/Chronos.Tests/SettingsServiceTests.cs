@@ -240,33 +240,30 @@ public sealed class SettingsServiceTests : IDisposable
     }
 
     // ---------------------------------------------------------------------------------------
-    // Phase 34 (HIS-08) — style de la vue Semaine et géométrie de la fenêtre Historique.
+    // Phase 34 (HIS-08) — géométrie de la fenêtre Historique (le style de la vue Semaine est supprimé en phase 38).
     // ---------------------------------------------------------------------------------------
 
-    /// <summary>Un settings.json d'AVANT la fenêtre Historique s'ouvre avec les défauts sûrs : style Pistes (A) et
-    /// aucune géométrie mémorisée (null = 920 × 610 centré) — aucune migration.</summary>
+    /// <summary>Un settings.json d'AVANT la fenêtre Historique s'ouvre avec les défauts sûrs : aucune géométrie mémorisée
+    /// (null = 920 × 610 centré) — aucune migration.</summary>
     [Fact]
-    public void Le_style_de_la_vue_semaine_et_la_geometrie_de_l_historique_ont_des_defauts_surs()
+    public void La_geometrie_de_l_historique_a_des_defauts_surs()
     {
         EcrireSettings(FixtureLegacy());
 
         var s = _service.Load();
 
-        Assert.Equal(HistoriqueStyleSemaine.Pistes, s.HistoriqueStyleSemaine);
         Assert.Null(s.HistoriqueX);
         Assert.Null(s.HistoriqueY);
         Assert.Null(s.HistoriqueWidth);
         Assert.Null(s.HistoriqueHeight);
     }
 
-    /// <summary>Le style est sérialisé en TEXTE (lisible, robuste au réordonnancement de l'enum) et la géométrie fait
-    /// l'aller-retour à l'identique.</summary>
+    /// <summary>La géométrie de la fenêtre Historique fait l'aller-retour à l'identique.</summary>
     [Fact]
-    public void Le_style_et_la_geometrie_de_l_historique_font_l_aller_retour()
+    public void La_geometrie_de_l_historique_fait_l_aller_retour()
     {
         var original = _service.Load() with
         {
-            HistoriqueStyleSemaine = HistoriqueStyleSemaine.Tuiles,
             HistoriqueX = 100,
             HistoriqueY = 50,
             HistoriqueWidth = 900,
@@ -277,19 +274,73 @@ public sealed class SettingsServiceTests : IDisposable
         var relu = _service.Load();
 
         Assert.Equal(original, relu);
-        Assert.Equal(HistoriqueStyleSemaine.Tuiles, relu.HistoriqueStyleSemaine);
         Assert.Equal(100, relu.HistoriqueX);
         Assert.Equal(600, relu.HistoriqueHeight);
-        Assert.Contains("\"HistoriqueStyleSemaine\": \"Tuiles\"", File.ReadAllText(_paths.SettingsFile), StringComparison.Ordinal);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Phase 38 (HIS-09) — HistoriqueStyleSemaine supprimée.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>Témoin de la suppression : un ancien settings.json qui porte encore le style de la vue Semaine (quelle que
+    /// soit sa valeur, y compris Tuiles) se lit SANS PERTE — thème, coin, moniteur, mode du cadran et les 10 géométries
+    /// relus à l'identique. Le membre est désormais inconnu, donc ignoré (pas une retombée) ; il disparaît au premier Save.</summary>
+    [Theory]
+    [InlineData("Tuiles")]
+    [InlineData("Simplifie")]
+    [InlineData("Pistes")]
+    public void Un_ancien_reglage_de_style_d_historique_se_lit_sans_perte(string valeur)
+    {
+        EcrireSettings($$"""
+            {
+              "ThemeKey": "nord",
+              "Corner": "BottomLeft",
+              "MonitorDeviceName": "\\\\.\\DISPLAY2",
+              "CadranMode": "Etendu",
+              "HistoriqueStyleSemaine": "{{valeur}}",
+              "HistoriqueX": 100, "HistoriqueY": 120, "HistoriqueWidth": 1000, "HistoriqueHeight": 700,
+              "ReglagesX": 200, "ReglagesY": 220, "ReglagesWidth": 900, "ReglagesHeight": 600,
+              "SessionsX": 10, "SessionsY": 20
+            }
+            """);
+
+        var s = _service.Load();
+
+        Assert.Equal("nord", s.ThemeKey);
+        Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
+        Assert.Equal(@"\\.\DISPLAY2", s.MonitorDeviceName);
+        Assert.Equal(CadranDisplayMode.Etendu, s.CadranMode);
+        Assert.Equal(100, s.HistoriqueX);
+        Assert.Equal(120, s.HistoriqueY);
+        Assert.Equal(1000, s.HistoriqueWidth);
+        Assert.Equal(700, s.HistoriqueHeight);
+        Assert.Equal(200, s.ReglagesX);
+        Assert.Equal(220, s.ReglagesY);
+        Assert.Equal(900, s.ReglagesWidth);
+        Assert.Equal(600, s.ReglagesHeight);
+        Assert.Equal(10, s.SessionsX);
+        Assert.Equal(20, s.SessionsY);
+        Assert.Equal(IssueLectureReglages.Lu, _service.DerniereLecture.Issue);
+        Assert.Empty(_service.DernieresRetombees);   // un membre inconnu n'est pas une retombée
+
+        _service.Save(s);
+        Assert.DoesNotContain("HistoriqueStyleSemaine", File.ReadAllText(_paths.SettingsFile), StringComparison.Ordinal);
+        Assert.Equal(s, _service.Load());
+    }
+
+    [Fact]
+    public void La_propriete_HistoriqueStyleSemaine_n_existe_plus()
+    {
+        Assert.Null(typeof(ChronosSettings).GetProperty("HistoriqueStyleSemaine"));
     }
 
     // SOC-01 (phase 36) — lecture tolérante valeur par valeur
 
     private static string FixtureValeursInconnues() => File.ReadAllText(TestDataPath("settings-valeurs-inconnues.json"));
 
-    /// <summary>Une valeur fautive ne coûte qu'elle-même : les quatre enums inconnus retombent sur LEUR défaut, tout le reste
+    /// <summary>Une valeur fautive ne coûte qu'elle-même : les trois enums inconnus retombent sur LEUR défaut, tout le reste
     /// (thème, coin, moniteur, mode, 10 géométries) est conservé ; les membres inconnus (dont la commande chaînée de la barre
-    /// de statut, retirée en 37-05) sont ignorés.</summary>
+    /// de statut, retirée en 37-05, et le style de la vue Semaine, supprimé en phase 38) sont ignorés.</summary>
     [Fact]
     public void Fixture_valeurs_inconnues_ne_coute_que_les_valeurs_fautives()
     {
@@ -315,10 +366,9 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(CadranStyle.Arcs, s.CadranStyle);
         Assert.Equal(SessionStyle.Pastilles, s.SessionStyle);
         Assert.Equal(SectionReglages.Donnees, s.ReglagesSection);
-        Assert.Equal(HistoriqueStyleSemaine.Pistes, s.HistoriqueStyleSemaine);
 
         Assert.Equal(IssueLectureReglages.LuAvecRetombees, _service.DerniereLecture.Issue);
-        Assert.Equal(new[] { "CadranStyle", "HistoriqueStyleSemaine", "ReglagesSection", "SessionStyle" },
+        Assert.Equal(new[] { "CadranStyle", "ReglagesSection", "SessionStyle" },
             _service.DernieresRetombees.OrderBy(n => n, StringComparer.Ordinal));
     }
 
@@ -390,8 +440,8 @@ public sealed class SettingsServiceTests : IDisposable
         }
     }
 
-    /// <summary>« Tuiles » est valide jusqu'à la phase 38 ; après suppression du membre il devient un membre inconnu
-    /// ignoré — ce test reste vrai dans les deux cas (on n'asserte donc PAS HistoriqueStyleSemaine).</summary>
+    /// <summary>Depuis la phase 38, « Tuiles » est la valeur d'un membre inconnu ignoré (le style de la vue Semaine est
+    /// supprimé) : il ne coûte jamais les autres réglages.</summary>
     [Fact]
     public void Tuiles_ne_coute_jamais_les_autres_reglages()
     {

@@ -265,31 +265,26 @@ public class ReglagesBindingTests
         Assert.DoesNotContain(carte, donnees.Children.OfType<Border>());
     }
 
+    /// <summary>Phase 38 (HIS-09) : un seul style — la carte Historique n'a plus de sélecteur « Style de la vue Semaine » ;
+    /// la mention du double-clic reste (elle sera reformulée en phase 42).</summary>
     [WpfFact]
-    public void La_carte_Historique_pilote_le_meme_style_que_la_fenetre()
+    public void La_carte_Historique_n_a_plus_de_selecteur_de_style()
     {
         var clock = new FakeClock(Now);
-        var (historique, reglages) = NouvelHistorique(clock);
+        var (historique, _) = NouvelHistorique(clock);
         var (fenetre, vm) = MonterReglages(sondeActivee: false, clock: clock, historique: historique, ouvreur: new FakeOuvreurHistorique(),
                                            section: SectionReglages.Historique);
-
-        Assert.Same(historique, vm.Historique);   // MÊME instance que la fenêtre : aucun état de style dupliqué (D-35-08)
-
-        var tuiles = Assert.IsType<Button>(fenetre.FindName("PuceStyleTuiles"));
-        Assert.Same(historique.ChoisirStyleCommand, tuiles.Command);
-        Assert.Equal(HistoriqueStyleSemaine.Tuiles, tuiles.CommandParameter);
-        tuiles.Command!.Execute(tuiles.CommandParameter);
-        Assert.Equal(HistoriqueStyleSemaine.Tuiles, historique.Style);
-        Assert.Equal(HistoriqueStyleSemaine.Tuiles, reglages.Lire().HistoriqueStyleSemaine);
-
-        historique.ChoisirStyleCommand.Execute(HistoriqueStyleSemaine.Simplifie);   // comme le sélecteur de la fenêtre
         Purger(fenetre);
 
-        var simplifie = Assert.IsType<Button>(fenetre.FindName("PuceStyleSimplifie"));
-        Assert.Equal(true, simplifie.Tag);
-        Assert.Equal(false, tuiles.Tag);
-        var bordure = Assert.IsType<Border>(simplifie.Template.FindName("puce", simplifie));
-        Assert.Equal(((SolidColorBrush)fenetre.FindResource("Accent")).Color, Assert.IsType<SolidColorBrush>(bordure.BorderBrush).Color);
+        Assert.Same(historique, vm.Historique);   // MÊME instance que la fenêtre (D-35-08)
+
+        Assert.Null(fenetre.FindName("PuceStylePistes"));
+        Assert.Null(fenetre.FindName("PuceStyleSimplifie"));
+        Assert.Null(fenetre.FindName("PuceStyleTuiles"));
+
+        var textes = TousLesTextBlocks(MontageReglages.Racine(fenetre)).ToList();
+        Assert.DoesNotContain(textes, t => (t.Text ?? "").Contains("Style de la vue Semaine"));
+        Assert.Single(textes, t => t.Text == "Aussi : double-clic au centre du cadran");
     }
 
     [WpfFact]

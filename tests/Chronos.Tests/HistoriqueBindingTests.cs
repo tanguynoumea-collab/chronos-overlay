@@ -135,8 +135,12 @@ public class HistoriqueBindingTests
         var textes = TousLesTextBlocks(racine).Select(t => t.Text).ToList();
 
         foreach (var attendu in new[] { "Historique", "Jour", "Semaine", "4 semaines", vm.LibellePeriode, vm.TexteFraicheur,
-                                        "Cette semaine", "Style :", "Pistes", "Simplifié", "Tuiles", "‹", "›" })
+                                        "Cette semaine", "‹", "›" })
             Assert.Contains(attendu, textes);
+        // Phase 38 (HIS-09) : un seul style, plus de sélecteur « Style : Pistes · Simplifié · Tuiles ».
+        Assert.DoesNotContain("Style :", textes);
+        Assert.DoesNotContain("Simplifié", textes);
+        Assert.DoesNotContain("Tuiles", textes);
         Assert.NotEqual("", vm.LibellePeriode);
         Assert.NotEqual("", vm.TexteFraicheur);
 
@@ -151,13 +155,10 @@ public class HistoriqueBindingTests
         Assert.Same(vm.SuivantCommand, Bouton(racine, "›").Command);
         Assert.Same(vm.RetourPresentCommand, Bouton(racine, "Cette semaine").Command);
         Assert.Same(vm.FermerCommand, Bouton(racine, "✕").Command);
-
-        Assert.Same(vm.ChoisirStyleCommand, Bouton(racine, "Tuiles").Command);
-        Assert.Equal(HistoriqueStyleSemaine.Tuiles, Bouton(racine, "Tuiles").CommandParameter);
     }
 
     [WpfFact]
-    public void Le_segment_actif_et_le_style_actif_se_voient()
+    public void Le_segment_actif_se_voit()
     {
         var (fenetre, vm, racine, _) = Monter();
         var accent = Color.FromRgb(0x8B, 0x7B, 0xF0);
@@ -166,24 +167,16 @@ public class HistoriqueBindingTests
         Assert.Equal(accent, CouleurDe(semaine.BorderBrush));
         Assert.Equal(1.5, semaine.BorderThickness.Left);
         Assert.Equal(Colors.Transparent, CouleurDe(Bouton(racine, "Jour").BorderBrush));
-
-        Assert.Equal(accent, CouleurDe(Bouton(racine, "Pistes").BorderBrush));
-        vm.ChoisirStyleCommand.Execute(HistoriqueStyleSemaine.Tuiles);
-        Idle(racine);
-        Assert.Equal(accent, CouleurDe(Bouton(racine, "Tuiles").BorderBrush));
-        Assert.Equal(Colors.Transparent, CouleurDe(Bouton(racine, "Pistes").BorderBrush));
+        Assert.Null(fenetre.FindName("SelecteurStyle"));   // phase 38 (HIS-09) : plus de sélecteur de style
 
         vm.ChoisirVueCommand.Execute(VueHistorique.Jour);
         Idle(racine);
-        var selecteur = Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("SelecteurStyle"));
-        Assert.Equal(Visibility.Collapsed, selecteur.Visibility);
         Assert.Equal(accent, CouleurDe(Bouton(racine, "Jour").BorderBrush));
         Assert.Equal(Colors.Transparent, CouleurDe(semaine.BorderBrush));
         Assert.Same(vm.RetourPresentCommand, Bouton(racine, "Aujourd'hui").Command);
     }
 
-    /// <summary>35-04 (HIS-05) — le segment « 4 semaines » est actif : il ouvre la vue, masque les deux autres et le sélecteur de
-    /// style, et la vue hébergée reçoit les pinceaux du thème (34-08).</summary>
+    /// <summary>35-04 (HIS-05) — le segment « 4 semaines » est actif : il ouvre la vue, masque les deux autres, et la vue hébergée reçoit les pinceaux du thème (34-08).</summary>
     [WpfFact]
     public void Le_segment_4_semaines_est_actif_et_ouvre_la_vue()
     {
@@ -205,7 +198,6 @@ public class HistoriqueBindingTests
         Assert.Equal(Visibility.Visible, vue.Visibility);
         Assert.Equal(Visibility.Collapsed, Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("VueSemaine")).Visibility);
         Assert.Equal(Visibility.Collapsed, Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("VueJour")).Visibility);
-        Assert.Equal(Visibility.Collapsed, Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("SelecteurStyle")).Visibility);
         Assert.Same(vm, vue.DataContext);
         Assert.NotEmpty(Assert.IsType<Grid>(vue.Content).Children);
 

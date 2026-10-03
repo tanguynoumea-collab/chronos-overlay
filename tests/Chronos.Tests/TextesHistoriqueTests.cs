@@ -246,7 +246,6 @@ public class TextesHistoriqueTests
             TextesHistorique.Infobulle(Releve(now), now, Tz),
             TextesHistorique.BandeauF2(886, 1603, true),
             TextesHistorique.SousTexteF2(null, Tz),
-            TextesHistorique.LibelleStyle(HistoriqueStyleSemaine.Simplifie),
             // 35-01 : les mots de la vue 4 semaines
             TextesHistorique.LibelleJourCourt(now, Tz),
             TextesHistorique.LibellePeriodeQuatreSemaines(new Plage(Utc("2026-08-28T22:00:00Z"), Utc("2026-09-25T22:00:00Z")), Tz),
@@ -259,18 +258,6 @@ public class TextesHistoriqueTests
 
         foreach (var texte in constantes.Concat(sorties))
             Assert.False(interdits.IsMatch(texte), $"Mot interdit dans « {texte} »");
-    }
-
-    [Fact]
-    public void Les_styles_ont_leurs_noms()
-    {
-        Assert.Equal("Pistes", TextesHistorique.LibelleStyle(HistoriqueStyleSemaine.Pistes));
-        Assert.Equal("Simplifié", TextesHistorique.LibelleStyle(HistoriqueStyleSemaine.Simplifie));
-        Assert.Equal("Tuiles", TextesHistorique.LibelleStyle(HistoriqueStyleSemaine.Tuiles));
-        Assert.Equal("Style :", TextesHistorique.StylePrefixe);
-        Assert.Equal("Pistes", TextesHistorique.StylePistes);
-        Assert.Equal("Simplifié", TextesHistorique.StyleSimplifie);
-        Assert.Equal("Tuiles", TextesHistorique.StyleTuiles);
     }
 
     // ------------------------------------------------------------------ 35-01 : la vue 4 semaines (DESIGN_PLAN §2.4, mot pour mot)

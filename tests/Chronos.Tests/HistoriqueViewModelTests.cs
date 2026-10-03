@@ -133,24 +133,14 @@ public class HistoriqueViewModelTests
         Assert.False(b.Vm.EstAuPresent);
     }
 
+    /// <summary>Phase 38 (HIS-09) : un seul style (Pistes) — ni le VM ni les réglages n'exposent plus de style de la vue Semaine.</summary>
     [Fact]
-    public async Task Le_changement_de_style_est_persiste_et_notifie()
+    public void Le_vm_n_expose_plus_de_style()
     {
-        var b = await Ouvert(Construire());
-        Assert.Equal(HistoriqueStyleSemaine.Pistes, b.Vm.Style);
-        Assert.True(b.Vm.IsStylePistes);
-
-        var notifies = new List<string?>();
-        b.Vm.PropertyChanged += (_, e) => notifies.Add(e.PropertyName);
-        b.Vm.ChoisirStyleCommand.Execute(HistoriqueStyleSemaine.Tuiles);
-
-        Assert.True(b.Vm.IsStyleTuiles);
-        Assert.False(b.Vm.IsStylePistes);
-        Assert.Contains(nameof(HistoriqueViewModel.IsStyleTuiles), notifies);
-        Assert.Equal(HistoriqueStyleSemaine.Tuiles, b.Reglages.Courant.HistoriqueStyleSemaine);
-
-        var deja = Construire(reglages: new ReglagesHistoriqueMemoire(new ChronosSettings { HistoriqueStyleSemaine = HistoriqueStyleSemaine.Simplifie }));
-        Assert.True(deja.Vm.IsStyleSimplifie);
+        Assert.Null(typeof(HistoriqueViewModel).GetProperty("Style"));
+        Assert.Null(typeof(HistoriqueViewModel).GetProperty("ChoisirStyleCommand"));
+        Assert.Null(typeof(HistoriqueViewModel).GetProperty("IsStyleTuiles"));
+        Assert.Null(typeof(ChronosSettings).GetProperty("HistoriqueStyleSemaine"));
     }
 
     [Fact]
