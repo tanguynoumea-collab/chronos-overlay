@@ -32,7 +32,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 - [x] **DAT-01**: La **liste de purge** (classes, réglages, cartes, sections de diagnostic, tests, docs) est présentée à
   l'utilisateur et **validée avant le premier commit de suppression** (point de contrôle humain). — Validée par l'utilisateur le 2026-10-03 (`.zeus/reports/cycle2/liste-purge.md`).
-- [ ] **DAT-02**: Les sources mortes disparaissent : jeton de l'app bureau (`ClaudeOAuthUsageProvider`, `GatedOAuthUsageProvider`,
+- [x] **DAT-02**: Les sources mortes disparaissent : jeton de l'app bureau (`ClaudeOAuthUsageProvider`, `GatedOAuthUsageProvider`,
   `ClaudeTokenReader`, `WindowsCredentialStore`, `InventaireMachine`), `ClaudeUsageObjectProvider` / `usage.json` et sa
   surveillance, inférence 5 h, `WeeklyWindow`, recalibrage hebdo (carte « Recalibrer… » comprise), réglages orphelins ; la
   chaîne devient `LastExact( Journal( Composite(sonde d'en-têtes, OAuth Chronos) ) )`, gardée par test (un seul composite).
@@ -134,7 +134,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | SOC-01 | Phase 36 | Complete |
 | SOC-02 | Phase 36 | Complete |
 | DAT-01 | Phase 37 | Complete |
-| DAT-02 | Phase 37 | Pending |
+| DAT-02 | Phase 37 | Complete |
 | DAT-03 | Phase 37 | Pending |
 | DAT-04 | Phase 37 | Complete |
 | DAT-05 | Phase 37 | Complete |
