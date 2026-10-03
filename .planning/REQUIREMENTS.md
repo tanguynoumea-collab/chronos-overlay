@@ -39,10 +39,10 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 - [ ] **DAT-03**: La **barre statusLine est retirée** : au premier lancement de la 3.5, Chronos sauvegarde puis retire sa
   `statusLine` de `~/.claude/settings.json` (idempotent, journalisé, testé sur fichiers témoins) ; le mode `--statusline`, le
   pont, l'installeur et la carte des réglages disparaissent ; les hooks restent réconciliés.
-- [ ] **DAT-04**: Le diagnostic décrit **exactement** la chaîne réelle (section « Chaîne de données » : sonde d'en-têtes,
+- [x] **DAT-04**: Le diagnostic décrit **exactement** la chaîne réelle (section « Chaîne de données » : sonde d'en-têtes,
   secours OAuth Chronos, dernier exact persisté, journal) ; les sections « pont statusLine », « endpoint OAuth (repli) » et le
   « Conseil » trompeur disparaissent ; un rapport ne coûte plus la recherche des coffres (≈ 17 s).
-- [ ] **DAT-05**: Une **méthodologie unique** est écrite : `docs/data-sources.md` réécrit (source → cadran, ordre de priorité,
+- [x] **DAT-05**: Une **méthodologie unique** est écrite : `docs/data-sources.md` réécrit (source → cadran, ordre de priorité,
   repli, ce qui est exact et ce qui ne l'est pas : seul le plancher « ≥ » n'est pas exact), README « D'où viennent les
   chiffres » et `CLAUDE.md` alignés ; les commentaires « repli JSONL / estimation » périmés sont corrigés.
 
@@ -136,8 +136,8 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | DAT-01 | Phase 37 | Complete |
 | DAT-02 | Phase 37 | Pending |
 | DAT-03 | Phase 37 | Pending |
-| DAT-04 | Phase 37 | Pending |
-| DAT-05 | Phase 37 | Pending |
+| DAT-04 | Phase 37 | Complete |
+| DAT-05 | Phase 37 | Complete |
 | HIS-09 | Phase 38 | Pending |
 | HIS-10 | Phase 38 | Pending |
 | HIS-11 | Phase 38 | Pending |
