@@ -55,8 +55,9 @@ public class GardeTokensHistoriqueTests
         ("HistoGris",      "#5A5960"),
     };
 
-    /// <summary>Les 39 tokens de taille (D-34-02, D-35-14 : +7 vue 4 semaines, phase 38 : −6 Simplifié / Tuiles) : corps §2, hauteurs de pistes
-    /// §2.2 / §2.3 / §2.4, épaisseurs, opacités, rayon, tailles de fenêtre et gabarits de mise en page.</summary>
+    /// <summary>Les 57 tokens de taille (D-34-02, D-35-14 : +7 vue 4 semaines, phase 38 : −6 Simplifié / Tuiles, +16 plein écran § 4.2,
+    /// +2 plafonds normaux infinis) : corps §2, hauteurs de pistes §2.2 / §2.3 / §2.4, épaisseurs, opacités, rayon, tailles de fenêtre,
+    /// gabarits de mise en page et valeurs plein écran.</summary>
     private static readonly (string Cle, double Valeur)[] TaillesHisto =
     {
         ("HistoCorpsTitre", 16),
@@ -100,6 +101,27 @@ public class GardeTokensHistoriqueTests
         ("HistoLargeurEtiquettesSemaines", 140),
         ("HistoHauteurCouvertureSemaine", 10),
         ("HistoPasCouvertureSemaines", 16),
+        // Plein écran (DESIGN_PLAN_CYCLE2 § 4.2, phase 38) : valeurs appliquées sous les clés normales par DictionnairePleinEcran.
+        // HistoHauteurEnTetePleinEcran (124) est hors liste du contrat : écart consigné (38-03).
+        ("HistoCorpsTitrePleinEcran", 21),
+        ("HistoCorpsGrandPleinEcran", 18),
+        ("HistoCorpsNormalPleinEcran", 15.5),
+        ("HistoCorpsMoyenPleinEcran", 15),
+        ("HistoCorpsPetitPleinEcran", 14),
+        ("HistoCorpsMiniPleinEcran", 13),
+        ("HistoCorpsLegendePleinEcran", 12),
+        ("HistoCorpsInfimePleinEcran", 11.5),
+        ("HistoLargeurLibellesPleinEcran", 128),
+        ("HistoLargeurLegendeDroitePleinEcran", 96),
+        ("HistoEpaisseurEscalierPleinEcran", 3),
+        ("HistoEpaisseurPremierPlanPleinEcran", 3.2),
+        ("HistoLongueurTiretResetPleinEcran", 11),
+        ("HistoHauteurEnTetePleinEcran", 124),
+        ("HistoPlafondNiveauPleinEcran", 520),
+        ("HistoPlafondPistePleinEcran", 240),
+        // Plafonds du mode normal : aucun (+∞).
+        ("HistoPlafondNiveau", double.PositiveInfinity),
+        ("HistoPlafondPiste", double.PositiveInfinity),
     };
 
     private static string Racine()

@@ -108,6 +108,39 @@
     <!-- Gabarits de mise en page : rangée d'annotations au-dessus d'une piste, en-tête commun (§2.1) -->
     <sys:Double x:Key="HistoHauteurAnnotations">18</sys:Double>
     <sys:Double x:Key="HistoHauteurEnTete">92</sys:Double>
+    <!-- Plein écran de l'Historique (DESIGN_PLAN_CYCLE2 § 4.2, phase 38) : valeurs ≈ ×1,35 PAR PALIERS, appliquées par le dictionnaire
+         PleinEcran (Views/Historique/DictionnairePleinEcran.cs) sous les clés normales. HistoHauteurEnTetePleinEcran (124) : hors liste
+         du contrat, nécessaire pour trois lignes de corps ×1,35 et la fraîcheur sur deux lignes (§ 7). -->
+    <sys:Double x:Key="HistoCorpsTitrePleinEcran">21</sys:Double>
+    <sys:Double x:Key="HistoCorpsGrandPleinEcran">18</sys:Double>
+    <sys:Double x:Key="HistoCorpsNormalPleinEcran">15.5</sys:Double>
+    <sys:Double x:Key="HistoCorpsMoyenPleinEcran">15</sys:Double>
+    <sys:Double x:Key="HistoCorpsPetitPleinEcran">14</sys:Double>
+    <sys:Double x:Key="HistoCorpsMiniPleinEcran">13</sys:Double>
+    <sys:Double x:Key="HistoCorpsLegendePleinEcran">12</sys:Double>
+    <sys:Double x:Key="HistoCorpsInfimePleinEcran">11.5</sys:Double>
+    <sys:Double x:Key="HistoLargeurLibellesPleinEcran">128</sys:Double>
+    <sys:Double x:Key="HistoLargeurLegendeDroitePleinEcran">96</sys:Double>
+    <sys:Double x:Key="HistoEpaisseurEscalierPleinEcran">3</sys:Double>
+    <sys:Double x:Key="HistoEpaisseurPremierPlanPleinEcran">3.2</sys:Double>
+    <sys:Double x:Key="HistoLongueurTiretResetPleinEcran">11</sys:Double>
+    <sys:Double x:Key="HistoHauteurEnTetePleinEcran">124</sys:Double>
+    <sys:Double x:Key="HistoPlafondNiveauPleinEcran">520</sys:Double>
+    <sys:Double x:Key="HistoPlafondPistePleinEcran">240</sys:Double>
+    <!-- Mode normal : pas de plafond, rangées de pistes en Auto (les pistes ont leur hauteur fixe), espacements entre pistes en lignes
+         fixes (ex-marges : 6 en Semaine, 8 en Jour), défilement automatique. -->
+    <sys:Double x:Key="HistoPlafondNiveau">Infinity</sys:Double>
+    <sys:Double x:Key="HistoPlafondPiste">Infinity</sys:Double>
+    <GridLength x:Key="HistoRangeeNiveauSemaine">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeRythmeSemaine">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeTokensSemaine">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeNiveauJour">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeRythmeJour">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeTokensJour">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeNiveauQuatreSemaines">Auto</GridLength>
+    <GridLength x:Key="HistoRangeeEspaceSemaine">6</GridLength>
+    <GridLength x:Key="HistoRangeeEspaceJour">8</GridLength>
+    <ScrollBarVisibility x:Key="HistoDefilementVertical">Auto</ScrollBarVisibility>
     <!-- Fenêtre de RÉGLAGES (quick 260927-reglages-v2, DESIGN_PLAN_REGLAGES §2) : fenêtre classique 860 × 580, minimum 640 × 440,
          rail de 208 à largeur fixe, colonne de lecture de 640 au plus (centrée au-delà). Grille de 4 px ; les gabarits repris de
          l'ancienne fenêtre (interrupteur 40 × 23 → 40 × 24, bouton 17 → 16 ; vignette 88 × 74 → 88 × 76) y sont ramenés. -->
