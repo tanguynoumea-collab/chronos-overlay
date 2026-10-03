@@ -1,7 +1,10 @@
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Chronos.Placement;
 using Chronos.Services;
+using Chronos.Theming;
 using Xunit;
 
 namespace Chronos.Tests;
@@ -265,5 +268,204 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(100, relu.HistoriqueX);
         Assert.Equal(600, relu.HistoriqueHeight);
         Assert.Contains("\"HistoriqueStyleSemaine\": \"Tuiles\"", File.ReadAllText(_paths.SettingsFile), StringComparison.Ordinal);
+    }
+
+    // SOC-01 (phase 36) — lecture tolérante valeur par valeur
+
+    private static string FixtureValeursInconnues() => File.ReadAllText(TestDataPath("settings-valeurs-inconnues.json"));
+
+    /// <summary>Une valeur fautive ne coûte qu'elle-même : les quatre enums inconnus retombent sur LEUR défaut, tout le reste
+    /// (thème, coin, moniteur, mode, commande chaînée, 10 géométries) est conservé ; le membre inconnu est ignoré.</summary>
+    [Fact]
+    public void Fixture_valeurs_inconnues_ne_coute_que_les_valeurs_fautives()
+    {
+        EcrireSettings(FixtureValeursInconnues());
+
+        var s = _service.Load();
+
+        Assert.Equal("nord", s.ThemeKey);
+        Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
+        Assert.Equal(@"\\.\DISPLAY2", s.MonitorDeviceName);
+        Assert.Equal(CadranDisplayMode.Etendu, s.CadranMode);
+        Assert.Equal("echo hi", s.InnerStatusLineCommand);
+        Assert.Equal(100, s.HistoriqueX);
+        Assert.Equal(120, s.HistoriqueY);
+        Assert.Equal(1000, s.HistoriqueWidth);
+        Assert.Equal(700, s.HistoriqueHeight);
+        Assert.Equal(200, s.ReglagesX);
+        Assert.Equal(220, s.ReglagesY);
+        Assert.Equal(900, s.ReglagesWidth);
+        Assert.Equal(600, s.ReglagesHeight);
+        Assert.Equal(10, s.SessionsX);
+        Assert.Equal(20, s.SessionsY);
+
+        Assert.Equal(CadranStyle.Arcs, s.CadranStyle);
+        Assert.Equal(SessionStyle.Pastilles, s.SessionStyle);
+        Assert.Equal(SectionReglages.Donnees, s.ReglagesSection);
+        Assert.Equal(HistoriqueStyleSemaine.Pistes, s.HistoriqueStyleSemaine);
+
+        Assert.Equal(IssueLectureReglages.LuAvecRetombees, _service.DerniereLecture.Issue);
+        Assert.Equal(new[] { "CadranStyle", "HistoriqueStyleSemaine", "ReglagesSection", "SessionStyle" },
+            _service.DernieresRetombees.OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    /// <summary>Save(Load()) grave les valeurs conservées à l'identique, remplace les fautives par leur défaut et fait
+    /// disparaître le membre inconnu ; la relecture suivante ne signale plus rien.</summary>
+    [Fact]
+    public void Save_apres_retombees_reecrit_le_fichier_sans_perte()
+    {
+        EcrireSettings(FixtureValeursInconnues());
+
+        var premier = _service.Load();
+        _service.Save(premier);
+        var texte = File.ReadAllText(_paths.SettingsFile);
+
+        Assert.Contains("nord", texte, StringComparison.Ordinal);
+        Assert.Contains("echo hi", texte, StringComparison.Ordinal);
+        Assert.Contains("\"CadranStyle\": \"Arcs\"", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Spirale", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Fantome", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Mosaique", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Inconnu", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("OrientationCadran", texte, StringComparison.Ordinal);
+
+        var relu = _service.Load();
+        Assert.Equal(IssueLectureReglages.Lu, _service.DerniereLecture.Issue);
+        Assert.Empty(_service.DernieresRetombees);
+        Assert.Equal(premier, relu);
+    }
+
+    /// <summary>Piège : un convertisseur rendant default(T) remettrait Corner à TopLeft (index 0). La retombée prend
+    /// l'initialiseur de la propriété : TopRight.</summary>
+    [Theory]
+    [InlineData("\"Fantome\"")]
+    [InlineData("99")]
+    [InlineData("null")]
+    public void Corner_invalide_retombe_sur_TopRight_et_non_sur_l_index_0(string valeur)
+    {
+        EcrireSettings("{\"ThemeKey\":\"nord\",\"Corner\":" + valeur + "}");
+
+        var s = _service.Load();
+
+        Assert.Equal(OverlayCorner.TopRight, s.Corner);
+        Assert.Equal("nord", s.ThemeKey);
+        Assert.Equal(new[] { "Corner" }, _service.DernieresRetombees);
+    }
+
+    /// <summary>Mécanisme GÉNÉRIQUE : chaque propriété enum de ChronosSettings (énumérée par réflexion, y compris un enum
+    /// futur) retombe sur SA valeur par défaut sans toucher aux autres.</summary>
+    [Fact]
+    public void Chaque_enum_des_reglages_retombe_sur_son_propre_defaut()
+    {
+        var proprietes = typeof(ChronosSettings).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType.IsEnum)
+            .ToList();
+        Assert.True(proprietes.Count >= 5); // garde muette : la réflexion trouve bien les enums
+
+        var defauts = new ChronosSettings();
+        foreach (var p in proprietes)
+        {
+            EcrireSettings("{\"ThemeKey\":\"nord\",\"InnerStatusLineCommand\":\"echo hi\",\"" + p.Name + "\":\"Fantome\"}");
+
+            var lu = _service.Load();
+
+            Assert.Equal(p.GetValue(defauts), p.GetValue(lu));
+            Assert.Equal("nord", lu.ThemeKey);
+            Assert.Equal("echo hi", lu.InnerStatusLineCommand);
+            Assert.Equal(new[] { p.Name }, _service.DernieresRetombees);
+        }
+    }
+
+    /// <summary>« Tuiles » est valide jusqu'à la phase 38 ; après suppression du membre il devient un membre inconnu
+    /// ignoré — ce test reste vrai dans les deux cas (on n'asserte donc PAS HistoriqueStyleSemaine).</summary>
+    [Fact]
+    public void Tuiles_ne_coute_jamais_les_autres_reglages()
+    {
+        EcrireSettings(FixtureValeursInconnues().Replace("\"Mosaique\"", "\"Tuiles\""));
+
+        var s = _service.Load();
+
+        Assert.Equal("nord", s.ThemeKey);
+        Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
+        Assert.Equal("echo hi", s.InnerStatusLineCommand);
+        Assert.Equal(1000, s.HistoriqueWidth);
+        Assert.Equal(600, s.ReglagesHeight);
+    }
+
+    /// <summary>JSON réellement illisible (tronqué, non-JSON, racine tableau / null / scalaire) → défauts ENTIERS.</summary>
+    [Theory]
+    [InlineData("{\"ThemeKey\":\"nord\",\"Corner\":\"BottomLeft\"")]
+    [InlineData("{ ceci n'est pas du JSON valide ]")]
+    [InlineData("[1,2]")]
+    [InlineData("null")]
+    [InlineData("\"texte\"")]
+    public void Json_illisible_redonne_les_defauts_entiers_jamais_a_moitie_lu(string texte)
+    {
+        EcrireSettings(texte);
+
+        var s = _service.Load();
+
+        Assert.Equal(new ChronosSettings(), s);
+        Assert.Equal("minuit", s.ThemeKey);
+        Assert.Equal(IssueLectureReglages.Illisible, _service.DerniereLecture.Issue);
+    }
+
+    /// <summary>Les valeurs non-enum mal typées retombent aussi, chacune seule.</summary>
+    [Fact]
+    public void Valeur_non_enum_mal_typee_retombe_seule()
+    {
+        EcrireSettings("{\"ThemeKey\":\"nord\",\"RefreshIntervalSeconds\":\"abc\",\"Background\":null,\"WeeklyAnchor\":\"pas une date\"}");
+
+        var s = _service.Load();
+
+        Assert.Equal(60, s.RefreshIntervalSeconds);
+        Assert.False(s.Background);
+        Assert.Null(s.WeeklyAnchor);
+        Assert.Equal("nord", s.ThemeKey);
+        Assert.Contains("RefreshIntervalSeconds", _service.DernieresRetombees);
+        Assert.Contains("Background", _service.DernieresRetombees);
+        Assert.Contains("WeeklyAnchor", _service.DernieresRetombees);
+    }
+
+    /// <summary>ThemeKey est non-nullable : null retombe sur « minuit » sans toucher au coin.</summary>
+    [Fact]
+    public void ThemeKey_null_retombe_sur_minuit()
+    {
+        EcrireSettings("{\"ThemeKey\":null,\"Corner\":\"BottomLeft\"}");
+
+        var s = _service.Load();
+
+        Assert.Equal("minuit", s.ThemeKey);
+        Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
+        Assert.Equal(new[] { "ThemeKey" }, _service.DernieresRetombees);
+    }
+
+    /// <summary>Une clé de thème inconnue est conservée brute (SettingsService ne connaît pas le catalogue, qui est WPF) ;
+    /// ThemeCatalog.ByKey la fait retomber sur minuit à l'affichage.</summary>
+    [Fact]
+    public void Cle_de_theme_inconnue_est_conservee_et_retombe_a_l_affichage()
+    {
+        EcrireSettings("{\"ThemeKey\":\"theme-disparu\",\"Corner\":\"BottomLeft\"}");
+
+        var s = _service.Load();
+
+        Assert.Equal("theme-disparu", s.ThemeKey);
+        Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
+        Assert.Equal(IssueLectureReglages.Lu, _service.DerniereLecture.Issue);
+        Assert.Equal("minuit", ThemeCatalog.ByKey(s.ThemeKey).Key);
+    }
+
+    /// <summary>Fichier absent → Absent ; fichier sain écrit par Save → Lu, aucune retombée.</summary>
+    [Fact]
+    public void Fichier_absent_ou_sain_ne_signale_aucune_retombee()
+    {
+        _service.Load();
+        Assert.Equal(IssueLectureReglages.Absent, _service.DerniereLecture.Issue);
+
+        _service.Save(new ChronosSettings { ThemeKey = "nord", Corner = OverlayCorner.BottomLeft });
+        _service.Load();
+
+        Assert.Equal(IssueLectureReglages.Lu, _service.DerniereLecture.Issue);
+        Assert.Empty(_service.DernieresRetombees);
     }
 }

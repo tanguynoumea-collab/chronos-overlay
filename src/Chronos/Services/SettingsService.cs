@@ -20,6 +20,15 @@ public sealed class SettingsService
 
     public SettingsService(ChronosPaths paths) => _paths = paths;
 
+    // SOC-01 — rapport de la dernière lecture (issue + valeurs retombées), lu par le diagnostic.
+    private volatile LectureReglages _derniereLecture = LectureReglages.Aucune;
+
+    /// <summary>Issue de la dernière lecture de settings.json (SOC-01).</summary>
+    public LectureReglages DerniereLecture => _derniereLecture;
+
+    /// <summary>Noms (tels qu'écrits dans le JSON) des valeurs retombées sur leur défaut à la dernière lecture.</summary>
+    public IReadOnlyList<string> DernieresRetombees => _derniereLecture.Retombees;
+
     // OverlayCorner sérialisé en texte (lisible/robuste au réordonnancement de l'enum) ;
     // lecture insensible à la casse et tolérante aux virgules trainantes.
     private static readonly JsonSerializerOptions Options = new()

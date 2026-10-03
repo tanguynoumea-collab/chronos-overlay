@@ -1,0 +1,15 @@
+{
+  "ThemeKey": "nord",
+  "Corner": "BottomLeft",
+  "MonitorDeviceName": "\\\\.\\DISPLAY2",
+  "CadranStyle": "Spirale",
+  "CadranMode": "Etendu",
+  "HistoriqueStyleSemaine": "Mosaique",
+  "SessionStyle": "Inconnu",
+  "ReglagesSection": "Fantome",
+  "InnerStatusLineCommand": "echo hi",
+  "HistoriqueX": 100, "HistoriqueY": 120, "HistoriqueWidth": 1000, "HistoriqueHeight": 700,
+  "ReglagesX": 200, "ReglagesY": 220, "ReglagesWidth": 900, "ReglagesHeight": 600,
+  "SessionsX": 10, "SessionsY": 20,
+  "OrientationCadran": "Verticale"
+}
