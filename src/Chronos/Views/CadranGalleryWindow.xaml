@@ -72,7 +72,7 @@
                         <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding FiveQuotaPct, Mode=TwoWay}" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="2" Text="{Binding FiveQuotaPct, StringFormat={}{0:0} %}" Style="{StaticResource Lbl}" HorizontalAlignment="Right"/>
                     </Grid>
-                    <CheckBox Content="Estimé (repli JSONL → grain)" IsChecked="{Binding FiveEstimated, Mode=TwoWay}"
+                    <CheckBox Content="Plancher (≥, relevé vieilli → grain)" IsChecked="{Binding FivePlancher, Mode=TwoWay}"
                               Foreground="#A9A8B2" Margin="0,6,0,0"/>
                 </StackPanel>
 
@@ -91,7 +91,7 @@
                         <Slider Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding SevenQuotaPct, Mode=TwoWay}" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="2" Text="{Binding SevenQuotaPct, StringFormat={}{0:0} %}" Style="{StaticResource Lbl}" HorizontalAlignment="Right"/>
                     </Grid>
-                    <CheckBox Content="Estimé (repli JSONL → grain)" IsChecked="{Binding SevenEstimated, Mode=TwoWay}"
+                    <CheckBox Content="Plancher (≥, relevé vieilli → grain)" IsChecked="{Binding SevenPlancher, Mode=TwoWay}"
                               Foreground="#A9A8B2" Margin="0,6,0,0"/>
                 </StackPanel>
             </Grid>

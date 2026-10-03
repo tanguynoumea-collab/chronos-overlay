@@ -226,4 +226,29 @@ public class CadransThemeBindingTests
         Assert.Same(tokensLave["TextePrincipal"], rangee.OnBrush);
         Assert.Same(tokensLave["CadranAttente"], rangee.WaitBrush);
     }
+
+    /// <summary>§11 M10 : la galerie --cadrans parle la convention de la phase 19 — un relevé vieilli est un PLANCHER (« ≥ »),
+    /// jamais une estimation (« ~ », « Estimé (repli JSONL) »).</summary>
+    [WpfFact]
+    public void La_galerie_parle_plancher_et_non_estimation()
+    {
+        var vm = new CadranPreviewViewModel();
+        Assert.Equal("≥ 71 %", vm.SevenDay.UtilizationText);
+        Assert.True(vm.SevenDay.EstPlancher);
+        Assert.Equal("48 %", vm.FiveHour.UtilizationText);
+        Assert.DoesNotContain("~", vm.SevenDay.UtilizationText);
+        Assert.DoesNotContain("~", vm.FiveHour.UtilizationText);
+
+        vm.FivePlancher = true;
+        Assert.Equal("≥ 48 %", vm.FiveHour.UtilizationText);
+        Assert.True(vm.FiveHour.EstPlancher);
+
+        var fichier = System.IO.Path.Combine(GardesPerimetreTests.CheminSources(), "Views", "CadranGalleryWindow.xaml");
+        Assert.True(System.IO.File.Exists(fichier), $"Fichier introuvable : {fichier}");
+        var texte = System.IO.File.ReadAllText(fichier);
+        Assert.DoesNotContain("Estimé", texte);
+        Assert.DoesNotContain("JSONL", texte);
+        Assert.DoesNotContain("Estimated", texte);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(texte, @"Plancher \(≥").Count);   // les deux cases (5 h, hebdo)
+    }
 }
