@@ -180,7 +180,7 @@ public class VueJourBindingTests
         var (vm, vue) = Monter();
         var textes = TextesVisibles(vue);
 
-        var nomsDePistes = new[] { TextesHistorique.PisteNiveau, TextesHistorique.PisteRythme, TextesHistorique.PisteTokens, TextesHistorique.PisteCouverture, TextesHistorique.PisteFenetres5h };
+        var nomsDePistes = new[] { TextesHistorique.PisteNiveau, TextesHistorique.PisteRythme, TextesHistorique.PisteTokens, TextesHistorique.PisteCouverture };
         Assert.Equal(new[] { "NIVEAU", "RYTHME", "TOKENS CLAUDE CODE", "COUVERTURE" }, textes.Where(nomsDePistes.Contains).ToArray());
 
         Assert.Equal("opus · sonnet · haiku · sous-agents inclus", vm.LegendeModeles);

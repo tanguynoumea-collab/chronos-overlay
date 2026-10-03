@@ -49,7 +49,6 @@ public class TextesHistoriqueTests
         Assert.Equal("RYTHME", TextesHistorique.PisteRythme);
         Assert.Equal("TOKENS CLAUDE CODE", TextesHistorique.PisteTokens);
         Assert.Equal("COUVERTURE", TextesHistorique.PisteCouverture);
-        Assert.Equal("FENÊTRES 5 H", TextesHistorique.PisteFenetres5h);
         Assert.Equal("reset hebdo →", TextesHistorique.ResetHebdo);
         Assert.Equal("0 – 25 %", TextesHistorique.EchelleRythme);
         Assert.Equal("▮ principal ▮ sous-agents", TextesHistorique.LegendeTokens);

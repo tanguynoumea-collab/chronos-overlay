@@ -22,14 +22,14 @@ namespace Chronos.Tests;
 /// <summary>
 /// HIS-06 — l'HONNÊTETÉ DE BOUT EN BOUT, prouvée sur ce que l'utilisateur verra (34-08, D-34-35) : chaque test lit
 /// <see cref="ScenariosHistorique"/> par <see cref="SourceHistoriqueDemonstration"/> — les objets EXACTS de la galerie
-/// <c>--historique</c> — et vérifie, dans les deux vues et les trois styles de la Semaine, les MOTS (les <c>TextBlock</c> visibles de
+/// <c>--historique</c> — et vérifie, dans les deux vues (la Semaine sur sa grille unique, HIS-09), les MOTS (les <c>TextBlock</c> visibles de
 /// l'arbre réel) et les TRAITS (la trace de rendu des pistes, <c>PisteBase.TraceRendu</c>) : trous nommés et pointillés, saut non
 /// localisé en bloc plat, divergence encadrée et son pied, zone antérieure au journal datée, libellé permanent des tokens et pied de
 /// page sur chaque vue, plateau épuisé gris et nommé, rien de dessiné entre deux relevés absents, semaine vide qui le dit, mots du
 /// plan de design, ligne de fraîcheur du jour.
 ///
 /// Ce que <c>dotnet build</c> ne voit pas : un escalier qui enjambe un trou, un saut dessiné en barre au réveil, un cadre violet
-/// sur une heure dont on ne sait rien, un libellé d'honnêteté disparu d'un style. Aucun fichier, aucun exe : réglages en mémoire,
+/// sur une heure dont on ne sait rien, un libellé d'honnêteté disparu. Aucun fichier, aucun exe : réglages en mémoire,
 /// horloge figée. Collection sérialisée (course du chargeur BAML, Pitfall 12).
 /// </summary>
 [Collection("XAML WPF")]
@@ -47,9 +47,6 @@ public class HonneteteHistoriqueTests
     private static readonly DateTimeOffset DivergenceDebut = Utc("2026-09-23T19:00:00Z");
     private static readonly DateTimeOffset DivergenceFin = Utc("2026-09-23T21:00:00Z");
 
-    private static readonly HistoriqueStyleSemaine[] TroisStyles =
-        { HistoriqueStyleSemaine.Pistes, HistoriqueStyleSemaine.Simplifie, HistoriqueStyleSemaine.Tuiles };
-
     /// <summary>Les mots de projection interdits (même motif que <c>GardeVocabulaireHistoriqueTests</c>, D-34-36).</summary>
     private static readonly Regex Projection = new(@"épuisé[e]? vers|à ce rythme|projection|prévision|estim(é|ation|er)|tendance|dans \d+ ?h\b",
                                                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -58,10 +55,9 @@ public class HonneteteHistoriqueTests
 
     // ------------------------------------------------------------------ Montage (mêmes objets que la galerie)
 
-    private static HistoriqueViewModel Vm(HistoriqueStyleSemaine style = HistoriqueStyleSemaine.Pistes, ISourceHistorique? source = null)
+    private static HistoriqueViewModel Vm(ISourceHistorique? source = null)
     {
         var reglages = new ReglagesHistoriqueMemoire();
-        reglages.Modifier(s => s with { HistoriqueStyleSemaine = style });
         var vm = new HistoriqueViewModel(source ?? new SourceHistoriqueDemonstration(Tz), new FakeUiDispatcher { OnUiThread = true },
                                          ScenariosHistorique.HorlogeFigee(Tz), Tz, reglages);
         vm.Ouvrir();
@@ -69,11 +65,10 @@ public class HonneteteHistoriqueTests
         return vm;
     }
 
-    /// <summary>La vue Semaine seule (920 × 900) dans le style demandé, au présent ou sur S-1.</summary>
-    private static (VueSemaineView Vue, HistoriqueViewModel Vm) MonterSemaine(HistoriqueStyleSemaine style = HistoriqueStyleSemaine.Pistes,
-                                                                             bool semainePrecedente = false, ISourceHistorique? source = null)
+    /// <summary>La vue Semaine seule (920 × 900), au présent ou sur S-1.</summary>
+    private static (VueSemaineView Vue, HistoriqueViewModel Vm) MonterSemaine(bool semainePrecedente = false, ISourceHistorique? source = null)
     {
-        var vm = Vm(style, source);
+        var vm = Vm(source);
         if (semainePrecedente)
         {
             vm.PrecedentCommand.Execute(null);
@@ -103,7 +98,7 @@ public class HonneteteHistoriqueTests
     /// <summary>La vraie fenêtre (celle de la galerie) sur la source donnée, racine mise en page à 920 × 610.</summary>
     private static (HistoriqueWindow Fenetre, HistoriqueViewModel Vm, FrameworkElement Racine) MonterFenetre(ISourceHistorique? source = null)
     {
-        var vm = Vm(HistoriqueStyleSemaine.Pistes, source);
+        var vm = Vm(source);
         var fenetre = new HistoriqueWindow(vm);
         var racine = (FrameworkElement)fenetre.Content!;
         racine.DataContext = vm;
@@ -144,9 +139,8 @@ public class HonneteteHistoriqueTests
 
     private static List<string> TextesVisibles(DependencyObject racine) => Visibles<TextBlock>(racine).Select(t => t.Text).ToList();
 
-    private static Grid GrilleVisible(VueSemaineView vue)
-        => Assert.Single(new[] { "StylePistes", "StyleSimplifie", "StyleTuiles" }.Select(n => Assert.IsType<Grid>(vue.FindName(n))),
-                         g => g.Visibility == Visibility.Visible);
+    /// <summary>HIS-09 : la grille unique des pistes de la vue Semaine.</summary>
+    private static Grid GrillePistes(VueSemaineView vue) => Assert.IsType<Grid>(vue.FindName("GrillePistes"));
 
     /// <summary>Rend une piste hors écran et rend SA trace (InvalidateVisual → UpdateLayout → Render : OnRender est rejoué à l'arrangement).</summary>
     private static List<string> TraceRendu(PisteBase piste)
@@ -192,48 +186,45 @@ public class HonneteteHistoriqueTests
     [WpfFact]
     public void Un_trou_interrompt_l_escalier_et_se_dessine_en_rectangle_pointille_nomme()
     {
-        foreach (var style in TroisStyles)
-        {
-            var (vue, vm) = MonterSemaine(style);
-            var grille = GrilleVisible(vue);
-            var plage = vm.DonneesSemaine!.Plage;
-            var alerteDuTheme = CouleurDe(vm.Theme.BrushTokens()["Alerte"]);
+        var (vue, vm) = MonterSemaine();
+        var grille = GrillePistes(vue);
+        var plage = vm.DonneesSemaine!.Plage;
+        var alerteDuTheme = CouleurDe(vm.Theme.BrushTokens()["Alerte"]);
 
-            var niveau = Assert.Single(Visibles<PisteNiveau>(grille));
-            var trace = TraceRendu(niveau);
-            var trous = Lignes(trace, "trou");
-            Assert.True(trous.Count == 2, $"[{style}] exactement deux trous attendus" + Dire(trace));
-            Assert.EndsWith(" ChronosArrete", trous[0], StringComparison.Ordinal);
-            Assert.EndsWith(" JetonInvalide", trous[1], StringComparison.Ordinal);
-            Assert.Equal(Fr(TrouADebut, plage), Champ(trous[0], 0), Tol);
-            Assert.Equal(Fr(TrouAFin, plage), Champ(trous[0], 1), Tol);
-            Assert.Equal(Fr(TrouBDebut, plage), Champ(trous[1], 0), Tol);
-            Assert.Equal(Fr(TrouBFin, plage), Champ(trous[1], 1), Tol);
+        var niveau = Assert.Single(Visibles<PisteNiveau>(grille));
+        var trace = TraceRendu(niveau);
+        var trous = Lignes(trace, "trou");
+        Assert.True(trous.Count == 2, "exactement deux trous attendus" + Dire(trace));
+        Assert.EndsWith(" ChronosArrete", trous[0], StringComparison.Ordinal);
+        Assert.EndsWith(" JetonInvalide", trous[1], StringComparison.Ordinal);
+        Assert.Equal(Fr(TrouADebut, plage), Champ(trous[0], 0), Tol);
+        Assert.Equal(Fr(TrouAFin, plage), Champ(trous[0], 1), Tol);
+        Assert.Equal(Fr(TrouBDebut, plage), Champ(trous[1], 0), Tol);
+        Assert.Equal(Fr(TrouBFin, plage), Champ(trous[1], 1), Tol);
 
-            // L'escalier s'interrompt : aucun palier (rampe ou gris) ne recouvre l'intérieur d'un trou.
-            foreach (var palier in Lignes(trace, "palier"))
-                foreach (var (d, f) in new[] { (TrouADebut, TrouAFin), (TrouBDebut, TrouBFin) })
-                    Assert.True(Recouvrement(Champ(palier, 0), Champ(palier, 1), Fr(d, plage), Fr(f, plage)) <= 0.0005,
-                                $"[{style}] le palier « {palier} » enjambe le trou {d:u} → {f:u} : une ligne interpolée");
+        // L'escalier s'interrompt : aucun palier (rampe ou gris) ne recouvre l'intérieur d'un trou.
+        foreach (var palier in Lignes(trace, "palier"))
+            foreach (var (d, f) in new[] { (TrouADebut, TrouAFin), (TrouBDebut, TrouBFin) })
+                Assert.True(Recouvrement(Champ(palier, 0), Champ(palier, 1), Fr(d, plage), Fr(f, plage)) <= 0.0005,
+                            $"le palier « {palier} » enjambe le trou {d:u} → {f:u} : une ligne interpolée");
 
-            // Le contrat « rectangle Line 35 % à bordure pointillée grise / ambre ».
-            Assert.Equal(0.35, niveau.OpaciteTrou);
-            Assert.Equal(CouleurLine, CouleurDe(niveau.FondTrou));
-            Assert.Equal(HistoGris, CouleurDe(niveau.BordTrouArrete));
-            Assert.Equal(alerteDuTheme, CouleurDe(niveau.BordTrouJeton));
+        // Le contrat « rectangle Line 35 % à bordure pointillée grise / ambre ».
+        Assert.Equal(0.35, niveau.OpaciteTrou);
+        Assert.Equal(CouleurLine, CouleurDe(niveau.FondTrou));
+        Assert.Equal(HistoGris, CouleurDe(niveau.BordTrouArrete));
+        Assert.Equal(alerteDuTheme, CouleurDe(niveau.BordTrouJeton));
 
-            // La couverture dit la même chose, dans le même ordre.
-            var couverture = Lignes(TraceRendu(Assert.Single(Visibles<PisteCouverture>(grille))), "trou");
-            Assert.Equal(2, couverture.Count);
-            Assert.EndsWith(" arrete", couverture[0], StringComparison.Ordinal);
-            Assert.EndsWith(" jeton", couverture[1], StringComparison.Ordinal);
+        // La couverture dit la même chose, dans le même ordre.
+        var couverture = Lignes(TraceRendu(Assert.Single(Visibles<PisteCouverture>(grille))), "trou");
+        Assert.Equal(2, couverture.Count);
+        Assert.EndsWith(" arrete", couverture[0], StringComparison.Ordinal);
+        Assert.EndsWith(" jeton", couverture[1], StringComparison.Ordinal);
 
-            // Les mots : « Chronos arrêté » en gris, « jeton invalide » en ambre du thème.
-            var arrete = Assert.Single(Visibles<TextBlock>(grille), t => t.Text == "Chronos arrêté");
-            Assert.Equal(Ink2, CouleurDe(arrete.Foreground));
-            var jeton = Assert.Single(Visibles<TextBlock>(grille), t => t.Text == "jeton invalide");
-            Assert.Equal(alerteDuTheme, CouleurDe(jeton.Foreground));
-        }
+        // Les mots : « Chronos arrêté » en gris, « jeton invalide » en ambre du thème.
+        var arrete = Assert.Single(Visibles<TextBlock>(grille), t => t.Text == "Chronos arrêté");
+        Assert.Equal(Ink2, CouleurDe(arrete.Foreground));
+        var jeton = Assert.Single(Visibles<TextBlock>(grille), t => t.Text == "jeton invalide");
+        Assert.Equal(alerteDuTheme, CouleurDe(jeton.Foreground));
     }
 
     // ------------------------------------------------------------------ 2. Saut non localisé : bloc plat gris, jamais une barre au réveil
@@ -241,38 +232,32 @@ public class HonneteteHistoriqueTests
     [WpfFact]
     public void Le_saut_d_une_absence_est_un_bloc_plat_jamais_une_barre_au_reveil()
     {
-        foreach (var style in TroisStyles)
-        {
-            var (vue, vm) = MonterSemaine(style);
-            var grille = GrilleVisible(vue);
-            var donnees = vm.DonneesSemaine!;
-            var plage = donnees.Plage;
+        var (vue, vm) = MonterSemaine();
+        var grille = GrillePistes(vue);
+        var donnees = vm.DonneesSemaine!;
+        var plage = donnees.Plage;
 
-            var trace = TraceRendu(Assert.Single(Visibles<PisteNiveau>(grille)));
-            var saut = Assert.Single(Lignes(trace, "saut"));
-            Assert.Equal(Fr(TrouADebut, plage), Champ(saut, 0), Tol);   // le bloc couvre TOUT le trou…
-            Assert.Equal(Fr(TrouAFin, plage), Champ(saut, 1), Tol);     // … pas une heure au réveil
-            Assert.Equal(0.02, Champ(saut, 3) - Champ(saut, 2), 6);
+        var trace = TraceRendu(Assert.Single(Visibles<PisteNiveau>(grille)));
+        var saut = Assert.Single(Lignes(trace, "saut"));
+        Assert.Equal(Fr(TrouADebut, plage), Champ(saut, 0), Tol);   // le bloc couvre TOUT le trou…
+        Assert.Equal(Fr(TrouAFin, plage), Champ(saut, 1), Tol);     // … pas une heure au réveil
+        Assert.Equal(0.02, Champ(saut, 3) - Champ(saut, 2), 6);
 
-            // Aucun Δ ne traverse le trou (l'analyse le range en saut) ; la barre de l'heure du réveil n'additionne que ce qui a été
-            // relevé APRÈS le réveil.
-            Assert.DoesNotContain(donnees.Analyse.DeltasHebdo, d => d.De <= TrouADebut && d.A >= TrouAFin);
-            Assert.DoesNotContain(donnees.Analyse.Deltas5h, d => d.De <= TrouADebut && d.A >= TrouAFin);
-            if (style != HistoriqueStyleSemaine.Simplifie)
-            {
-                var rythme = TraceRendu(Assert.Single(Visibles<PisteRythme>(grille)));
-                var reveil = Fr(TrouAFin, plage);
-                var dansLHeure = donnees.Analyse.Serie.Where(r => r.T >= TrouAFin && r.T < TrouAFin.AddHours(1) && r.U5 is not null).ToList();
-                var releveApresReveil = dansLHeure.Count == 0 ? 0 : dansLHeure[^1].U5!.Value - dansLHeure[0].U5!.Value;
-                var barresDuReveil = Lignes(rythme, "barre").Where(b => Champ(b, 0) - Tol <= reveil && reveil < Champ(b, 1) - Tol).ToList();
-                Assert.True(barresDuReveil.Count == 1, $"[{style}] une barre attendue pour l'heure du réveil (07:00)" + Dire(rythme));
-                foreach (var barre in barresDuReveil)
-                    Assert.True(Champ(barre, 2) <= releveApresReveil + 0.001,
-                                $"[{style}] « {barre} » : la barre du réveil porte plus que ce qui a été relevé après le réveil ({releveApresReveil:0.000})");
-            }
+        // Aucun Δ ne traverse le trou (l'analyse le range en saut) ; la barre de l'heure du réveil n'additionne que ce qui a été
+        // relevé APRÈS le réveil.
+        Assert.DoesNotContain(donnees.Analyse.DeltasHebdo, d => d.De <= TrouADebut && d.A >= TrouAFin);
+        Assert.DoesNotContain(donnees.Analyse.Deltas5h, d => d.De <= TrouADebut && d.A >= TrouAFin);
+        var rythme = TraceRendu(Assert.Single(Visibles<PisteRythme>(grille)));
+        var reveil = Fr(TrouAFin, plage);
+        var dansLHeure = donnees.Analyse.Serie.Where(r => r.T >= TrouAFin && r.T < TrouAFin.AddHours(1) && r.U5 is not null).ToList();
+        var releveApresReveil = dansLHeure.Count == 0 ? 0 : dansLHeure[^1].U5!.Value - dansLHeure[0].U5!.Value;
+        var barresDuReveil = Lignes(rythme, "barre").Where(b => Champ(b, 0) - Tol <= reveil && reveil < Champ(b, 1) - Tol).ToList();
+        Assert.True(barresDuReveil.Count == 1, "une barre attendue pour l'heure du réveil (07:00)" + Dire(rythme));
+        foreach (var barre in barresDuReveil)
+            Assert.True(Champ(barre, 2) <= releveApresReveil + 0.001,
+                        $"« {barre} » : la barre du réveil porte plus que ce qui a été relevé après le réveil ({releveApresReveil:0.000})");
 
-            Assert.Contains("+2 % pendant l'absence (répartition inconnue)", TextesVisibles(grille));
-        }
+        Assert.Contains("+2 % pendant l'absence (répartition inconnue)", TextesVisibles(grille));
     }
 
     // ------------------------------------------------------------------ 3. Divergence : cadre Accent + pied « consommé ailleurs »
@@ -280,28 +265,25 @@ public class HonneteteHistoriqueTests
     [WpfFact]
     public void Une_marche_sans_tokens_Code_est_encadree_et_le_pied_le_dit()
     {
-        foreach (var style in TroisStyles)
-        {
-            var (vue, vm) = MonterSemaine(style);
-            var grille = GrilleVisible(vue);
-            var plage = vm.DonneesSemaine!.Plage;
+        var (vue, vm) = MonterSemaine();
+        var grille = GrillePistes(vue);
+        var plage = vm.DonneesSemaine!.Plage;
 
-            var niveau = Assert.Single(Visibles<PisteNiveau>(grille));
-            var trace = TraceRendu(niveau);
-            var divergence = Assert.Single(Lignes(trace, "divergence"));
-            Assert.Equal(Fr(DivergenceDebut, plage), Champ(divergence, 0), Tol);
-            Assert.Equal(Fr(DivergenceFin, plage), Champ(divergence, 1), Tol);
-            Assert.Equal(Accent, CouleurDe(niveau.CadreDivergence));
+        var niveau = Assert.Single(Visibles<PisteNiveau>(grille));
+        var trace = TraceRendu(niveau);
+        var divergence = Assert.Single(Lignes(trace, "divergence"));
+        Assert.Equal(Fr(DivergenceDebut, plage), Champ(divergence, 0), Tol);
+        Assert.Equal(Fr(DivergenceFin, plage), Champ(divergence, 1), Tol);
+        Assert.Equal(Accent, CouleurDe(niveau.CadreDivergence));
 
-            Assert.Contains(TextesHistorique.PiedDivergence, TextesVisibles(vue));   // « … consommé ailleurs (Cowork, claude.ai) »
-            Assert.Equal(Visibility.Visible, Assert.IsAssignableFrom<FrameworkElement>(vue.FindName("PiedDivergence")).Visibility);
+        Assert.Contains(TextesHistorique.PiedDivergence, TextesVisibles(vue));   // « … consommé ailleurs (Cowork, claude.ai) »
+        Assert.Equal(Visibility.Visible, Assert.IsAssignableFrom<FrameworkElement>(vue.FindName("PiedDivergence")).Visibility);
 
-            // Le zéro des tokens sous la marche est VRAI : heures couvertes, sans barre, sans hachure.
-            var tokens = TraceRendu(Assert.Single(Visibles<PisteTokens>(grille)));
-            var (p0, p1) = (Fr(PlateauDebut, plage), Fr(PlateauFin, plage));
-            Assert.DoesNotContain(Lignes(tokens, "tokens"), l => Recouvrement(Champ(l, 0), Champ(l, 1), p0, p1) > 0.0005);
-            Assert.DoesNotContain(Lignes(tokens, "hachure"), l => Recouvrement(Champ(l, 0), Champ(l, 1), p0, p1) > 0.0005);
-        }
+        // Le zéro des tokens sous la marche est VRAI : heures couvertes, sans barre, sans hachure.
+        var tokens = TraceRendu(Assert.Single(Visibles<PisteTokens>(grille)));
+        var (p0, p1) = (Fr(PlateauDebut, plage), Fr(PlateauFin, plage));
+        Assert.DoesNotContain(Lignes(tokens, "tokens"), l => Recouvrement(Champ(l, 0), Champ(l, 1), p0, p1) > 0.0005);
+        Assert.DoesNotContain(Lignes(tokens, "hachure"), l => Recouvrement(Champ(l, 0), Champ(l, 1), p0, p1) > 0.0005);
     }
 
     // ------------------------------------------------------------------ 4. Avant le journal : zone vide, hachurée, datée
@@ -309,8 +291,8 @@ public class HonneteteHistoriqueTests
     [WpfFact]
     public void La_zone_anterieure_au_journal_est_vide_et_datee()
     {
-        var (vue, vm) = MonterSemaine(HistoriqueStyleSemaine.Pistes, semainePrecedente: true);
-        var grille = GrilleVisible(vue);
+        var (vue, vm) = MonterSemaine(semainePrecedente: true);
+        var grille = GrillePistes(vue);
         var plage = vm.DonneesSemaine!.Plage;
         var ouverture = Fr(ScenariosHistorique.JournalOuvertLe, plage);
 
@@ -337,12 +319,9 @@ public class HonneteteHistoriqueTests
         const string ParHeure = "par heure, comptés localement — hors Cowork et claude.ai · bruts, non pondérés · ce n'est PAS un % du forfait";
         const string ParQuart = "par quart d'heure, comptés localement — hors Cowork et claude.ai · bruts, non pondérés · ce n'est PAS un % du forfait";
 
-        foreach (var style in TroisStyles)
-        {
-            var textes = TextesVisibles(MonterSemaine(style).Vue);
-            Assert.True(textes.Contains(ParHeure), $"[{style}] libellé permanent des tokens absent");
-            Assert.True(textes.Contains(TextesHistorique.PiedDePage), $"[{style}] pied de page absent");
-        }
+        var textes = TextesVisibles(MonterSemaine().Vue);
+        Assert.True(textes.Contains(ParHeure), "libellé permanent des tokens absent");
+        Assert.True(textes.Contains(TextesHistorique.PiedDePage), "pied de page absent");
 
         var jour = TextesVisibles(MonterJour().Vue);
         Assert.Contains(ParQuart, jour);
@@ -357,10 +336,10 @@ public class HonneteteHistoriqueTests
         Assert.Contains(ParQuart, TextesVisibles(racine));
     }
 
-    // ------------------------------------------------------------------ 6. Épuisée : gris et nommée (Jour), tuile grise (Tuiles)
+    // ------------------------------------------------------------------ 6. Épuisée : gris et nommée (Jour)
 
     [WpfFact]
-    public void L_epuisee_est_grise_et_nommee_le_mercredi_et_la_tuile_l_est_aussi()
+    public void L_epuisee_est_grise_et_nommee_le_mercredi()
     {
         var (vue, vm) = MonterJour(joursEnArriere: 1);
         var plage = vm.DonneesJour!.Plage;
@@ -377,12 +356,6 @@ public class HonneteteHistoriqueTests
         Assert.Contains(TextesHistorique.Epuisee, TextesVisibles(vue));
         Assert.Equal("épuisée à 100 % — le serveur refuse (statut rejected)", TextesHistorique.Epuisee);
 
-        var (tuiles, vmTuiles) = MonterSemaine(HistoriqueStyleSemaine.Tuiles);
-        var semaine = vmTuiles.DonneesSemaine!.Plage;
-        var traceTuiles = TraceRendu(Assert.Single(Visibles<PisteFenetres5h>(GrilleVisible(tuiles))));
-        var grise = Assert.Single(Lignes(traceTuiles, "tuile"), l => l.Split(' ')[4] == "grise");
-        Assert.Equal(1.0, Champ(grise, 2), 6);
-        Assert.Equal(Fr(PlateauFin, semaine), Champ(grise, 1), Tol);
     }
 
     // ------------------------------------------------------------------ 7. Rien n'est dessiné entre deux relevés absents
@@ -390,32 +363,28 @@ public class HonneteteHistoriqueTests
     [WpfFact]
     public void Rien_n_est_dessine_entre_deux_relevés_absents_de_plus_de_deux_cadences()
     {
-        foreach (var style in new[] { HistoriqueStyleSemaine.Pistes, HistoriqueStyleSemaine.Tuiles })
-        {
-            var (vue, _) = MonterSemaine(style);
-            var grille = GrilleVisible(vue);
-            var traceNiveau = TraceRendu(Assert.Single(Visibles<PisteNiveau>(grille)));
-            var trous = Lignes(traceNiveau, "trou").Select(l => (F0: Champ(l, 0), F1: Champ(l, 1))).ToList();
-            Assert.Equal(2, trous.Count);
+        var (vue, _) = MonterSemaine();
+        var grille = GrillePistes(vue);
+        var traceNiveau = TraceRendu(Assert.Single(Visibles<PisteNiveau>(grille)));
+        var trous = Lignes(traceNiveau, "trou").Select(l => (F0: Champ(l, 0), F1: Champ(l, 1))).ToList();
+        Assert.Equal(2, trous.Count);
 
-            // Les primitives qui portent une VALEUR relevée : ni leur début ni leur étendue ne vivent dans un trou. Peuvent y vivre :
-            // trou, saut (le bloc de l'absence), fantôme (S-1), hachure / tokens (axe indépendant : Claude Code tournait), et les
-            // tirets / traits de reset datés par le resets_at annoncé par le serveur (un instant connu, pas une valeur).
-            var primitives = new List<(string Piste, string Ligne)>();
-            primitives.AddRange(Lignes(traceNiveau, "palier").Select(l => ("Niveau", l)));
-            foreach (var p in Visibles<PisteRythme>(grille)) primitives.AddRange(Lignes(TraceRendu(p), "barre").Select(l => ("Rythme", l)));
-            foreach (var p in Visibles<PisteFenetres5h>(grille)) primitives.AddRange(Lignes(TraceRendu(p), "tuile").Select(l => ("Fenetres5h", l)));
-            Assert.NotEmpty(primitives);
+        // Les primitives qui portent une VALEUR relevée : ni leur début ni leur étendue ne vivent dans un trou. Peuvent y vivre :
+        // trou, saut (le bloc de l'absence), fantôme (S-1), hachure / tokens (axe indépendant : Claude Code tournait), et les
+        // tirets / traits de reset datés par le resets_at annoncé par le serveur (un instant connu, pas une valeur).
+        var primitives = new List<(string Piste, string Ligne)>();
+        primitives.AddRange(Lignes(traceNiveau, "palier").Select(l => ("Niveau", l)));
+        foreach (var p in Visibles<PisteRythme>(grille)) primitives.AddRange(Lignes(TraceRendu(p), "barre").Select(l => ("Rythme", l)));
+        Assert.NotEmpty(primitives);
 
-            foreach (var (piste, ligne) in primitives)
-                foreach (var (f0, f1) in trous)
-                {
-                    var debut = Champ(ligne, 0);
-                    Assert.False(f0 + 0.0005 < debut && debut < f1 - 0.0005, $"[{style}] {piste} : « {ligne} » commence dans le trou ]{f0}, {f1}[");
-                    if (ligne.StartsWith("palier ", StringComparison.Ordinal))
-                        Assert.True(Recouvrement(debut, Champ(ligne, 1), f0, f1) <= 0.0005, $"[{style}] {piste} : « {ligne} » enjambe le trou ]{f0}, {f1}[");
-                }
-        }
+        foreach (var (piste, ligne) in primitives)
+            foreach (var (f0, f1) in trous)
+            {
+                var debut = Champ(ligne, 0);
+                Assert.False(f0 + 0.0005 < debut && debut < f1 - 0.0005, $"{piste} : « {ligne} » commence dans le trou ]{f0}, {f1}[");
+                if (ligne.StartsWith("palier ", StringComparison.Ordinal))
+                    Assert.True(Recouvrement(debut, Champ(ligne, 1), f0, f1) <= 0.0005, $"{piste} : « {ligne} » enjambe le trou ]{f0}, {f1}[");
+            }
     }
 
     // ------------------------------------------------------------------ 8. Semaine vide : « aucun relevé », rien de dessiné
@@ -457,7 +426,7 @@ public class HonneteteHistoriqueTests
     {
         var (_, vm, racine) = MonterFenetre();
         var semaine = TextesVisibles(racine);
-        foreach (var attendu in new[] { "Historique", "Semaine", "Jour", "4 semaines", "Cette semaine", "Style :" })
+        foreach (var attendu in new[] { "Historique", "Semaine", "Jour", "4 semaines", "Cette semaine" })
             Assert.Contains(attendu, semaine);
         VerifierAucuneProjection(semaine);
 
@@ -484,13 +453,10 @@ public class HonneteteHistoriqueTests
     [WpfFact]
     public void Les_reperes_de_l_axe_niveau_sont_poses_sur_chaque_vue()
     {
-        foreach (var style in TroisStyles)
-        {
-            var grille = GrilleVisible(MonterSemaine(style).Vue);
-            var textes = TextesVisibles(grille);
-            Assert.True(textes.Count(t => t == "100 %") == 1, $"[{style}] repère « 100 % » de NIVEAU absent");
-            Assert.True(textes.Count(t => t == "0") == 1, $"[{style}] repère « 0 » de NIVEAU absent");
-        }
+        var grille = GrillePistes(MonterSemaine().Vue);
+        var textes = TextesVisibles(grille);
+        Assert.True(textes.Count(t => t == "100 %") == 1, "repère « 100 % » de NIVEAU absent");
+        Assert.True(textes.Count(t => t == "0") == 1, "repère « 0 » de NIVEAU absent");
         var jour = TextesVisibles(MonterJour().Vue);
         Assert.Equal(1, jour.Count(t => t == "100 %"));
         Assert.Equal(1, jour.Count(t => t == "0"));

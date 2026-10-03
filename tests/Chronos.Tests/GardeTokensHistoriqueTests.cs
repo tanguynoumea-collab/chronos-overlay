@@ -55,7 +55,7 @@ public class GardeTokensHistoriqueTests
         ("HistoGris",      "#5A5960"),
     };
 
-    /// <summary>Les 45 tokens de taille (D-34-02, puis D-35-14 : +7 pour la vue 4 semaines) : corps §2, hauteurs de pistes
+    /// <summary>Les 39 tokens de taille (D-34-02, D-35-14 : +7 vue 4 semaines, phase 38 : −6 Simplifié / Tuiles) : corps §2, hauteurs de pistes
     /// §2.2 / §2.3 / §2.4, épaisseurs, opacités, rayon, tailles de fenêtre et gabarits de mise en page.</summary>
     private static readonly (string Cle, double Valeur)[] TaillesHisto =
     {
@@ -82,12 +82,6 @@ public class GardeTokensHistoriqueTests
         ("HistoHauteurRythmePistes", 72),
         ("HistoHauteurTokensPistes", 72),
         ("HistoHauteurCouverture", 12),
-        ("HistoHauteurNiveauSimplifie", 200),
-        ("HistoHauteurTokensSimplifie", 90),
-        ("HistoHauteurNiveauTuiles", 120),
-        ("HistoHauteurFenetres5hTuiles", 62),
-        ("HistoHauteurRythmeTuiles", 58),
-        ("HistoHauteurTokensTuiles", 58),
         ("HistoHauteurNiveauJour", 190),
         ("HistoHauteurRythmeJour", 64),
         ("HistoHauteurTokensJour", 64),

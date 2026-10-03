@@ -290,14 +290,6 @@ public class PistesHistoriqueTests
         Assert.Empty(Lignes(piste, "fantome "));
         Assert.Empty(Lignes(piste, "dents "));
         Assert.Empty(Lignes(piste, "tiret "));
-
-        // Semaine « hebdo seul » (style Tuiles) : ni dents ni tirets, mais le fantôme et les bandes.
-        var hebdoSeul = NiveauComplet(Semaine(), VariantePisteNiveau.SemaineHebdoSeul);
-        Rendre(hebdoSeul, 840, 120);
-        Assert.Empty(Lignes(hebdoSeul, "dents "));
-        Assert.Empty(Lignes(hebdoSeul, "tiret "));
-        Assert.NotEmpty(Lignes(hebdoSeul, "fantome "));
-        Assert.NotEmpty(Lignes(hebdoSeul, "bande "));
     }
 
     [WpfFact]
@@ -370,7 +362,7 @@ public class PistesHistoriqueTests
     }
 
     // ------------------------------------------------------------------------------------------------
-    // Task 2 — PisteRythme, PisteTokens, PisteCouverture, PisteFenetres5h
+    // Task 2 — PisteRythme, PisteTokens, PisteCouverture
     // ------------------------------------------------------------------------------------------------
 
     [WpfFact]
@@ -538,47 +530,6 @@ public class PistesHistoriqueTests
         Assert.Equal(Fr(t.AddHours(9), d.Plage), Nombres(trous[2])[1], 3);
     }
 
-    [WpfFact]
-    public void Les_tuiles_finissent_au_reset_et_grisent_l_epuisee()
-    {
-        var d = Semaine();
-        var piste = new PisteFenetres5h
-        {
-            Plage = d.Plage, Serie = d.Analyse.Serie, Rampe = ThemeCatalog.Default, Gris = B(Colors.Gray), TraitReset = B(Colors.White), EpaisseurFine = 1,
-        };
-        Rendre(piste, 840, 62);
-
-        var attendues = Tuiles5h.Depuis(d.Analyse.Serie, d.Plage);
-        var tuiles = Lignes(piste, "tuile ");
-        Assert.True(attendues.Count > 1);
-        Assert.Equal(attendues.Count, tuiles.Count);
-        for (var i = 0; i < attendues.Count; i++)
-        {
-            var n = Nombres(tuiles[i]);
-            Assert.Equal(Fr(attendues[i].Debut, d.Plage), n[0], 3);
-            Assert.Equal(Fr(attendues[i].Fin, d.Plage), n[1], 3);
-            Assert.Equal(attendues[i].UMax, n[2], 3);
-            Assert.Equal(62 - EchelleValeur.Y(attendues[i].UMax, 1, 62), n[3], 3);
-            Assert.Contains(attendues[i].Epuisee ? " grise " : " rampe ", tuiles[i]);
-        }
-
-        // La fenêtre épuisée mer. 19:00 → jeu. 00:00 local (fin 22:00Z) est grise, umax 1,00 ; toutes les autres sont de la rampe.
-        var grise = Assert.Single(tuiles, l => l.Contains(" grise "));
-        Assert.Equal(Fr(Utc(23, 22), d.Plage), Nombres(grise)[1], 3);
-        Assert.Equal(1.0, Nombres(grise)[2], 3);
-
-        var tirets = Lignes(piste, "tiret ");
-        Assert.Equal(attendues.Count(t => t.ResetDansPlage), tirets.Count);
-        foreach (var tiret in tirets)
-            Assert.Contains(attendues, t => t.ResetDansPlage && Math.Abs(Fr(t.Fin, d.Plage) - Nombres(tiret)[0]) <= 0.001);
-
-        piste.Gris = null;                              // sans gris, la tuile épuisée est SAUTÉE, pas peinte par la rampe
-        Rendre(piste, 840, 62);
-        tuiles = Lignes(piste, "tuile ");
-        Assert.Equal(attendues.Count - 1, tuiles.Count);
-        Assert.DoesNotContain(tuiles, l => l.Contains(" grise "));
-    }
-
     // ------------------------------------------------------------------------------------------------
     // 35-04 — PisteQuatreSemaines (DESIGN_PLAN §2.4, D-35-13)
     // ------------------------------------------------------------------------------------------------
@@ -676,7 +627,6 @@ public class PistesHistoriqueTests
                 new PisteRythme { Plage = d.Plage, Deltas = vide.Deltas5h, Serie = vide.Serie, Rampe = ThemeCatalog.Default, Grille = B(Colors.Gray), EpaisseurFine = 1 },
                 new PisteTokens { Plage = d.Plage, Barres = Array.Empty<BarreHeure>(), Plafond = 0, Principal = B(Colors.Gray), SousAgents = B(Colors.Gray), Hachure = B(Colors.Gray) },
                 new PisteCouverture { Plage = d.Plage, Serie = vide.Serie, Trous = vide.Trous, InstantLecture = d.LueA, Present = B(Colors.Gray), OpacitePresent = 0.55, Arrete = B(Colors.Gray), Jeton = B(Colors.Gray) },
-                new PisteFenetres5h { Plage = d.Plage, Serie = vide.Serie, Rampe = ThemeCatalog.Default, Gris = B(Colors.Gray), TraitReset = B(Colors.Gray), EpaisseurFine = 1 },
                 surcouche,
             };
             foreach (var p in pistes)
