@@ -69,6 +69,7 @@ public class GardeDocumentationHistoriqueTests
         {
             "Semaine de forfait", "4 semaines", "Niveau", "Rythme", "Tokens Claude Code", "Couverture",
             "double-clic au centre du cadran", "Historique d'utilisation", "Ouvrir",
+            "Plein écran", "F11", "Échap",   // phase 38 (HIS-10 / HIS-11)
         };
         foreach (var mot in sansCasse)
             Assert.True(section.Contains(mot, StringComparison.OrdinalIgnoreCase), $"Mot du plan absent de la section du README : « {mot} ».");

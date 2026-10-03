@@ -147,6 +147,14 @@ Une seule forme, en pistes superposées : Niveau · Rythme · Tokens Claude Code
 - **Couverture** — une bande toujours visible : relevé présent, « Chronos arrêté », « jeton invalide » ou « sonde
   refusée ».
 
+### Plein écran
+
+Le bouton « ⛶ Plein écran », à droite de la ligne de fraîcheur, ou la touche F11, étend la fenêtre à tout l'écran où elle
+se trouve, barre des tâches comprise. Les pistes se partagent la hauteur dans leurs proportions (avec un plafond), textes et
+traits grandissent d'environ un tiers, et la vue ne défile plus. Trous, annotations et pied de page restent les mêmes.
+On en sort par « ⤢ Quitter le plein écran · Échap », par F11 ou par Échap : la fenêtre retrouve alors sa position et sa
+taille d'avant ; un second Échap la ferme.
+
 ### Règles d'honnêteté
 
 - Les pourcentages sont des **relevés exacts du serveur**, écrits dans un journal depuis sa première ligne

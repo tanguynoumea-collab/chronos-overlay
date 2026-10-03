@@ -336,6 +336,71 @@ public class HonneteteHistoriqueTests
         Assert.Contains(ParQuart, TextesVisibles(racine));
     }
 
+    // ------------------------------------------------------------------ 5 bis. Plein écran (HIS-10, § 4.2) : même honnêteté à toutes les tailles
+
+    /// <summary>
+    /// HIS-10 — « Trous, annotations et pied de page restent les mêmes » : sur la vraie fenêtre, les textes visibles de chaque vue
+    /// sont IDENTIQUES en mode normal (920 × 610) et en plein écran (1920 × 1080) ; les trous et hachures dessinés des pistes de la
+    /// Semaine sont en même nombre. Le plein écran agrandit, il ne change aucune règle.
+    /// </summary>
+    [WpfFact]
+    public void L_honnetete_est_identique_en_plein_ecran_sur_les_trois_vues()
+    {
+        const string ParHeure = "par heure, comptés localement — hors Cowork et claude.ai · bruts, non pondérés · ce n'est PAS un % du forfait";
+        var (fenetre, vm, racine) = MonterFenetre();
+        fenetre.FournisseurBornesMoniteur = () => new Chronos.Placement.RectangleEcran(0, 0, 1920, 1080);
+        var vues = new[] { (VueHistorique.Semaine, "VueSemaine"), (VueHistorique.Jour, "VueJour"), (VueHistorique.QuatreSemaines, "VueQuatreSemaines") };
+
+        Dictionary<string, List<string>> Releve(double largeur, double hauteur)
+        {
+            var r = new Dictionary<string, List<string>>();
+            foreach (var (vue, nom) in vues)
+            {
+                vm.ChoisirVueCommand.Execute(vue);
+                vm.AttendreLecture().GetAwaiter().GetResult();
+                MettreEnPage(racine, largeur, hauteur);
+                r[nom] = TextesVisibles((DependencyObject)fenetre.FindName(nom)).OrderBy(t => t, StringComparer.Ordinal).ToList();
+            }
+            return r;
+        }
+
+        (int Niveau, int Tokens) TraitsSemaine(double largeur, double hauteur)
+        {
+            vm.ChoisirVueCommand.Execute(VueHistorique.Semaine);
+            vm.AttendreLecture().GetAwaiter().GetResult();
+            MettreEnPage(racine, largeur, hauteur);
+            var semaine = (DependencyObject)fenetre.FindName("VueSemaine");
+            int Compter(PisteBase p) { var t = TraceRendu(p); return Lignes(t, "trou").Count + Lignes(t, "hachure").Count; }
+            return (Compter(Assert.Single(Visibles<PisteNiveau>(semaine))), Compter(Assert.Single(Visibles<PisteTokens>(semaine))));
+        }
+
+        var normal = Releve(920, 610);
+        var traitsNormal = TraitsSemaine(920, 610);
+
+        vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.True(fenetre.EstEnPleinEcran, "le plein écran doit être appliqué (moniteur injecté)");
+        var plein = Releve(1920, 1080);
+        var traitsPlein = TraitsSemaine(1920, 1080);
+
+        foreach (var (_, nom) in vues)
+            Assert.True(normal[nom].SequenceEqual(plein[nom]),
+                        $"vue {nom} : les textes visibles changent en plein écran.\n  seulement en normal : "
+                        + string.Join(" | ", normal[nom].Except(plein[nom]))
+                        + "\n  seulement en plein écran : " + string.Join(" | ", plein[nom].Except(normal[nom])));
+
+        Assert.True(plein["VueSemaine"].Contains(TextesHistorique.PiedDePage), "vue Semaine en plein écran : pied de page absent");
+        Assert.True(plein["VueJour"].Contains(TextesHistorique.PiedDePage), "vue Jour en plein écran : pied de page absent");
+        Assert.True(plein["VueQuatreSemaines"].Contains(TextesHistorique.PiedQuatreSemaines), "vue 4 semaines en plein écran : pied absent");
+        Assert.True(plein["VueSemaine"].Contains(ParHeure), "vue Semaine en plein écran : libellé permanent des tokens absent");
+        if (normal["VueSemaine"].Any(t => t.Contains("répartition inconnue", StringComparison.Ordinal)))
+            Assert.True(plein["VueSemaine"].Any(t => t.Contains("répartition inconnue", StringComparison.Ordinal)),
+                        "vue Semaine en plein écran : « répartition inconnue » a disparu");
+
+        Assert.True(traitsNormal.Niveau > 0, "le scénario doit dessiner des trous sur NIVEAU (sinon le test ne prouve rien)");
+        Assert.Equal(traitsNormal.Niveau, traitsPlein.Niveau);
+        Assert.Equal(traitsNormal.Tokens, traitsPlein.Tokens);
+    }
+
     // ------------------------------------------------------------------ 6. Épuisée : gris et nommée (Jour)
 
     [WpfFact]
