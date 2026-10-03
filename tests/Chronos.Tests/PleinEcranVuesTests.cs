@@ -363,10 +363,112 @@ public class PleinEcranVuesTests
         Assert.Equal(normalTrait, p.Niveau.EpaisseurPremierPlan);
     }
 
+    // ------------------------------------------------------------------ Vue 4 semaines (plan 04) : montage et aides
+
+    /// <summary>Monte la vue 4 semaines (banc partagé, 920 × 900), entre en plein écran et la remet en page à la taille demandée.</summary>
+    private static VueQuatreSemainesView QuatreSemainesPleinEcran(double largeur, double hauteur)
+    {
+        var (_, vue) = BancQuatreSemaines.Monter();
+        PleinEcranEnPage(vue, largeur, hauteur);
+        return vue;
+    }
+
+    private static PisteQuatreSemaines NiveauQuatreSemaines(VueQuatreSemainesView vue) => Assert.IsType<PisteQuatreSemaines>(vue.FindName("PisteQuatreSemaines"));
+
+    /// <summary>Les quatre pistes de couverture par semaine, dans l'ordre du document (S, S-1, S-2, S-3).</summary>
+    private static List<PisteCouverture> CouverturesSemaines(VueQuatreSemainesView vue)
+    {
+        var rangees = Assert.IsType<ItemsControl>(vue.FindName("RangeesCouverture"));
+        var pistes = Tous<PisteCouverture>(rangees).ToList();
+        Assert.Equal(4, pistes.Count);
+        return pistes;
+    }
+
+    /// <summary>Rangées de couverture : 10 de haut, au pas de 16 (fixes, en normal comme en plein écran).</summary>
+    private static void CouverturesFixes(VueQuatreSemainesView vue)
+    {
+        var pistes = CouverturesSemaines(vue);
+        Assert.All(pistes, p => Assert.Equal(10, p.ActualHeight));
+        for (var i = 1; i < pistes.Count; i++)
+            Assert.Equal(16, pistes[i].TranslatePoint(new Point(0, 0), pistes[0]).Y - pistes[i - 1].TranslatePoint(new Point(0, 0), pistes[0]).Y, 3);
+    }
+
+    // ------------------------------------------------------------------ Vue 4 semaines : NIVEAU, petit écran, textes
+
+    [WpfFact]
+    public void En_plein_ecran_le_niveau_des_quatre_semaines_s_etire_jusqu_a_son_plafond()
+    {
+        var moyen = QuatreSemainesPleinEcran(1400, 700);
+        Assert.Equal(0, DefilementUnique(moyen).ScrollableHeight);
+        Assert.True(NiveauQuatreSemaines(moyen).ActualHeight > 250,
+            $"NIVEAU {NiveauQuatreSemaines(moyen).ActualHeight} doit grandir au-delà de 250 en plein écran.");
+        CouverturesFixes(moyen);
+
+        var grand = QuatreSemainesPleinEcran(2560, 1600);
+        Assert.Equal(520, NiveauQuatreSemaines(grand).ActualHeight, 0.5);
+        Assert.Equal(0, DefilementUnique(grand).ScrollableHeight);
+        CouverturesFixes(grand);
+    }
+
+    [WpfFact]
+    public void En_plein_ecran_sur_un_petit_ecran_les_quatre_semaines_ne_tronquent_rien_et_les_etiquettes_s_enroulent()
+    {
+        var vue = QuatreSemainesPleinEcran(1248, 560);   // fenêtre 1 280 × 720 moins l'en-tête
+
+        var defilement = DefilementUnique(vue);
+        Assert.Equal(0, defilement.ScrollableHeight);
+        var derniere = CouverturesSemaines(vue)[^1];
+        var bas = derniere.TranslatePoint(new Point(0, derniere.ActualHeight), defilement).Y;
+        Assert.True(bas <= defilement.ActualHeight + 0.5,
+            $"la dernière rangée de couverture finit à {bas}, sous le bas de la zone visible ({defilement.ActualHeight}) : tronquée.");
+
+        var pied = Texte(vue, TextesHistorique.PiedQuatreSemaines);
+        Assert.Equal(Visibility.Visible, pied.Visibility);
+        Assert.True(pied.ActualHeight > 0, "le pied « rien n'est inventé » doit être rendu.");
+        var hautPied = pied.TranslatePoint(new Point(0, 0), vue).Y;
+        Assert.True(hautPied >= 0 && hautPied + pied.ActualHeight <= 560 + 0.5,
+            $"le pied ({hautPied} → {hautPied + pied.ActualHeight}) sort de la vue (560).");
+
+        // Étiquettes S, S-1, S-2, S-3 : colonne 140 inchangée, enroulées, jamais tronquées, contenues dans la hauteur de NIVEAU.
+        var etiquettes = Assert.IsType<ItemsControl>(vue.FindName("Etiquettes"));
+        Assert.Equal(140, etiquettes.ActualWidth);
+        Assert.True(etiquettes.ActualHeight <= NiveauQuatreSemaines(vue).ActualHeight,
+            $"les étiquettes ({etiquettes.ActualHeight}) dépassent la hauteur de NIVEAU ({NiveauQuatreSemaines(vue).ActualHeight}).");
+        var textes = Tous<TextBlock>(etiquettes).Where(t => t.Name == "Texte").ToList();
+        Assert.Equal(4, textes.Count);
+        Assert.All(textes, t =>
+        {
+            Assert.Equal(TextTrimming.None, t.TextTrimming);
+            Assert.Equal(TextWrapping.Wrap, t.TextWrapping);
+        });
+    }
+
+    [WpfFact]
+    public void En_plein_ecran_les_textes_et_traits_des_quatre_semaines_passent_aux_valeurs_du_contrat()
+    {
+        var (_, vue) = BancQuatreSemaines.Monter();
+        Assert.Equal(250, NiveauQuatreSemaines(vue).ActualHeight, 0.5);
+        var d = PleinEcranEnPage(vue, 1400, 700);
+
+        Assert.Equal(12, Texte(vue, TextesHistorique.PisteNiveau).FontSize);
+        Assert.Equal(128, CelluleNiveau(vue).Width);
+        Assert.Equal(3, NiveauQuatreSemaines(vue).EpaisseurEscalier);
+        var traits = Tous<System.Windows.Shapes.Rectangle>(Assert.IsType<ItemsControl>(vue.FindName("Etiquettes"))).Where(r => r.Name == "Trait").ToList();
+        Assert.NotEmpty(traits);
+        Assert.All(traits, r => { Assert.Equal(11, r.Width); Assert.Equal(3, r.Height); });
+
+        // Retour exact au normal.
+        Normal(vue, d);
+        BancQuatreSemaines.MettreEnPage(vue, 920, 900);
+        Assert.Equal(250, NiveauQuatreSemaines(vue).ActualHeight, 0.5);
+        Assert.Equal(96, CelluleNiveau(vue).Width);
+        CouverturesFixes(vue);
+    }
+
     // ------------------------------------------------------------------ Garde textuelle (Pitfall 3)
 
     /// <summary>Vues de l'Historique déjà converties au plein écran (les plans 04 et 06 étendent la liste).</summary>
-    private static readonly string[] VuesConverties = { "VueSemaineView.xaml", "VueJourView.xaml" };
+    private static readonly string[] VuesConverties = { "VueSemaineView.xaml", "VueJourView.xaml", "VueQuatreSemainesView.xaml" };
 
     /// <summary>Une <c>StaticResource</c> sur une clé échelonnée est résolue une fois au chargement : elle ne bascule JAMAIS, sans erreur.</summary>
     [Fact]
