@@ -19,7 +19,7 @@ namespace Chronos.Tests;
 [Collection("XAML WPF")]   // charge du BAML : sérialisé avec les autres classes XAML (voir XamlWpfCollection)
 public class CadransThemeBindingTests
 {
-    private static readonly string[] ClesTexte = { "TextePrincipal", "TexteSecondaire", "TexteSecondaireClair", "PlaqueTexte" };
+    private static readonly string[] ClesTexte = { "TextePrincipal", "TexteSecondaire", "TexteSecondaireClair", "PlaqueTexte", "PlaqueTexteEpuise" };
 
     /// <summary>Monte une vue dans un hôte portant les tokens du thème, puis la met en page (résolution des ressources).</summary>
     private static Border Monter(FrameworkElement vue, ChronosTheme theme, IReadOnlyDictionary<string, Brush> tokens)
@@ -100,6 +100,7 @@ public class CadransThemeBindingTests
                             Assert.Same(T("TextePrincipal"), f.NotchBrush);
                             Assert.Same(T("CadranAttente"), f.WaitBrush);
                         }
+                        LibellesEnSecondaireClair(hote, T("TexteSecondaireClair"), nom);   // §11 M1
                         break;
                     }
                     case CadranMareeView:
@@ -112,6 +113,7 @@ public class CadransThemeBindingTests
                             Assert.Same(T("TextePrincipal"), c.WaterlineBrush);
                             Assert.Same(T("CadranAttente"), c.WaitBrush);
                         }
+                        LibellesEnSecondaireClair(hote, T("TexteSecondaireClair"), nom);   // §11 M1
                         break;
                     }
                     case CadranVoletsView:
@@ -151,6 +153,58 @@ public class CadransThemeBindingTests
 
         // Anti-mutisme : quatre vues pour chacun des thèmes du catalogue.
         Assert.Equal(4 * ThemeCatalog.All.Count, vuesTestees);
+    }
+
+    /// <summary>§11 M1 : les libellés « 5 H » / « 7 J » (deux gabarits) portent TexteSecondaireClair.</summary>
+    private static void LibellesEnSecondaireClair(DependencyObject hote, Brush attendu, string nom)
+    {
+        var libelles = Descendants<TextBlock>(hote).Where(tb => tb.Text is "5 H" or "7 J").ToList();
+        Assert.True(libelles.Count == 4, $"{nom} : libellés 5 H / 7 J attendus : 4 (deux par gabarit), trouvés {libelles.Count}.");
+        foreach (var tb in libelles)
+            Assert.True(ReferenceEquals(attendu, tb.Foreground), $"{nom} : le libellé « {tb.Text} » n'est pas en TexteSecondaireClair.");
+    }
+
+    /// <summary>Chemin de liaison du Text d'un TextBlock (vide si aucun).</summary>
+    private static string CheminTexte(TextBlock tb)
+        => System.Windows.Data.BindingOperations.GetBindingExpression(tb, TextBlock.TextProperty)?.ParentBinding.Path?.Path ?? "";
+
+    /// <summary>§11 B3 : sur le gris épuisé, les chiffres de la plaque Volets passent à PlaqueTexteEpuise (≥ 4,5:1), dans les
+    /// deux orientations et sur les 15 thèmes ; la plaque d'une fenêtre non épuisée garde PlaqueTexte.</summary>
+    [WpfFact]
+    public void Volets_le_texte_de_plaque_suit_l_epuisement()
+    {
+        int cas = 0;
+        foreach (var theme in ThemeCatalog.All)
+        foreach (var orientation in new[] { Orientation.Horizontal, Orientation.Vertical })
+        {
+            var tokens = theme.BrushTokens();
+            var vm = new CadranPreviewViewModel { SelectedTheme = theme, FiveQuotaPct = 100, SevenQuotaPct = 38 };
+            Assert.True(vm.FiveHour.Exhausted);
+            Assert.False(vm.SevenDay.Exhausted);
+
+            var vue = new CadranVoletsView { Orientation = orientation };
+            var hote = new Border { DataContext = vm, Child = vue };
+            foreach (var kv in tokens) hote.Resources[kv.Key] = kv.Value;
+            hote.Measure(new Size(400, 400));
+            hote.Arrange(new Rect(0, 0, 400, 400));
+            hote.UpdateLayout();
+
+            var gabarit = (FrameworkElement)vue.FindName(orientation == Orientation.Horizontal ? "GabaritHorizontal" : "GabaritVertical");
+            var textes = Descendants<TextBlock>(gabarit).ToList();
+            var chiffres5h = textes.Where(tb => CheminTexte(tb).StartsWith("FiveHour.", StringComparison.Ordinal)).ToList();
+            var chiffres7j = textes.Where(tb => CheminTexte(tb).StartsWith("SevenDay.", StringComparison.Ordinal)).ToList();
+            Assert.Equal(2, chiffres5h.Count);   // % et décompte superposés
+            Assert.Equal(2, chiffres7j.Count);
+            var nom = $"Volets {orientation} / {theme.Key}";
+            foreach (var tb in chiffres5h)
+                Assert.True(ReferenceEquals(tokens["PlaqueTexteEpuise"], tb.Foreground), $"{nom} : chiffre 5 h épuisé pas en PlaqueTexteEpuise.");
+            foreach (var tb in chiffres7j)
+                Assert.True(ReferenceEquals(tokens["PlaqueTexte"], tb.Foreground), $"{nom} : chiffre 7 j pas en PlaqueTexte.");
+
+            Assert.True(ContrasteWcag.Ratio(theme.PlaqueTexteEpuise, theme.Epuise) >= 4.5, $"{nom} : PlaqueTexteEpuise < 4,5:1 sur Epuise.");
+            cas++;
+        }
+        Assert.Equal(2 * ThemeCatalog.All.Count, cas);
     }
 
     /// <summary>Preuve du <c>DynamicResource</c> (et non <c>StaticResource</c>) : recopier les tokens d'un autre thème dans

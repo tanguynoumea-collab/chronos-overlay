@@ -297,7 +297,7 @@ public class CadransOrientationBindingTests
 
     // ------------------------------------------------------------------ Volets (plan 05)
 
-    private static bool EstTuileVolets(TextBlock tb) => tb.Text is "5H" or "7J";
+    private static bool EstTuileVolets(TextBlock tb) => tb.Text is "5 H" or "7 J";   // §11 M11 : même vocabulaire que les autres cadrans
 
     /// <summary>Plaque chiffrée : la Border parente du Grid qui superpose hachure, filet et chiffres.</summary>
     private static Border Plaque(TextBlock tb)
@@ -338,7 +338,7 @@ public class CadransOrientationBindingTests
             var empreinte = EmpreinteCadran.Pour(style, o);
             Monter(vue, empreinte, decompte);
             var nom = $"{Nom(vue, o)} (décompte = {decompte})";
-            var largeurAttendue = o == OrientationCadran.Horizontal ? 90d : 56d;
+            var largeurAttendue = o == OrientationCadran.Horizontal ? 86d : 56d;   // §11 M9 : plaque H 86 (marge interne 4 px)
             var cadre = new Rect(empreinte);
 
             var chiffres = DescendantsVisuels<TextBlock>(vue).Where(EstValeur).Where(tb => tb.Visibility == Visibility.Visible).ToList();
@@ -371,6 +371,59 @@ public class CadransOrientationBindingTests
             // La silhouette de geste (phase 42) n'est pas une hachure.
             Assert.True(DescendantsVisuels<System.Windows.Shapes.Rectangle>(vue).Count(r => !Chronos.Views.ZoneGeste.GetSilhouette(r)) == 2, $"{nom} : hachures « plancher » attendues : 2.");
             Assert.True(DescendantsVisuels<Border>(vue).Count(b => b.Height == 1) == 2, $"{nom} : filets attendus : 2.");
+        }
+    }
+
+    [WpfFact]
+    public void Volets_horizontal_garde_une_marge_interne_de_4()
+    {
+        // §11 M9 : empreinte 190 × 66 moins 4 px de chaque côté ; rien ne touche x = 0 ni x = 190 (congé r10 de la silhouette).
+        var vue = new CadranVoletsView();
+        Orienter(vue, OrientationCadran.Horizontal);
+        var empreinte = EmpreinteCadran.Pour(CadranStyle.Volets, OrientationCadran.Horizontal);
+        Assert.Equal(new Size(190, 66), empreinte);
+        Monter(vue, empreinte);
+        var interieur = new Rect(4, 4, 182, 58);
+
+        var tuiles = DescendantsVisuels<Border>(vue).Where(b => b.Width == 26).ToList();
+        var plaques = DescendantsVisuels<TextBlock>(vue).Where(EstValeur).Select(Plaque).Distinct().ToList();
+        var rangees = DescendantsVisuels<FlapRow>(vue);
+        Assert.Equal(2, tuiles.Count);
+        Assert.Equal(2, plaques.Count);
+        Assert.Equal(2, rangees.Count);
+        foreach (var e in tuiles.Cast<FrameworkElement>().Concat(plaques).Concat(rangees))
+        {
+            var r = Rendu(e, vue);
+            Assert.True(interieur.Contains(r), $"Volets H : {e.GetType().Name} {r} hors de la zone intérieure {interieur}.");
+        }
+    }
+
+    [WpfFact]
+    public void Volets_le_texte_des_tuiles_tient_dans_sa_tuile()
+    {
+        // §11 M11 : « 5 H » / « 7 J » (avec espace) restent dans la tuile 26 × 26, sans débordement ni troncature.
+        foreach (var (creer, style, o) in VariantesVolets)
+        {
+            var vue = creer();
+            Orienter(vue, o);
+            Monter(vue, EmpreinteCadran.Pour(style, o));
+            var nom = Nom(vue, o);
+
+            var tuiles = DescendantsVisuels<TextBlock>(vue).Where(EstTuileVolets).ToList();
+            Assert.Equal(2, tuiles.Count);
+            foreach (var tb in tuiles)
+            {
+                var tuile = Assert.IsType<Border>(tb.Parent);
+                Assert.True(tuile.ActualWidth == 26 && tuile.ActualHeight == 26, $"{nom} : tuile {tuile.ActualWidth} × {tuile.ActualHeight}.");
+                var largeur = LargeurTexte(tb, tb.Text);
+                Assert.True(tb.DesiredSize.Width <= 26 && tb.DesiredSize.Height <= 26,
+                    $"{nom} : « {tb.Text} » demande {tb.DesiredSize}, plus que la tuile 26 × 26.");
+                Assert.True(tb.ActualWidth + 0.01 >= largeur, $"{nom} : « {tb.Text} » tronqué ({tb.ActualWidth:F2} < {largeur:F2}).");
+                var rt = Rendu(tb, vue);
+                var rtuile = Rendu(tuile, vue);
+                rtuile.Inflate(0.01, 0.01);
+                Assert.True(rtuile.Contains(rt), $"{nom} : « {tb.Text} » {rt} déborde de sa tuile {rtuile}.");
+            }
         }
     }
 
