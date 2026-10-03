@@ -5,7 +5,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" SizeToContent="Manual"
-        Width="{Binding LargeurCadran, Mode=OneWay}" Height="{Binding HauteurCadran, Mode=OneWay}" WindowStartupLocation="Manual">
+        Width="{Binding LargeurCadran, Mode=OneWay}" Height="{Binding HauteurFenetre, Mode=OneWay}" WindowStartupLocation="Manual">
     <!-- Cadran complet (Pattern 6 : empilement du fond vers le premier plan).
          Aucune Storyboard/blur/shadow : AllowsTransparency force le rendu logiciel.
          Aucun code-behind : uniquement des bindings + converters.
@@ -14,7 +14,9 @@
          Phase 40 (CAD-01 / CAD-04) : plus aucun Viewbox. Chaque cadran est à l'échelle 1 et la fenêtre prend
          l'EMPREINTE du style et de l'orientation courants (LargeurCadran / HauteurCadran du VM, miroir
          d'EmpreinteCadran) : 170×170 pour Anneaux et Braises, rectangle propre pour Fusible, Marée, Volets.
-         Le centre est le milieu de l'empreinte. -->
+         Le centre est le milieu de l'empreinte.
+         Phase 42.1 (§11 B1) : fenêtre = empreinte, + bande de 14 px sous les cadrans rectangulaires pour la rangée
+         de pastilles (HauteurFenetre du VM, miroir d'EmpreinteCadran.Fenetre) ; le cadran reste ancré en haut à gauche. -->
     <Window.Resources>
         <!-- Tokens de design + converters, au niveau fenêtre : la vue est autonome (les StaticResource
              résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
@@ -51,39 +53,28 @@
              l'absence seule est AMBIGUË avec l'état « en attente » (aucune donnée encore reçue), qui
              rend exactement le même neutre dans les quatre styles alternatifs. Sans le mot, la
              quatrième apparence de la sémiologie n'existe pas.
-             Couche racine => un seul exemplaire pour 5 styles × 2 modes × tous les thèmes, et le seul endroit
-             du projet qui soit en {DynamicResource}. TexteSecondaire est déjà, par son commentaire
-             d'origine, le token des mentions annexes (estimée, épuisé, indisponible, périmée) : aucun
-             token nouveau, donc rien à ajouter aux neuf thèmes.
-             BAS-GAUCHE : hors de la géométrie des anneaux (> 71,5 px du centre) ET hors de la colonne
-             de la rangée de pastilles, quelle que soit la taille de celle-ci — un mot centré en bas
-             entrerait en collision avec la rangée dès trois pastilles.
+             Couche racine => un seul exemplaire pour 5 styles × 2 modes × tous les thèmes.
+             §11 B2 (DESIGN-REVIEW 1) : CENTRÉ dans l'EMPREINTE pour les 8 variantes — le cadre a la taille du
+             cadran (LargeurCadran × HauteurCadran), pas celle de la fenêtre : la bande des pastilles est exclue.
+             Plus de bas-gauche : l'ancien argument « hors des anneaux » tombe, en état indisponible le centre
+             d'Arcs et de Braises est vide.
+             La plaque FondCadran (coins 6, marge 6 × 2) garantit ≥ 4,5:1 au TextePrincipal quel que soit le
+             dessous (prouvé par ThemingTests.La_plaque_indisponible_garantit_le_texte_principal) : fini le gris
+             sur gris de la géométrie neutre.
              IsHitTestVisible=False : le mot ne capte rien ; la silhouette dessous reçoit le geste, la bascule
-             fonctionne même sans chiffre.
-             Phase 40 : pour Fusible, Marée et Volets (déclencheur ci-dessous), le mot est CENTRÉ dans
-             l'empreinte (aucun anneau à éviter, et le bas-gauche d'une empreinte rectangulaire basse serait
-             trop près de la rangée) ; Anneaux et Braises gardent le bas-gauche. Alignements et marge passent
-             par le style : une valeur locale battrait le déclencheur. -->
-        <TextBlock x:Name="MotIndisponible" Text="indisponible"
-                   FontSize="10.5" IsHitTestVisible="False"
-                   Foreground="{DynamicResource TexteSecondaire}"
-                   Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                    <Setter Property="HorizontalAlignment" Value="Left"/>
-                    <Setter Property="VerticalAlignment" Value="Bottom"/>
-                    <Setter Property="Margin" Value="8,0,0,6"/>
-                    <Style.Triggers>
-                        <!-- Phase 40 (décision orchestrateur) : centré dans l'empreinte des cadrans rectangulaires ; Arcs/Braises inchangés (EXA-03). -->
-                        <DataTrigger Binding="{Binding MotIndisponibleAuCentre}" Value="True">
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="Margin" Value="0"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </TextBlock.Style>
-        </TextBlock>
+             fonctionne même sans chiffre. -->
+        <Grid x:Name="CadreMotIndisponible"
+              Width="{Binding LargeurCadran}" Height="{Binding HauteurCadran}"
+              HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False"
+              Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}">
+            <Border x:Name="PlaqueIndisponible" Background="{DynamicResource FondCadran}"
+                    CornerRadius="{StaticResource CadranPlaqueRayon}" Padding="{StaticResource CadranPlaqueMarge}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="MotIndisponible" Text="indisponible"
+                           FontSize="{StaticResource CadranCorpsLibelle}"
+                           Foreground="{DynamicResource TextePrincipal}"/>
+            </Border>
+        </Grid>
 
         <!-- ============ RANGÉE DE PASTILLES (TOK-02 / TOK-03 / EXA-05 / EXA-03) ============
              DERNIERS enfants du Grid racine => au-dessus de TOUS les styles de cadran : uniques pour
@@ -107,9 +98,25 @@
              ORDRE, de gauche à droite : âge, hors ligne, invitation, déconnexion — les INFORMATIVES
              d'abord, les ACTIONNABLES au plus près du coin, là où le pouce va les chercher.
              Le coin BAS-droite plutôt que haut-droite : l'overlay s'ancre le plus souvent en haut à
-             droite de l'écran, le bas-droite est donc le moins susceptible d'être mordu par un bord. -->
+             droite de l'écran, le bas-droite est donc le moins susceptible d'être mordu par un bord.
+
+             OÙ, selon le cadran : Arcs / Braises : dans l'empreinte (borne dure x ≥ 96) ;
+             Fusible / Marée / Volets : dans la bande réservée sous l'empreinte (§11 B1) — hors silhouette, les
+             pixels vides de la bande laissent passer le clic. La rangée est alignée en bas à droite de la
+             FENÊTRE ; la marge basse tombe à 0 pour les cadrans rectangulaires (hauteur max des pastilles = 14 =
+             la bande). La marge passe par le style : une valeur locale battrait le déclencheur. -->
         <StackPanel x:Name="RangeePastilles" Orientation="Horizontal"
-                    HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6">
+                    HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Margin" Value="0,0,6,6"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EstStyleOrientable}" Value="True">
+                            <Setter Property="Margin" Value="0,0,6,0"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
 
             <!-- M-ÂGE (EXA-03) : au moins une des deux fenêtres porte un chiffre DATÉ.
                  INFORMATIVE et INERTE — aucune Command : ne jamais crier « répare-moi » pour un fait

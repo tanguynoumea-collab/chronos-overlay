@@ -284,9 +284,13 @@ public sealed partial class MainViewModel : ObservableObject
     public double LargeurCadran => EmpreinteCadran.Pour(CadranStyle, OrientationCourante).Width;
     public double HauteurCadran => EmpreinteCadran.Pour(CadranStyle, OrientationCourante).Height;
 
-    /// <summary>Mot « indisponible » centré dans l'empreinte des cadrans rectangulaires (décision orchestrateur, phase 40) ;
-    /// bas-gauche, inchangé, pour Arcs et Braises.</summary>
-    public bool MotIndisponibleAuCentre => EstStyleOrientable;
+    /// <summary>Bande réservée sous l'empreinte pour la rangée de pastilles (§11 B1) : 14 pour Fusible, Marée et Volets,
+    /// 0 pour Arcs et Braises. L'aperçu des réglages l'exclut de son cadrage.</summary>
+    public double HauteurBandePastilles => EmpreinteCadran.Bande(CadranStyle);
+
+    /// <summary>Hauteur de la fenêtre overlay = empreinte du cadran + bande des pastilles (§11 B1) : la fenêtre y lie sa
+    /// hauteur ; l'empreinte (HauteurCadran) reste celle du cadran.</summary>
+    public double HauteurFenetre => EmpreinteCadran.Fenetre(CadranStyle, OrientationCourante).Height;
 
     private void NotifierEmpreinte()
     {
@@ -296,7 +300,8 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(EstOrientationVerticale));
         OnPropertyChanged(nameof(LargeurCadran));
         OnPropertyChanged(nameof(HauteurCadran));
-        OnPropertyChanged(nameof(MotIndisponibleAuCentre));
+        OnPropertyChanged(nameof(HauteurBandePastilles));
+        OnPropertyChanged(nameof(HauteurFenetre));
     }
 
     private static OrientationCadran Neutre(Orientation o) => o == Orientation.Vertical ? OrientationCadran.Vertical : OrientationCadran.Horizontal;

@@ -954,6 +954,8 @@ public class CadranBindingTests
                 if (e is not (TextBlock or Chronos.Controls.FuseBar or Chronos.Controls.TideColumn or Chronos.Controls.FlapRow or Border))
                     continue;
                 if (!VisibleJusqua(e, racine)) continue;
+                // Un Border qui ne peint rien (Border de gabarit du UserControl, étiré à toute la fenêtre) n'est pas une valeur.
+                if (e is Border b && b.Background is null && (b.BorderBrush is null || b.BorderThickness == default)) continue;
                 verifies++;
                 var r = RectangleMisEnPage(e, racine);
                 Assert.True(SansRecouvrement(r, rRangee),

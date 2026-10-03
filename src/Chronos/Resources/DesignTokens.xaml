@@ -218,9 +218,14 @@
     <sys:Double x:Key="CadranCorpsValeur">12</sys:Double>
     <sys:Double x:Key="CadranCorpsPlaqueH">13</sys:Double>
     <sys:Double x:Key="CadranCorpsPlaqueV">14</sys:Double>
+    <!-- §11 B1 : bande réservée sous l'empreinte des cadrans rectangulaires pour la rangée de pastilles (fenêtre = empreinte + 14). Miroir C# : EmpreinteCadran.BandePastilles. -->
+    <sys:Double x:Key="CadranBandePastilles">14</sys:Double>
 
-    <!-- Seul token non-double : bord de redimensionnement (WindowChrome.ResizeBorderThickness, 34-05). -->
+    <!-- Tokens non-doubles de ce bloc : bord de redimensionnement (WindowChrome.ResizeBorderThickness, 34-05) et plaque « indisponible » (§11 B2). -->
     <Thickness x:Key="HistoBordRedimensionnement">6</Thickness>
+    <!-- Plaque « indisponible » §11 B2 : FondCadran, coins 6, marge 6 × 2 (MainWindow.xaml, PlaqueIndisponible). -->
+    <CornerRadius x:Key="CadranPlaqueRayon">6</CornerRadius>
+    <Thickness x:Key="CadranPlaqueMarge">6,2</Thickness>
 
     <!-- Converters : rampe d'utilization (05-02) + BooleanToVisibility intégré WPF. -->
     <conv:UtilizationToBrushConverter x:Key="UtilBrush"/>
