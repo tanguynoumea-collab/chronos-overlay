@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Chronos 3.5 — maquettes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--panel:#151322;--panel2:#1E1B30;--line:#2C2942;--ink:#F2F0FB;--ink2:#A9A6C4;--accent:#8B7BF0;--ok:#4EC98A;--page:#0B0A12;--desk:#3a4a5c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif;padding:24px 16px 64px;line-height:1.45}
+  h1{font-size:20px;font-weight:600;margin:0 0 6px}
+  h2{font-size:16px;font-weight:600;margin:40px 0 4px;padding-top:16px;border-top:1px solid var(--line)}
+  .intro,.note{color:var(--ink2);font-size:13px;max-width:980px;margin:0 0 14px}
+  .note b,.intro b{color:var(--ink)}
+  .row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end}
+  .cell{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+  .cell .lbl{font-size:12px;color:var(--ink2)}
+  .cell .lbl b{color:var(--ink);font-weight:600}
+  .tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:9px;background:var(--panel2);color:var(--ink2);margin-left:6px}
+  .tag.new{background:#2a2550;color:#c8bfff}.tag.fix{background:#3b2a1a;color:#ffcf99}
+  /* bureau simulé : le cadran est posé sur un fond d'écran */
+  .desk{background:linear-gradient(135deg,#2b3b4f,#46566a 60%,#5b6b7c);border-radius:8px;padding:14px;position:relative}
+  .desk svg{display:block;overflow:visible}
+  .zone-sil{display:none}.show-zones .zone-sil{display:inline}
+  .bar{display:flex;gap:10px;align-items:center;margin:8px 0 14px;font-size:12.5px;color:var(--ink2)}
+  button{font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:5px 12px;cursor:pointer}
+  button[aria-pressed=true]{outline:1.5px solid var(--accent)}
+  table{border-collapse:collapse;font-size:12.5px;margin:6px 0 10px}
+  td,th{border-bottom:1px solid var(--line);padding:5px 10px;text-align:left;vertical-align:top}
+  th{color:var(--ink2);font-weight:600}
+  .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-width:1000px}
+  .vig{background:var(--panel2);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;align-items:center;font-size:12px}
+  .vig svg{display:block}
+  .cat{font-size:11px;letter-spacing:.06em;color:var(--ink2);font-weight:600;margin:16px 0 6px}
+  .ramp{display:flex;height:10px;width:120px;border-radius:5px;overflow:hidden}
+  .hist{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;max-width:1000px}
+  .hist .hd{padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;display:grid;gap:6px}
+  .hist .hd .l1{display:flex;gap:10px;align-items:center}
+  .hist .hd .l1 .x{margin-left:auto;color:var(--ink2)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .seg span{padding:3px 10px;color:var(--ink2)}.seg span.on{color:var(--ink);outline:1.5px solid var(--accent);outline-offset:-1.5px}
+  .pe{margin-left:auto;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:7px;padding:3px 10px}
+  .hist .bd{padding:10px 14px;display:grid;gap:8px;font-size:11px;color:var(--ink2)}
+  .piste{background:#1a1830;border-radius:4px;display:flex;align-items:center;padding-left:8px}
+  .full{aspect-ratio:16/9;max-width:1000px;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+  .full .bd{display:grid;grid-template-rows:5fr 2.4fr 2.4fr 22px;gap:10px;padding:14px 18px}
+  .full .piste{font-size:14px}
+  code{background:var(--panel2);padding:0 4px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<h1>Chronos 3.5 — maquettes du cycle 2</h1>
+<p class="intro">Ces maquettes servent à valider le plan de design <code>.zeus/DESIGN_PLAN_CYCLE2.md</code>. Elles sont
+<b>à l'échelle réelle</b> : 1 px de la page = 1 px à l'écran à 100 %. Chaque cadran est posé sur un faux fond d'écran
+pour qu'on voie ce qui est transparent. Les données d'exemple sont : 5 h consommé à 62 %, reset dans 2 h 14 (à
+14:20) ; hebdo à 38 %, reset dans 3 j 6 h. Thème Minuit.</p>
+
+<h2>1 · Cadrans : tailles (R2) et orientations (R1)</h2>
+<p class="note">Arcs et Braises gardent 170 × 170. Fusible et Volets passent à <b>190 px</b> sur leur grand côté (aujourd'hui ≈ 158 px,
+réduits par le Viewbox) : c'est le +20 %. Marée ne change pas de taille. La fenêtre de l'overlay prend la taille du cadran
+choisi et reste collée à son coin. Chaque variante garde son geste propre : <b>Fusible = une mèche fine qui brûle, avec une
+étincelle au front</b> ; <b>Marée = une large bande avec sa ligne d'eau</b> ; <b>Volets = une plaque chiffrée et ses volets</b>.</p>
+<div class="bar"><button id="tz" aria-pressed="false">Montrer les zones de clic (R7)</button>
+<span>Zone violette hachurée = le cadran capte la souris. Hors de cette zone, le clic traverse vers le bureau.</span></div>
+<div class="row zones" id="cadrans"></div>
+
+<h2>2 · Zones de clic et d'attrape (R7)</h2>
+<p class="note">Aujourd'hui, un disque de 66 px au centre sert de zone de clic pour les cinq cadrans, et le reste de la fenêtre
+capte mal la souris. Les pixels totalement transparents laissent passer le clic, et le disque ne recouvre ni les valeurs ni les
+barres. Proposition : <b>un seul geste, sur toute la silhouette du cadran</b>.</p>
+<table>
+<tr><th>Geste, n'importe où sur la silhouette</th><th>Effet</th></tr>
+<tr><td>Clic (sans bouger)</td><td>Bascule pourcentage ↔ temps</td></tr>
+<tr><td>Double-clic</td><td>Ouvre l'Historique (sans déclencher la bascule)</td></tr>
+<tr><td>Appuyer puis glisser (au-delà du seuil Windows, ≈ 4 px)</td><td>Déplace le cadran, puis l'accroche au coin le plus proche</td></tr>
+<tr><td>Clic droit</td><td>Ouvre les réglages</td></tr>
+<tr><td>Hors silhouette</td><td>Le clic traverse vers le bureau (voulu)</td></tr>
+</table>
+<p class="note">Silhouettes : disque de rayon 74 pour Arcs et Braises ; rectangle arrondi qui englobe le cadran avec 6 px de marge
+pour Fusible, Marée et Volets, dans les deux orientations. Les pastilles autour d'Arcs gardent leurs propres clics.</p>
+
+<h2>3 · Braises : où s'arrête la fenêtre de 5 h (R3)</h2>
+<p class="note">L'anneau extérieur de Braises <b>est</b> la fenêtre de 5 h : les braises allumées sont le temps restant, et elles s'éteignent
+en reculant vers midi. Aujourd'hui, 16 braises sans repère ne disent ni où est l'arrivée ni combien d'heures il reste. Proposition :
+<b>20 braises de 15 min groupées par 4</b>, soit 5 groupes d'une heure séparés par un vide. Une <b>flèche de braise</b> est fixée à midi :
+c'est la ligne d'arrivée, et le reset a lieu quand la dernière braise l'atteint. En mode temps, le centre ajoute l'heure du reset
+(« ↻ 14:20 »).</p>
+<div class="row" id="braises"></div>
+
+<h2>4 · Historique : Pistes seul et plein écran (R4)</h2>
+<p class="note">Le sélecteur de style disparaît : la fenêtre et la carte des réglages n'affichent plus que les Pistes. Sa place, à droite de
+la ligne de fraîcheur, accueille <b>« Plein écran »</b> (aussi F11). En plein écran, la fenêtre couvre l'écran où elle se trouve, et les pistes
+se partagent toute la hauteur dans les mêmes proportions (Niveau ≈ 2 × Rythme). Textes et traits grossissent d'environ 35 %.
+<b>Échap</b> quitte d'abord le plein écran, puis ferme la fenêtre au second appui. Un bouton « Quitter le plein écran » reste visible.</p>
+<div class="hist">
+  <div class="hd">
+    <div class="l1"><b>● Chronos</b> Historique <span style="color:var(--ink2)">v3.5.0</span><span class="x">✕</span></div>
+    <div class="l1"><span class="seg"><span>Jour</span><span class="on">Semaine</span><span>4 semaines</span></span> ‹ Semaine de forfait · sam. 26 sept. 00:00 → sam. 3 oct. 00:00 › <span style="margin-left:auto">Cette semaine</span></div>
+    <div class="l1" style="color:var(--ink2)">Dernier relevé il y a 3 min · sonde d'en-têtes · 1 912 relevés · 2 interruptions · journal ouvert le 27 sept.
+      <span class="pe">⛶ Plein écran</span></div>
+  </div>
+  <div class="bd">
+    <div class="piste" style="height:150px">NIVEAU — 150 px</div>
+    <div class="piste" style="height:72px">RYTHME — 72 px</div>
+    <div class="piste" style="height:72px">TOKENS CLAUDE CODE — 72 px</div>
+    <div class="piste" style="height:12px;padding:0"></div>
+  </div>
+</div>
+<p class="note" style="margin-top:14px">Même fenêtre en plein écran (écran 16:9, réduit ici) :</p>
+<div class="full">
+  <div class="hd" style="padding:12px 18px;border-bottom:1px solid var(--line);font-size:15px;display:flex;gap:14px;align-items:center">
+    <b>● Chronos</b> Historique <span class="seg" style="font-size:14px"><span>Jour</span><span class="on">Semaine</span><span>4 semaines</span></span>
+    <span style="color:var(--ink2)">‹ sam. 26 sept. → sam. 3 oct. ›</span>
+    <span class="pe" style="font-size:14px">⤢ Quitter le plein écran · Échap</span>
+  </div>
+  <div class="bd">
+    <div class="piste">NIVEAU — prend la place disponible (max 520 px)</div>
+    <div class="piste">RYTHME (max 240 px)</div>
+    <div class="piste">TOKENS CLAUDE CODE (max 240 px)</div>
+    <div class="piste" style="padding:0"></div>
+  </div>
+  <div style="padding:8px 18px;font-size:13px;color:var(--ink2);border-top:1px solid var(--line)">Aucun trou n'est interpolé. Les pourcentages sont des relevés exacts du serveur ; les tokens sont un comptage local partiel, sur leur propre axe.</div>
+</div>
+
+<h2>5 · Thèmes : Pâle · Classique · Vive (R6)</h2>
+<p class="note">Les thèmes sont rangés en trois catégories. <b>Pâle</b> regroupe les thèmes sombres aux couleurs douces, <b>Classique</b> les fonds
+neutres avec un dégradé vert → rouge franc, <b>Vive</b> les couleurs saturées. On ajoute <b>6 nouvelles palettes</b> (2 par catégorie). Néon et
+Aurore gardent leur décor, mais leur dégradé finit maintenant sur un vrai rouge : celui d'Aurore n'avait pas de rouge, et l'ambre de
+Néon était violet. Enfin, le <b>gris « épuisé »</b> devient plus clair dans tous les thèmes. Il atteint au moins 3:1 de contraste au lieu de
+1,7 à 2,1 : un quota épuisé doit se voir.</p>
+<div id="themes"></div>
+
+<script>
+const T={ink:'#F4F2EC',ink2:'#A9A8B2',track:'#2A2932',disc:'#16151B',amber:'#EFA23A',olive:'#B7AE3A',ash:'#47464F',tick:'#F4F2EC'};
+const S={f5:0.45,f7:0.55,u5:'62 %',u7:'38 %',c5:'2 h 14',c7:'3 j 6 h'};
+const NS='http://www.w3.org/2000/svg';
+function svg(w,h,inner,zone){return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="${NS}">
+<defs><pattern id="hz" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(139,123,240,.18)"/><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(139,123,240,.7)" stroke-width="1.5"/></pattern></defs>
+<g class="zone-sil">${zone}</g>${inner}</svg>`;}
+const txt=(x,y,s,size,col,anchor='middle',w=600)=>`<text x="${x}" y="${y}" font-size="${size}" fill="${col}" text-anchor="${anchor}" font-weight="${w}" font-family="Segoe UI">${s}</text>`;
+function zoneRect(w,h){return `<rect x="0" y="0" width="${w}" height="${h}" rx="10" fill="url(#hz)" stroke="#8B7BF0" stroke-width="1.5" stroke-dasharray="4 3"/>`;}
+function zoneDisk(c,r){return `<circle cx="${c}" cy="${c}" r="${r}" fill="url(#hz)" stroke="#8B7BF0" stroke-width="1.5" stroke-dasharray="4 3"/>`;}
+function arc(cx,cy,r,a0,a1){const p=a=>[cx+r*Math.sin(a*Math.PI/180),cy-r*Math.cos(a*Math.PI/180)];const [x0,y0]=p(a0),[x1,y1]=p(a1);return `M${x0} ${y0} A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}`;}
+
+// ARCS (référence, inchangé)
+function arcs(){let s='';const c=85;
+ s+=`<circle cx="${c}" cy="${c}" r="32" fill="${T.disc}" opacity=".9"/>`;
+ s+=`<path d="${arc(c,c,52,0,359.9)}" stroke="${T.track}" stroke-width="7" fill="none"/>`;
+ s+=`<path d="${arc(c,c,52,0,0.56*360)}" stroke="${T.amber}" stroke-width="7" fill="none"/>`;
+ s+=`<path d="${arc(c,c,38,0,359.9)}" stroke="${T.track}" stroke-width="8" fill="none"/>`;
+ s+=`<path d="${arc(c,c,38,0,0.45*360)}" stroke="${T.olive}" stroke-width="8" fill="none"/>`;
+ [42,192,342].forEach(a=>{const r1=57-4.5,r2=57+4.5;const x=a=>Math.sin(a*Math.PI/180),y=a=>-Math.cos(a*Math.PI/180);s+=`<line x1="${c+r1*x(a)}" y1="${c+r1*y(a)}" x2="${c+r2*x(a)}" y2="${c+r2*y(a)}" stroke="${T.tick}" stroke-width="3.2"/>`;});
+ s+=txt(c,c+2,S.u5,20,T.ink)+txt(c,c+17,S.u7,12,T.ink2,'middle',400);
+ return svg(170,170,s,zoneDisk(85,74));}
+
+// BRAISES (avant / après)
+function braises(after,mode){let s='';const c=85;const n=after?20:16;const R=66,pr=after?4.0:4.4;
+ const lit=Math.round(S.f5*n);
+ for(let i=0;i<n;i++){let a=i*360/n; if(after){const g=Math.floor(i/4);a=(i+g*0.0)*360/n;}
+   // groupes : on resserre chaque groupe de 4 et on ouvre un vide entre groupes
+   if(after){const g=Math.floor(i/4),k=i%4;const span=72, inner=13.2; a=g*span+ (span-3*inner)/2 + k*inner;}
+   const x=c+R*Math.sin(a*Math.PI/180),y=c-R*Math.cos(a*Math.PI/180);
+   const on=i<lit, half=i===lit-1;
+   s+=`<circle cx="${x}" cy="${y}" r="${pr}" fill="${on?T.amber:T.ash}" opacity="${half?0.5:1}"/>`;}
+ const n7=12,l7=Math.round(S.f7*n7);
+ for(let i=0;i<n7;i++){const a=i*360/n7;const x=c+44*Math.sin(a*Math.PI/180),y=c-44*Math.cos(a*Math.PI/180);s+=`<circle cx="${x}" cy="${y}" r="3.6" fill="${i<l7?T.olive:T.ash}"/>`;}
+ if(after){ // flèche de braise à midi : la ligne d'arrivée
+   s+=`<path d="M${c-5} ${c-80} L${c+5} ${c-80} L${c} ${c-73} Z" fill="${T.tick}"/>`;
+   s+=`<line x1="${c}" y1="${c-72}" x2="${c}" y2="${c-60}" stroke="${T.tick}" stroke-width="1.2" opacity=".55"/>`; }
+ if(mode==='temps'){s+=txt(c,c-1,S.c5,16,T.ink)+txt(c,c+14,S.c7,11,T.ink2,'middle',400); if(after) s+=txt(c,c+28,'↻ 14:20',10.5,T.ink2,'middle',400);}
+ else s+=txt(c,c+2,S.u5,20,T.ink)+txt(c,c+17,S.u7,12,T.ink2,'middle',400);
+ return svg(170,170,s,zoneDisk(85,74));}
+
+// FUSIBLE
+function fuseH(x,y,len,frac,col,th){let s='';s+=`<rect x="${x}" y="${y-2.7}" width="${len}" height="5.4" rx="2.7" fill="${T.track}"/>`;
+ const fx=x+len-len*frac; s+=`<rect x="${fx}" y="${y-th/2}" width="${x+len-fx}" height="${th}" rx="${th/2}" fill="${col}"/>`;
+ s+=`<circle cx="${fx}" cy="${y}" r="${th/2+1.5}" fill="#FFF3D6" opacity=".9"/>`; return s;}
+function fuseV(x,y,len,frac,col,th){let s='';s+=`<rect x="${x-2.7}" y="${y}" width="5.4" height="${len}" rx="2.7" fill="${T.track}"/>`;
+ const fy=y+len-len*frac; s+=`<rect x="${x-th/2}" y="${fy}" width="${th}" height="${y+len-fy}" rx="${th/2}" fill="${col}"/>`;
+ s+=`<circle cx="${x}" cy="${fy}" r="${th/2+1.5}" fill="#FFF3D6" opacity=".9"/>`; return s;}
+function fusibleH(){const w=190,h=92;let s='';
+ s+=txt(6,16,'5 H',11,T.ink2,'start')+txt(w-6,16,S.u5,12,T.ink,'end');
+ s+=fuseH(6,32,w-12,S.f5,T.amber,10);
+ s+=txt(6,62,'7 J',11,T.ink2,'start')+txt(w-6,62,S.u7,12,T.ink,'end');
+ s+=fuseH(6,77,w-12,S.f7,T.olive,8);
+ return svg(w,h,s,zoneRect(w,h));}
+function fusibleV(){const w=110,h=190;let s='';
+ [[30,'5 H',S.f5,T.amber,10,S.u5],[80,'7 J',S.f7,T.olive,8,S.u7]].forEach(([x,l,f,c,th,u])=>{s+=txt(x,15,l,11,T.ink2)+fuseV(x,24,138,f,c,th)+txt(x,182,u,12,T.ink);});
+ return svg(w,h,s,zoneRect(w,h));}
+
+// MARÉE
+function tideV(x,y,w,h,frac,col){let s=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${T.track}"/>`;
+ const lh=h*frac; s+=`<rect x="${x}" y="${y}" width="${w}" height="${lh}" rx="5" fill="${col}"/>`;
+ s+=`<line x1="${x}" y1="${y+lh}" x2="${x+w}" y2="${y+lh}" stroke="#F4F2EC" stroke-opacity=".85" stroke-width="1.6"/>`;return s;}
+function tideH(x,y,w,h,frac,col){let s=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${T.track}"/>`;
+ const lw=w*frac; s+=`<rect x="${x}" y="${y}" width="${lw}" height="${h}" rx="5" fill="${col}"/>`;
+ // ligne d'eau verticale, légèrement ondulée : le signe de la marée
+ s+=`<path d="M${x+lw} ${y} q3 ${h/4} 0 ${h/2} q-3 ${h/4} 0 ${h/2}" stroke="#F4F2EC" stroke-opacity=".85" stroke-width="1.6" fill="none"/>`;return s;}
+function mareeV(){const w=132,h=160;let s='';
+ [[14,'5 H',S.f5,T.amber,S.u5],[76,'7 J',S.f7,T.olive,S.u7]].forEach(([x,l,f,c,u])=>{s+=tideV(x,3,42,118,f,c)+txt(x+21,137,l,11,T.ink2)+txt(x+21,153,u,12,T.ink);});
+ return svg(w,h,s,zoneRect(w,h));}
+function mareeH(){const w=190,h=96;let s='';
+ [[10,'5 H',S.f5,T.amber,S.u5],[54,'7 J',S.f7,T.olive,S.u7]].forEach(([y,l,f,c,u])=>{s+=txt(6,y+21,l,11,T.ink2,'start')+tideH(34,y,118,32,f,c)+txt(w-6,y+21,u,12,T.ink,'end');});
+ return svg(w,h,s,zoneRect(w,h));}
+
+// VOLETS
+function flaps(x,y,w,h,n,frac,vertical){let s='';const lit=Math.round(frac*n),g=2.5;
+ for(let i=0;i<n;i++){const on=i<lit; if(vertical){const fh=(h-(n-1)*g)/n;s+=`<rect x="${x}" y="${y+i*(fh+g)}" width="${w}" height="${fh}" rx="2" fill="${on?'#E9E6F2':'#3A3746'}"/>`;}
+  else {const fw=(w-(n-1)*g)/n;s+=`<rect x="${x+i*(fw+g)}" y="${y}" width="${fw}" height="${h}" rx="2" fill="${on?'#E9E6F2':'#3A3746'}"/>`;}}return s;}
+function plate(x,y,w,h,col,t,size){return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${col}"/><line x1="${x}" y1="${y+h/2}" x2="${x+w}" y2="${y+h/2}" stroke="rgba(0,0,0,.2)"/>`+txt(x+w/2,y+h/2+size*0.36,t,size,'#161019');}
+function tile(x,y,s,l){return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="5" fill="#211D2A"/>`+txt(x+s/2,y+s/2+4,l,11,T.ink2);}
+function voletsH(){const w=190,h=66;let s='';
+ [[4,'5H',T.amber,S.u5,S.f5],[36,'7J',T.olive,S.u7,S.f7]].forEach(([y,l,c,u,f])=>{s+=tile(0,y,26,l)+plate(32,y,90,26,c,u,13)+flaps(128,y+6,62,14,6,f,false);});
+ return svg(w,h,s,zoneRect(w,h));}
+function voletsV(){const w=128,h=190;let s='';
+ [[4,'5H',T.amber,S.u5,S.f5],[68,'7J',T.olive,S.u7,S.f7]].forEach(([x,l,c,u,f])=>{s+=tile(x+15,0,26,l)+plate(x,32,56,40,c,u,14)+flaps(x+20,80,16,104,6,f,true);});
+ return svg(w,h,s,zoneRect(w,h));}
+
+const cad=[['Arcs','170 × 170 · inchangé',arcs(),''],['Braises','170 × 170 · repères 5 h en §3',braises(true,'pct'),'fix'],
+ ['Fusible — horizontal','190 × 92 (avant ≈ 158 × 77)',fusibleH(),'fix'],['Fusible — vertical','110 × 190 · nouveau',fusibleV(),'new'],
+ ['Marée — vertical','132 × 160 · inchangé',mareeV(),''],['Marée — horizontale','190 × 96 · nouveau',mareeH(),'new'],
+ ['Volets — horizontal','190 × 66 (avant ≈ 158 × 54)',voletsH(),'fix'],['Volets — vertical','128 × 190 · nouveau',voletsV(),'new']];
+document.getElementById('cadrans').innerHTML=cad.map(([n,d,s,t])=>`<div class="cell"><div class="desk">${s}</div><div class="lbl"><b>${n}</b>${t==='new'?'<span class="tag new">nouveau</span>':t==='fix'?'<span class="tag fix">modifié</span>':''}<br>${d}</div></div>`).join('');
+document.getElementById('braises').innerHTML=[['Aujourd\'hui — 16 braises, aucun repère',braises(false,'pct')],['Après — mode pourcentages',braises(true,'pct')],['Après — mode temps',braises(true,'temps')]]
+ .map(([n,s])=>`<div class="cell"><div class="desk">${s}</div><div class="lbl">${n}</div></div>`).join('');
+const tz=document.getElementById('tz');tz.onclick=()=>{const on=tz.getAttribute('aria-pressed')!=='true';tz.setAttribute('aria-pressed',on);document.getElementById('cadrans').classList.toggle('show-zones',on);};
+
+// THÈMES (épuisé recalculé : plus petit t tel que contraste(épuisé, disque) ≥ 3:1)
+const TH=[
+ ['Pâle','Nord','#2E3440','#3B4252','#D8DEE9','#A3BE8C','#EBCB8B','#BF616A',''],
+ ['Pâle','Forêt','#2D353B','#3A454A','#A6B0A0','#A7C080','#DBBC7F','#E67E80',''],
+ ['Pâle','Moka','#1E1E2E','#313244','#BAC2DE','#A6E3A1','#FAB387','#F38BA8',''],
+ ['Pâle','Roseraie','#191724','#26233A','#B3AECC','#9CCFD8','#F6C177','#EB6F92',''],
+ ['Pâle','Sauge','#262B28','#343B37','#AEB8B0','#8FB996','#D9C27E','#D08A7E','new'],
+ ['Pâle','Lavande','#22202C','#302D3D','#C3BCD9','#9FCFB0','#E8C88E','#E08E9E','new'],
+ ['Classique','Minuit (défaut)','#16151B','#2A2932','#C9C8D2','#7BB13C','#EFA23A','#D8503A',''],
+ ['Classique','Ardoise','#1B2027','#2C333D','#CBD3DE','#5FB39A','#E0A94E','#E06B5A',''],
+ ['Classique','Ambre chaud','#1E1712','#33271C','#EAD9B8','#E4B24A','#E07E3C','#D24A3A',''],
+ ['Classique','Graphite','#121314','#26282B','#C4C7CC','#6DBE45','#F0A830','#E04B3C','new'],
+ ['Classique','Marine','#0F1A2A','#1E2D44','#B9C9DE','#5DBB7A','#F2B544','#E25C4F','new'],
+ ['Vive','Néon','#0E0A1F','#241B3A','#7DF9FF','#38E8C6','#FFC23D','#FF2E63','fix'],
+ ['Vive','Aurore','#0E1726','#1D2B44','#BFE3FF','#4FD1C5','#F0C36D','#F2577A','fix'],
+ ['Vive','Synthwave','#140B24','#2A1745','#9AE6FF','#2BFF88','#FFD000','#FF2D55','new'],
+ ['Vive','Lave','#1A0E0A','#33190F','#FFC9A3','#7CFF4F','#FFB000','#FF3B1F','new']];
+const h2r=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255);
+const lum=c=>{const f=x=>x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4);const [r,g,b]=c.map(f);return .2126*r+.7152*g+.0722*b;};
+const cr=(a,b)=>{const la=lum(a),lb=lum(b);return (Math.max(la,lb)+.05)/(Math.min(la,lb)+.05);};
+const lerp=(a,b,t)=>a.map((x,i)=>x+(b[i]-x)*t);
+const hx=c=>'#'+c.map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('').toUpperCase();
+function vignette(d,p,g,v,a,r){const D=h2r(d),P=h2r(p),G=h2r(g);let t=.18,e=lerp(P,G,t);while(cr(e,D)<3&&t<1){t+=.01;e=lerp(P,G,t);} const eo=lerp(P,G,.18);
+ const c=36;let s=`<svg width="72" height="72" viewBox="0 0 72 72"><circle cx="${c}" cy="${c}" r="34" fill="${d}"/>`;
+ s+=`<path d="${arc(c,c,26,0,359.9)}" stroke="${p}" stroke-width="6" fill="none"/><path d="${arc(c,c,26,0,250)}" stroke="${a}" stroke-width="6" fill="none"/>`;
+ s+=`<path d="${arc(c,c,16,0,359.9)}" stroke="${hx(e)}" stroke-width="5" fill="none"/></svg>`;
+ return {s,e:hx(e),eo:hx(eo),cr:cr(e,D).toFixed(1),cro:cr(eo,D).toFixed(1)};}
+let html='';['Pâle','Classique','Vive'].forEach(cat=>{html+=`<div class="cat">${cat.toUpperCase()}</div><div class="themes">`;
+ TH.filter(t=>t[0]===cat).forEach(([_,n,d,p,g,v,a,r,tag])=>{const V=vignette(d,p,g,v,a,r);
+  html+=`<div class="vig">${V.s}<div><b>${n}</b>${tag==='new'?'<span class="tag new">nouveau</span>':tag==='fix'?'<span class="tag fix">rampe corrigée</span>':''}</div>
+  <div class="ramp"><span style="flex:1;background:${v}"></span><span style="flex:1;background:${a}"></span><span style="flex:1;background:${r}"></span><span style="flex:1;background:${V.e}"></span></div>
+  <div style="color:var(--ink2);font-size:11px">épuisé ${V.e} · ${V.cr}:1 <span style="opacity:.7">(avant ${V.cro}:1)</span></div></div>`;});
+ html+='</div>';});
+html+=`<p class="note" style="margin-top:10px">Anneau intérieur des vignettes = le nouveau gris « épuisé ». Dégradé : vert · ambre · rouge · épuisé. En réserve si tu en veux plus : Café (Classique), Tropique (Vive).</p>`;
+document.getElementById('themes').innerHTML=html;
+</script>
+</body>
+</html>
