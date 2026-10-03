@@ -2,26 +2,27 @@
   "$schema_note": "État du pipeline ZEUS — commité avec le projet. Mis à jour à chaque transition de phase.",
   "projet": "Chronos",
   "version_courante": "3.4.0 (publiee localement, non taguee)",
-  "version_cible": "3.3.0",
-  "milestone_gsd": "v1.8",
+  "version_cible": "3.5.0",
+  "milestone_gsd": "v1.9 (a creer)",
   "route": "full",
-  "phase": "DESIGN-REVIEW",
-  "phase_status": "en_attente_galerie_utilisateur",
+  "phase": "LLM-COUNCIL",
+  "phase_status": "inventaires_en_cours",
   "cycle": {
-    "numero": 1,
-    "demarre_le": "2026-09-26",
+    "numero": 2,
+    "demarre_le": "2026-10-03",
     "idees": [
-      "Trackeur d'utilisation du forfait : journaliser l'usage au fil du temps et le visualiser (courbe/graphique) ; vue à l'échelle de la semaine de forfait (reset samedi 00:00 heure locale) avec la courbe hebdo superposée aux tranches de 5 h ; comprendre sa façon d'utiliser Claude au cours du temps.",
-      "2026-09-27 (utilisateur) : refonte complete de la fenetre de reglages — fenetre rectangulaire classique redimensionnable dynamiquement (trop longue pour l'ecran)."
+      "R1 Fusible / Maree / Volets en horizontal ET vertical, selectionnable dans les reglages",
+      "R2 Fusible et Volets +20 % (toutes variantes)",
+      "R3 Braises : delimitations des tranches de 5 h, dans le style du cadran",
+      "R4 Historique : Pistes seul style + plein ecran general agrandissant tous les graphiques",
+      "R5 Purge des reliquats de recuperation des donnees + methodologie claire (liste validee par l'utilisateur avant suppression)",
+      "R6 Themes en trois categories Pale / Classique / Vive + nouvelles palettes proposees",
+      "R7 Zones de clic et d'attrape recalculees par cadran, orientation et taille"
     ],
+    "source": ".zeus/ROADMAP-PROCHAINE-VERSION.md",
     "impact_ui": true,
     "mode_daedalus": "EVOLUTION",
-    "decisions_utilisateur": [
-      "2026-09-27 : forme A retenue ; B (Simplifie) et C (Tuiles) codees aussi et selectionnables (style de la vue Semaine)",
-      "2026-09-27 : vues Jour et 4 semaines conservees dans le milestone v1.8",
-      "2026-09-27 : deux gestes d'ouverture : bouton des reglages + double-clic au centre du cadran",
-      "2026-09-27 : phase 32 (dedup tokens + journal des releves, sans UI) publiee seule en 3.2.2 avant toute interface"
-    ]
+    "decisions_utilisateur": []
   },
   "iterations": {
     "design_review": 0,
@@ -30,11 +31,11 @@
     "dev_council_max": 3
   },
   "checkpoints": {
-    "plan_design_valide": true,
+    "plan_design_valide": false,
+    "liste_purge_validee": false,
     "triage_findings": false,
     "go_publication": false,
-    "confirmation_roadmap": false,
-    "plan_design_reglages_valide": true
+    "confirmation_roadmap": false
   },
   "pending": {
     "findings_critiques": [
@@ -85,6 +86,24 @@
     "2026-09-27 — Utilisateur : bug « processus zombie apres Quitter » (cause prouvee : interblocage Host/Dispatcher a l'arret) -> quick 260927 en cours (correctif + test + release 3.3.1). Utilisateur : refonte des reglages -> DAEDALUS mode REFONTE : audit + DESIGN_PLAN_REGLAGES.md + maquettes HTML (quota Figma Starter atteint). CHECKPOINT design reglages en attente.",
     "2026-09-27 — Quick 260927 livre : interblocage d'arret corrige (Task.Run, ConfigureAwait(false), ArretHote borne a 5 s, 6 tests Host reel sous Dispatcher), release Chronos-v3.3.1.exe (78 111 106 o, md5 c9d4c0bb, commit 8723e2a). 1654 tests, 0 warning. Le constat 35-07 se jouera sur la 3.3.1.",
     "2026-09-27 — CHECKPOINT design reglages franchi sur accord implicite de l'utilisateur (« J'ai toujours le vieux menu sur la 3.3.1 » apres envoi des maquettes R1-R4) : consigne comme decision utilisateur. -> implementation (quick 260927-reglages, release 3.4.0).",
-    "2026-09-27 — Quick 260927-reglages-v2 livre : fenetre de reglages classique redimensionnable (rail 6 sections, apercu vivant, diagnostic integre, singleton, geometrie persistee), 1707 tests, 0 warning, release Chronos-v3.4.0.exe (commit 8bec859, md5 ddbe7995). Revue des rendus hors ecran par ZEUS : conforme aux maquettes, 1 mineur (libelle du diagnostic)."
+    "2026-09-27 — Quick 260927-reglages-v2 livre : fenetre de reglages classique redimensionnable (rail 6 sections, apercu vivant, diagnostic integre, singleton, geometrie persistee), 1707 tests, 0 warning, release Chronos-v3.4.0.exe (commit 8bec859, md5 ddbe7995). Revue des rendus hors ecran par ZEUS : conforme aux maquettes, 1 mineur (libelle du diagnostic).",
+    "2026-10-03 — Cycle 2 ouvert (route FULL, impact UI) : ROADMAP en mode degrade — R1-R7 fournis et confirmes par l'utilisateur dans la session (.zeus/ROADMAP-PROCHAINE-VERSION.md). Cycle 1 absorbe (voir cycles_precedents). Trois inventaires lecture seule lances (purge R5, cadrans/gestes R1-R3-R7, themes/historique R4-R6) avant LLM-COUNCIL."
+  ],
+  "cycles_precedents": [
+    {
+      "numero": 1,
+      "demarre_le": "2026-09-26",
+      "idees": [
+        "Trackeur d'utilisation du forfait : journaliser l'usage au fil du temps et le visualiser (courbe/graphique) ; vue à l'échelle de la semaine de forfait (reset samedi 00:00 heure locale) avec la courbe hebdo superposée aux tranches de 5 h ; comprendre sa façon d'utiliser Claude au cours du temps.",
+        "2026-09-27 (utilisateur) : refonte complete de la fenetre de reglages — fenetre rectangulaire classique redimensionnable dynamiquement (trop longue pour l'ecran)."
+      ],
+      "decisions_utilisateur": [
+        "2026-09-27 : forme A retenue ; B (Simplifie) et C (Tuiles) codees aussi et selectionnables (style de la vue Semaine)",
+        "2026-09-27 : vues Jour et 4 semaines conservees dans le milestone v1.8",
+        "2026-09-27 : deux gestes d'ouverture : bouton des reglages + double-clic au centre du cadran",
+        "2026-09-27 : phase 32 (dedup tokens + journal des releves, sans UI) publiee seule en 3.2.2 avant toute interface"
+      ],
+      "cloture": "2026-10-03 — absorbe par le cycle 2 sur demande de l'utilisateur (« Lance l'integration de tous les points de la roadmap ») : livre en 3.4.0 (non tague) ; DESIGN-REVIEW de la galerie Historique, DEV-COUNCIL, DEV-SENIOR et PUBLICATION non joues — repris par le cycle 2, dont les audits couvriront aussi le code du cycle 1. Constats humains 32-08 / 35-07 toujours ouverts."
+    }
   ]
 }
