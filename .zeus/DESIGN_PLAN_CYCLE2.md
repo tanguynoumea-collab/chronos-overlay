@@ -1,6 +1,6 @@
 # DESIGN_PLAN — Chronos 3.5 (cycle ZEUS n°2, R1 à R7)
 
-Statut : **en attente de validation utilisateur** (checkpoint humain 1). Mode DAEDALUS : **ÉVOLUTION**. L'UI existante
+Statut : **validé par l'utilisateur le 2026-10-03** (checkpoint humain 1, « Je valide »). Mode DAEDALUS : **ÉVOLUTION**. L'UI existante
 est acceptée ; seuls les changements sont décrits ici. Contrats existants conservés : `.zeus/DESIGN_PLAN.md`
 (Historique) et `.zeus/DESIGN_PLAN_REGLAGES.md` (réglages), sauf les amendements ci-dessous.
 Maquettes à l'échelle réelle : `.zeus/maquettes/cycle2-cadrans-themes.html`.

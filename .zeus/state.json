@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9 (a creer)",
   "route": "full",
-  "phase": "UX-DESIGN",
-  "phase_status": "checkpoint_1_plan_design_en_attente",
+  "phase": "GSD",
+  "phase_status": "creation_milestone_v1.9",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -26,7 +26,8 @@
       "2026-10-03 : barre statusLine RETIREE — Chronos desinstalle sa barre de ~/.claude/settings.json (sauvegarde), le mode --statusline disparait (garde d'arguments inconnus -> sortie silencieuse pour couvrir les references residuelles)",
       "2026-10-03 : Pale = sombres et doux (desatures/pastel) ; pas de themes clairs ce cycle",
       "2026-10-03 : +20 % mesure sur le rendu actuel (Fusible et Volets ~190 px de large) ; fenetre adaptee par cadran",
-      "2026-10-03 : Braises 5 h = repere de reset fixe + separations horaires + heure du reset en mode heure"
+      "2026-10-03 : Braises 5 h = repere de reset fixe + separations horaires + heure du reset en mode heure",
+      "2026-10-03 : CHECKPOINT 1 — plan de design cycle 2 valide tel quel (« Je valide »)"
     ]
   },
   "iterations": {
@@ -36,7 +37,7 @@
     "dev_council_max": 3
   },
   "checkpoints": {
-    "plan_design_valide": false,
+    "plan_design_valide": true,
     "liste_purge_validee": false,
     "triage_findings": false,
     "go_publication": false,
@@ -98,7 +99,8 @@
     "2026-10-03 — Cycle 2 ouvert (route FULL, impact UI) : ROADMAP en mode degrade — R1-R7 fournis et confirmes par l'utilisateur dans la session (.zeus/ROADMAP-PROCHAINE-VERSION.md). Cycle 1 absorbe (voir cycles_precedents). Trois inventaires lecture seule lances (purge R5, cadrans/gestes R1-R3-R7, themes/historique R4-R6) avant LLM-COUNCIL.",
     "2026-10-03 — LLM-COUNCIL termine (cycle 2) : classement A Rigoriste 1,4 / D Red-teamer 2,6 / C Generaliste 3,6 / E Pragmatique 3,6 / B Premiers principes 3,8. Approche arretee (rapport). Decouverte : le pont statusLine affiche la barre visible de Claude Code (InnerStatusLineCommand = null) -> decision utilisateur. -> UX-DESIGN (DAEDALUS EVOLUTION), apres 4 decisions utilisateur.",
     "2026-10-03 — 4 decisions utilisateur consignees (barre statusLine retiree, Pale sombre doux, +20 % sur le rendu, Braises reperes + heure). -> DAEDALUS EVOLUTION : plan de design R1/R2/R3/R4/R6/R7.",
-    "2026-10-03 — DAEDALUS EVOLUTION : DESIGN_PLAN_CYCLE2.md (passes A + B) + maquettes HTML a l'echelle reelle (8 variantes de cadran, zones, Braises avant/apres, Historique plein ecran, 15 themes en 3 categories). CHECKPOINT 1 en attente."
+    "2026-10-03 — DAEDALUS EVOLUTION : DESIGN_PLAN_CYCLE2.md (passes A + B) + maquettes HTML a l'echelle reelle (8 variantes de cadran, zones, Braises avant/apres, Historique plein ecran, 15 themes en 3 categories). CHECKPOINT 1 en attente.",
+    "2026-10-03 — CHECKPOINT 1 VALIDE (« Je valide ») : DESIGN_PLAN_CYCLE2.md contractuel. -> GSD : milestone v1.9 (exe 3.5.0)."
   ],
   "cycles_precedents": [
     {
