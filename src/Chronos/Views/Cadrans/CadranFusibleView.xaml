@@ -3,44 +3,87 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:cad="clr-namespace:Chronos.Controls"
              Background="Transparent">
-    <!-- Piste 2 — Fusible. Deux mèches : 5 h (haut, épaisse) + 7 j (bas). Position du front = temps ;
-         épaisseur + couleur = quota ; part écoulée = sillon creux ; estimé = cordon muet pointillé.
-         Valeur par ligne : bascule % (défaut) ↔ temps (ShowPercent/ShowCountdown, clic au centre). -->
+    <!-- Fusible, à l'échelle 1 (phase 40) — deux mèches : 5 h (épaisse) + 7 j. Position du front = temps ;
+         épaisseur + couleur = quota ; part écoulée = sillon creux ; estimé = cordon muet pointillé ; étincelle au front.
+         Deux gabarits choisis par la DP Orientation de la vue (code-behind) :
+         - horizontal 190 × 92 : mèches couchées, la combustion part de la gauche ;
+         - vertical 110 × 190 : mèches debout, la combustion descend du haut.
+         Valeur par fenêtre : bascule % (défaut) ↔ temps (ShowPercent/ShowCountdown, clic au centre).
+         Positions = maquette .zeus/maquettes/cycle2-cadrans-themes.html (fusibleH / fusibleV). -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </UserControl.Resources>
-    <StackPanel Width="210" VerticalAlignment="Center" HorizontalAlignment="Center">
-        <!-- 5 H -->
-        <Grid Margin="2,0,0,3">
-            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="11" FontWeight="SemiBold"/>
-            <Grid HorizontalAlignment="Right">
-                <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
-                           Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
-                <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
-                           Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+    <Grid>
+        <!-- ===== Horizontal : 190 × 92 ===== -->
+        <Grid x:Name="GabaritHorizontal"
+              Width="{DynamicResource CadranLargeurFusibleH}" Height="{DynamicResource CadranHauteurFusibleH}"
+              HorizontalAlignment="Left" VerticalAlignment="Top">
+            <!-- 5 H -->
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,4,0,0"/>
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="16" Margin="96,3,6,0">
+                <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Right" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Right" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+            <cad:FuseBar Orientation="Horizontal" VerticalAlignment="Top" Margin="6,22,6,0" Height="20" CordThickness="10"
+                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         QuotaBrush="{Binding FiveHour.ValueBrush}"
+                         Estimated="{Binding FiveHour.EstPlancher}"
+                         HasData="{Binding FiveHour.HasTime}"
+                         TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
+            <!-- 7 J -->
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,50,0,0"/>
+            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="16" Margin="96,49,6,0">
+                <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Right" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Right" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+            <cad:FuseBar Orientation="Horizontal" VerticalAlignment="Top" Margin="6,67,6,0" Height="20" CordThickness="8"
+                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         QuotaBrush="{Binding SevenDay.ValueBrush}"
+                         Estimated="{Binding SevenDay.EstPlancher}"
+                         HasData="{Binding SevenDay.HasTime}"
+                         TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
+        </Grid>
+
+        <!-- ===== Vertical : 110 × 190 — colonnes d'axe x 30 (5 h) et x 80 (7 j), mèches y 24..162 ===== -->
+        <Grid x:Name="GabaritVertical"
+              Width="{DynamicResource CadranLargeurFusibleV}" Height="{DynamicResource CadranHauteurFusibleV}"
+              HorizontalAlignment="Left" VerticalAlignment="Top">
+            <!-- 5 H -->
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+                       Width="50" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,3,0,0"/>
+            <cad:FuseBar Orientation="Vertical" Width="20" Height="138" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,24,0,0" CordThickness="10"
+                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         QuotaBrush="{Binding FiveHour.ValueBrush}"
+                         Estimated="{Binding FiveHour.EstPlancher}"
+                         HasData="{Binding FiveHour.HasTime}"
+                         TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
+            <Grid Width="50" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,169,0,0">
+                <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Center" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+            <!-- 7 J -->
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+                       Width="50" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="55,3,0,0"/>
+            <cad:FuseBar Orientation="Vertical" Width="20" Height="138" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="70,24,0,0" CordThickness="8"
+                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         QuotaBrush="{Binding SevenDay.ValueBrush}"
+                         Estimated="{Binding SevenDay.EstPlancher}"
+                         HasData="{Binding SevenDay.HasTime}"
+                         TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
+            <Grid Width="50" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="55,169,0,0">
+                <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Center" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
+                           TextAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Grid>
-        <cad:FuseBar Height="26" CordThickness="11"
-                     Fraction="{Binding FiveHour.FractionRemaining}"
-                     QuotaBrush="{Binding FiveHour.ValueBrush}"
-                     Estimated="{Binding FiveHour.EstPlancher}"
-                     HasData="{Binding FiveHour.HasTime}"
-                     TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
-        <!-- 7 J -->
-        <Grid Margin="2,14,0,3">
-            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="11" FontWeight="SemiBold"/>
-            <Grid HorizontalAlignment="Right">
-                <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
-                           Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
-                <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
-                           Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
-            </Grid>
-        </Grid>
-        <cad:FuseBar Height="24" CordThickness="9"
-                     Fraction="{Binding SevenDay.FractionRemaining}"
-                     QuotaBrush="{Binding SevenDay.ValueBrush}"
-                     Estimated="{Binding SevenDay.EstPlancher}"
-                     HasData="{Binding SevenDay.HasTime}"
-                     TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
-    </StackPanel>
+    </Grid>
 </UserControl>
