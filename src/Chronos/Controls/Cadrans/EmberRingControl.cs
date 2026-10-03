@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Media;
+using Chronos.Rendering;
 
 namespace Chronos.Controls;
 
@@ -9,6 +10,9 @@ namespace Chronos.Controls;
 /// Le NOMBRE de braises allumées = temps restant (Fraction 0..1) ; la couleur = quota (QuotaBrush,
 /// thémé). La dernière braise allumée est à demi-lueur (incertitude native ±1 braise) ; Estimated
 /// (plancher « ≥ ») rend les braises allumées en CONTOUR pointillé (grain) au lieu du plein.
+/// Groupes optionnels (GroupSize / GroupPitch, via BraisesGeometrie) : les braises d'un groupe sont espacées d'un pas
+/// fixe et le groupe est centré dans son secteur — la délimitation est le VIDE entre groupes, jamais un tiret.
+/// Sans groupe (défauts 1 / 0) : répartition uniforme historique. L'état « en attente » suit les mêmes angles.
 /// FrameworkElement + OnRender (per-pip) car un Shape ne porte qu'un Stroke/Fill unique.
 /// </summary>
 public sealed class EmberRingControl : FrameworkElement
@@ -44,6 +48,16 @@ public sealed class EmberRingControl : FrameworkElement
         DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(EmberRingControl),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    // Taille d'un groupe de braises ; 1 = aucune délimitation (répartition uniforme).
+    public static readonly DependencyProperty GroupSizeProperty =
+        DependencyProperty.Register(nameof(GroupSize), typeof(int), typeof(EmberRingControl),
+            new FrameworkPropertyMetadata(1, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Pas angulaire entre braises d'un même groupe, en degrés ; 0 = aucun groupe.
+    public static readonly DependencyProperty GroupPitchProperty =
+        DependencyProperty.Register(nameof(GroupPitch), typeof(double), typeof(EmberRingControl),
+            new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public double Fraction  { get => (double)GetValue(FractionProperty);  set => SetValue(FractionProperty, value); }
     public int    Count     { get => (int)GetValue(CountProperty);        set => SetValue(CountProperty, value); }
     public double Radius    { get => (double)GetValue(RadiusProperty);    set => SetValue(RadiusProperty, value); }
@@ -53,6 +67,8 @@ public sealed class EmberRingControl : FrameworkElement
     public bool   Estimated  { get => (bool)GetValue(EstimatedProperty);   set => SetValue(EstimatedProperty, value); }
     public bool   HasData    { get => (bool)GetValue(HasDataProperty);     set => SetValue(HasDataProperty, value); }
     public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
+    public int    GroupSize  { get => (int)GetValue(GroupSizeProperty);     set => SetValue(GroupSizeProperty, value); }
+    public double GroupPitch { get => (double)GetValue(GroupPitchProperty); set => SetValue(GroupPitchProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -65,7 +81,7 @@ public sealed class EmberRingControl : FrameworkElement
         {
             for (int i = 0; i < n; i++)
             {
-                double aw = i * 360.0 / n * Math.PI / 180.0;
+                double aw = BraisesGeometrie.Angle(i, n, GroupSize, GroupPitch) * Math.PI / 180.0;   // mêmes angles que le nominal
                 var pw = new Point(center.X + Radius * Math.Sin(aw), center.Y - Radius * Math.Cos(aw));
                 dc.DrawEllipse(WaitBrush, null, pw, PipRadius * 0.7, PipRadius * 0.7);
             }
@@ -83,7 +99,7 @@ public sealed class EmberRingControl : FrameworkElement
 
         for (int i = 0; i < n; i++)
         {
-            double a = i * 360.0 / n * Math.PI / 180.0;                 // 0 = 12 h, horaire
+            double a = BraisesGeometrie.Angle(i, n, GroupSize, GroupPitch) * Math.PI / 180.0;   // 0 = 12 h, horaire
             var p = new Point(center.X + Radius * Math.Sin(a), center.Y - Radius * Math.Cos(a));
 
             if (i < lit)
