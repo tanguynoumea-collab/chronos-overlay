@@ -37,6 +37,13 @@ public class TextesHistoriqueTests
     private static readonly Trou TrouJeton = new(Utc("2026-09-24T12:00:00Z"), Utc("2026-09-24T14:00:00Z"), CauseTrou.JetonInvalide);
 
     [Fact]
+    public void Les_libelles_du_plein_ecran_sont_ceux_du_plan()
+    {
+        Assert.Equal("⛶ Plein écran", TextesHistorique.BoutonPleinEcran);
+        Assert.Equal("⤢ Quitter le plein écran · Échap", TextesHistorique.BoutonQuitterPleinEcran);
+    }
+
+    [Fact]
     public void Les_constantes_du_vocabulaire_sont_celles_du_plan()
     {
         Assert.Equal("Historique", TextesHistorique.Titre);

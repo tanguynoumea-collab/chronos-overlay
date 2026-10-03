@@ -637,4 +637,58 @@ public class HistoriqueViewModelTests
         Assert.Equal("aurore", b.Vm.Theme.Key);
         Assert.Contains(nameof(HistoriqueViewModel.Theme), notifies);
     }
+
+    // ------------------------------------------------------------------ Plein écran (HIS-10 / HIS-11)
+
+    [Fact]
+    public async Task Le_plein_ecran_est_faux_au_depart_et_bascule()
+    {
+        var b = await Ouvert(Construire());
+        Assert.False(b.Vm.EstPleinEcran);
+
+        var notifies = new List<string?>();
+        b.Vm.PropertyChanged += (_, e) => notifies.Add(e.PropertyName);
+
+        b.Vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.True(b.Vm.EstPleinEcran);
+        Assert.Contains(nameof(HistoriqueViewModel.EstPleinEcran), notifies);
+
+        b.Vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.False(b.Vm.EstPleinEcran);
+    }
+
+    [Fact]
+    public async Task Echap_quitte_d_abord_le_plein_ecran_puis_ferme_la_fenetre()
+    {
+        var b = await Ouvert(Construire());
+        var ferme = 0;
+        b.Vm.FermetureDemandee += (_, _) => ferme++;
+
+        // Hors plein écran : Échap ferme directement, une seule fois.
+        b.Vm.EchapCommand.Execute(null);
+        Assert.Equal(1, ferme);
+
+        // En plein écran : le premier Échap quitte le plein écran sans fermer, le second ferme.
+        ferme = 0;
+        b.Vm.BasculerPleinEcranCommand.Execute(null);
+        b.Vm.EchapCommand.Execute(null);
+        Assert.False(b.Vm.EstPleinEcran);
+        Assert.Equal(0, ferme);
+
+        b.Vm.EchapCommand.Execute(null);
+        Assert.Equal(1, ferme);
+        Assert.False(b.Vm.EstPleinEcran);
+    }
+
+    [Fact]
+    public async Task Le_plein_ecran_n_est_jamais_persiste()
+    {
+        var b = await Ouvert(Construire());
+        var avant = b.Reglages.Courant;
+
+        b.Vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.Equal(avant, b.Reglages.Courant);
+        b.Vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.Equal(avant, b.Reglages.Courant);
+    }
 }
