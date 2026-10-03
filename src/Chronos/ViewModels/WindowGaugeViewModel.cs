@@ -15,6 +15,7 @@ namespace Chronos.ViewModels;
 public sealed partial class WindowGaugeViewModel : ObservableObject
 {
     private readonly TimeSpan _windowLength;
+    private readonly TimeZoneInfo _fuseau;      // BRA-02 — fuseau INJECTÉ pour l'heure du reset (production Local, tests Paris)
     private WindowState _state; // dernier snapshot de cette fenêtre (immuable)
 
     [ObservableProperty] private double _fractionRemaining;                    // 0..1 → longueur d'arc restante
@@ -44,6 +45,11 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
 
     [ObservableProperty] private string _tokensText = "";                       // « ≈ N M/k tokens » ; vide si masqué (NET-02)
     [ObservableProperty] private bool _hasTokens;                               // vrai SSI TokensDepuisReleve>0 (pilote la visibilité)
+
+    // BRA-02 (phase 41) — heure LOCALE du reset, « ↻ 14:20 ». Elle vient de resets_at, donnée par le serveur :
+    // elle est donc exacte. Exact ou rien : inconnue ou déjà atteinte → texte vide et ligne masquée.
+    [ObservableProperty] private string _heureResetTexte = "";                  // « ↻ 14:20 » ; vide si inconnue
+    [ObservableProperty] private bool _hasHeureReset;                           // pilote la visibilité (motif HasTokens)
 
     /// <summary>EXA-06 — QUI alimente cette fenêtre, tel que nommé par le producteur lui-même ; <c>null</c>
     /// si personne ne l'alimente. Volontairement PAS observable : elle n'est bindée nulle part, elle est
@@ -81,9 +87,12 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
     // Recalcule l'arc à chaque changement d'utilization (rampe du thème courant).
     partial void OnUtilizationChanged(double? value) => ValueBrush = _theme.ArcBrush(value);
 
-    public WindowGaugeViewModel(TimeSpan windowLength)
+    /// <param name="fuseau">Fuseau INJECTÉ pour l'heure du reset : production = <see cref="TimeZoneInfo.Local"/> (défaut),
+    /// tests = Paris. Aucune lecture de l'horloge ici : l'instant arrive par <see cref="Interpolate"/>.</param>
+    public WindowGaugeViewModel(TimeSpan windowLength, TimeZoneInfo? fuseau = null)
     {
         _windowLength = windowLength;
+        _fuseau = fuseau ?? TimeZoneInfo.Local;
         _state = WindowState.Unavailable(default);
         ValueBrush = _theme.ArcBrush(null); // neutre au départ (aucune donnée)
     }
@@ -163,5 +172,12 @@ public sealed partial class WindowGaugeViewModel : ObservableObject
         CountdownText = _state.ResetsAt is { } r
             ? CountdownFormatter.Format(r - now)
             : "—";
+
+        // BRA-02 — exact ou rien. Inconnu → rien. Déjà atteint (entre le reset et le relevé suivant) → rien : le compte
+        // à rebours dit déjà « 0 min », une heure passée n'apprendrait rien. Un plancher GARDE l'heure : elle vient du
+        // serveur, seul le % est une borne. Calculé ici (et non dans Apply) car cela dépend de now ; ApplySnapshot
+        // enchaîne Apply puis Interpolate, donc le premier rendu l'a immédiatement.
+        HasHeureReset = _state.ResetsAt is { } rr && rr > now;
+        HeureResetTexte = HasHeureReset ? "↻ " + TextesHistorique.HeureMinute(_state.ResetsAt!.Value, _fuseau) : "";
     }
 }
