@@ -24,7 +24,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 - [ ] **SOC-01**: Un `settings.json` contenant une valeur d'énumération inconnue (style, orientation, section…) ou un membre
   supprimé ne remet plus **tous** les réglages à zéro : seule la valeur fautive retombe sur son défaut, le reste (thème, coin,
   géométries…) est conservé et réécrit intact ; épinglé par tests (`"Tuiles"`, style de cadran inconnu, clé de thème inconnue).
-- [ ] **SOC-02**: Tout argument `--xxx` inconnu ou retiré fait **sortir l'exe silencieusement (code 0) avant le verrou
+- [x] **SOC-02**: Tout argument `--xxx` inconnu ou retiré fait **sortir l'exe silencieusement (code 0) avant le verrou
   mono-instance** — jamais l'overlay, jamais la boîte « Chronos tourne déjà » ; les hooks `--hook` et le mode CLI existants
   sont inchangés.
 
@@ -132,7 +132,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SOC-01 | Phase 36 | Pending |
-| SOC-02 | Phase 36 | Pending |
+| SOC-02 | Phase 36 | Complete |
 | DAT-01 | Phase 37 | Complete |
 | DAT-02 | Phase 37 | Pending |
 | DAT-03 | Phase 37 | Pending |
