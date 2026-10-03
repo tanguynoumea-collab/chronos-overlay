@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: — Lisible partout
-status: ready to plan
-last_updated: "2026-10-03T14:00:00.000Z"
-last_activity: 2026-10-03 -- Roadmap v1.9 créée (phases 36-43, 25 exigences mappées)
+status: executing
+last_updated: "2026-10-03T11:55:15.340Z"
+last_activity: 2026-10-03 -- Phase 36 execution started
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 2
   completed_plans: 0
 ---
 
@@ -21,15 +21,15 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend ; et comprendre sa façon
 d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Milestone v1.9 « Lisible partout » (exe 3.5.0) — Phase 36 : Socle (lecture tolérante des réglages, garde d'arguments)
+**Current focus:** Phase 36 — Socle
 
 ## Current Position
 
 Milestone: v1.9 — Lisible partout (exe 3.5.0)
-Phase: 36 of 43 (Socle) — phases 36-43, 8 phases
-Plan: —
-Status: Ready to plan
-Last activity: 2026-10-03 — Roadmap v1.9 créée (36 Socle → 37 Purge R5 → 38 Historique → 39 Thèmes → 40 Échelle 1 et
+Phase: 36 (Socle) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 36
+Last activity: 2026-10-03 -- Phase 36 execution started
 orientations → 41 Braises → 42 Zones de geste → 43 Release 3.5.0 et constat)
 
 Progress: [░░░░░░░░░░] 0 %
@@ -52,8 +52,10 @@ Progress: [░░░░░░░░░░] 0 %
 - Barre statusLine **retirée** (sauvegarde puis retrait de `~/.claude/settings.json` au premier lancement de la 3.5).
 - « Pâle » = sombres doux (pas de fonds clairs) ; +20 % mesuré sur le rendu actuel ; Braises = repère de reset +
   séparations horaires + heure du reset ; une seule release 3.5.0.
+
 - Liste de purge R5 validée (DAT-01) : un commit réversible par ligne, ordre diag/docs → orphelins → jeton app bureau →
   recalibrage → pont statusLine en dernier, derrière la garde d'arguments (phase 36).
+
 - Ordre des phases arrêté par le conseil du 2026-10-03 : socle → purge → Historique → thèmes → géométrie → Braises → zones →
   release. 39 avant 40 (vues `Views/Cadrans/*` thémées avant d'être redessinées).
 
@@ -63,8 +65,10 @@ Progress: [░░░░░░░░░░] 0 %
   `.planning/phases/32-compter-juste-puis-journaliser/32-CONSTAT.md` et `.planning/phases/35-4-semaines-acc-s-release-3-3-0/35-CONSTAT.md`
   (écart E1-ter : plusieurs exécutables en marche ; le point (a) commence par les quitter tous, à la main). Reportés dans la
   phase 43 de v1.9 (VAL-07). L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
+
 - **Étapes ZEUS du cycle n°1 non jouées** (DESIGN-REVIEW de la galerie Historique, DEV-COUNCIL, DEV-SENIOR) : absorbées par le
   cycle n°2, qui couvre aussi ce code (`.zeus/state.json`).
+
 - **Décision utilisateur** : supprimer les styles Simplifié et Tuiles de la vue Semaine — planifié en v1.9 phase 38 (HIS-09).
 
 Résolus en v1.8 : parser de tokens ×2 à 2,75 (CPT-01, dédup `message.id`) ; « gel » de `last-exact.json` = vue virtualisée MSIX
@@ -111,6 +115,7 @@ E 4 semaines, F1 carte des réglages, F2 bandeau), DoD `.zeus/DOD.md`, état `.z
 
 - Suite de tests à la clôture de v1.8 : **1707 verts / 0 échec, 0 warning** Debug et Release (release 3.4.0, `8bec859`) ;
   1648 à la 3.3.0.
+
 - Exe courant : `Chronos-v3.4.0.exe` (md5 `ddbe7995…`) ; précédents de v1.8 : 3.2.2, 3.3.0 (78 104 918 o), 3.3.1.
 - Historique : v1.6 = 6 phases, 19 plans, 110 commits, 752 → 889 tests ; v1.7 = 6 phases, 20 plans, 125 commits, 896 → 1200 tests ;
   v1.8 = 4 phases, 26 / 28 plans, 239 commits, 1200 → 1707 tests.

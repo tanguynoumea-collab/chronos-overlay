@@ -110,7 +110,7 @@ observés).
 - Phases entières (36→43) : travail de milestone planifié — continue après la Phase 35 (v1.8)
 - Phases décimales (36.1, 36.2) : insertions urgentes (marquées INSERTED)
 
-- [ ] **Phase 36: Socle** - Une valeur inconnue dans `settings.json` ne coûte plus que cette valeur, et tout argument `--xxx` inconnu ou retiré sort en silence avant le verrou mono-instance
+- [x] **Phase 36: Socle** - Une valeur inconnue dans `settings.json` ne coûte plus que cette valeur, et tout argument `--xxx` inconnu ou retiré sort en silence avant le verrou mono-instance (completed 2026-10-03)
 - [ ] **Phase 37: Une chaîne de données claire** - Les sources mortes, le pont statusLine et le recalibrage disparaissent en commits réversibles ; la barre est retirée de Claude Code avec sauvegarde ; le diagnostic et les docs décrivent exactement la chaîne réelle
 - [ ] **Phase 38: Historique : Pistes seul et plein écran** - L'Historique n'a plus qu'un style, et un plein écran sur l'écran courant agrandit pistes et textes sans défilement, avec une sortie toujours à portée
 - [ ] **Phase 39: Thèmes Pâle / Classique / Vive** - Quinze thèmes rangés en trois groupes, un gris épuisé et un rouge lisibles partout (≥ 3:1), et les quatre cadrans alternatifs qui suivent le thème
@@ -147,8 +147,8 @@ n'est pas retirée — sort en silence au lieu de lancer l'overlay ou la boîte 
      3.4.0 (tests existants verts), et la suite reste à 0 échec, 0 warning (SOC-02).
 **Plans**: 2 plans
 Plans:
-- [ ] 36-01-PLAN.md — Lecture des réglages tolérante valeur par valeur (pré-passe JsonNode) + ligne de diagnostic (SOC-01)
-- [ ] 36-02-PLAN.md — Tri pur des arguments en liste blanche, inconnu → sortie code 0 avant le verrou, gardes réécrites (SOC-02)
+- [x] 36-01-PLAN.md — Lecture des réglages tolérante valeur par valeur (pré-passe JsonNode) + ligne de diagnostic (SOC-01)
+- [x] 36-02-PLAN.md — Tri pur des arguments en liste blanche, inconnu → sortie code 0 avant le verrou, gardes réécrites (SOC-02)
 
 ### Phase 37: Une chaîne de données claire
 **Goal**: La chaîne de données se réduit à ce qui a réellement produit des relevés —
@@ -370,7 +370,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 33. Agrégats de tokens | v1.8 | 5/5 | Complete | 2026-09-27 |
 | 34. Fenêtre Historique : Semaine et Jour | v1.8 | 8/8 | Complete | 2026-09-27 |
 | 35. 4 semaines, accès, release 3.3.0 | v1.8 | 6/7 | Clos avec écart (35-07 reporté en v1.9) | 2026-09-27 |
-| 36. Socle | v1.9 | 0/? | Not started | - |
+| 36. Socle | v1.9 | 2/2 | Complete   | 2026-10-03 |
 | 37. Une chaîne de données claire | v1.9 | 0/? | Not started | - |
 | 38. Historique : Pistes seul et plein écran | v1.9 | 0/? | Not started | - |
 | 39. Thèmes Pâle / Classique / Vive | v1.9 | 0/? | Not started | - |
