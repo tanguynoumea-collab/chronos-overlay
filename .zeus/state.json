@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "GSD",
-  "phase_status": "retour_design_review_1",
+  "phase": "DESIGN-REVIEW",
+  "phase_status": "revue_2_en_cours",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -32,7 +32,7 @@
     ]
   },
   "iterations": {
-    "design_review": 1,
+    "design_review": 2,
     "design_review_max": 3,
     "dev_council": 0,
     "dev_council_max": 3
@@ -116,7 +116,8 @@
     "2026-10-03 — CHECKPOINT 1 VALIDE (« Je valide ») : DESIGN_PLAN_CYCLE2.md contractuel. -> GSD : milestone v1.9 (exe 3.5.0).",
     "2026-10-03 — GSD : milestone v1.8 clos avec ecarts (tag local v1.8, VAL-04/VAL-05 reportes en VAL-07) ; milestone v1.9 « Lisible partout » cree : 25 exigences, liste de purge validee, roadmap 36-43 approuvee. -> phase 36 (Socle).",
     "2026-10-03 — GSD : phases 36-42 executees et verifiees (36 Socle, 37 Purge R5 + barre retiree, 38 Historique Pistes seul + plein ecran, 39 Themes 15 en 3 categories, 40 Cadrans echelle 1 + orientations, 41 Braises, 42 Geste unique) ; DoD cycle 2 ecrite (decision orchestrateur, .zeus/DOD-CYCLE2.md). GATE TESTS OK : Release + Debug 0 avertissement, 1922/1922. -> DESIGN-REVIEW iteration 1/3 (rendus hors ecran). Verifications humaines en attente : 38-HUMAN-UAT, 42-HUMAN-UAT.",
-    "2026-10-03 — DESIGN-REVIEW 1/3 : 4 bloquants (B1 pastilles sur cadrans rectangulaires, B2 « indisponible » illisible, B3 epuise ≈ aucune donnee, B4 « ↻ HH:MM » invisible) + 15 mineurs. Amendement §11 du plan (corrections dans l'esprit du plan valide). -> retour GSD : phase 42.1."
+    "2026-10-03 — DESIGN-REVIEW 1/3 : 4 bloquants (B1 pastilles sur cadrans rectangulaires, B2 « indisponible » illisible, B3 epuise ≈ aucune donnee, B4 « ↻ HH:MM » invisible) + 15 mineurs. Amendement §11 du plan (corrections dans l'esprit du plan valide). -> retour GSD : phase 42.1.",
+    "2026-10-03 — Phase 42.1 (corrections DR1) executee : 4 plans, B1-B4 + M1/M2/M3/M9/M10/M11/M15 ; porte 1949/1949, 0 avertissement. -> DESIGN-REVIEW iteration 2/3."
   ],
   "cycles_precedents": [
     {
