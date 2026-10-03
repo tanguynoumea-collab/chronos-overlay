@@ -92,7 +92,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 ### Gestes (GST) — R7
 
-- [ ] **GST-01**: Sur **toute la silhouette** de chaque variante (disque r 74 pour Arcs/Braises, rectangle arrondi à 6 px de
+- [x] **GST-01**: Sur **toute la silhouette** de chaque variante (disque r 74 pour Arcs/Braises, rectangle arrondi à 6 px de
   marge pour les autres), un clic sans déplacement bascule % ↔ temps, un double-clic ouvre l'Historique sans bascule, un
   appui-glisser au-delà du seuil Windows déplace puis accroche, un clic droit ouvre les réglages.
 - [x] **GST-02**: Hors silhouette, le clic **traverse** vers le bureau ; la silhouette est peinte en `ZoneSilhouette`
@@ -151,7 +151,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | CAD-04 | Phase 40 | Complete |
 | BRA-01 | Phase 41 | Complete |
 | BRA-02 | Phase 41 | Complete |
-| GST-01 | Phase 42 | Pending |
+| GST-01 | Phase 42 | Complete |
 | GST-02 | Phase 42 | Complete |
 | GST-03 | Phase 42 | Complete |
 | VAL-06 | Phase 43 | Pending |
