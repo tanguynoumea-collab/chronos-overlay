@@ -221,19 +221,19 @@ public partial class HistoriqueWindow : Window
     /// </summary>
     private void AjouterDictionnaires()
     {
+        // Les quatre instances sont construites AVANT toute fusion : une fois la première fusionnée dans la fenêtre, l'indexeur de
+        // Resources y trouverait ses hauteurs NaN (le dernier fusionné gagne) au lieu des tokens normaux.
         var fenetre = DictionnairePleinEcran.Construire(Resources);
+        var semaine = DictionnairePleinEcran.Construire(Resources);
+        var jour = DictionnairePleinEcran.Construire(Resources);
+        var quatreSemaines = DictionnairePleinEcran.Construire(Resources);
+
         Resources.MergedDictionaries.Add(fenetre);
         _dictionnairesPleinEcran.Add((Resources, fenetre));
-
-        var semaine = DictionnairePleinEcran.Construire(Resources);
         VueSemaine.Resources.MergedDictionaries.Add(semaine);
         _dictionnairesPleinEcran.Add((VueSemaine.Resources, semaine));
-
-        var jour = DictionnairePleinEcran.Construire(Resources);
         VueJour.Resources.MergedDictionaries.Add(jour);
         _dictionnairesPleinEcran.Add((VueJour.Resources, jour));
-
-        var quatreSemaines = DictionnairePleinEcran.Construire(Resources);
         VueQuatreSemaines.Resources.MergedDictionaries.Add(quatreSemaines);
         _dictionnairesPleinEcran.Add((VueQuatreSemaines.Resources, quatreSemaines));
     }
