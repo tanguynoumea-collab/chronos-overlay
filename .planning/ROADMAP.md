@@ -375,7 +375,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 38. Historique : Pistes seul et plein écran | v1.9 | 6/6 | Complete    | 2026-10-03 |
 | 39. Thèmes Pâle / Classique / Vive | v1.9 | 4/4 | Complete    | 2026-10-03 |
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 8/8 | Complete    | 2026-10-03 |
-| 41. Braises | v1.9 | 0/? | Not started | - |
+| 41. Braises | v1.9 | 1/2 | In Progress|  |
 | 42. Un geste sur toute la silhouette | v1.9 | 0/? | Not started | - |
 | 43. Release 3.5.0 et constat | v1.9 | 0/? | Not started | - |
 
