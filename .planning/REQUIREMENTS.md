@@ -74,12 +74,12 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 - [x] **CAD-01**: Les cadrans sont rendus **à l'échelle 1** (plus de Viewbox) ; la fenêtre prend l'empreinte du cadran choisi
   (plan §1.1 : Fusible 190 × 92, Volets 190 × 66, Arcs/Braises 170 × 170, Marée 132 × 160), soit **+20 %** à l'écran pour
   Fusible et Volets ; empreintes en tokens, fonction pure testée.
-- [ ] **CAD-02**: Quand l'empreinte change (style, orientation), la fenêtre **reste collée à son coin d'accroche** et ne déborde
+- [x] **CAD-02**: Quand l'empreinte change (style, orientation), la fenêtre **reste collée à son coin d'accroche** et ne déborde
   jamais de l'écran (DPI mixte, multi-écrans) ; l'aperçu des réglages montre l'empreinte réelle.
 - [x] **CAD-03**: Fusible **vertical** (110 × 190, brûle de haut en bas), Marée **horizontale** (190 × 96, ligne d'eau
   ondulée), Volets **vertical** (128 × 190) existent, chacun reconnaissable par son signe propre (plan §1.2), avec les états
   « en attente », « plancher » et « indisponible ».
-- [ ] **CAD-04**: Une carte **Orientation** (Horizontal · Vertical) dans Apparence, visible seulement pour Fusible, Marée et
+- [x] **CAD-04**: Une carte **Orientation** (Horizontal · Vertical) dans Apparence, visible seulement pour Fusible, Marée et
   Volets ; orientation **mémorisée par cadran** (défaut = orientation actuelle), indépendante de « Disposition verticale » ;
   la galerie `--cadrans` montre les huit variantes.
 
@@ -146,9 +146,9 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | THM-03 | Phase 39 | Complete |
 | THM-04 | Phase 39 | Complete |
 | CAD-01 | Phase 40 | Complete |
-| CAD-02 | Phase 40 | Pending |
+| CAD-02 | Phase 40 | Complete |
 | CAD-03 | Phase 40 | Complete |
-| CAD-04 | Phase 40 | Pending |
+| CAD-04 | Phase 40 | Complete |
 | BRA-01 | Phase 41 | Pending |
 | BRA-02 | Phase 41 | Pending |
 | GST-01 | Phase 42 | Pending |
