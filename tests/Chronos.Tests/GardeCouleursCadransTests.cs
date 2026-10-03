@@ -49,8 +49,8 @@ public class GardeCouleursCadransTests
         var xamls = Directory.Exists(vues) ? Directory.EnumerateFiles(vues, "*.xaml").ToList() : new List<string>();
         var cs = Directory.Exists(controles) ? Directory.EnumerateFiles(controles, "*.cs").ToList() : new List<string>();
 
-        // Anti-mutisme : une garde qui ne lit rien passerait toujours — quatre vues, quatre contrôles.
-        Assert.True(xamls.Count == 4, $"la garde doit voir exactement 4 vues de cadran ({xamls.Count}) : {vues}");
+        // Anti-mutisme : une garde qui ne lit rien passerait toujours — cinq vues (Arcs extrait en phase 40), quatre contrôles.
+        Assert.True(xamls.Count == 5, $"la garde doit voir exactement 5 vues de cadran (Arcs extrait en phase 40) ({xamls.Count}) : {vues}");
         Assert.True(cs.Count == 4, $"la garde doit voir exactement 4 contrôles de cadran ({cs.Count}) : {controles}");
 
         var infractions = new List<string>();

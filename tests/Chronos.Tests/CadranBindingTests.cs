@@ -43,6 +43,9 @@ public class CadranBindingTests
         return new ChronosPaths(System.IO.Path.Combine(dir, "usage.json"), System.IO.Path.Combine(dir, "projects"));
     }
 
+    /// <summary>Phase 40 : les arcs vivent dans la portée de noms de CadranArcsView (VueArcs), plus dans celle de la fenêtre.</summary>
+    private static object? ArcNomme(MainWindow fenetre, string nom) => ((FrameworkElement)fenetre.FindName("VueArcs")).FindName(nom);
+
     // Construit un MainViewModel déterministe (orchestrateur non démarré, aucun I/O) et lui applique
     // le snapshot voulu, puis construit + met en page la fenêtre (Measure/Arrange déclenche les bindings).
     private static MainWindow BuildWindow(UsageSnapshot snap, out MainViewModel vm)
@@ -88,8 +91,8 @@ public class CadranBindingTests
         var fenetre = BuildWindow(snap, out var vm);
 
         Assert.Same(vm, fenetre.DataContext);
-        Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc);
-        Assert.NotNull(fenetre.FindName("ArcHebdo") as RingArc);
+        Assert.NotNull(ArcNomme(fenetre, "ArcCinqHeures") as RingArc);
+        Assert.NotNull(ArcNomme(fenetre, "ArcHebdo") as RingArc);
         Assert.False(vm.DataUnavailable);
     }
 
@@ -109,7 +112,7 @@ public class CadranBindingTests
         // Utilization null → PAS de % (texte vide), et le converter sur null n'a pas levé (fenêtre construite).
         Assert.True(vm.FiveHour.EstPlancher);
         Assert.Equal("", vm.FiveHour.UtilizationText);           // aucune valeur inventée
-        Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc); // la fenêtre s'est construite sans crash
+        Assert.NotNull(ArcNomme(fenetre, "ArcCinqHeures") as RingArc); // la fenêtre s'est construite sans crash
     }
 
     [WpfFact]
@@ -121,7 +124,7 @@ public class CadranBindingTests
         // Centre épuré : aucune donnée → aucun % affiché (textes vides), fenêtre construite sans crash.
         Assert.Equal("", vm.FiveHour.UtilizationText);
         Assert.Equal("", vm.SevenDay.UtilizationText);
-        Assert.NotNull(fenetre.FindName("ArcHebdo") as RingArc);
+        Assert.NotNull(ArcNomme(fenetre, "ArcHebdo") as RingArc);
 
         // EXA-03 : le MOT existe et il est CÂBLÉ sur l'état d'indisponibilité. La Visibility RÉSOLUE se
         // vérifie dans les tests MONTÉS ci-dessous — ce test-ci n'utilise que BuildWindow, la fenêtre n'a
@@ -159,7 +162,7 @@ public class CadranBindingTests
         Assert.DoesNotContain("~", vm.SevenDay.UtilizationText);   // jamais une incertitude symétrique
         Assert.StartsWith("≥", vm.SevenDay.UtilizationText);
         Assert.Contains("90", vm.SevenDay.UtilizationText);
-        Assert.NotNull(fenetre.FindName("ArcCinqHeures") as RingArc);
+        Assert.NotNull(ArcNomme(fenetre, "ArcCinqHeures") as RingArc);
     }
 
     // NET-02 + DEL-04 : la matière première brute surfacée en texte secondaire discret, dérivée dans
@@ -488,7 +491,7 @@ public class CadranBindingTests
         };
 
         var (fenetre, _) = MonterCadran(snap, out var vm);
-        var arc = Assert.IsType<RingArc>(fenetre.FindName("ArcHebdo"));
+        var arc = Assert.IsType<RingArc>(ArcNomme(fenetre, "ArcHebdo"));
 
         Assert.True(vm.SevenDay.EstPlancher);
         Assert.Equal(2, arc.StrokeDashArray.Count);
@@ -508,7 +511,7 @@ public class CadranBindingTests
         };
 
         var (fenetre, _) = MonterCadran(snap, out var vm);
-        var arc = Assert.IsType<RingArc>(fenetre.FindName("ArcHebdo"));
+        var arc = Assert.IsType<RingArc>(ArcNomme(fenetre, "ArcHebdo"));
 
         Assert.False(vm.SevenDay.EstPlancher);
         Assert.Empty(arc.StrokeDashArray);
@@ -532,7 +535,7 @@ public class CadranBindingTests
         };
 
         var (fenetre, _) = MonterCadran(snap, out var vm);
-        var arc = Assert.IsType<RingArc>(fenetre.FindName("ArcHebdo"));
+        var arc = Assert.IsType<RingArc>(ArcNomme(fenetre, "ArcHebdo"));
 
         Assert.True(vm.SevenDay.EstDate);        // daté : la marque d'âge, elle, s'allumera
         Assert.False(vm.SevenDay.EstPlancher);   // mais PROUVÉ juste : aucune texture
@@ -553,7 +556,7 @@ public class CadranBindingTests
         };
 
         var (fenetre, _) = MonterCadran(snap, out var vm, modeEtendu: false);
-        var timeline = Assert.IsType<RingArc>(fenetre.FindName("ArcTimelineNormal"));
+        var timeline = Assert.IsType<RingArc>(ArcNomme(fenetre, "ArcTimelineNormal"));
 
         Assert.True(vm.IsModeNormal);
         Assert.True(vm.FiveHour.EstPlancher);
@@ -577,8 +580,8 @@ public class CadranBindingTests
         };
 
         var (fenetre, _) = MonterCadran(snap, out var vm, modeEtendu: true);
-        var cinqHeures = Assert.IsType<RingArc>(fenetre.FindName("ArcCinqHeures"));
-        var vingtQuatre = Assert.IsType<RingArc>(fenetre.FindName("ArcVingtQuatreHeures"));
+        var cinqHeures = Assert.IsType<RingArc>(ArcNomme(fenetre, "ArcCinqHeures"));
+        var vingtQuatre = Assert.IsType<RingArc>(ArcNomme(fenetre, "ArcVingtQuatreHeures"));
 
         Assert.True(vm.IsModeEtendu);
         Assert.Equal(2, cinqHeures.StrokeDashArray.Count);
