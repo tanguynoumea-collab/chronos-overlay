@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "DESIGN-REVIEW",
-  "phase_status": "revue_1_en_cours",
+  "phase": "GSD",
+  "phase_status": "retour_design_review_1",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -63,7 +63,13 @@
       "Cycle 2 (40-07) : SnapToNearestCorner / RestorePlacement (code existant, SetWindowPos sans SWP_NOZORDER) peuvent ramener brievement au premier plan une fenetre en mode arriere-plan — defaut ancien, hors perimetre",
       "Cycle 2 (37) : message d'assertion de GardesDoctrineTests (l.56-58) parle encore de « trois composites »",
       "Cycle 2 (39) : gris epuise ≈ gris neutre (contraste 1,01-1,8) — a juger en revue visuelle ; etiquette « THEME » au-dessus des titres de groupe peut-etre redondante",
-      "Cycle 2 (41) : anneau hebdo de Braises a 12 braises pour 7 jours"
+      "Cycle 2 (41) : anneau hebdo de Braises a 12 braises pour 7 jours",
+      "DR1 M4 : hierarchie des titres de groupe de themes (meme style que THEME)",
+      "DR1 M5/M8 : collisions d'annotations dans l'Historique (absence / maintenant)",
+      "DR1 M6 : 4 semaines en plein ecran, vide sous la couverture et legende etroite",
+      "DR1 M7 : legende des tokens cassee (carre orphelin)",
+      "DR1 M12 : filet de charniere de la plaque Volets barre les chiffres",
+      "DR1 M14 : corps de police encore ecrits en dur dans Arcs/Braises/MainWindow"
     ]
   },
   "artefacts": {
@@ -109,7 +115,8 @@
     "2026-10-03 — DAEDALUS EVOLUTION : DESIGN_PLAN_CYCLE2.md (passes A + B) + maquettes HTML a l'echelle reelle (8 variantes de cadran, zones, Braises avant/apres, Historique plein ecran, 15 themes en 3 categories). CHECKPOINT 1 en attente.",
     "2026-10-03 — CHECKPOINT 1 VALIDE (« Je valide ») : DESIGN_PLAN_CYCLE2.md contractuel. -> GSD : milestone v1.9 (exe 3.5.0).",
     "2026-10-03 — GSD : milestone v1.8 clos avec ecarts (tag local v1.8, VAL-04/VAL-05 reportes en VAL-07) ; milestone v1.9 « Lisible partout » cree : 25 exigences, liste de purge validee, roadmap 36-43 approuvee. -> phase 36 (Socle).",
-    "2026-10-03 — GSD : phases 36-42 executees et verifiees (36 Socle, 37 Purge R5 + barre retiree, 38 Historique Pistes seul + plein ecran, 39 Themes 15 en 3 categories, 40 Cadrans echelle 1 + orientations, 41 Braises, 42 Geste unique) ; DoD cycle 2 ecrite (decision orchestrateur, .zeus/DOD-CYCLE2.md). GATE TESTS OK : Release + Debug 0 avertissement, 1922/1922. -> DESIGN-REVIEW iteration 1/3 (rendus hors ecran). Verifications humaines en attente : 38-HUMAN-UAT, 42-HUMAN-UAT."
+    "2026-10-03 — GSD : phases 36-42 executees et verifiees (36 Socle, 37 Purge R5 + barre retiree, 38 Historique Pistes seul + plein ecran, 39 Themes 15 en 3 categories, 40 Cadrans echelle 1 + orientations, 41 Braises, 42 Geste unique) ; DoD cycle 2 ecrite (decision orchestrateur, .zeus/DOD-CYCLE2.md). GATE TESTS OK : Release + Debug 0 avertissement, 1922/1922. -> DESIGN-REVIEW iteration 1/3 (rendus hors ecran). Verifications humaines en attente : 38-HUMAN-UAT, 42-HUMAN-UAT.",
+    "2026-10-03 — DESIGN-REVIEW 1/3 : 4 bloquants (B1 pastilles sur cadrans rectangulaires, B2 « indisponible » illisible, B3 epuise ≈ aucune donnee, B4 « ↻ HH:MM » invisible) + 15 mineurs. Amendement §11 du plan (corrections dans l'esprit du plan valide). -> retour GSD : phase 42.1."
   ],
   "cycles_precedents": [
     {

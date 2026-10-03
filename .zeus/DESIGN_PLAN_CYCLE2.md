@@ -215,3 +215,27 @@ La section Thème des réglages devient trois groupes titrés (même style que l
 - Réglage d'orientation partagé avec « Disposition verticale » : rejeté, autre fenêtre et autre sens.
 - Thèmes à fond clair dans « Pâle » : rejetés par l'utilisateur pour ce cycle.
 - Facteur d'échelle continu pour le plein écran : rejeté, une typographie continue devient illisible aux extrêmes.
+
+## 11. Amendement après DESIGN-REVIEW 1 (DAEDALUS, 2026-10-03)
+
+Rapport : `.zeus/reports/cycle2/design-review-1.md` (4 bloquants, 15 mineurs). Corrections retenues, dans l'esprit du
+plan validé (lisibilité des états non nominaux) :
+
+- **B1 — pastilles des cadrans rectangulaires** : Fusible, Marée et Volets (deux orientations) réservent une **bande de
+  14 px sous l'empreinte** pour la rangée de pastilles (âge, hors ligne, alertes), alignée à droite. La fenêtre vaut
+  empreinte + 14 en hauteur pour ces trois cadrans (constant, pas de saut à l'apparition d'une pastille). Arcs et Braises
+  inchangés. La silhouette de geste reste celle du cadran.
+- **B2 — « indisponible »** : centré dans l'empreinte pour les **8 variantes** (conforme au §7), posé sur une plaque
+  `FondCadran` (coins 6, marge 6 × 2) qui garantit le contraste quel que soit ce qui est dessous.
+- **B3 — épuisé ≠ aucune donnée** : `Neutre` (utilisation inconnue) devient **plus sombre que la piste**
+  (`Lerp(disque, piste, 0,5)`) : « rien » se lit comme du vide. `Epuise` reste le plus petit mélange à ≥ 3:1 contre le
+  disque, mais **désaturé** (gris de même luminance, plus de teinte bleue sur Synthwave / Marine / Néon) ; contraste
+  épuisé / neutre ≥ 2:1 testé sur les 15 thèmes. Les braises éteintes passent de `TickMajeur` à `Piste5h` (plus sombres).
+  Texte de plaque Volets sur épuisé ≥ 4,5:1.
+- **B4 — « ↻ HH:MM »** : même pinceau que la ligne hebdo (`TexteSecondaireClair`), corps 11 via le token
+  `CadranCorpsLibelle`.
+- **Mineurs corrigés dans la foulée** : libellés « 5 H / 7 J » de Fusible et Marée en `TexteSecondaireClair` (M1) ;
+  puce non choisie de la carte Orientation avec fond comme les puces de style (M2) ; dans Apparence, **style + orientation
+  avant les thèmes** (M3) ; « 5H » → « 5 H » sur les tuiles Volets (M11) ; marge interne de 4 px dans Volets H (M9) ;
+  vocabulaire périmé de la galerie (« ~ », « Estimé (repli JSONL) » → plancher « ≥ ») (M10) ; casse du sous-texte de la
+  sonde (M15). Les autres mineurs (M4-M8, M12-M14) vont à la roadmap.

@@ -110,13 +110,20 @@ observés).
 - Phases entières (36→43) : travail de milestone planifié — continue après la Phase 35 (v1.8)
 - Phases décimales (36.1, 36.2) : insertions urgentes (marquées INSERTED)
 
-- [x] **Phase 36: Socle** - Une valeur inconnue dans `settings.json` ne coûte plus que cette valeur, et tout argument `--xxx` inconnu ou retiré sort en silence avant le verrou mono-instance (completed 2026-10-03)
-- [x] **Phase 37: Une chaîne de données claire** - Les sources mortes, le pont statusLine et le recalibrage disparaissent en commits réversibles ; la barre est retirée de Claude Code avec sauvegarde ; le diagnostic et les docs décrivent exactement la chaîne réelle (completed 2026-10-03)
-- [x] **Phase 38: Historique : Pistes seul et plein écran** - L'Historique n'a plus qu'un style, et un plein écran sur l'écran courant agrandit pistes et textes sans défilement, avec une sortie toujours à portée (completed 2026-10-03)
-- [x] **Phase 39: Thèmes Pâle / Classique / Vive** - Quinze thèmes rangés en trois groupes, un gris épuisé et un rouge lisibles partout (≥ 3:1), et les quatre cadrans alternatifs qui suivent le thème (completed 2026-10-03)
-- [x] **Phase 40: Cadrans à l'échelle 1 et orientations** - Chaque cadran a son empreinte réelle (+20 % pour Fusible et Volets), la fenêtre reste collée à son coin, et Fusible vertical, Marée horizontale, Volets vertical existent (completed 2026-10-03)
-- [x] **Phase 41: Braises** - L'anneau 5 h montre 20 braises en 5 heures séparées par un vide, une flèche fixe à midi, et l'heure du reset en mode temps (completed 2026-10-03)
-- [x] **Phase 42: Un geste sur toute la silhouette** - Bascule, double-clic, glisser et clic droit marchent sur toute la silhouette des huit variantes, le clic traverse en dehors, et c'est prouvé par rendu (completed 2026-10-03)
+- [x] **Phase 36: Socle** - Une valeur inconnue dans `settings.json` ne coûte plus que cette valeur, et tout argument `--xxx` inconnu ou retiré sort en silence avant le verrou mono-instance
+ (completed 2026-10-03)
+- [x] **Phase 37: Une chaîne de données claire** - Les sources mortes, le pont statusLine et le recalibrage disparaissent en commits réversibles ; la barre est retirée de Claude Code avec sauvegarde ; le diagnostic et les docs décrivent exactement la chaîne réelle
+ (completed 2026-10-03)
+- [x] **Phase 38: Historique : Pistes seul et plein écran** - L'Historique n'a plus qu'un style, et un plein écran sur l'écran courant agrandit pistes et textes sans défilement, avec une sortie toujours à portée
+ (completed 2026-10-03)
+- [x] **Phase 39: Thèmes Pâle / Classique / Vive** - Quinze thèmes rangés en trois groupes, un gris épuisé et un rouge lisibles partout (≥ 3:1), et les quatre cadrans alternatifs qui suivent le thème
+ (completed 2026-10-03)
+- [x] **Phase 40: Cadrans à l'échelle 1 et orientations** - Chaque cadran a son empreinte réelle (+20 % pour Fusible et Volets), la fenêtre reste collée à son coin, et Fusible vertical, Marée horizontale, Volets vertical existent
+ (completed 2026-10-03)
+- [x] **Phase 41: Braises** - L'anneau 5 h montre 20 braises en 5 heures séparées par un vide, une flèche fixe à midi, et l'heure du reset en mode temps
+ (completed 2026-10-03)
+- [x] **Phase 42: Un geste sur toute la silhouette** - Bascule, double-clic, glisser et clic droit marchent sur toute la silhouette des huit variantes, le clic traverse en dehors, et c'est prouvé par rendu
+ (completed 2026-10-03)
 - [ ] **Phase 43: Release 3.5.0 et constat** - `Chronos-v3.5.0.exe` publié, la barre retirée constatée, et le constat avec l'utilisateur qui reprend VAL-04 et VAL-05 de v1.8
 
 ### Phase Details
@@ -324,6 +331,30 @@ l'échelle 1). **Contrat :** `.zeus/DESIGN_PLAN_CYCLE2.md` §2.
      corrigés ; `GardeGestesCadranTests` est adapté (GST-03).
 **Plans**: TBD
 **UI hint**: yes
+
+### Phase 42.1: Corrections de la revue visuelle 1 (INSERTED)
+
+**Goal:** Corriger les 4 écarts bloquants de la DESIGN-REVIEW 1 du cycle 2 (`.zeus/reports/cycle2/design-review-1.md`) et
+les mineurs retenus, selon l'amendement §11 de `.zeus/DESIGN_PLAN_CYCLE2.md` : pastilles des cadrans rectangulaires dans
+une bande réservée de 14 px, « indisponible » centré sur une plaque `FondCadran` pour les 8 variantes, `Neutre` plus sombre
+que la piste et `Epuise` désaturé (épuisé / neutre ≥ 2:1), braises éteintes plus sombres, « ↻ HH:MM » lisible ; mineurs
+M1, M2, M3, M9, M10, M11, M15.
+**Requirements**: CAD-03, THM-03, BRA-02 (renforcées — critères de lisibilité des états non nominaux)
+**Success Criteria** (what must be TRUE):
+  1. Sur Fusible, Marée et Volets (deux orientations), aucune pastille ne recouvre une valeur, une barre ou un volet : la
+     rangée vit dans une bande de 14 px sous l'empreinte (fenêtre = empreinte + 14), testé par rectangles rendus.
+  2. « indisponible » est centré dans l'empreinte des 8 variantes, sur une plaque `FondCadran`, contraste texte / plaque
+     ≥ 4,5:1 ; aucun chevauchement avec les pastilles.
+  3. Sur les 15 thèmes : épuisé ≥ 3:1 contre le disque, désaturé, épuisé / neutre ≥ 2:1, texte de plaque Volets sur épuisé
+     ≥ 4,5:1 ; braises éteintes sur `Piste5h`.
+  4. « ↻ HH:MM » en `TexteSecondaireClair`, corps via token ; libellés 5 H / 7 J de Fusible et Marée en
+     `TexteSecondaireClair` ; Apparence : style et orientation avant les thèmes ; galerie sans vocabulaire d'estimation.
+  5. Suite complète verte, build 0 avertissement ; rendus de contrôle régénérés pour la DESIGN-REVIEW 2.
+**Depends on:** Phase 42
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 42.1 to break down)
 
 ### Phase 43: Release 3.5.0 et constat
 **Goal**: `Chronos-v3.5.0.exe` est publié et documenté ; le retrait de la barre est constaté dans `~/.claude/settings.json`
