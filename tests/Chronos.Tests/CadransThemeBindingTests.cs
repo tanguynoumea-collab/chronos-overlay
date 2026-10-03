@@ -82,7 +82,7 @@ public class CadransThemeBindingTests
                     case CadranFusibleView:
                     {
                         var meches = Descendants<FuseBar>(hote).ToList();
-                        Assert.Equal(2, meches.Count);
+                        Assert.Equal(4, meches.Count);   // deux par gabarit, phase 40
                         foreach (var f in meches)
                         {
                             Assert.Same(T("CadranTuile"), f.TrackBrush);
@@ -94,7 +94,7 @@ public class CadransThemeBindingTests
                     case CadranMareeView:
                     {
                         var colonnes = Descendants<TideColumn>(hote).ToList();
-                        Assert.Equal(2, colonnes.Count);
+                        Assert.Equal(4, colonnes.Count);   // deux par gabarit, phase 40
                         foreach (var c in colonnes)
                         {
                             Assert.Same(T("FondCadran"), c.TrackBrush);
