@@ -66,6 +66,14 @@ public sealed partial class CadranPreviewViewModel : ObservableObject
         DayFraction = DayTimeline.Fraction(maintenant);
         DayResetAngles = DayTimeline.ResetAngles(maintenant, reset);
         DaySubTickAngles = DayTimeline.SubTickAngles(maintenant, reset);
+
+        // BRA-02 — heure du reset 5 h : même échantillon déterministe, jamais l'horloge réelle ni une source Claude.
+        // Comme en production, l'heure n'apparaît que si le reset est FUTUR (temps restant > 0) : exact ou rien.
+        // Heure sur l'hebdo différée : jamais affichée.
+        FiveHour.HasHeureReset = reset > maintenant;
+        FiveHour.HeureResetTexte = FiveHour.HasHeureReset ? "↻ " + TextesHistorique.HeureMinute(reset, TimeZoneInfo.Local) : "";
+        SevenDay.HasHeureReset = false;
+        SevenDay.HeureResetTexte = "";
     }
 
     // Pousse un jeu de valeurs d'échantillon dans une jauge en réutilisant ses propriétés réelles :
