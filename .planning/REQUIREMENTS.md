@@ -51,11 +51,11 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 - [x] **HIS-09**: L'Historique n'a plus qu'**un style, Pistes** : sélecteurs (fenêtre et carte des réglages), grilles
   Simplifié/Tuiles, piste Fenêtres 5 h, tokens et textes associés retirés ; la propriété `HistoriqueStyleSemaine` est
   supprimée et un ancien réglage se lit sans perte (SOC-01).
-- [ ] **HIS-10**: Un **plein écran général** (bouton « Plein écran » dans l'en-tête, F11) couvre l'écran courant ; les pistes
+- [x] **HIS-10**: Un **plein écran général** (bouton « Plein écran » dans l'en-tête, F11) couvre l'écran courant ; les pistes
   des trois vues se partagent la hauteur dans leurs proportions (plafonds Niveau 520, Rythme/Tokens 240), les textes et traits
   passent au dictionnaire `PleinEcran` (≈ ×1,35), la vue ne défile plus ; les règles d'honnêteté sont identiques à toutes les
   tailles.
-- [ ] **HIS-11**: On **sort** du plein écran par un bouton toujours visible, par F11, ou par Échap — Échap quitte d'abord le
+- [x] **HIS-11**: On **sort** du plein écran par un bouton toujours visible, par F11, ou par Échap — Échap quitte d'abord le
   plein écran, puis ferme la fenêtre au second appui ; la position et la taille d'avant sont restaurées.
 
 ### Thèmes (THM) — R6
@@ -139,8 +139,8 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | DAT-04 | Phase 37 | Complete |
 | DAT-05 | Phase 37 | Complete |
 | HIS-09 | Phase 38 | Complete |
-| HIS-10 | Phase 38 | Pending |
-| HIS-11 | Phase 38 | Pending |
+| HIS-10 | Phase 38 | Complete |
+| HIS-11 | Phase 38 | Complete |
 | THM-01 | Phase 39 | Pending |
 | THM-02 | Phase 39 | Pending |
 | THM-03 | Phase 39 | Pending |
