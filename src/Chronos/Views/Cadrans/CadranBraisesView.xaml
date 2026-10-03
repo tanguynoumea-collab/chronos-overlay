@@ -8,7 +8,8 @@
          flèche de reset fixe à midi, là où la fenêtre se termine. Hebdo = 12 braises uniformes.
          Nombre de braises = temps restant ; couleur = quota ; estimé = braises en pointillé.
          Centre : bascule % (défaut, 2 lignes) ↔ temps (3 lignes : compte à rebours 5 h, hebdo, puis « ↻ HH:MM » du
-         reset 5 h) — ShowPercent/ShowCountdown, clic sur le cadran. -->
+         reset 5 h) — ShowPercent/ShowCountdown, clic sur le cadran.
+         Braises éteintes = piste (Piste5h), plus sombres : le gris épuisé s'en détache — §11 B3. -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </UserControl.Resources>
@@ -20,13 +21,13 @@
                               QuotaBrush="{Binding FiveHour.ValueBrush}"
                               Estimated="{Binding FiveHour.EstPlancher}"
                               HasData="{Binding FiveHour.HasTime}"
-                              AshBrush="{DynamicResource TickMajeur}" WaitBrush="{DynamicResource CadranAttente}"/>
+                              AshBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
         <cad:EmberRingControl Radius="44" Count="12" PipRadius="3.6"
                               Fraction="{Binding SevenDay.FractionRemaining}"
                               QuotaBrush="{Binding SevenDay.ValueBrush}"
                               Estimated="{Binding SevenDay.EstPlancher}"
                               HasData="{Binding SevenDay.HasTime}"
-                              AshBrush="{DynamicResource TickMajeur}" WaitBrush="{DynamicResource CadranAttente}"/>
+                              AshBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
         <!-- Flèche de reset : ligne d'arrivée du reset 5 h, fixe à midi, hors anneau (triangle 10 × 7 + filet 12 px).
              Structure, pas donnée : visible dans tous les états. Aucune animation : le mouvement est réservé aux sessions.
              Non cliquable : la phase 42 décide des zones de geste. -->
@@ -51,9 +52,9 @@
             <TextBlock Text="{Binding SevenDay.CountdownText}" HorizontalAlignment="Center"
                        FontSize="11" Margin="0,1,0,0" Foreground="{DynamicResource TexteSecondaireClair}"/>
             <!-- BRA-02 : heure LOCALE du reset 5 h, issue de resets_at (serveur, exacte) ; absente si inconnue ou
-                 atteinte — exact ou rien. Corps 10,5 littéral comme les corps voisins : aucun token de cadran à 10,5. -->
+                 atteinte — exact ou rien. BRA-02 / §11 B4 : même pinceau que la ligne hebdo, corps 11 par token. -->
             <TextBlock x:Name="HeureResetBraises" Text="{Binding FiveHour.HeureResetTexte}" HorizontalAlignment="Center"
-                       FontSize="10.5" Margin="0,2,0,0" Foreground="{DynamicResource TexteSecondaire}"
+                       FontSize="{DynamicResource CadranCorpsLibelle}" Margin="0,2,0,0" Foreground="{DynamicResource TexteSecondaireClair}"
                        Visibility="{Binding FiveHour.HasHeureReset, Converter={StaticResource BoolToVis}}"/>
         </StackPanel>
     </Grid>

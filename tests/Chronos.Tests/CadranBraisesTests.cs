@@ -176,11 +176,12 @@ public class CadranBraisesTests
 
     // --- BRA-02 (plan 41-02) : heure exacte du reset dans le centre temps ---
 
-    /// <summary>Monte la vue Braises dans un hôte Border portant les pinceaux du thème par défaut ; renvoie (vue, hôte).</summary>
+    /// <summary>Monte la vue Braises dans un hôte Border portant les tokens de corps et les pinceaux du thème par défaut ; renvoie (vue, hôte).</summary>
     private static (CadranBraisesView vue, Border hote) Monter(CadranPreviewViewModel vm)
     {
         var vue = new CadranBraisesView();
         var hote = new Border { DataContext = vm, Child = vue };
+        hote.Resources.MergedDictionaries.Add(PleinEcranVuesTests.Tokens());   // corps par token (CadranCorpsLibelle, §11 B4)
         foreach (var kv in ThemeCatalog.Default.BrushTokens()) hote.Resources[kv.Key] = kv.Value;
         hote.Measure(new Size(Cote, Cote));
         hote.Arrange(new Rect(0, 0, Cote, Cote));
