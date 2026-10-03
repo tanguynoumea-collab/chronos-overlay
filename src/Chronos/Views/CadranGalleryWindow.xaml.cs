@@ -1,4 +1,5 @@
 using System.Windows;
+using Chronos.Theming;
 using Chronos.ViewModels;
 
 namespace Chronos.Views;
@@ -13,6 +14,19 @@ public partial class CadranGalleryWindow : Window
     public CadranGalleryWindow()
     {
         InitializeComponent();
-        DataContext = new CadranPreviewViewModel();
+        var vm = new CadranPreviewViewModel();
+        DataContext = vm;
+        AppliquerTheme(vm.SelectedTheme);
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CadranPreviewViewModel.SelectedTheme)) AppliquerTheme(vm.SelectedTheme);
+        };
+    }
+
+    /// <summary>La galerie suit le thème choisi, comme MainWindow.ApplyThemeBrushes : les cadrans lisent ces tokens
+    /// en DynamicResource en remontant jusqu'aux ressources de la fenêtre.</summary>
+    private void AppliquerTheme(ChronosTheme? theme)
+    {
+        foreach (var kv in (theme ?? ThemeCatalog.Default).BrushTokens()) Resources[kv.Key] = kv.Value;
     }
 }

@@ -15,13 +15,14 @@
                             Fraction="{Binding FiveHour.FractionRemaining}"
                             QuotaBrush="{Binding FiveHour.ValueBrush}"
                             Estimated="{Binding FiveHour.EstPlancher}"
-                            HasData="{Binding FiveHour.HasTime}"/>
-            <TextBlock Text="5 H" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"
+                            HasData="{Binding FiveHour.HasTime}"
+                            TrackBrush="{DynamicResource FondCadran}" WaterlineBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="11" FontWeight="SemiBold"
                        HorizontalAlignment="Center" Margin="0,7,0,1"/>
             <Grid HorizontalAlignment="Center">
-                <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
                            HorizontalAlignment="Center" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
-                <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
                            HorizontalAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </StackPanel>
@@ -30,13 +31,14 @@
                             Fraction="{Binding SevenDay.FractionRemaining}"
                             QuotaBrush="{Binding SevenDay.ValueBrush}"
                             Estimated="{Binding SevenDay.EstPlancher}"
-                            HasData="{Binding SevenDay.HasTime}"/>
-            <TextBlock Text="7 J" Foreground="#A9A8B2" FontSize="11" FontWeight="SemiBold"
+                            HasData="{Binding SevenDay.HasTime}"
+                            TrackBrush="{DynamicResource FondCadran}" WaterlineBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="11" FontWeight="SemiBold"
                        HorizontalAlignment="Center" Margin="0,7,0,1"/>
             <Grid HorizontalAlignment="Center">
-                <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
                            HorizontalAlignment="Center" Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
-                <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="#F4F2EC" FontSize="12" FontWeight="SemiBold"
+                <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="{DynamicResource TextePrincipal}" FontSize="12" FontWeight="SemiBold"
                            HorizontalAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </StackPanel>
