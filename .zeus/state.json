@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "DESIGN-REVIEW",
-  "phase_status": "revue_2_en_cours",
+  "phase": "DEV-COUNCIL",
+  "phase_status": "audit_en_cours",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -69,14 +69,19 @@
       "DR1 M6 : 4 semaines en plein ecran, vide sous la couverture et legende etroite",
       "DR1 M7 : legende des tokens cassee (carre orphelin)",
       "DR1 M12 : filet de charniere de la plaque Volets barre les chiffres",
-      "DR1 M14 : corps de police encore ecrits en dur dans Arcs/Braises/MainWindow"
+      "DR1 M14 : corps de police encore ecrits en dur dans Arcs/Braises/MainWindow",
+      "DR2 R2-M1 : libelles 5 H / 7 J et cordon/bande epuises de Fusible et Maree faibles sur fond gris-bleu moyen (~1,6-1,7:1)",
+      "DR2 R2-M2 : cadran rectangulaire accroche en bas flotte 14 px au-dessus du bord (bande de pastilles) — a juger sur ecran reel",
+      "DR2 R2-M3 : cadrage de l'apercu des reglages suppose fenetre = cadran + bande (fragilite)"
     ]
   },
   "artefacts": {
     "design_plan": ".zeus/DESIGN_PLAN.md (maquettes : https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k)",
     "rapports": [
       ".zeus/reports/llm-council-2026-09-26.md",
-      ".zeus/reports/llm-council-2026-10-03.md"
+      ".zeus/reports/llm-council-2026-10-03.md",
+      ".zeus/reports/cycle2/design-review-1.md",
+      ".zeus/reports/cycle2/design-review-2.md"
     ],
     "dod": ".zeus/DOD.md",
     "audit_points": "AUDIT_POINTS.md",
@@ -117,7 +122,8 @@
     "2026-10-03 — GSD : milestone v1.8 clos avec ecarts (tag local v1.8, VAL-04/VAL-05 reportes en VAL-07) ; milestone v1.9 « Lisible partout » cree : 25 exigences, liste de purge validee, roadmap 36-43 approuvee. -> phase 36 (Socle).",
     "2026-10-03 — GSD : phases 36-42 executees et verifiees (36 Socle, 37 Purge R5 + barre retiree, 38 Historique Pistes seul + plein ecran, 39 Themes 15 en 3 categories, 40 Cadrans echelle 1 + orientations, 41 Braises, 42 Geste unique) ; DoD cycle 2 ecrite (decision orchestrateur, .zeus/DOD-CYCLE2.md). GATE TESTS OK : Release + Debug 0 avertissement, 1922/1922. -> DESIGN-REVIEW iteration 1/3 (rendus hors ecran). Verifications humaines en attente : 38-HUMAN-UAT, 42-HUMAN-UAT.",
     "2026-10-03 — DESIGN-REVIEW 1/3 : 4 bloquants (B1 pastilles sur cadrans rectangulaires, B2 « indisponible » illisible, B3 epuise ≈ aucune donnee, B4 « ↻ HH:MM » invisible) + 15 mineurs. Amendement §11 du plan (corrections dans l'esprit du plan valide). -> retour GSD : phase 42.1.",
-    "2026-10-03 — Phase 42.1 (corrections DR1) executee : 4 plans, B1-B4 + M1/M2/M3/M9/M10/M11/M15 ; porte 1949/1949, 0 avertissement. -> DESIGN-REVIEW iteration 2/3."
+    "2026-10-03 — Phase 42.1 (corrections DR1) executee : 4 plans, B1-B4 + M1/M2/M3/M9/M10/M11/M15 ; porte 1949/1949, 0 avertissement. -> DESIGN-REVIEW iteration 2/3.",
+    "2026-10-03 — DESIGN-REVIEW 2/3 CONFORME : B1-B4 corriges (verifie par ZEUS sur rendus), aucune regression bloquante, 3 nouveaux mineurs (roadmap). Clics reels / 4 coins / F11-Echap -> constat humain phase 43. -> DEV-COUNCIL."
   ],
   "cycles_precedents": [
     {
