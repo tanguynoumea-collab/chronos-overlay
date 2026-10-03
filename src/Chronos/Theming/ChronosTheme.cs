@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 using System.Windows.Media;
 using Chronos.Rendering;
 
@@ -39,7 +40,12 @@ public sealed class ChronosTheme
     public Color RampAmber { get; init; }
     public Color RampRed { get; init; }
     public Color Neutre { get; init; }   // utilization inconnue → arc visible mais neutre
-    public Color Epuise { get; init; }   // utilization ≥ 100 % → gris « épuisé »
+    public Color Epuise { get; init; }   // utilization ≥ 100 % → gris « épuisé » (≥ 3:1 contre le disque, voir EpuiseLisible)
+
+    // Nuances dérivées pour les cadrans alternatifs (Braises, Fusible, Marée, Volets).
+    public Color CadranTuile { get; init; }     // tuile / sillon : mi-chemin disque → piste
+    public Color CadranAttente { get; init; }   // remplissage « en attente » : graduation à alpha 0x6E
+    public Color PlaqueTexte { get; init; }     // chiffres sur la plaque Volets : disque × 0,5 (contraste ≥ 3,18 sur tout le catalogue)
 
     /// <summary>Couleur de l'arc valeur pour une utilization donnée (null → neutre, ≥1 → épuisé, sinon rampe).</summary>
     public Color ArcColor(double? utilization) => utilization switch
@@ -73,7 +79,31 @@ public sealed class ChronosTheme
         ["TexteSecondaire"] = Frozen(TexteSecondaire),
         ["Alerte"] = Frozen(RampAmber),   // TOK-02 : la pastille de déconnexion suit tous les thèmes.
                                           // Précédent exact : SessionBrushTokens()["SessAttention"].
+        ["TickReset"] = Frozen(TextePrincipal),   // §5.3 : tirets de reset (et flèche de Braises) suivent le thème ; minuit = #F4F2EC, inchangé
+        ["Epuise"] = Frozen(Epuise),              // gris « épuisé » lisible du thème (Historique, cadrans)
+        ["CadranTuile"] = Frozen(CadranTuile),    // tuiles 5H/7J de Volets, sillon du Fusible
+        ["CadranAttente"] = Frozen(CadranAttente),   // remplissage « en attente » des quatre contrôles de cadran
+        ["PlaqueTexte"] = Frozen(PlaqueTexte),    // chiffres posés sur la plaque colorée de Volets
+        ["PlaqueFilet"] = Frozen(WithAlpha(PlaqueTexte, 0x33)),   // filet horizontal de la plaque Volets
+        ["PlaqueHachure"] = Hachure(WithAlpha(PlaqueTexte, 0x55)), // grain du plancher estimé (remplace la ressource locale GrainHatch)
     };
+
+    /// <summary>Hachure diagonale gelée (tuile 4 × 4, trait (0,4) → (4,0), plume 1). Construite ici plutôt qu'en
+    /// ressource locale : un Freezable local ne résout pas fiablement une DynamicResource.</summary>
+    private static Brush Hachure(Color plume)
+    {
+        var pen = new Pen(Frozen(plume), 1);
+        pen.Freeze();
+        var dessin = new GeometryDrawing(null, pen, new LineGeometry(new Point(0, 4), new Point(4, 0)));
+        var b = new DrawingBrush(dessin)
+        {
+            TileMode = TileMode.Tile,
+            Viewport = new Rect(0, 0, 4, 4),
+            ViewportUnits = BrushMappingMode.Absolute,
+        };
+        b.Freeze();
+        return b;
+    }
 
     /// <summary>Pinceaux du WIDGET DE SESSIONS (l'autre overlay), dérivés du thème pour que l'ensemble soit
     /// cohérent : fond des pastilles, encre, texte atténué, couleur d'attente. Les couleurs d'ÉTAT par session
@@ -123,6 +153,9 @@ public sealed class ChronosTheme
             RampRed = Hex(red),
             Neutre = Scale(tk, 0.5),
             Epuise = EpuiseLisible(d, tr, tk),
+            CadranTuile = Lerp(d, tr, 0.5),
+            CadranAttente = Color.FromArgb(0x6E, tk.R, tk.G, tk.B),
+            PlaqueTexte = Scale(d, 0.5),                     // d opaque → plaque opaque
         };
     }
 

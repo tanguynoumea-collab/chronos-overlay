@@ -12,7 +12,23 @@
     <SolidColorBrush x:Key="TickVisible"         Color="#C9C8D2"/>    <!-- graduations bien visibles (marques horaires 5 h + resets 24 h) -->
     <SolidColorBrush x:Key="TickReset"           Color="#F4F2EC"/>    <!-- marques de RESET 5 h = blanc chaud PRIMAIRE (même neutre que le texte principal) : hiérarchie
                                                                           cohérente sur l'échelle neutre (resets primaires / sous-tirets horaires secondaires gris),
-                                                                          se démarque par la LUMINOSITÉ, sans teinte étrangère ni conflit avec la rampe d'usage -->
+                                                                          se démarque par la LUMINOSITÉ, sans teinte étrangère ni conflit avec la rampe d'usage.
+                                                                          Repli statique ; le thème actif le remplace via BrushTokens() (= texte principal du thème). -->
+    <!-- Pinceaux des cadrans alternatifs et de l'Historique (phase 39). Replis STATIQUES = valeurs du thème « minuit » ;
+         ChronosTheme.BrushTokens() les écrase par celles du thème actif. -->
+    <SolidColorBrush x:Key="Epuise"              Color="#63626C"/>    <!-- gris « épuisé » lisible (≥ 3:1 contre le disque) ; repli = minuit -->
+    <SolidColorBrush x:Key="CadranTuile"         Color="#201F26"/>    <!-- tuiles Volets / sillon Fusible (mi-chemin disque → piste) ; repli = minuit -->
+    <SolidColorBrush x:Key="CadranAttente"       Color="#6EC9C8D2"/>  <!-- remplissage « en attente » des contrôles de cadran ; repli = minuit -->
+    <SolidColorBrush x:Key="PlaqueTexte"         Color="#0B0A0D"/>    <!-- chiffres sur la plaque Volets (disque × 0,5) ; repli = minuit -->
+    <SolidColorBrush x:Key="PlaqueFilet"         Color="#330B0A0D"/>  <!-- filet horizontal de la plaque Volets ; repli = minuit -->
+    <DrawingBrush x:Key="PlaqueHachure" TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute">  <!-- grain du plancher estimé (Volets) ; repli = minuit -->
+        <DrawingBrush.Drawing>
+            <GeometryDrawing>
+                <GeometryDrawing.Geometry><LineGeometry StartPoint="0,4" EndPoint="4,0"/></GeometryDrawing.Geometry>
+                <GeometryDrawing.Pen><Pen Brush="#550B0A0D" Thickness="1"/></GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
     <SolidColorBrush x:Key="Piste5h"             Color="#2A2932"/>    <!-- piste de l'arc 5 h -->
     <SolidColorBrush x:Key="PisteHebdo"          Color="#26252E"/>    <!-- piste de l'arc hebdo -->
     <SolidColorBrush x:Key="Piste24h"            Color="#242330"/>    <!-- piste de l'anneau timeline 24 h (nuance sombre proche des autres pistes) -->
