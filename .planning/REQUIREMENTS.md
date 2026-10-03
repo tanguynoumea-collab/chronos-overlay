@@ -48,7 +48,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 ### Historique (HIS) — R4
 
-- [ ] **HIS-09**: L'Historique n'a plus qu'**un style, Pistes** : sélecteurs (fenêtre et carte des réglages), grilles
+- [x] **HIS-09**: L'Historique n'a plus qu'**un style, Pistes** : sélecteurs (fenêtre et carte des réglages), grilles
   Simplifié/Tuiles, piste Fenêtres 5 h, tokens et textes associés retirés ; la propriété `HistoriqueStyleSemaine` est
   supprimée et un ancien réglage se lit sans perte (SOC-01).
 - [ ] **HIS-10**: Un **plein écran général** (bouton « Plein écran » dans l'en-tête, F11) couvre l'écran courant ; les pistes
@@ -138,7 +138,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | DAT-03 | Phase 37 | Complete |
 | DAT-04 | Phase 37 | Complete |
 | DAT-05 | Phase 37 | Complete |
-| HIS-09 | Phase 38 | Pending |
+| HIS-09 | Phase 38 | Complete |
 | HIS-10 | Phase 38 | Pending |
 | HIS-11 | Phase 38 | Pending |
 | THM-01 | Phase 39 | Pending |
