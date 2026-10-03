@@ -21,7 +21,7 @@
             <!-- Silhouette de geste (R7) : TOUTE la forme capte la souris. ZoneSilhouette (alpha 1) et non Transparent : sur une fenêtre layered, Windows laisse passer le clic là où l'alpha vaut 0. -->
             <Rectangle RadiusX="10" RadiusY="10" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
             <!-- 5 H -->
-            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,4,0,0"/>
             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="16" Margin="96,3,6,0">
                 <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
@@ -36,7 +36,7 @@
                          HasData="{Binding FiveHour.HasTime}"
                          TrackBrush="{DynamicResource CadranTuile}" NotchBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
             <!-- 7 J -->
-            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,50,0,0"/>
             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="16" Margin="96,49,6,0">
                 <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
@@ -59,7 +59,7 @@
             <!-- Silhouette de geste (R7) : TOUTE la forme capte la souris. ZoneSilhouette (alpha 1) et non Transparent : sur une fenêtre layered, Windows laisse passer le clic là où l'alpha vaut 0. -->
             <Rectangle RadiusX="10" RadiusY="10" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
             <!-- 5 H -->
-            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        Width="50" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,3,0,0"/>
             <cad:FuseBar Orientation="Vertical" Width="20" Height="138" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,24,0,0" CordThickness="10"
                          Fraction="{Binding FiveHour.FractionRemaining}"
@@ -74,7 +74,7 @@
                            TextAlignment="Center" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
             <!-- 7 J -->
-            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        Width="50" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="55,3,0,0"/>
             <cad:FuseBar Orientation="Vertical" Width="20" Height="138" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="70,24,0,0" CordThickness="8"
                          Fraction="{Binding SevenDay.FractionRemaining}"

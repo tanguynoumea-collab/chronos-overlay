@@ -27,7 +27,7 @@
                             Estimated="{Binding FiveHour.EstPlancher}"
                             HasData="{Binding FiveHour.HasTime}"
                             TrackBrush="{DynamicResource FondCadran}" WaterlineBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
-            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        Width="42" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14,125,0,0"/>
             <!-- Boîte de 60 centrée sur la colonne : « ≥ 100 % » (≈ 43) dépasse la colonne de 42, pas l'empreinte. -->
             <Grid Width="60" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,140,0,0">
@@ -43,7 +43,7 @@
                             Estimated="{Binding SevenDay.EstPlancher}"
                             HasData="{Binding SevenDay.HasTime}"
                             TrackBrush="{DynamicResource FondCadran}" WaterlineBrush="{DynamicResource TextePrincipal}" WaitBrush="{DynamicResource CadranAttente}"/>
-            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        Width="42" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="76,125,0,0"/>
             <Grid Width="60" Height="16" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="67,140,0,0">
                 <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource TextePrincipal}" FontSize="{DynamicResource CadranCorpsValeur}" FontWeight="SemiBold"
@@ -62,7 +62,7 @@
             <!-- Silhouette de geste (R7) : TOUTE la forme capte la souris. ZoneSilhouette (alpha 1) et non Transparent : sur une fenêtre layered, Windows laisse passer le clic là où l'alpha vaut 0. -->
             <Rectangle RadiusX="10" RadiusY="10" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
             <!-- 5 H -->
-            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,19,0,0"/>
             <cad:TideColumn Orientation="Horizontal" Width="102" Height="32" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="32,10,0,0"
                             Fraction="{Binding FiveHour.FractionRemaining}"
@@ -77,7 +77,7 @@
                            TextAlignment="Right" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
             <!-- 7 J -->
-            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
+            <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,63,0,0"/>
             <cad:TideColumn Orientation="Horizontal" Width="102" Height="32" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="32,54,0,0"
                             Fraction="{Binding SevenDay.FractionRemaining}"

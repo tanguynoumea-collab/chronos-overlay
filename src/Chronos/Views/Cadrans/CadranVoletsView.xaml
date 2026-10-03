@@ -7,11 +7,36 @@
          Chiffre EXACT du compte à rebours = temps (le plus honnête) ; luminance de la plaque = quota ; volets = repère
          périphérique ; plaque tramée = estimé (plancher).
          Phase 40 : échelle 1, deux gabarits choisis par la DP Orientation de la vue.
-         - Horizontal (190 × 66, défaut) : deux lignes, tuile 26 · plaque 90 × 26 (corps 13) · 6 volets en ligne 62 × 14.
+         - Horizontal (190 × 66, défaut) : deux lignes, tuile 26 · plaque 86 × 26 (corps 13) · 6 volets en ligne 62 × 14 ;
+           marge interne 4 px : le 6e volet ne sort plus du congé r10 de la silhouette — M9.
          - Vertical (128 × 190) : deux colonnes, tuile 26 · plaque 56 × 40 (corps 14) · 6 volets empilés 16 × 104,
            allumés depuis le haut. -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <!-- §11 B3 : sur le gris épuisé, le texte de plaque passe à PlaqueTexteEpuise (≥ 4,5:1, calculé par le thème).
+             Foreground porté par le style (aucune valeur locale sur les chiffres : elle battrait le déclencheur). -->
+        <Style x:Key="ChiffrePlaque5h" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource PlaqueTexte}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding FiveHour.Exhausted}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PlaqueTexteEpuise}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ChiffrePlaque7j" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource PlaqueTexte}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SevenDay.Exhausted}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PlaqueTexteEpuise}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -21,57 +46,53 @@
               HorizontalAlignment="Left" VerticalAlignment="Top">
             <!-- Silhouette de geste (R7) : TOUTE la forme capte la souris. ZoneSilhouette (alpha 1) et non Transparent : sur une fenêtre layered, Windows laisse passer le clic là où l'alpha vaut 0. -->
             <Rectangle RadiusX="10" RadiusY="10" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
-            <!-- Ligne 5 H (y = 4) -->
-            <Border Width="26" Height="26" Margin="0,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <!-- Ligne 5 H (y = 4, x = 4 : marge interne §11 M9) -->
+            <Border Width="26" Height="26" Margin="4,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Background="{DynamicResource CadranTuile}" CornerRadius="5">
-                <TextBlock Text="5H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
+                <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
                            FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Width="90" Height="26" Margin="32,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Border Width="86" Height="26" Margin="34,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                     CornerRadius="5" Background="{Binding FiveHour.ValueBrush}">
                 <Grid>
                     <Rectangle Fill="{DynamicResource PlaqueHachure}" RadiusX="5" RadiusY="5"
                                Visibility="{Binding FiveHour.EstPlancher, Converter={StaticResource BoolToVis}}"/>
                     <Border Height="1" VerticalAlignment="Center" Background="{DynamicResource PlaqueFilet}"/>
-                    <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueH}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding FiveHour.CountdownText}" Style="{StaticResource ChiffrePlaque5h}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueH}"
                                Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueH}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding FiveHour.UtilizationText}" Style="{StaticResource ChiffrePlaque5h}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueH}"
                                Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
                 </Grid>
             </Border>
-            <cad:FlapRow Orientation="Horizontal" Width="62" Height="14" Margin="128,10,0,0"
+            <cad:FlapRow Orientation="Horizontal" Width="62" Height="14" Margin="124,10,0,0"
                          HorizontalAlignment="Left" VerticalAlignment="Top" Count="6"
                          Fraction="{Binding FiveHour.FractionRemaining}"
                          HasData="{Binding FiveHour.HasTime}"
                          OnBrush="{DynamicResource TextePrincipal}" OffBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
 
             <!-- Ligne 7 J (y = 36) -->
-            <Border Width="26" Height="26" Margin="0,36,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Border Width="26" Height="26" Margin="4,36,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Background="{DynamicResource CadranTuile}" CornerRadius="5">
-                <TextBlock Text="7J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
+                <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
                            FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Width="90" Height="26" Margin="32,36,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Border Width="86" Height="26" Margin="34,36,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                     CornerRadius="5" Background="{Binding SevenDay.ValueBrush}">
                 <Grid>
                     <Rectangle Fill="{DynamicResource PlaqueHachure}" RadiusX="5" RadiusY="5"
                                Visibility="{Binding SevenDay.EstPlancher, Converter={StaticResource BoolToVis}}"/>
                     <Border Height="1" VerticalAlignment="Center" Background="{DynamicResource PlaqueFilet}"/>
-                    <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueH}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding SevenDay.CountdownText}" Style="{StaticResource ChiffrePlaque7j}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueH}"
                                Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueH}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding SevenDay.UtilizationText}" Style="{StaticResource ChiffrePlaque7j}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueH}"
                                Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
                 </Grid>
             </Border>
-            <cad:FlapRow Orientation="Horizontal" Width="62" Height="14" Margin="128,42,0,0"
+            <cad:FlapRow Orientation="Horizontal" Width="62" Height="14" Margin="124,42,0,0"
                          HorizontalAlignment="Left" VerticalAlignment="Top" Count="6"
                          Fraction="{Binding SevenDay.FractionRemaining}"
                          HasData="{Binding SevenDay.HasTime}"
@@ -87,7 +108,7 @@
             <!-- Colonne 5 H (x = 4) -->
             <Border Width="26" Height="26" Margin="19,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Background="{DynamicResource CadranTuile}" CornerRadius="5">
-                <TextBlock Text="5H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
+                <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
                            FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <Border Width="56" Height="40" Margin="4,32,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -96,13 +117,11 @@
                     <Rectangle Fill="{DynamicResource PlaqueHachure}" RadiusX="5" RadiusY="5"
                                Visibility="{Binding FiveHour.EstPlancher, Converter={StaticResource BoolToVis}}"/>
                     <Border Height="1" VerticalAlignment="Center" Background="{DynamicResource PlaqueFilet}"/>
-                    <TextBlock Text="{Binding FiveHour.CountdownText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueV}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding FiveHour.CountdownText}" Style="{StaticResource ChiffrePlaque5h}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueV}"
                                Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding FiveHour.UtilizationText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueV}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding FiveHour.UtilizationText}" Style="{StaticResource ChiffrePlaque5h}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueV}"
                                Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
                 </Grid>
             </Border>
@@ -115,7 +134,7 @@
             <!-- Colonne 7 J (x = 68) -->
             <Border Width="26" Height="26" Margin="83,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Background="{DynamicResource CadranTuile}" CornerRadius="5">
-                <TextBlock Text="7J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
+                <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaire}" FontSize="{DynamicResource CadranCorpsLibelle}"
                            FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <Border Width="56" Height="40" Margin="68,32,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
@@ -124,13 +143,11 @@
                     <Rectangle Fill="{DynamicResource PlaqueHachure}" RadiusX="5" RadiusY="5"
                                Visibility="{Binding SevenDay.EstPlancher, Converter={StaticResource BoolToVis}}"/>
                     <Border Height="1" VerticalAlignment="Center" Background="{DynamicResource PlaqueFilet}"/>
-                    <TextBlock Text="{Binding SevenDay.CountdownText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueV}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding SevenDay.CountdownText}" Style="{StaticResource ChiffrePlaque7j}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueV}"
                                Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding SevenDay.UtilizationText}" Foreground="{DynamicResource PlaqueTexte}"
-                               FontSize="{DynamicResource CadranCorpsPlaqueV}" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding SevenDay.UtilizationText}" Style="{StaticResource ChiffrePlaque7j}"
+                               FontSize="{DynamicResource CadranCorpsPlaqueV}"
                                Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}"/>
                 </Grid>
             </Border>
