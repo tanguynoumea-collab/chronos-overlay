@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -157,14 +158,17 @@ public class ZonesGesteRenduTests
         SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
     };
 
+    /// <summary>Monte la fenêtre réelle. Plan 03 : ouvreur de réglages, état d'authentification et horloge injectables
+    /// (l'horloge permet de faire avancer l'arbitre du clic en pas à pas).</summary>
     private static (MainWindow fenetre, FrameworkElement racine, MainViewModel vm, Size taille) Monter(
-        CadranStyle style, OrientationCadran o, UsageSnapshot snap)
+        CadranStyle style, OrientationCadran o, UsageSnapshot snap,
+        IOuvreurReglages? ouvreur = null, EtatAuthentification etat = EtatAuthentification.Connecte, FakeClock? horloge = null)
     {
         var paths = TempPaths();
         var prov = new FakeUsageProvider();
         var orch = new RefreshOrchestrator(prov, RefreshOptions.Default);
         var settings = new SettingsService(paths);
-        var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
+        var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, horloge ?? new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(paths, settings, prov, new FakeClock(Now)),
             new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
@@ -176,11 +180,11 @@ public class ZonesGesteRenduTests
         vm.OrientationMaree = orientation;
         vm.OrientationVolets = orientation;
         vm.ApplySnapshot(snap);
-        vm.AppliquerEtatAuth(EtatAuthentification.Connecte);
+        vm.AppliquerEtatAuth(etat);
 
         var guard = new TopmostGuard();
         var controller = new OverlayController(guard, new SettingsService(paths));
-        var fenetre = new MainWindow(vm, guard, controller);
+        var fenetre = new MainWindow(vm, guard, controller, ouvreur);
 
         var racine = (FrameworkElement)fenetre.Content!;
         racine.DataContext = vm;
@@ -332,5 +336,278 @@ public class ZonesGesteRenduTests
 
         var tokens = File.ReadAllText(Path.Combine(racine, "Resources", "DesignTokens.xaml"));
         Assert.Matches("<SolidColorBrush x:Key=\"ZoneSilhouette\"\\s+Color=\"#01000000\"", tokens);
+    }
+
+    // ================================ Plan 03 : routage par le répartiteur unique ================================
+
+    private static UsageSnapshot SnapshotEncoreValide() => new()
+    {
+        FiveHour = new WindowState
+        {
+            Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Provenance = ProvenanceReleve.EncoreValide,
+            Utilization = 0.3, ResetsAt = Now + TimeSpan.FromHours(2),
+        },
+        SevenDay = new WindowState
+        {
+            Kind = WindowKind.SevenDay, Reliability = SourceReliability.Exact, Provenance = ProvenanceReleve.EncoreValide,
+            Utilization = 0.6, ResetsAt = Now + TimeSpan.FromDays(3),
+        },
+        SourceCapturedAt = Now,
+    };
+
+    /// <summary>Chemin visuel du visuel touché jusqu'à la racine (inclus), du plus profond au moins profond.</summary>
+    private static List<DependencyObject> CheminVers(DependencyObject touche, DependencyObject racine)
+    {
+        var chemin = new List<DependencyObject>();
+        for (DependencyObject? d = touche; d is not null; d = VisualTreeHelper.GetParent(d))
+        {
+            chemin.Add(d);
+            if (ReferenceEquals(d, racine)) break;
+        }
+        return chemin;
+    }
+
+    private static Point CentreRendu(FrameworkElement element, FrameworkElement racine)
+    {
+        var coin = element.TransformToAncestor(racine).Transform(new Point(0, 0));
+        return new Point(coin.X + element.ActualWidth / 2, coin.Y + element.ActualHeight / 2);
+    }
+
+    [WpfFact]
+    public void La_racine_porteuse_du_repartiteur_s_appelle_Racine()
+    {
+        foreach (var (style, o) in Variantes)
+        {
+            var (fenetre, racine, _, _) = Monter(style, o, SnapshotNominal());
+            try { Assert.Equal("Racine", racine.Name); }
+            finally { fenetre.Close(); }
+        }
+    }
+
+    /// <summary>
+    /// Le HitTest de WPF dit « qui recevra l'événement » une fois que Windows l'a livré. Ce test COMPLÈTE la preuve par
+    /// rendu (alpha), il ne la remplace pas : un pinceau Transparent serait « touché » ici mais jamais atteint en vrai.
+    /// On teste la RACINE et non la Window, dont la Border de gabarit est Transparent.
+    /// </summary>
+    [WpfFact]
+    public void Le_HitTest_route_dedans_vers_la_racine_et_rien_dehors()
+    {
+        foreach (var (style, o) in Variantes)
+        {
+            var (fenetre, racine, _, taille) = Monter(style, o, SnapshotNominal());
+            try
+            {
+                var nom = $"{style}/{o}";
+                var sil = ZoneGeste.Trouver(racine);
+                Assert.NotNull(sil);
+                var (dedans, dehors) = Temoins(style, taille);
+                var echecs = new List<string>();
+
+                foreach (var (x, y) in dedans)
+                {
+                    var p = new Point(x + 0.5, y + 0.5);
+                    var touche = VisualTreeHelper.HitTest(racine, p)?.VisualHit;
+                    if (touche is null) { echecs.Add($"dedans ({x},{y}) : rien de touché"); continue; }
+                    var chemin = CheminVers(touche, racine);
+                    if (!chemin.Contains(racine)) echecs.Add($"dedans ({x},{y}) : {touche.GetType().Name} n'a pas Racine pour ancêtre");
+                    if (chemin.OfType<System.Windows.Controls.Primitives.ButtonBase>().Any())
+                        echecs.Add($"dedans ({x},{y}) : un ButtonBase sur le chemin");
+                    if (!ZoneGeste.Contient(sil!, racine.TranslatePoint(p, sil!)))
+                        echecs.Add($"dedans ({x},{y}) : refusé par le filtre géométrique");
+                }
+                foreach (var (x, y) in dehors)
+                {
+                    var r = VisualTreeHelper.HitTest(racine, new Point(x + 0.5, y + 0.5));
+                    if (r is not null) echecs.Add($"dehors ({x},{y}) : {r.VisualHit.GetType().Name} touché, attendu rien");
+                }
+                Assert.True(echecs.Count == 0, $"{nom} :\n  " + string.Join("\n  ", echecs));
+            }
+            finally { fenetre.Close(); }
+        }
+    }
+
+    [WpfFact]
+    public void Une_pastille_visible_garde_son_propre_clic()
+    {
+        var (fenetre, racine, vm, taille) = Monter(CadranStyle.Arcs, OrientationCadran.Horizontal, SnapshotNominal(),
+                                                    etat: EtatAuthentification.Deconnecte);
+        try
+        {
+            Assert.True(vm.AfficherPastilleDeconnexion);
+            var pastille = Assert.IsType<Button>(fenetre.FindName("PastilleDeconnexion"));
+            var c = CentreRendu(pastille, racine);
+
+            var touche = VisualTreeHelper.HitTest(racine, c)?.VisualHit;
+            Assert.NotNull(touche);
+            Assert.Contains(CheminVers(touche!, racine), d => d is System.Windows.Controls.Primitives.ButtonBase);
+
+            var pixels = Rendre(racine, (int)taille.Width, (int)taille.Height);
+            Assert.True(Alpha(pixels, (int)taille.Width, (int)c.X, (int)c.Y) > 0, "la pastille de déconnexion doit être peinte (alpha > 0)");
+        }
+        finally { fenetre.Close(); }
+    }
+
+    [WpfFact]
+    public void La_pastille_d_age_capte_sur_tout_son_disque()
+    {
+        var (fenetre, racine, vm, taille) = Monter(CadranStyle.Arcs, OrientationCadran.Horizontal, SnapshotEncoreValide());
+        try
+        {
+            Assert.True(vm.AfficherReleveDate);
+            var pastille = Assert.IsType<Ellipse>(fenetre.FindName("PastilleReleveDate"));
+            var c = CentreRendu(pastille, racine);
+
+            var pixels = Rendre(racine, (int)taille.Width, (int)taille.Height);
+            var a = Alpha(pixels, (int)taille.Width, (int)c.X, (int)c.Y);
+            Assert.True(a > 0, $"centre de la pastille d'âge ({c.X:0.#},{c.Y:0.#}) : alpha {a}, attendu > 0 (sinon seul le trait porte l'infobulle)");
+        }
+        finally { fenetre.Close(); }
+    }
+
+    /// <summary>
+    /// Clic droit NON filtré par la silhouette (décision orchestrateur) : tout pixel qui le reçoit ouvre les réglages,
+    /// pastilles comprises. <c>MouseRightButtonUpEvent</c> est un événement DIRECT : WPF le relève sur chaque élément du
+    /// chemin à partir du <c>MouseUp</c> bouillonnant. On lève donc le <c>MouseUp</c> (bouton droit) sur l'élément touché,
+    /// exactement comme le fait le périphérique souris.
+    /// </summary>
+    [WpfFact]
+    public void Le_clic_droit_ouvre_les_reglages_partout_ou_il_arrive()
+    {
+        void LeverClicDroit(DependencyObject touche)
+        {
+            DependencyObject? d = touche;
+            while (d is not null && d is not UIElement) d = VisualTreeHelper.GetParent(d);
+            var cible = Assert.IsAssignableFrom<UIElement>(d);
+            cible.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Right)
+            {
+                RoutedEvent = UIElement.MouseUpEvent,
+            });
+        }
+
+        foreach (var (style, o, temoin) in new[]
+                 {
+                     (CadranStyle.Arcs, OrientationCadran.Horizontal, (Func<Size, Point>)(_ => new Point(85.5, 40.5))),
+                     (CadranStyle.Volets, OrientationCadran.Horizontal, (Func<Size, Point>)(t => new Point(t.Width / 2, t.Height / 2))),
+                 })
+        {
+            var ouvreur = new FakeOuvreurReglages();
+            var (fenetre, racine, _, taille) = Monter(style, o, SnapshotNominal(), ouvreur);
+            try
+            {
+                var touche = VisualTreeHelper.HitTest(racine, temoin(taille))?.VisualHit;
+                Assert.NotNull(touche);
+                LeverClicDroit(touche!);
+                Assert.Equal(1, ouvreur.Ouvertures);
+            }
+            finally { fenetre.Close(); }
+        }
+
+        var ouvreurP = new FakeOuvreurReglages();
+        var (fenetreP, racineP, vmP, _) = Monter(CadranStyle.Arcs, OrientationCadran.Horizontal, SnapshotNominal(), ouvreurP,
+                                                  EtatAuthentification.Deconnecte);
+        try
+        {
+            Assert.True(vmP.AfficherPastilleDeconnexion);
+            LeverClicDroit(Assert.IsType<Button>(fenetreP.FindName("PastilleDeconnexion")));
+            Assert.Equal(1, ouvreurP.Ouvertures);   // non filtré : la pastille ouvre aussi les réglages
+        }
+        finally { fenetreP.Close(); }
+    }
+
+    /// <summary>
+    /// GST-02 — garde RUNTIME : rien de ce qui porte un geste n'a un pinceau nul ou d'alpha 0 (sur une fenêtre layered,
+    /// alpha 0 = le clic traverse). Silhouettes : exactement ZoneSilhouette ; ButtonBase (et racine de leur gabarit) et
+    /// porteurs d'infobulle : alpha ≥ 1. La Window (Background alpha 0 voulu) n'est pas dans le parcours.
+    /// </summary>
+    [WpfFact]
+    public void Aucun_element_a_geste_n_a_de_pinceau_nul_ou_transparent()
+    {
+        var montages = Variantes.Select(v => (Nom: $"{v.Style}/{v.Orientation}", v.Style, v.Orientation, Snap: SnapshotNominal(),
+                                              Etat: EtatAuthentification.Connecte))
+            .Append(("Arcs déconnecté", CadranStyle.Arcs, OrientationCadran.Horizontal, SnapshotNominal(), EtatAuthentification.Deconnecte))
+            .Append(("Arcs encore valide", CadranStyle.Arcs, OrientationCadran.Horizontal, SnapshotEncoreValide(), EtatAuthentification.Connecte));
+
+        var echecs = new List<string>();
+        foreach (var (nom, style, o, snap, etat) in montages)
+        {
+            var (fenetre, racine, _, _) = Monter(style, o, snap, etat: etat);
+            try
+            {
+                var vus = new HashSet<DependencyObject>();
+                foreach (var d in Descendants(racine))
+                {
+                    vus.Add(d);
+                    Verifier(nom, d, echecs);
+                }
+                // Complément LOGIQUE : les ButtonBase repliés (Collapsed) n'ont pas de gabarit appliqué, on lit leur Background.
+                foreach (var b in DescendantsLogiques(racine).OfType<System.Windows.Controls.Primitives.ButtonBase>())
+                    if (!vus.Contains(b)) Verifier(nom, b, echecs);
+            }
+            finally { fenetre.Close(); }
+        }
+        Assert.True(echecs.Count == 0, string.Join("\n", echecs));
+
+        static IEnumerable<DependencyObject> Descendants(DependencyObject racine)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(racine); i++)
+            {
+                var enfant = VisualTreeHelper.GetChild(racine, i);
+                yield return enfant;
+                foreach (var d in Descendants(enfant)) yield return d;
+            }
+        }
+
+        static IEnumerable<DependencyObject> DescendantsLogiques(DependencyObject racine)
+        {
+            foreach (var enfant in LogicalTreeHelper.GetChildren(racine).OfType<DependencyObject>())
+            {
+                yield return enfant;
+                foreach (var d in DescendantsLogiques(enfant)) yield return d;
+            }
+        }
+
+        static string Decrire(DependencyObject d)
+            => d is FrameworkElement { Name.Length: > 0 } fe ? $"{fe.Name} ({d.GetType().Name})" : d.GetType().Name;
+
+        static string Lu(Brush? b) => b is null ? "null" : b is SolidColorBrush s ? s.Color.ToString() : b.GetType().Name;
+
+        static bool AlphaPositif(Brush? b) => b is SolidColorBrush { Color.A: >= 1 };
+
+        static void Verifier(string nom, DependencyObject d, List<string> echecs)
+        {
+            if (ZoneGeste.GetSilhouette(d))
+            {
+                var fill = (d as Shape)?.Fill;
+                if (fill is not SolidColorBrush s || s.Color != Color.FromArgb(1, 0, 0, 0))
+                    echecs.Add($"{nom} : silhouette {Decrire(d)} : Fill {Lu(fill)}, attendu #01000000");
+            }
+
+            if (d is System.Windows.Controls.Primitives.ButtonBase bouton)
+            {
+                if (!AlphaPositif(bouton.Background))
+                    echecs.Add($"{nom} : {Decrire(d)} : Background {Lu(bouton.Background)}, attendu alpha ≥ 1");
+                if (VisualTreeHelper.GetChildrenCount(bouton) > 0)
+                {
+                    var gabarit = VisualTreeHelper.GetChild(bouton, 0);
+                    var fond = gabarit switch { Panel p => p.Background, Border br => br.Background, _ => null };
+                    if (!AlphaPositif(fond))
+                        echecs.Add($"{nom} : racine du gabarit de {Decrire(d)} ({gabarit.GetType().Name}) : Background {Lu(fond)}, attendu alpha ≥ 1");
+                }
+            }
+
+            if (d is FrameworkElement { ToolTip: not null } porteur)
+            {
+                var surface = porteur switch
+                {
+                    Shape sh => sh.Fill,
+                    Panel p => p.Background,
+                    Border br => br.Background,
+                    Control c => c.Background,
+                    _ => null,
+                };
+                if (!AlphaPositif(surface))
+                    echecs.Add($"{nom} : porteur d'infobulle {Decrire(d)} : surface {Lu(surface)}, attendu alpha ≥ 1");
+            }
+        }
     }
 }

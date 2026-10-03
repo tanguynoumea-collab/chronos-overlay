@@ -4,10 +4,11 @@ using Xunit;
 namespace Chronos.Tests;
 
 /// <summary>
-/// ACC-02 — garde TEXTUELLE des gestes du cadran. <c>MouseButtonEventArgs.ClickCount</c> n'est pas réglable en test
-/// (setter interne) : on garde donc la FORME du code-behind — il ne fait que transmettre le compte de clics au
-/// ViewModel (la décision vit dans l'arbitre pur), il marque toujours l'événement Handled (pas de DragMove depuis le
-/// centre), et le drag par les anneaux comme le clic droit (réglages) restent câblés tels quels.
+/// GST-01 — garde TEXTUELLE du répartiteur unique de gestes (grille <c>Racine</c> de <c>MainWindow</c>). <c>ClickCount</c>
+/// n'est pas réglable en test (setter interne) : la décision vit dans <c>AutomateGeste</c> et <c>ArbitreClicCentre</c>, testés
+/// purs. On garde ici la FORME du code-behind : appui filtré par la silhouette puis confié à l'automate, relâchement qui ne
+/// lit jamais <c>ClickCount</c>, glisser au seuil Windows suivi de l'accroche, perte de capture transmise, plus de
+/// <c>CentreHit</c> ni de <c>DragMove</c> de fenêtre. Les tests CAD-02 (recalage, phase 40) sont conservés tels quels.
 /// </summary>
 public class GardeGestesCadranTests
 {
@@ -20,40 +21,110 @@ public class GardeGestesCadranTests
         return texte;
     }
 
-    /// <summary>Le corps du gestionnaire du centre : de sa signature jusqu'à la première accolade fermante de méthode.</summary>
-    private static string CorpsDuCentre(string texte)
+    /// <summary>Corps d'une méthode : de sa signature jusqu'à la première accolade fermante de méthode (fins de ligne normalisées).</summary>
+    private static string Corps(string texte, string signature)
     {
-        var debut = texte.IndexOf("private void CentreHit_MouseLeftButtonDown", StringComparison.Ordinal);
-        Assert.True(debut >= 0, "CentreHit_MouseLeftButtonDown introuvable dans MainWindow.xaml.cs");
+        texte = texte.Replace("\r\n", "\n");
+        var debut = texte.IndexOf(signature, StringComparison.Ordinal);
+        Assert.True(debut >= 0, $"{signature} introuvable dans MainWindow.xaml.cs");
         var fin = texte.IndexOf("\n    }", debut, StringComparison.Ordinal);
-        Assert.True(fin > debut, "fin du gestionnaire du centre introuvable");
+        Assert.True(fin > debut, $"fin de {signature} introuvable");
         return texte[debut..fin];
     }
 
-    [Fact]
-    public void Le_centre_transmet_le_compte_de_clics_et_reste_Handled()
+    private static int Compter(string texte, string motif)
     {
-        var corps = CorpsDuCentre(Lire("Views", "MainWindow.xaml.cs"));
+        int n = 0, i = 0;
+        while ((i = texte.IndexOf(motif, i, StringComparison.Ordinal)) >= 0) { n++; i += motif.Length; }
+        return n;
+    }
 
-        Assert.Contains("ClicCentre(e.ClickCount)", corps, StringComparison.Ordinal);
+    [Fact]
+    public void Le_repartiteur_unique_est_sur_la_grille_racine()
+    {
+        var xaml = Lire("Views", "MainWindow.xaml");
+        Assert.Contains("x:Name=\"Racine\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MouseLeftButtonDown=\"Racine_MouseLeftButtonDown\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MouseMove=\"Racine_MouseMove\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MouseLeftButtonUp=\"Racine_MouseLeftButtonUp\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("LostMouseCapture=\"Racine_LostMouseCapture\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("MouseRightButtonUp=\"OnRightClick\"", xaml, StringComparison.Ordinal);
+        Assert.Equal(1, Compter(xaml, "MouseLeftButtonDown="));
+        Assert.DoesNotContain("CentreHit", xaml, StringComparison.Ordinal);
+        Assert.Equal(2, Compter(xaml, "Cursor=\"Hand\""));   // les deux Button de pastilles, et eux seuls
+
+        var code = Lire("Views", "MainWindow.xaml.cs");
+        Assert.DoesNotContain("MouseLeftButtonDown +=", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("Cadran_MouseLeftButtonDown", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("CentreHit", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddHandler(", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("handledEventsToo", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void L_appui_est_filtre_par_la_silhouette_et_confie_a_l_automate()
+    {
+        var corps = Corps(Lire("Views", "MainWindow.xaml.cs"), "private void Racine_MouseLeftButtonDown");
+        Assert.Contains("ZoneGeste.Trouver(", corps, StringComparison.Ordinal);
+        Assert.Contains("ZoneGeste.Contient(", corps, StringComparison.Ordinal);
+        Assert.Contains("_geste.Appui(", corps, StringComparison.Ordinal);
+        Assert.Contains("e.ClickCount", corps, StringComparison.Ordinal);
+        Assert.Contains("ClicCentre(", corps, StringComparison.Ordinal);
+        Assert.Contains("CaptureMouse()", corps, StringComparison.Ordinal);
         Assert.Contains("e.Handled = true", corps, StringComparison.Ordinal);
         Assert.DoesNotContain("ToggleCenterMode()", corps, StringComparison.Ordinal);   // la bascule directe ferait double emploi
     }
 
     [Fact]
-    public void Le_drag_et_le_clic_droit_sont_inchanges()
+    public void Le_relachement_ne_lit_jamais_ClickCount()
     {
-        var code = Lire("Views", "MainWindow.xaml.cs");
-        Assert.Contains("MouseLeftButtonDown += Cadran_MouseLeftButtonDown", code, StringComparison.Ordinal);
-        Assert.Contains("DragMove();", code, StringComparison.Ordinal);
-
-        var xaml = Lire("Views", "MainWindow.xaml");
-        Assert.Contains("MouseRightButtonUp=\"OnRightClick\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("MouseLeftButtonDown=\"CentreHit_MouseLeftButtonDown\"", xaml, StringComparison.Ordinal);
+        var corps = Corps(Lire("Views", "MainWindow.xaml.cs"), "private void Racine_MouseLeftButtonUp");
+        Assert.Contains("_geste.Relache()", corps, StringComparison.Ordinal);
+        Assert.Contains("ClicCentre(", corps, StringComparison.Ordinal);
+        Assert.Contains("ReleaseMouseCapture()", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain("e.ClickCount", corps, StringComparison.Ordinal);       // il vaut 0 au relâchement
+        Assert.DoesNotContain("ToggleCenterMode()", corps, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Le_delai_vient_du_systeme_et_l_arbitre_reste_pur()
+    public void Le_glisser_part_au_seuil_Windows_puis_accroche()
+    {
+        var corps = Corps(Lire("Views", "MainWindow.xaml.cs"), "private void Racine_MouseMove");
+        foreach (var attendu in new[]
+                 {
+                     "MinimumHorizontalDragDistance", "MinimumVerticalDragDistance", "_geste.Deplacement(", "CommencerGlisser",
+                     "ReleaseMouseCapture()", "_enDeplacement = true", "finally", "DragMove();", "SnapToNearestCorner()",
+                 })
+            Assert.Contains(attendu, corps, StringComparison.Ordinal);
+        Assert.True(corps.IndexOf("DragMove();", StringComparison.Ordinal) < corps.IndexOf("SnapToNearestCorner()", StringComparison.Ordinal),
+                    "l'accroche doit suivre le RETOUR de DragMove");
+    }
+
+    [Fact]
+    public void La_perte_de_capture_est_transmise()
+    {
+        var corps = Corps(Lire("Views", "MainWindow.xaml.cs"), "private void Racine_LostMouseCapture");
+        Assert.Contains("_geste.PerteCapture()", corps, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Les_commentaires_faux_ont_disparu()
+    {
+        var xaml = Lire("Views", "MainWindow.xaml");
+        var code = Lire("Views", "MainWindow.xaml.cs");
+        foreach (var faux in new[] { "Transparent suffit", "CentreHit le prouve", "continue d'atteindre CentreHit", "clic au centre" })
+        {
+            Assert.DoesNotContain(faux, xaml, StringComparison.Ordinal);
+            Assert.DoesNotContain(faux, code, StringComparison.Ordinal);
+        }
+        Assert.Contains("ZoneSilhouette", xaml, StringComparison.Ordinal);
+        // Le seul « Transparent » est le Background de la balise <Window> : il DOIT rester alpha 0 (hors silhouette, le clic traverse).
+        Assert.Equal(1, Compter(xaml, "\"Transparent\""));
+        Assert.DoesNotContain("#01000000", xaml, StringComparison.Ordinal);   // le token, jamais l'alpha littéral
+    }
+
+    [Fact]
+    public void Le_delai_vient_du_systeme_et_les_automates_restent_purs()
     {
         Assert.Contains("GetDoubleClickTime", Lire("Interop", "NativeMethods.cs"), StringComparison.Ordinal);
 
@@ -63,6 +134,10 @@ public class GardeGestesCadranTests
         Assert.DoesNotContain("Thread.Sleep", arbitre, StringComparison.Ordinal);
 
         Assert.DoesNotContain("Thread.Sleep", Lire("ViewModels", "MainViewModel.cs"), StringComparison.Ordinal);
+
+        var automate = Lire("ViewModels", "AutomateGeste.cs");
+        Assert.DoesNotContain("System.Windows", automate, StringComparison.Ordinal);
+        Assert.DoesNotContain("DateTime.Now", automate, StringComparison.Ordinal);
     }
 
     [Fact]
