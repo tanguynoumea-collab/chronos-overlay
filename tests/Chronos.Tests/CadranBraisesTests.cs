@@ -146,7 +146,9 @@ public class CadranBraisesTests
         vm.FiveHour.HasTime = false;
         hote.UpdateLayout();
         Assert.Equal(Visibility.Visible, fleche.Visibility);
-        Assert.True(fleche.IsVisible);
+        // IsVisible exige une PresentationSource (fenêtre) : on vérifie plutôt toute la chaîne d'ancêtres jusqu'à la vue.
+        for (DependencyObject? e = fleche; e is not null && !ReferenceEquals(e, hote); e = VisualTreeHelper.GetParent(e))
+            if (e is UIElement u) Assert.Equal(Visibility.Visible, u.Visibility);
     }
 
     [Fact]
