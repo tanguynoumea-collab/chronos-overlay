@@ -10,7 +10,7 @@
         seule, en DIP.)
         HIS-05 — vue « 4 semaines » (DESIGN_PLAN §2.4) : X = samedi → samedi de la semaine courante S (sept colonnes « sam. … ven. »),
         quatre courbes hebdo superposées sur ce même axe, chacune projetée par fraction de SA plage.
-        D-35-13 : une piste dédiée (PisteQuatreSemaines) — S-3 / S-2 / S-1 en HistoGris aux opacités HistoOpaciteSemaine3/2/1, S par
+        D-35-13 : une piste dédiée (PisteQuatreSemaines) — S-3 / S-2 / S-1 dans le gris épuisé du thème (Epuise, phase 39) aux opacités HistoOpaciteSemaine3/2/1, S par
                   bandes de la rampe du thème actif, plateau épuisé en gris ; une grille, un ordre de peinture.
         D-35-14 : hauteurs, largeurs et opacités = tokens (NIVEAU 250, étiquettes 140, rangées de couverture 10 au pas de 16).
         D-35-15 : étiquettes EMPILÉES à droite (S, S-1, S-2, S-3), entières (retour à la ligne, jamais tronquées), trait repère gris à
@@ -191,7 +191,7 @@
                     </Grid>
                     <hc:PisteQuatreSemaines x:Name="PisteQuatreSemaines" Grid.Column="1" Height="{DynamicResource HistoHauteurNiveauQuatreSemaines}"
                                             Plage="{Binding DonneesQuatreSemaines.Courante.Plage}" Semaines="{Binding DonneesQuatreSemaines.Semaines}"
-                                            Rampe="{Binding Theme}" Gris="{StaticResource HistoGris}" Grille="{StaticResource Line}"
+                                            Rampe="{Binding Theme}" Gris="{DynamicResource Epuise}" Grille="{StaticResource Line}"
                                             EpaisseurEscalier="{DynamicResource HistoEpaisseurEscalier}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"
                                             OpaciteS1="{StaticResource HistoOpaciteSemaine1}"
                                             OpaciteS2="{StaticResource HistoOpaciteSemaine2}"

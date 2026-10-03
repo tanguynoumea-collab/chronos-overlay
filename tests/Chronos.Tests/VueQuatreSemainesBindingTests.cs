@@ -7,6 +7,7 @@ using Chronos.Controls.Historique;
 using Chronos.Models.Historique;
 using Chronos.Services.Historique;
 using Chronos.Text;
+using Chronos.Theming;
 using Chronos.ViewModels.Historique;
 using Chronos.Views.Historique;
 using Xunit;
@@ -153,10 +154,24 @@ public class VueQuatreSemainesBindingTests
         Assert.Equal(0.45, piste.OpaciteS2);
         Assert.Equal(0.25, piste.OpaciteS3);
         Assert.Equal(2.2, piste.EpaisseurEscalier);
-        Assert.Equal(Color.FromRgb(0x5A, 0x59, 0x60), BancQuatreSemaines.CouleurDe(piste.Gris));
+        Assert.Equal(ThemeCatalog.Default.Epuise, BancQuatreSemaines.CouleurDe(piste.Gris)); // gris épuisé lisible du thème — phase 39, HistoGris reste pour hachure et repère
         Assert.Same(vm.Theme, piste.Rampe);
         Assert.Same(vm.DonneesQuatreSemaines!.Semaines, piste.Semaines);
         Assert.Equal(vm.DonneesQuatreSemaines.Courante.Plage, piste.Plage);
+    }
+
+    [WpfFact]
+    public void Le_gris_epuise_des_quatre_semaines_suit_le_theme()
+    {
+        var (_, vue) = BancQuatreSemaines.Monter();
+        var lave = ThemeCatalog.ByKey("lave");
+        foreach (var kv in lave.BrushTokens())
+            vue.Resources[kv.Key] = kv.Value;   // comme HistoriqueWindow : l'entrée locale prime sur le repli statique
+        BancQuatreSemaines.MettreEnPage(vue, 920, 900);
+
+        var piste = BancQuatreSemaines.Piste(vue);
+        Assert.Equal(lave.Epuise, BancQuatreSemaines.CouleurDe(piste.Gris));   // #7C5844 : le gris épuisé de Lave, pas HistoGris
+        Assert.Equal(Color.FromRgb(0x7C, 0x58, 0x44), lave.Epuise);
     }
 
     [WpfFact]

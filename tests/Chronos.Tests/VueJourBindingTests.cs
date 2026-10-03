@@ -8,6 +8,7 @@ using Chronos.Models.Historique;
 using Chronos.Rendering.Historique;
 using Chronos.Services.Historique;
 using Chronos.Text;
+using Chronos.Theming;
 using Chronos.ViewModels.Historique;
 using Chronos.Views.Historique;
 using Xunit;
@@ -114,6 +115,20 @@ public class VueJourBindingTests
     // ------------------------------------------------------------------ Task 1 : grille, hauteurs, axe, légendes
 
     [WpfFact]
+    public void Le_gris_epuise_de_l_historique_suit_le_theme()
+    {
+        var (_, vue) = Monter();
+        var lave = ThemeCatalog.ByKey("lave");
+        foreach (var kv in lave.BrushTokens())
+            vue.Resources[kv.Key] = kv.Value;   // comme HistoriqueWindow : l'entrée locale prime sur le repli statique
+        MettreEnPage(vue, 920, 900);
+
+        var niveau = Assert.Single(PistesVisibles(vue).OfType<PisteNiveau>());
+        Assert.Equal(lave.Epuise, CouleurDe(niveau.Gris));   // #7C5844 : le gris épuisé de Lave, pas HistoGris
+        Assert.Equal(Hex("7C5844"), lave.Epuise);
+    }
+
+    [WpfFact]
     public void La_vue_Jour_a_exactement_les_pistes_et_hauteurs_du_plan()
     {
         var (vm, vue) = Monter();
@@ -129,7 +144,7 @@ public class VueJourBindingTests
         Assert.Equal(2.4, niveau.EpaisseurPremierPlan);
         Assert.Equal(1.0, niveau.EpaisseurFine);
         Assert.Equal(Hex("A9A6C4"), CouleurDe(niveau.TraitFin));           // Ink2 : l'hebdo en trait fin
-        Assert.Equal(Hex("5A5960"), CouleurDe(niveau.Gris));               // HistoGris : « épuisée »
+        Assert.Equal(ThemeCatalog.Default.Epuise, CouleurDe(niveau.Gris)); // gris épuisé lisible du thème — phase 39, HistoGris reste pour hachure et repère
         Assert.Equal(Hex("F4F2EC"), CouleurDe(niveau.TraitReset));         // TickReset (thème par défaut)
         Assert.Same(vm.Theme, niveau.Rampe);
         Assert.Same(vm.DonneesJour!.Analyse, niveau.Analyse);

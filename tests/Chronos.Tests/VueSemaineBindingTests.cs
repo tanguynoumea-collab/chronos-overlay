@@ -10,6 +10,7 @@ using Chronos.Rendering.Historique;
 using Chronos.Services;
 using Chronos.Services.Historique;
 using Chronos.Text;
+using Chronos.Theming;
 using Chronos.ViewModels.Historique;
 using Chronos.Views.Historique;
 using Xunit;
@@ -300,7 +301,7 @@ public class VueSemaineBindingTests
         Assert.Equal(8.0, niveau.LongueurTiretReset);
         Assert.Equal(0.35, niveau.OpaciteTrou);
         Assert.Equal(Hex(0xF4, 0xF2, 0xEC), CouleurDe(niveau.TraitReset));      // TickReset (DynamicResource, repli statique du dictionnaire)
-        Assert.Equal(Hex(0x5A, 0x59, 0x60), CouleurDe(niveau.Gris));            // HistoGris
+        Assert.Equal(ThemeCatalog.Default.Epuise, CouleurDe(niveau.Gris));      // gris épuisé lisible du thème — phase 39, HistoGris reste pour hachure et repère
         Assert.Equal(Hex(0x8B, 0x7B, 0xF0), CouleurDe(niveau.CadreDivergence)); // Accent
         Assert.Equal(Hex(0x2C, 0x29, 0x42), CouleurDe(niveau.FondTrou));        // Line
         Assert.Same(vm.DonneesSemaine!.Analyse, niveau.Analyse);

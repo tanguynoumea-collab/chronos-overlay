@@ -204,7 +204,7 @@
                 </Grid>
                 <hc:PisteNiveau Grid.Row="2" Grid.Column="1" Height="{DynamicResource HistoHauteurNiveauJour}" Variante="Jour"
                                 Plage="{Binding DonneesJour.Plage}" Analyse="{Binding DonneesJour.Analyse}" InstantLecture="{Binding DonneesJour.LueA}"
-                                Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}" Gris="{StaticResource HistoGris}"
+                                Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}" Gris="{DynamicResource Epuise}"
                                 FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}" BordTrouJeton="{DynamicResource Alerte}" Grille="{StaticResource Line}"
                                 EpaisseurPremierPlan="{DynamicResource HistoEpaisseurPremierPlan}" EpaisseurFine="{StaticResource HistoEpaisseurFin}" OpaciteTrou="{StaticResource HistoOpaciteTrou}"/>
 

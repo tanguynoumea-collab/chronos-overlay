@@ -300,7 +300,7 @@
                                         Precedente="{Binding DonneesSemaine.Precedente}" PlagePrecedente="{Binding DonneesSemaine.PlagePrecedente}"
                                         Divergences="{Binding DonneesSemaine.Divergences}" InstantLecture="{Binding DonneesSemaine.LueA}"
                                         Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}"
-                                        Gris="{StaticResource HistoGris}" FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}"
+                                        Gris="{DynamicResource Epuise}" FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}"
                                         BordTrouJeton="{DynamicResource Alerte}" CadreDivergence="{StaticResource Accent}" Grille="{StaticResource Line}"
                                         EpaisseurEscalier="{DynamicResource HistoEpaisseurEscalier}" EpaisseurPremierPlan="{DynamicResource HistoEpaisseurPremierPlan}"
                                         EpaisseurFine="{StaticResource HistoEpaisseurFin}" LongueurTiretReset="{DynamicResource HistoLongueurTiretReset}"
