@@ -626,46 +626,6 @@ public class MainViewModelTests
         Assert.Empty(vm.DayResetAngles);
     }
 
-    // --- INT-03 : à l'init, IsOAuthUsageEnabled reflète le setting (défaut true) ---
-    [Fact]
-    public void Initialisation_IsOAuthUsageEnabled_reflete_le_setting_par_defaut_true()
-    {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out _);
-        Assert.True(vm.IsOAuthUsageEnabled);   // défaut ChronosSettings = true
-    }
-
-    // --- INT-03 : le toggle bascule l'état ET persiste le flag dans settings.json ---
-    [Fact]
-    public void ToggleOAuthUsage_bascule_et_persiste_le_flag()
-    {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out var settings);
-        Assert.True(vm.IsOAuthUsageEnabled);
-
-        vm.ToggleOAuthUsageCommand.Execute(null);
-        Assert.False(vm.IsOAuthUsageEnabled);
-        Assert.False(settings.Load().OAuthUsageEnabled);   // persisté off
-
-        vm.ToggleOAuthUsageCommand.Execute(null);
-        Assert.True(vm.IsOAuthUsageEnabled);
-        Assert.True(settings.Load().OAuthUsageEnabled);     // persisté on
-    }
-
-    // --- GAP-1 : le toggle n'écrase pas un réglage écrit sur disque par un autre writer ---
-    [Fact]
-    public void ToggleOAuthUsage_n_ecrase_pas_les_reglages_persistes_par_un_autre_writer()
-    {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out _, out var settings);
-
-        // Simule l'OverlayController : APRÈS construction du VM, un drag persiste un nouveau coin.
-        settings.Save(settings.Load() with { Corner = OverlayCorner.BottomLeft });
-
-        vm.ToggleOAuthUsageCommand.Execute(null);   // passe OAuthUsageEnabled à false
-
-        var apres = settings.Load();
-        Assert.False(apres.OAuthUsageEnabled);                 // flag bien persisté…
-        Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);  // …SANS écraser le coin du drag (GAP-1)
-    }
-
     // ================== TOK-02 / TOK-03 : la panne visible et réparable ==================
     // Le 401 muet de deux mois n'était pas seulement un défaut de service : rien, dans la couche
     // présentation, ne pouvait le DIRE. Ces tests verrouillent les deux moitiés du remède :
@@ -891,23 +851,26 @@ public class MainViewModelTests
     }
 
     [Fact]
-    public void Les_DEUX_interrupteurs_sont_INDEPENDANTS_sur_disque()
+    public void L_interrupteur_de_la_sonde_persiste_sans_toucher_aux_autres_reglages()
     {
-        // C'est LE test qui documente pourquoi ce sont deux champs et non un seul : leurs profils de coût
-        // sont opposés. OAuthUsageEnabled garde le jeton de l'app bureau et ne dépense RIEN ; la sonde
-        // dépense une vraie micro-requête par passage. Les fusionner priverait l'utilisateur du seul
-        // interrupteur qui gouverne une dépense — ou lui ferait perdre ses chiffres exacts pour l'éteindre.
+        // La sonde dépense une vraie micro-requête par passage : son interrupteur ne gouverne QU'ELLE. Le
+        // couper ne doit déplacer aucun autre réglage persisté (coin, arrière-plan, mode du cadran).
         var settings = new SettingsService(TempPaths());
+        settings.Save(settings.Load() with
+        {
+            Corner = OverlayCorner.BottomLeft,
+            Background = true,
+            CadranMode = CadranDisplayMode.Etendu,
+        });
         var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, settings: settings);
 
         vm.ToggleSondeEnTetesCommand.Execute(null);
-        Assert.False(settings.Load().SondeEnTetesActivee);
-        Assert.True(settings.Load().OAuthUsageEnabled);      // l'autre source n'a PAS été coupée
-        Assert.True(vm.IsOAuthUsageEnabled);
 
-        vm.ToggleOAuthUsageCommand.Execute(null);
-        Assert.False(settings.Load().OAuthUsageEnabled);
-        Assert.False(settings.Load().SondeEnTetesActivee);   // …et réciproquement, aucun effet croisé
+        var apres = settings.Load();
+        Assert.False(apres.SondeEnTetesActivee);
+        Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);
+        Assert.True(apres.Background);
+        Assert.Equal(CadranDisplayMode.Etendu, apres.CadranMode);
     }
 
     [Fact]

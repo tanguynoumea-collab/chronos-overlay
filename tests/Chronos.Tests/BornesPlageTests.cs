@@ -12,8 +12,8 @@ namespace Chronos.Tests;
 ///
 /// Ce que ces tests gravent : la semaine de forfait est « samedi 00:00 → samedi 00:00 heure locale » (le
 /// <c>resets_at</c> 7 j constaté est 2026-09-18T22:00Z = samedi 19/09 00:00 à Paris) ; celle du 24 au 31 octobre
-/// 2026 dure 169 h, celle du 27 mars 2027 167 h ; le jour du 25/10/2026 dure 25 h. Et la DÉRIVE d'une heure de
-/// <c>WeeklyWindow</c> (7 × 24 h fixes) est MESURÉE par un test — documentée (CAD-XX v2), pas corrigée ici.
+/// 2026 dure 169 h, celle du 27 mars 2027 167 h ; le jour du 25/10/2026 dure 25 h. Et la DÉRIVE d'une heure d'un
+/// pas fixe de 7 × 24 h est MESURÉE par un test — la raison pour laquelle les bornes suivent le calendrier.
 ///
 /// Le fuseau est INJECTÉ (D-32-29) : « Romance Standard Time » avec repli « Europe/Paris », jamais celui de la
 /// machine. Tests purs, sans horloge système.
@@ -72,27 +72,30 @@ public class BornesPlageTests
     }
 
     /// <summary>
-    /// CAD-XX v2 — <c>WeeklyWindow.CurrentStart</c> avance par 7 × 24 h depuis l'ancre : après le 25/10/2026 sa
-    /// borne tombe à 22:00Z là où le samedi 00:00 local est à 23:00Z. Ce test MESURE l'écart (exactement une
-    /// heure) ; il ne corrige rien — WeeklyWindow et WeeklyRecalibration ne sont pas modifiés dans cette phase.
+    /// Un pas fixe de 7 × 24 h depuis l'ancre (calculé ici en ligne) : après le 25/10/2026 sa borne tombe à 22:00Z
+    /// là où le samedi 00:00 local est à 23:00Z. Ce test MESURE l'écart (exactement une heure) — c'est pourquoi
+    /// <see cref="BornesPlage"/> suit le calendrier local et jamais un <c>TimeSpan</c> de 7 jours.
     /// </summary>
     [Fact]
-    public void La_derive_de_WeeklyWindow_est_mesurable()
+    public void La_derive_DST_d_une_semaine_calendaire_est_mesurable()
     {
+        var semaine = TimeSpan.FromDays(7);
+        DateTimeOffset FinParPasFixe(DateTimeOffset instant)
+            => Ancre + TimeSpan.FromTicks((instant - Ancre).Ticks / semaine.Ticks * semaine.Ticks) + semaine;
+
         var now = Utc("2026-10-27T12:00:00Z");
 
-        var finSelonWeeklyWindow = WeeklyWindow.CurrentStart(Ancre, now) + WeeklyWindow.Week;
+        var finParPasFixe = FinParPasFixe(now);
         var finSelonCalendrier = BornesPlage.SemaineDeForfait(now, resetHebdoObserve: null, ancre: Ancre, Tz).Fin;
 
-        Assert.Equal(Utc("2026-10-30T22:00:00Z"), finSelonWeeklyWindow);
+        Assert.Equal(Utc("2026-10-30T22:00:00Z"), finParPasFixe);
         Assert.Equal(Utc("2026-10-30T23:00:00Z"), finSelonCalendrier);
-        Assert.NotEqual(finSelonWeeklyWindow, finSelonCalendrier);
-        Assert.Equal(TimeSpan.FromHours(1), finSelonCalendrier - finSelonWeeklyWindow);
+        Assert.NotEqual(finParPasFixe, finSelonCalendrier);
+        Assert.Equal(TimeSpan.FromHours(1), finSelonCalendrier - finParPasFixe);
 
         // Avant le changement d'heure, les deux coïncident : la dérive naît le 25/10.
         var avant = Utc("2026-09-22T10:00:00Z");
-        Assert.Equal(WeeklyWindow.CurrentStart(Ancre, avant) + WeeklyWindow.Week,
-                     BornesPlage.SemaineDeForfait(avant, null, Ancre, Tz).Fin);
+        Assert.Equal(FinParPasFixe(avant), BornesPlage.SemaineDeForfait(avant, null, Ancre, Tz).Fin);
     }
 
     [Fact]

@@ -42,6 +42,34 @@ public class GardesPerimetreTests
             + string.Join("\n  ", revenants!));
     }
 
+    /// <summary>
+    /// GARDE DE NON-RETOUR (DAT-02, phase 37) — les maillons retirés de la chaîne de données ne reviennent pas.
+    /// La liste GRANDIT à chaque étape de la purge (un commit par étape) : le revert d'une étape retire ses noms avec elle.
+    /// </summary>
+    [Fact]
+    public void Aucun_maillon_retire_de_la_chaine_ne_subsiste()
+    {
+        var asm = typeof(Chronos.Services.IUsageProvider).Assembly;
+
+        // Anti-mutisme : une réflexion qui ne verrait pas l'assembly rendrait la garde verte pour rien.
+        Assert.Contains(asm.GetTypes(), t => t.Name == "RateLimitHeaderUsageProvider");
+
+        string[] retires =
+        {
+            // étape 2 — orphelins
+            "FiveHourWindowInference", "WeeklyWindow",
+        };
+        var revenants = asm.GetTypes().Where(t => retires.Contains(t.Name)).Select(t => t.FullName).ToList();
+        Assert.True(revenants.Count == 0,
+            "Ces maillons ont été retirés par la purge de la phase 37 (liste validée le 2026-10-03) et ne doivent pas revenir :\n  "
+            + string.Join("\n  ", revenants));
+
+        // Membres retirés (mêmes règles : la liste grandit aux étapes 3 et 5).
+        var vm = typeof(Chronos.ViewModels.MainViewModel);
+        Assert.Null(vm.GetProperty("IsOAuthUsageEnabled"));
+        Assert.Null(vm.GetProperty("ToggleOAuthUsageCommand"));
+    }
+
     // Une garde qui ne verrait AUCUN type serait muette (assembly mal résolu, réflexion cassée).
     [Fact]
     public void La_garde_voit_bien_l_assembly_Chronos()
@@ -71,26 +99,6 @@ public class GardesPerimetreTests
         Assert.Equal(8, templates);
 
         Assert.DoesNotContain("KindLabel", texte, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// GARDE DE CÂBLAGE (SRC-02). <c>PurgerPrefixe</c> peut être parfaitement testée et n'être jamais
-    /// appelée : le défaut ne se verrait alors que chez l'utilisateur, sur ses propres données, et
-    /// silencieusement. Le démarrage en mode overlay doit invoquer la purge du préfixe de l'ancienne
-    /// source app-bureau. Contrôle de SOURCE : <c>OnStartup</c> monte un host WPF complet, il n'est pas
-    /// instanciable sous test sans lancer l'application — ce que la phase interdit.
-    /// </summary>
-    [Fact]
-    public void Le_demarrage_purge_les_identifiants_fantomes_du_magasin_d_archives()
-    {
-        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
-        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
-
-        var texte = File.ReadAllText(fichier);
-
-        // Une garde qui lirait un fichier vide serait muette.
-        Assert.Contains("OnStartup", texte, StringComparison.Ordinal);
-        Assert.Contains("PurgerPrefixe(\"desktop:\")", texte, StringComparison.Ordinal);
     }
 
     /// <summary>

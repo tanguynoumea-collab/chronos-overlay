@@ -7,10 +7,10 @@ namespace Chronos.Services.Historique;
 ///
 /// <para><b>POURQUOI le calendrier local et pas un <c>TimeSpan</c> de 7 jours</b> : la semaine de forfait est
 /// « samedi 00:00 → samedi 00:00 HEURE LOCALE » (<c>resets_at</c> 7 j constaté : 2026-09-18T22:00Z = samedi 19/09
-/// 00:00 à Paris). Les classes <c>WeeklyWindow</c> et <c>WeeklyRecalibration</c> avancent par 7 × 24 h fixes et
-/// dériveront d'UNE heure le 25/10/2026 (2026-10-30T22:00Z au lieu de 23:00Z) — mesuré par
-/// <c>BornesPlageTests.La_derive_de_WeeklyWindow_est_mesurable</c>, non corrigé ici (CAD-XX v2) ; elles ne
-/// doivent PAS servir aux bornes. Ici : <c>DateTime</c> local + <c>AddDays</c> + <c>tz.GetUtcOffset</c> →
+/// 00:00 à Paris). Le reset hebdo vient du serveur ; l'ancre enregistrée n'est lue qu'en secours, ici. Avancer par
+/// 7 × 24 h fixes dériverait d'UNE heure le 25/10/2026 (2026-10-30T22:00Z au lieu de 23:00Z) — mesuré par
+/// <c>BornesPlageTests.La_derive_DST_d_une_semaine_calendaire_est_mesurable</c>. Ici : <c>DateTime</c> local +
+/// <c>AddDays</c> + <c>tz.GetUtcOffset</c> →
 /// 169 h en octobre, 167 h en mars, 25 h le jour du 25/10.</para>
 ///
 /// <para>Le fuseau est INJECTÉ (D-32-29) : production <c>TimeZoneInfo.Local</c>, tests <see cref="FuseauParisPourTests"/>.

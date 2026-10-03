@@ -85,9 +85,6 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isBackground;
     [ObservableProperty] private bool _isAutostart;
 
-    // État reflété dans l'item « Usage exact (OAuth) » du menu (INT-03).
-    [ObservableProperty] private bool _isOAuthUsageEnabled;
-
     // État reflété dans l'item « Source exacte (Claude Code) » : le pont statusLine est-il installé ?
     [ObservableProperty] private bool _isStatusLineSourceEnabled;
 
@@ -111,9 +108,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// simultanément les deux entrées brutes.</summary>
     [ObservableProperty] private bool _afficherInvitationConnexion;
 
-    /// <summary>HDR-06 — interrupteur de la sonde d'en-têtes. DISTINCT d'<see cref="IsOAuthUsageEnabled"/> :
-    /// la sonde consomme une vraie micro-requête sur le compte, l'autre non. Les mélanger priverait
-    /// l'utilisateur du seul interrupteur qui gouverne une dépense.</summary>
+    /// <summary>HDR-06 — interrupteur de la sonde d'en-têtes : le seul qui gouverne une dépense (la sonde
+    /// consomme une vraie micro-requête sur le compte).</summary>
     [ObservableProperty] private bool _isSondeEnTetesActivee;
 
     /// <summary>HDR-03 / HDR-04 — ce que le SERVEUR a déclaré (statut par fenêtre, dépassement de compte),
@@ -406,7 +402,6 @@ public sealed partial class MainViewModel : ObservableObject
         // État initial des toggles du menu : miroir de l'état RÉEL (settings + service autostart).
         IsBackground = _settings.Background;
         IsAutostart = _autostart.IsEnabled();
-        IsOAuthUsageEnabled = _settings.OAuthUsageEnabled;
         IsSondeEnTetesActivee = _settings.SondeEnTetesActivee;   // HDR-06 — miroir de l'état RÉEL, comme ci-dessus
         IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
@@ -756,18 +751,6 @@ public sealed partial class MainViewModel : ObservableObject
         if (_last is { } s) ApplySnapshot(s); // ré-applique → arc hebdo recalé, badge « estimée » conservé
     }
 
-    /// <summary>INT-03 : active/désactive la source EXACTE OAuth. Persiste le flag (GAP-1 : Load DISQUE
-    /// frais avant Save, pour ne pas écraser un réglage écrit par l'OverlayController) puis redéclenche
-    /// l'orchestrateur → le portillon gated relit le flag frais au prochain GetAsync et bascule aussitôt.</summary>
-    [RelayCommand]
-    private void ToggleOAuthUsage()
-    {
-        IsOAuthUsageEnabled = !IsOAuthUsageEnabled;
-        _settings = _settingsService.Load() with { OAuthUsageEnabled = IsOAuthUsageEnabled };
-        _settingsService.Save(_settings);
-        _orchestrator.RequestRefresh();   // application immédiate (le gated Load() frais à chaque GetAsync)
-    }
-
     /// <summary>Active/désactive le widget de sessions Claude Code (installe/retire les hooks + panneau).</summary>
     [RelayCommand]
     private void ToggleSessionsWidget()
@@ -793,10 +776,8 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>HDR-06 — coupe ou rallume la sonde d'en-têtes. Persiste avec une relecture disque FRAÎCHE
     /// avant Save (GAP-1 : ne pas écraser un réglage écrit ailleurs), puis redéclenche l'orchestrateur pour
-    /// que l'effet soit immédiat — le provider relit son interrupteur à chaque GetAsync.
-    ///
-    /// Réglage DISTINCT d'OAuthUsageEnabled : couper l'un ne coupe pas l'autre, parce que leurs profils de
-    /// coût sont OPPOSÉS — la sonde dépense une micro-requête par passage, l'endpoint OAuth ne dépense rien.
+    /// que l'effet soit immédiat — le provider relit son interrupteur à chaque GetAsync. La sonde dépense une
+    /// micro-requête par passage : c'est pourquoi cet interrupteur existe.
     /// </summary>
     [RelayCommand]
     private void ToggleSondeEnTetes()

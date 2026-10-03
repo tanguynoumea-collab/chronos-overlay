@@ -141,20 +141,7 @@ public partial class App : Application
         }
         catch { }
 
-        // SRC-02 — les identifiants synthétiques de l'ancienne source app-bureau (préfixe « desktop: »)
-        // sont retirés DU FICHIER archived.json, pas seulement ignorés à la lecture. Mesuré le 2026-09-12 :
-        // archived.json ne contenait QUE deux de ces entrées, datées de juillet. Elles prouvent que
-        // l'utilisateur avait dû les archiver À LA MAIN — leur horodatage était rafraîchi à chaque poll,
-        // donc elles ne vieillissaient jamais et ne pouvaient jamais expirer. Les laisser dans le fichier,
-        // c'est laisser son contournement gravé dans ses données.
-        //
-        // Même régime que la réconciliation ci-dessus : mode OVERLAY uniquement (les modes --hook et
-        // --statusline sortent bien plus haut, en tête d'OnStartup, via ArgumentsDemarrage.Trier), best-effort et silencieux — ne peut pas
-        // empêcher le démarrage. Idempotent : une fois le fichier propre, l'appel suivant ne réécrit rien.
-        try { _host.Services.GetRequiredService<ArchiveStore>().PurgerPrefixe("desktop:"); }
-        catch { }
-
-        // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la purge
+        // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la réconciliation
         // ci-dessus : mode OVERLAY uniquement (les modes --hook et --statusline sortent bien plus haut),
         // best-effort et silencieux, il ne peut pas empêcher le démarrage. Mesuré le 2026-09-12 : 54 états,
         // dont 48 de plus de sept jours, plus 12 fichiers temporaires abandonnés.

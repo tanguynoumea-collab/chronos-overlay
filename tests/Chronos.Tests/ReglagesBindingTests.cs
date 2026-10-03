@@ -21,8 +21,8 @@ namespace Chronos.Tests;
 /// Ce que ces tests attrapent et que <c>dotnet build</c> ne voit pas :
 /// <list type="bullet">
 ///   <item>l'interrupteur de la sonde bindé sur la MAUVAISE commande — compile parfaitement, et un clic
-///         couperait la source gratuite (<c>ToggleOAuthUsage</c>) ou, pire, supprimerait le coffre de
-///         jetons (<c>LoginClaude</c>) au lieu de couper la seule source qui dépense ;</item>
+///         supprimerait le coffre de jetons (<c>LoginClaude</c>) au lieu de couper la seule source qui
+///         dépense ;</item>
 ///   <item>le libellé de coût retiré ou amputé de son chiffre : HDR-06 exige que le coût soit ÉCRIT, et
 ///         une promesse d'honnêteté sans test est une promesse qu'un refactor efface en silence ;</item>
 ///   <item>la ligne d'état serveur visible alors que rien n'est rapporté — un cadre vide qui a l'air
@@ -74,10 +74,9 @@ public class ReglagesBindingTests
         => MontageReglages.Descendants(racine).OfType<TextBlock>();
 
     /// <summary>
-    /// HDR-06 — LE piège du plan, verrouillé au niveau du XAML et non du seul ViewModel : les deux
-    /// interrupteurs de la section DONNÉES ne doivent pas pouvoir être confondus au câblage. Bindé sur
-    /// <c>ToggleOAuthUsageCommand</c>, un clic couperait la source qui ne coûte RIEN en laissant la sonde
-    /// dépenser ; bindé sur <c>LoginClaudeCommand</c>, il supprimerait le coffre de jetons.
+    /// HDR-06 — LE piège du plan, verrouillé au niveau du XAML et non du seul ViewModel : l'interrupteur de
+    /// la sonde ne doit pas pouvoir être confondu au câblage. Bindé sur <c>LoginClaudeCommand</c>, un clic
+    /// supprimerait le coffre de jetons en laissant la sonde dépenser.
     /// </summary>
     [WpfFact]
     public void L_interrupteur_de_sonde_est_binde_sur_SA_commande_et_non_sur_une_autre()
@@ -86,13 +85,12 @@ public class ReglagesBindingTests
         var interrupteur = Assert.IsType<ToggleButton>(fenetre.FindName("InterrupteurSonde"));
 
         Assert.Same(vm.ToggleSondeEnTetesCommand, interrupteur.Command);
-        Assert.NotSame(vm.ToggleOAuthUsageCommand, interrupteur.Command);
         Assert.NotSame(vm.LoginClaudeCommand, interrupteur.Command);
     }
 
     /// <summary>HDR-06 — l'interrupteur est un MIROIR de l'état persisté, dans les deux sens. Bindé sur
-    /// une autre propriété booléenne (IsOAuthUsageEnabled, par défaut true), la branche « coupée »
-    /// tomberait.</summary>
+    /// une autre propriété booléenne (par exemple IsSessionsWidgetEnabled ou IsLoggedIn), l'une des deux
+    /// branches tomberait.</summary>
     [WpfFact]
     public void L_interrupteur_reflete_l_etat_persiste()
     {
