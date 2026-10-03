@@ -402,4 +402,65 @@ public class CadransOrientationBindingTests
         Assert.Equal(new Size(170, 170), empreinte);
         Assert.True(vue.DesiredSize == empreinte, $"Braises : DesiredSize {vue.DesiredSize} ≠ {empreinte}.");
     }
+
+    // ------------------------------------------------------------------ Galerie --cadrans (plan 08, CAD-04)
+
+    /// <summary>Toutes les vues de cadran de l'arbre LOGIQUE (peuplé dès InitializeComponent, sans mise en page).</summary>
+    private static IEnumerable<FrameworkElement> VuesDeCadran(DependencyObject racine)
+    {
+        if (racine is CadranArcsView or CadranBraisesView or CadranFusibleView or CadranMareeView or CadranVoletsView)
+            yield return (FrameworkElement)racine;
+        foreach (var enfant in LogicalTreeHelper.GetChildren(racine).OfType<DependencyObject>())
+            foreach (var v in VuesDeCadran(enfant)) yield return v;
+    }
+
+    [WpfFact]
+    public void La_galerie_montre_les_huit_variantes()
+    {
+        var fenetre = new Chronos.Views.CadranGalleryWindow();   // jamais montrée
+        try
+        {
+            Assert.IsType<CadranArcsView>(fenetre.FindName("GalerieArcs"));
+            Assert.IsType<CadranBraisesView>(fenetre.FindName("GalerieBraises"));
+            Assert.Equal(Orientation.Horizontal, Assert.IsType<CadranFusibleView>(fenetre.FindName("GalerieFusibleH")).Orientation);
+            Assert.Equal(Orientation.Vertical,   Assert.IsType<CadranFusibleView>(fenetre.FindName("GalerieFusibleV")).Orientation);
+            Assert.Equal(Orientation.Vertical,   Assert.IsType<CadranMareeView>(fenetre.FindName("GalerieMareeV")).Orientation);
+            Assert.Equal(Orientation.Horizontal, Assert.IsType<CadranMareeView>(fenetre.FindName("GalerieMareeH")).Orientation);
+            Assert.Equal(Orientation.Horizontal, Assert.IsType<CadranVoletsView>(fenetre.FindName("GalerieVoletsH")).Orientation);
+            Assert.Equal(Orientation.Vertical,   Assert.IsType<CadranVoletsView>(fenetre.FindName("GalerieVoletsV")).Orientation);
+            Assert.Equal(8, VuesDeCadran(fenetre).Count());
+        }
+        finally { fenetre.Close(); }
+    }
+
+    [WpfFact]
+    public void La_galerie_fusionne_les_tokens_et_suit_le_theme()
+    {
+        var fenetre = new Chronos.Views.CadranGalleryWindow();
+        try
+        {
+            Assert.Contains(fenetre.Resources.MergedDictionaries,
+                d => d.Source is not null && d.Source.OriginalString.Contains("DesignTokens.xaml"));
+            Assert.Same(ThemeCatalog.Default.BrushTokens()["TextePrincipal"], fenetre.Resources["TextePrincipal"]);
+        }
+        finally { fenetre.Close(); }
+    }
+
+    [WpfFact]
+    public void L_apercu_fournit_les_proprietes_d_Arcs()
+    {
+        var vm = new CadranPreviewViewModel();
+        Assert.False(vm.IsModeEtendu);
+        Assert.True(vm.IsModeNormal);
+        Assert.InRange(vm.DayFraction, 0.0, 0.999999);
+        Assert.True(vm.DayResetAngles.Count >= 1);
+        Assert.True(vm.DaySubTickAngles.Count >= 1);
+
+        var levees = new List<string?>();
+        vm.PropertyChanged += (_, e) => levees.Add(e.PropertyName);
+        var avant = vm.DayResetAngles;
+        vm.FiveTimePct = 10;
+        Assert.Contains(nameof(CadranPreviewViewModel.DayResetAngles), levees);
+        Assert.NotEqual(avant, vm.DayResetAngles);
+    }
 }
