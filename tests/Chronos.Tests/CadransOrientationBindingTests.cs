@@ -441,7 +441,19 @@ public class CadransOrientationBindingTests
         {
             Assert.Contains(fenetre.Resources.MergedDictionaries,
                 d => d.Source is not null && d.Source.OriginalString.Contains("DesignTokens.xaml"));
-            Assert.Same(ThemeCatalog.Default.BrushTokens()["TextePrincipal"], fenetre.Resources["TextePrincipal"]);
+            // BrushTokens() fabrique des pinceaux neufs à chaque appel : on compare la couleur, et on vérifie que la fenêtre
+            // porte bien le pinceau du thème (et non le repli statique fusionné, qui serait trouvé dans MergedDictionaries).
+            var attendu = Assert.IsType<SolidColorBrush>(ThemeCatalog.Default.BrushTokens()["TextePrincipal"]);
+            Assert.True(fenetre.Resources.Contains("TextePrincipal"));
+            Assert.Equal(attendu.Color, Assert.IsType<SolidColorBrush>(fenetre.Resources["TextePrincipal"]).Color);
+
+            // Changement de thème : les pinceaux de la fenêtre suivent.
+            var vm = Assert.IsType<CadranPreviewViewModel>(fenetre.DataContext);
+            var autre = ThemeCatalog.All.First(t => !ReferenceEquals(t, ThemeCatalog.Default)
+                && t.BrushTokens()["FondCadran"] is SolidColorBrush b && b.Color != ((SolidColorBrush)ThemeCatalog.Default.BrushTokens()["FondCadran"]).Color);
+            vm.SelectedTheme = autre;
+            Assert.Equal(((SolidColorBrush)autre.BrushTokens()["FondCadran"]).Color,
+                         Assert.IsType<SolidColorBrush>(fenetre.Resources["FondCadran"]).Color);
         }
         finally { fenetre.Close(); }
     }

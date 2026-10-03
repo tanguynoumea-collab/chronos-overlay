@@ -3,9 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:cadv="clr-namespace:Chronos.Views.Cadrans"
         Title="Chronos — galerie des cadrans (prototype)"
-        Width="960" Height="680" WindowStartupLocation="CenterScreen"
+        Width="1240" Height="900" WindowStartupLocation="CenterScreen"
         Background="#0D0C12" FontFamily="Segoe UI">
     <Window.Resources>
+        <ResourceDictionary>
+        <!-- Tailles et corps des cadrans (Cadran*Largeur/Hauteur, CadranCorps*) résolus par l'hôte, sans Application démarrée ;
+             les pinceaux du thème sont recopiés par-dessus par le code-behind (BrushTokens). -->
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
+        </ResourceDictionary.MergedDictionaries>
         <Style TargetType="TextBlock" x:Key="Lbl">
             <Setter Property="Foreground" Value="#A9A8B2"/>
             <Setter Property="FontSize" Value="12"/>
@@ -20,6 +26,7 @@
             <Setter Property="Foreground" Value="#75727F"/>
             <Setter Property="FontSize" Value="11"/>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid Margin="18">
@@ -31,7 +38,7 @@
 
         <!-- En-tête -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
-            <TextBlock Text="Cadrans — 4 pistes" Foreground="#F4F2EC" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <TextBlock Text="Cadrans — 8 variantes" Foreground="#F4F2EC" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
             <TextBlock Text="données d'échantillon pilotables" Style="{StaticResource TileSub}" Margin="12,0,0,0" VerticalAlignment="Center"/>
             <TextBlock Text="Thème" Style="{StaticResource Lbl}" Margin="28,0,8,0"/>
             <ComboBox Width="140" VerticalAlignment="Center"
@@ -90,44 +97,106 @@
             </Grid>
         </Border>
 
-        <!-- Les 4 cadrans -->
-        <UniformGrid Grid.Row="2" Columns="2" Rows="2">
-            <Border Margin="6" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
-                <Grid>
-                    <StackPanel Margin="16,12" VerticalAlignment="Top">
-                        <TextBlock Text="Anneau de braises" Style="{StaticResource Tile}"/>
-                        <TextBlock Text="nombre de braises = temps · couleur = quota" Style="{StaticResource TileSub}"/>
-                    </StackPanel>
-                    <cadv:CadranBraisesView VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Margin="6" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
-                <Grid>
-                    <StackPanel Margin="16,12" VerticalAlignment="Top">
-                        <TextBlock Text="Le fusible" Style="{StaticResource Tile}"/>
-                        <TextBlock Text="position du front = temps · épaisseur+couleur = quota" Style="{StaticResource TileSub}"/>
-                    </StackPanel>
-                    <cadv:CadranFusibleView VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Margin="6" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
-                <Grid>
-                    <StackPanel Margin="16,12" VerticalAlignment="Top">
-                        <TextBlock Text="La marée" Style="{StaticResource Tile}"/>
-                        <TextBlock Text="hauteur de lumière = temps · luminance = quota" Style="{StaticResource TileSub}"/>
-                    </StackPanel>
-                    <cadv:CadranMareeView VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Margin="6" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
-                <Grid>
-                    <StackPanel Margin="16,12" VerticalAlignment="Top">
-                        <TextBlock Text="L'afficheur à volets" Style="{StaticResource Tile}"/>
-                        <TextBlock Text="chiffre exact = temps · plaque = quota" Style="{StaticResource TileSub}"/>
-                    </StackPanel>
-                    <cadv:CadranVoletsView VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
-        </UniformGrid>
+        <!-- Les 8 variantes (DESIGN_PLAN_CYCLE2 §1.3), à l'échelle 1 : chaque vue dans le pointillé de son empreinte. -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <UniformGrid Columns="4">
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Anneaux" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="170 × 170" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranArcsView x:Name="GalerieArcs"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Braises" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="170 × 170" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranBraisesView x:Name="GalerieBraises"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Fusible — horizontal" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="190 × 92" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranFusibleView x:Name="GalerieFusibleH" Orientation="Horizontal"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Fusible — vertical" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="110 × 190" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranFusibleView x:Name="GalerieFusibleV" Orientation="Vertical"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Marée — verticale" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="132 × 160" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranMareeView x:Name="GalerieMareeV" Orientation="Vertical"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Marée — horizontale" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="190 × 96" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranMareeView x:Name="GalerieMareeH" Orientation="Horizontal"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Volets — horizontal" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="190 × 66" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranVoletsView x:Name="GalerieVoletsH" Orientation="Horizontal"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Margin="6" MinHeight="260" CornerRadius="14" Background="#0A0910" BorderBrush="#2A2833" BorderThickness="1">
+                    <Grid>
+                        <StackPanel Margin="16,12" VerticalAlignment="Top">
+                            <TextBlock Text="Volets — vertical" Style="{StaticResource Tile}"/>
+                            <TextBlock Text="128 × 190" Style="{StaticResource TileSub}"/>
+                        </StackPanel>
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,44,0,12">
+                            <Rectangle Stroke="#2A2833" StrokeThickness="1" StrokeDashArray="3 3" IsHitTestVisible="False"/>
+                            <cadv:CadranVoletsView x:Name="GalerieVoletsV" Orientation="Vertical"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </UniformGrid>
+        </ScrollViewer>
     </Grid>
 </Window>

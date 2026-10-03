@@ -5,9 +5,11 @@ using Chronos.ViewModels;
 namespace Chronos.Views;
 
 /// <summary>
-/// Galerie de prévisualisation des 4 pistes de cadran (prototype, lancée via « --cadrans »). DataContext =
-/// <see cref="CadranPreviewViewModel"/> (données d'échantillon pilotables). N'est PAS branchée sur le
-/// pipeline temps réel : sert uniquement à juger les concepts au coup d'œil.
+/// Galerie de revue visuelle des HUIT variantes de cadran (lancée via « --cadrans ») : Anneaux, Braises, puis Fusible,
+/// Marée et Volets dans leurs deux orientations, chacune à l'échelle 1 dans son empreinte. DataContext =
+/// <see cref="CadranPreviewViewModel"/> (données d'échantillon pilotables, anneau du jour d'Anneaux compris). N'est PAS
+/// branchée sur le pipeline temps réel. Les tokens de taille viennent de DesignTokens.xaml (fusionné dans la fenêtre) ;
+/// la recopie des BrushTokens() ci-dessous écrase les replis statiques des pinceaux par ceux du thème choisi.
 /// </summary>
 public partial class CadranGalleryWindow : Window
 {
