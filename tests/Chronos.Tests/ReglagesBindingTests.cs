@@ -257,7 +257,7 @@ public class ReglagesBindingTests
         Assert.Same(carte, premiereCarte);
         Assert.Equal("Historique", Assert.IsType<TextBlock>(section.Children[0]).Text);
 
-        var mention = Assert.Single(textes, t => t.Text == "Aussi : double-clic au centre du cadran");
+        var mention = Assert.Single(textes, t => t.Text == "Aussi : double-clic sur le cadran");
         Assert.True(MontageReglages.EstAffiche(mention, racine));
 
         // Et la section Données ne la montre plus : un réglage, un seul endroit.
@@ -266,7 +266,7 @@ public class ReglagesBindingTests
     }
 
     /// <summary>Phase 38 (HIS-09) : un seul style — la carte Historique n'a plus de sélecteur « Style de la vue Semaine » ;
-    /// la mention du double-clic reste (elle sera reformulée en phase 42).</summary>
+    /// la mention du double-clic reste (reformulée en phase 42 : le double-clic marche sur toute la silhouette).</summary>
     [WpfFact]
     public void La_carte_Historique_n_a_plus_de_selecteur_de_style()
     {
@@ -284,7 +284,7 @@ public class ReglagesBindingTests
 
         var textes = TousLesTextBlocks(MontageReglages.Racine(fenetre)).ToList();
         Assert.DoesNotContain(textes, t => (t.Text ?? "").Contains("Style de la vue Semaine"));
-        Assert.Single(textes, t => t.Text == "Aussi : double-clic au centre du cadran");
+        Assert.Single(textes, t => t.Text == "Aussi : double-clic sur le cadran");
     }
 
     [WpfFact]

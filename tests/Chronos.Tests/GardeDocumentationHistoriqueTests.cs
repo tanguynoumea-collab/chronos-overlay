@@ -68,7 +68,7 @@ public class GardeDocumentationHistoriqueTests
         string[] sansCasse =
         {
             "Semaine de forfait", "4 semaines", "Niveau", "Rythme", "Tokens Claude Code", "Couverture",
-            "double-clic au centre du cadran", "Historique d'utilisation", "Ouvrir",
+            "double-clic sur le cadran", "Historique d'utilisation", "Ouvrir",
             "Plein écran", "F11", "Échap",   // phase 38 (HIS-10 / HIS-11)
         };
         foreach (var mot in sansCasse)
@@ -112,8 +112,12 @@ public class GardeDocumentationHistoriqueTests
 
         var centre = readme.Split('\n').Where(l => l.Contains("**Au centre**", StringComparison.Ordinal)).ToList();
         Assert.Single(centre);
-        Assert.Contains("double-clic", centre[0], StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Historique", centre[0], StringComparison.Ordinal);
+
+        // Phase 42 (GST-01) : les gestes ne sont plus « au centre » mais sur tout le cadran — ils ont leur propre puce.
+        var gestes = readme.Split('\n').Where(l => l.Contains("**Gestes, sur tout le cadran**", StringComparison.Ordinal)).ToList();
+        Assert.Single(gestes);
+        Assert.Contains("double-clic", gestes[0], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Historique", gestes[0], StringComparison.Ordinal);
         Assert.DoesNotContain("re-clique", readme, StringComparison.Ordinal);
 
         var stack = ContratHooksDocumenteTests.SectionDe(readme, "## Stack");

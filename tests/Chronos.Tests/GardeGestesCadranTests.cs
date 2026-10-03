@@ -148,6 +148,54 @@ public class GardeGestesCadranTests
         Assert.Contains("RestaurationSansTaille", code, StringComparison.Ordinal);
     }
 
+    /// <summary>Chemin de docs/ INJECTÉ par MSBuild (même attribut que <see cref="GardeDocumentationHistoriqueTests"/>), jamais deviné.</summary>
+    private static string CheminDocs()
+    {
+        var racine = typeof(GardeGestesCadranTests).Assembly
+                         .GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+                         .Cast<System.Reflection.AssemblyMetadataAttribute>()
+                         .FirstOrDefault(a => a.Key == "CheminDocsChronos")?.Value ?? "";
+        Assert.False(string.IsNullOrWhiteSpace(racine),
+            "L'attribut AssemblyMetadata(\"CheminDocsChronos\") manque : cette garde ne lirait rien.");
+        return racine;
+    }
+
+    private static string LireDoc(string chemin)
+    {
+        Assert.True(File.Exists(chemin), $"Document introuvable : {chemin}");
+        var texte = File.ReadAllText(chemin).Replace("\r\n", "\n");
+        Assert.True(texte.Length > 200, $"{chemin} est suspicieusement court : la garde ne lit pas le vrai fichier.");
+        return texte;
+    }
+
+    /// <summary>GST-01 (mots) : le double-clic marche sur toute la silhouette ; dire « au centre » ferait chercher une zone
+    /// qui n'existe plus. Le README, la note de la 3.5.0 et la carte Historique des réglages disent le geste unique. Les notes
+    /// des versions passées (3.3.0 dans docs/publish.md) sont de l'histoire et ne sont pas lues ici.</summary>
+    [Fact]
+    public void La_documentation_des_gestes_suit_le_geste_unique()
+    {
+        var readme = LireDoc(Path.GetFullPath(Path.Combine(CheminDocs(), "..", "README.md")));
+        foreach (var perime in new[] { "au centre du cadran", "clic au centre", "Un **clic** au centre" })
+            Assert.DoesNotContain(perime, readme, StringComparison.Ordinal);
+        Assert.Contains("double-clic sur le cadran", readme, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("glisser", readme, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("clic droit", readme, StringComparison.OrdinalIgnoreCase);
+
+        // Section « Premier lancement de la 3.5.0 » : de son titre au titre suivant (ou la fin du fichier).
+        var publish = LireDoc(Path.Combine(CheminDocs(), "publish.md"));
+        const string titre = "### Premier lancement de la 3.5.0";
+        var debut = publish.IndexOf(titre, StringComparison.Ordinal);
+        Assert.True(debut >= 0, $"« {titre} » introuvable dans docs/publish.md");
+        var suivant = publish.IndexOf("\n#", debut + titre.Length, StringComparison.Ordinal);
+        var note = suivant > 0 ? publish[debut..suivant] : publish[debut..];
+        Assert.Contains("double-clic", note, StringComparison.Ordinal);
+        Assert.Contains("glisser", note, StringComparison.Ordinal);
+
+        var reglages = Lire("Views", "Reglages", "ReglagesWindow.xaml");
+        Assert.Contains("Aussi : double-clic sur le cadran", reglages, StringComparison.Ordinal);
+        Assert.DoesNotContain("au centre du cadran", reglages, StringComparison.Ordinal);
+    }
+
     /// <summary>CAD-02 : le changement d'empreinte recale sur le coin COURANT (jamais le plus proche), sans persistance,
     /// sans toucher au z-order ni passer par Window.Left/Top ; ignoré pendant un glisser.</summary>
     [Fact]
