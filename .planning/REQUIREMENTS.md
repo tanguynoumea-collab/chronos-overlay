@@ -129,4 +129,38 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 ## Traceability
 
-(rempli par le roadmapper)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| SOC-01 | Phase 36 | Pending |
+| SOC-02 | Phase 36 | Pending |
+| DAT-01 | Phase 37 | Complete |
+| DAT-02 | Phase 37 | Pending |
+| DAT-03 | Phase 37 | Pending |
+| DAT-04 | Phase 37 | Pending |
+| DAT-05 | Phase 37 | Pending |
+| HIS-09 | Phase 38 | Pending |
+| HIS-10 | Phase 38 | Pending |
+| HIS-11 | Phase 38 | Pending |
+| THM-01 | Phase 39 | Pending |
+| THM-02 | Phase 39 | Pending |
+| THM-03 | Phase 39 | Pending |
+| THM-04 | Phase 39 | Pending |
+| CAD-01 | Phase 40 | Pending |
+| CAD-02 | Phase 40 | Pending |
+| CAD-03 | Phase 40 | Pending |
+| CAD-04 | Phase 40 | Pending |
+| BRA-01 | Phase 41 | Pending |
+| BRA-02 | Phase 41 | Pending |
+| GST-01 | Phase 42 | Pending |
+| GST-02 | Phase 42 | Pending |
+| GST-03 | Phase 42 | Pending |
+| VAL-06 | Phase 43 | Pending |
+| VAL-07 | Phase 43 | Pending |
+
+**Coverage:**
+- v1 requirements: 25 total
+- Mapped to phases: 25
+- Unmapped: 0 ✓
+
+---
+*Traceability mise à jour le 2026-10-03 à la création de la roadmap v1.9 (phases 36-43).*

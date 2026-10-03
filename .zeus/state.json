@@ -3,10 +3,10 @@
   "projet": "Chronos",
   "version_courante": "3.4.0 (publiee localement, non taguee)",
   "version_cible": "3.5.0",
-  "milestone_gsd": "v1.9 (a creer)",
+  "milestone_gsd": "v1.9",
   "route": "full",
   "phase": "GSD",
-  "phase_status": "creation_milestone_v1.9",
+  "phase_status": "phase_36_a_planifier",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -27,7 +27,8 @@
       "2026-10-03 : Pale = sombres et doux (desatures/pastel) ; pas de themes clairs ce cycle",
       "2026-10-03 : +20 % mesure sur le rendu actuel (Fusible et Volets ~190 px de large) ; fenetre adaptee par cadran",
       "2026-10-03 : Braises 5 h = repere de reset fixe + separations horaires + heure du reset en mode heure",
-      "2026-10-03 : CHECKPOINT 1 — plan de design cycle 2 valide tel quel (« Je valide »)"
+      "2026-10-03 : CHECKPOINT 1 — plan de design cycle 2 valide tel quel (« Je valide »)",
+      "2026-10-03 : exigences v1.9 validees (25), liste de purge R5 VALIDEE (checkpoint DAT-01), recherche GSD passee, roadmap phases 36-43 approuvee"
     ]
   },
   "iterations": {
@@ -38,7 +39,7 @@
   },
   "checkpoints": {
     "plan_design_valide": true,
-    "liste_purge_validee": false,
+    "liste_purge_validee": true,
     "triage_findings": false,
     "go_publication": false,
     "confirmation_roadmap": false
@@ -100,7 +101,8 @@
     "2026-10-03 — LLM-COUNCIL termine (cycle 2) : classement A Rigoriste 1,4 / D Red-teamer 2,6 / C Generaliste 3,6 / E Pragmatique 3,6 / B Premiers principes 3,8. Approche arretee (rapport). Decouverte : le pont statusLine affiche la barre visible de Claude Code (InnerStatusLineCommand = null) -> decision utilisateur. -> UX-DESIGN (DAEDALUS EVOLUTION), apres 4 decisions utilisateur.",
     "2026-10-03 — 4 decisions utilisateur consignees (barre statusLine retiree, Pale sombre doux, +20 % sur le rendu, Braises reperes + heure). -> DAEDALUS EVOLUTION : plan de design R1/R2/R3/R4/R6/R7.",
     "2026-10-03 — DAEDALUS EVOLUTION : DESIGN_PLAN_CYCLE2.md (passes A + B) + maquettes HTML a l'echelle reelle (8 variantes de cadran, zones, Braises avant/apres, Historique plein ecran, 15 themes en 3 categories). CHECKPOINT 1 en attente.",
-    "2026-10-03 — CHECKPOINT 1 VALIDE (« Je valide ») : DESIGN_PLAN_CYCLE2.md contractuel. -> GSD : milestone v1.9 (exe 3.5.0)."
+    "2026-10-03 — CHECKPOINT 1 VALIDE (« Je valide ») : DESIGN_PLAN_CYCLE2.md contractuel. -> GSD : milestone v1.9 (exe 3.5.0).",
+    "2026-10-03 — GSD : milestone v1.8 clos avec ecarts (tag local v1.8, VAL-04/VAL-05 reportes en VAL-07) ; milestone v1.9 « Lisible partout » cree : 25 exigences, liste de purge validee, roadmap 36-43 approuvee. -> phase 36 (Socle)."
   ],
   "cycles_precedents": [
     {

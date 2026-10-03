@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: — Lisible partout
-status: defining requirements
-last_updated: "2026-10-03T12:00:00.000Z"
-last_activity: 2026-10-03 -- v1.8 milestone completed and archived (avec écarts connus)
+status: ready to plan
+last_updated: "2026-10-03T14:00:00.000Z"
+last_activity: 2026-10-03 -- Roadmap v1.9 créée (phases 36-43, 25 exigences mappées)
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 28
-  completed_plans: 26
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -21,15 +21,18 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend ; et comprendre sa façon
 d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Planning next milestone — milestone v1.8 clos, prochain milestone à définir (`/gsd:new-milestone`)
+**Current focus:** Milestone v1.9 « Lisible partout » (exe 3.5.0) — Phase 36 : Socle (lecture tolérante des réglages, garde d'arguments)
 
 ## Current Position
 
 Milestone: v1.9 — Lisible partout (exe 3.5.0)
-Phase: Not started (defining requirements)
+Phase: 36 of 43 (Socle) — phases 36-43, 8 phases
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-03 — Milestone v1.9 started
+Status: Ready to plan
+Last activity: 2026-10-03 — Roadmap v1.9 créée (36 Socle → 37 Purge R5 → 38 Historique → 39 Thèmes → 40 Échelle 1 et
+orientations → 41 Braises → 42 Zones de geste → 43 Release 3.5.0 et constat)
+
+Progress: [░░░░░░░░░░] 0 %
 
 > v1.8 clos le 2026-10-03 avec écarts connus (VAL-04, VAL-05 reportés en VAL-07). Liste de purge R5 validée par
 > l'utilisateur le 2026-10-03 (DAT-01). Plan de design du cycle 2 validé (`.zeus/DESIGN_PLAN_CYCLE2.md`).
@@ -43,15 +46,26 @@ Last activity: 2026-10-03 — Milestone v1.9 started
 - Deux gestes d'ouverture : bouton des réglages + double-clic au centre du cadran.
 - La phase « compter juste + journal des relevés » se publie SEULE en 3.2.2 avant toute interface.
 
+### Décisions de l'utilisateur (2026-10-03, checkpoint humain 1 du cycle ZEUS n°2)
+
+- Plan de design `.zeus/DESIGN_PLAN_CYCLE2.md` validé (« Je valide ») — contractuel pour les phases 38-42, pas de UI-SPEC.
+- Barre statusLine **retirée** (sauvegarde puis retrait de `~/.claude/settings.json` au premier lancement de la 3.5).
+- « Pâle » = sombres doux (pas de fonds clairs) ; +20 % mesuré sur le rendu actuel ; Braises = repère de reset +
+  séparations horaires + heure du reset ; une seule release 3.5.0.
+- Liste de purge R5 validée (DAT-01) : un commit réversible par ligne, ordre diag/docs → orphelins → jeton app bureau →
+  recalibrage → pont statusLine en dernier, derrière la garde d'arguments (phase 36).
+- Ordre des phases arrêté par le conseil du 2026-10-03 : socle → purge → Historique → thèmes → géométrie → Braises → zones →
+  release. 39 avant 40 (vues `Views/Cadrans/*` thémées avant d'être redessinées).
+
 ### Blockers / dettes ouvertes
 
 - **Constats avec l'utilisateur non joués (VAL-04, VAL-05)** — protocoles écrits dans
   `.planning/phases/32-compter-juste-puis-journaliser/32-CONSTAT.md` et `.planning/phases/35-4-semaines-acc-s-release-3-3-0/35-CONSTAT.md`
   (écart E1-ter : plusieurs exécutables en marche ; le point (a) commence par les quitter tous, à la main). Reportés dans la
-  phase de constat du milestone suivant. L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
+  phase 43 de v1.9 (VAL-07). L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
 - **Étapes ZEUS du cycle n°1 non jouées** (DESIGN-REVIEW de la galerie Historique, DEV-COUNCIL, DEV-SENIOR) : absorbées par le
   cycle n°2, qui couvre aussi ce code (`.zeus/state.json`).
-- **Décision utilisateur** : supprimer les styles Simplifié et Tuiles de la vue Semaine au milestone suivant.
+- **Décision utilisateur** : supprimer les styles Simplifié et Tuiles de la vue Semaine — planifié en v1.9 phase 38 (HIS-09).
 
 Résolus en v1.8 : parser de tokens ×2 à 2,75 (CPT-01, dédup `message.id`) ; « gel » de `last-exact.json` = vue virtualisée MSIX
 (CPT-02, vue AppData au diagnostic) ; absence de verrou mono-instance (CPT-03) ; processus zombie à l'arrêt (quick 260927, 3.3.1).
