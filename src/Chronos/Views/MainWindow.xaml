@@ -20,9 +20,18 @@
              résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
         <ResourceDictionary Source="pack://application:,,,/Chronos;component/Resources/DesignTokens.xaml"/>
     </Window.Resources>
-    <Grid MouseRightButtonUp="OnRightClick">
-        <!-- Clic DROIT = ouvre la fenêtre de réglages sombre (remplace l'ancien menu contextuel gris).
-             Clic gauche = drag (code-behind), clic au centre = bascule %/temps (style Anneaux). -->
+    <Grid x:Name="Racine" MouseLeftButtonDown="Racine_MouseLeftButtonDown" MouseMove="Racine_MouseMove"
+          MouseLeftButtonUp="Racine_MouseLeftButtonUp" LostMouseCapture="Racine_LostMouseCapture"
+          MouseRightButtonUp="OnRightClick">
+        <!-- GST-01 (phase 42, R7) : UN SEUL répartiteur de gestes, sur cette grille, pour toute la silhouette du cadran.
+               - clic sans bouger            = bascule pourcentage / temps (à l'échéance du délai de double-clic) ;
+               - double-clic                 = Historique, sans bascule ;
+               - appuyer-glisser au-delà du seuil Windows = déplacer la fenêtre, puis l'accrocher au coin le plus proche ;
+               - clic droit                  = réglages, partout où il arrive (non filtré, pastilles comprises) ;
+               - hors silhouette             = le clic traverse vers le bureau (pixel d'alpha 0).
+             Le répartiteur est ICI parce que la silhouette est une SŒUR du contenu, pas son ancêtre : la racine est le seul
+             ancêtre commun de tout ce qui est peint. PAS de Background sur cette grille : elle ne doit rien capter hors
+             silhouette. -->
 
         <!-- ===================== STYLE « ANNEAUX » (défaut, historique) =====================
              Extrait en vue de cadran (Views/Cadrans/CadranArcsView.xaml) en phase 40, pour la galerie. -->
@@ -38,13 +47,6 @@
         <cadv:CadranMareeView Orientation="{Binding OrientationMaree}" Visibility="{Binding IsStyleMaree, Converter={StaticResource BoolToVis}}"/>
         <cadv:CadranVoletsView Orientation="{Binding OrientationVolets}" Visibility="{Binding IsStyleVolets, Converter={StaticResource BoolToVis}}"/>
 
-        <!-- Zone de CLIC au centre PARTAGÉE par tous les styles (transparente, au-dessus de tout) :
-             bascule %/temps. MouseLeftButtonDown marqué Handled (code-behind) → n'entraîne PAS le DragMove
-             (le drag reste possible en saisissant l'overlay hors du centre). -->
-        <Ellipse x:Name="CentreHit" Width="66" Height="66" Fill="Transparent" Cursor="Hand"
-                 ToolTip="Cliquer : basculer pourcentage / temps avant reset"
-                 MouseLeftButtonDown="CentreHit_MouseLeftButtonDown"/>
-
         <!-- M-INDISPO (EXA-03) : « je ne sais pas ». LE MOT, et pas seulement l'absence de chiffre —
              l'absence seule est AMBIGUË avec l'état « en attente » (aucune donnée encore reçue), qui
              rend exactement le même neutre dans les quatre styles alternatifs. Sans le mot, la
@@ -56,8 +58,8 @@
              BAS-GAUCHE : hors de la géométrie des anneaux (> 71,5 px du centre) ET hors de la colonne
              de la rangée de pastilles, quelle que soit la taille de celle-ci — un mot centré en bas
              entrerait en collision avec la rangée dès trois pastilles.
-             IsHitTestVisible=False : le clic continue d'atteindre CentreHit, donc la bascule
-             pourcentage / temps fonctionne même quand il n'y a rien à afficher.
+             IsHitTestVisible=False : le mot ne capte rien ; la silhouette dessous reçoit le geste, la bascule
+             fonctionne même sans chiffre.
              Phase 40 : pour Fusible, Marée et Volets (déclencheur ci-dessous), le mot est CENTRÉ dans
              l'empreinte (aucun anneau à éviter, et le bas-gauche d'une empreinte rectangulaire basse serait
              trop près de la rangée) ; Anneaux et Braises gardent le bas-gauche. Alignements et marge passent
@@ -118,10 +120,12 @@
                  doctrine, le voiler serait une régression d'honnêteté.
                  ANNEAU CREUX et non disque plein : la forme la distingue au premier coup d'œil des
                  pastilles pleines voisines, et un cadran vide dit « du temps a passé » sans un mot.
-                 Fill="Transparent" (et NON {x:Null}) : hit-testable sur une fenêtre AllowsTransparency,
-                 donc son infobulle s'ouvre — c'est elle qui porte EXA-06 jusqu'au cadran. -->
+                 Fill = ZoneSilhouette (alpha 1), et NON Transparent : sur une fenêtre layered, un pixel
+                 d'alpha 0 laisse passer la souris — avec Transparent, seul le trait de 2 px ouvrait l'infobulle ;
+                 désormais tout le disque de 12 px la porte (EXA-06). Pastille INERTE : hors du disque d'Arcs et
+                 de Braises, elle capte la souris sans geste (ni bascule ni traversée) — voulu. -->
             <Ellipse x:Name="PastilleReleveDate" Width="12" Height="12"
-                     VerticalAlignment="Center" Margin="0,0,4,0" Fill="Transparent"
+                     VerticalAlignment="Center" Margin="0,0,4,0" Fill="{StaticResource ZoneSilhouette}"
                      Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="2"
                      ToolTip="{Binding InfobulleReleve}"
                      Visibility="{Binding AfficherReleveDate, Converter={StaticResource BoolToVis}}"/>
@@ -137,9 +141,10 @@
                      Visibility="{Binding AfficherPastilleHorsLigne, Converter={StaticResource BoolToVis}}"/>
 
             <!-- EXA-05 : JAMAIS CONNECTÉ / JAMAIS RIEN OBTENU. ACTIONNABLE, même famille que la pastille
-                 de déconnexion (Button pour que MouseLeftButtonDown soit Handled, donc aucun DragMove
-                 parasite ; Background non-null pour rester hit-testable sur une fenêtre AllowsTransparency
-                 — Transparent suffit en WPF, seul {x:Null} ne l'est pas).
+                 de déconnexion (Button pour que MouseLeftButtonDown soit Handled : le répartiteur de la racine
+                 ne voit pas le clic). Background = ZoneSilhouette (alpha 1) : Windows ne livre le clic d'une
+                 fenêtre layered qu'aux pixels d'alpha > 0 (Transparent = alpha 0, « touché » par WPF mais jamais
+                 atteint).
                  Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE sur
                  IsLoggedIn == _store.Exists : un clic supprimerait le coffre de jetons.
                  Mutuellement exclusive de PastilleDeconnexion, garanti côté ViewModel (MajPastilles) :
@@ -147,14 +152,14 @@
                  en revanche coexister avec « hors ligne » — d'où la rangée. -->
             <Button x:Name="PastilleInvitationConnexion"
                     VerticalAlignment="Center" Margin="0,0,4,0"
-                    Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
+                    Width="14" Height="14" Background="{StaticResource ZoneSilhouette}" BorderThickness="0" Padding="0"
                     Cursor="Hand" Focusable="False"
                     ToolTip="Aucun chiffre d'usage n'a jamais été obtenu — cliquer pour se connecter à Claude"
                     Command="{Binding ReconnecterCommand}"
                     Visibility="{Binding AfficherInvitationConnexion, Converter={StaticResource BoolToVis}}">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Grid Background="Transparent">
+                        <Grid Background="{StaticResource ZoneSilhouette}">
                             <Ellipse Fill="{DynamicResource TexteSecondaire}"/>
                         </Grid>
                     </ControlTemplate>
@@ -162,23 +167,23 @@
             </Button>
 
             <!-- DÉCONNECTÉ : ACTIONNABLE. Button (pas Ellipse nue) car ButtonBase marque
-                 MouseLeftButtonDown comme Handled => aucun DragMove parasite (le handler de fenêtre
-                 bloquerait jusqu'au relâchement au lieu de lancer le login).
-                 Background non-null => hit-testable sur fenêtre AllowsTransparency (Transparent suffit
-                 en WPF ; seul {x:Null} ne l'est pas — CentreHit le prouve en production).
+                 MouseLeftButtonDown comme Handled => le répartiteur de la racine ne voit pas le clic (ni
+                 bascule ni glisser : le login se lance).
+                 Background = ZoneSilhouette (alpha 1) : Windows ne livre le clic d'une fenêtre layered
+                 qu'aux pixels d'alpha > 0 (Transparent = alpha 0, « touché » par WPF mais jamais atteint).
                  Command = ReconnecterCommand et SURTOUT PAS LoginClaudeCommand, qui BASCULE et
                  supprimerait le coffre puisque IsLoggedIn ne teste que l'existence du fichier.
                  DERNIÈRE de la rangée, donc sans écart à droite : la plus urgente au plus près du coin. -->
             <Button x:Name="PastilleDeconnexion"
                     VerticalAlignment="Center"
-                    Width="14" Height="14" Background="Transparent" BorderThickness="0" Padding="0"
+                    Width="14" Height="14" Background="{StaticResource ZoneSilhouette}" BorderThickness="0" Padding="0"
                     Cursor="Hand" Focusable="False"
                     ToolTip="Connexion à Claude perdue — cliquer pour se reconnecter"
                     Command="{Binding ReconnecterCommand}"
                     Visibility="{Binding AfficherPastilleDeconnexion, Converter={StaticResource BoolToVis}}">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Grid Background="Transparent">
+                        <Grid Background="{StaticResource ZoneSilhouette}">
                             <Ellipse Fill="{DynamicResource Alerte}"/>
                         </Grid>
                     </ControlTemplate>

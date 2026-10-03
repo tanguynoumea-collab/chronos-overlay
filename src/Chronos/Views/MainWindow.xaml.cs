@@ -21,6 +21,13 @@ public partial class MainWindow : Window
     // Vrai pendant DragMove : un changement de DPI en glissant ne doit pas déclencher de recalage.
     private bool _enDeplacement;
 
+    // R7 : décision clic / double-clic / glisser (pure, testée — AutomateGeste).
+    private readonly AutomateGeste _geste = new();
+
+    // Lecture de la position souris relative à un élément. Couture de test UNIQUEMENT : MouseEventArgs.GetPosition lit le
+    // vrai périphérique, qu'un test ne peut pas placer ; le test de câblage du répartiteur la remplace par un point témoin.
+    internal Func<MouseEventArgs, IInputElement, Point> LirePosition { get; set; } = static (e, relatif) => e.GetPosition(relatif);
+
     public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard, OverlayController controller,
                       IOuvreurReglages? ouvreurReglages = null)
     {
@@ -31,7 +38,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _vm = viewModel;
 
-        // ACC-02 : le délai de double-clic de l'UTILISATEUR (réglage Windows) arbitre le clic au centre ; 500 ms si illisible.
+        // ACC-02 : le délai de double-clic de l'UTILISATEUR (réglage Windows) arbitre le clic sur le cadran ; 500 ms si illisible.
         var ms = Interop.NativeMethods.GetDoubleClickTime();
         viewModel.DefinirDelaiDoubleClic(System.TimeSpan.FromMilliseconds(ms > 0 ? ms : 500));
         _topmostGuard = topmostGuard;
@@ -50,9 +57,6 @@ public partial class MainWindow : Window
             _controller.Attach(this);
             if (_restored is not null) _controller.RestorePlacement(_restored);
         };
-
-        // FEN-02 : glisser via DragMove (bloquant), snap au RETOUR (Pattern 1 / Pitfall 3).
-        MouseLeftButtonDown += Cadran_MouseLeftButtonDown;
 
         // Pattern 3 : re-caler le coin après un franchissement de moniteur DPI mixte (taille physique change).
         DpiChanged += (_, _) => _controller.SnapToNearestCorner();
@@ -82,22 +86,56 @@ public partial class MainWindow : Window
     /// </summary>
     public void ApplyRestoredState(ChronosSettings settings) => _restored = settings;
 
-    private void Cadran_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    // ===================== GST-01 : répartiteur UNIQUE des gestes (grille Racine) =====================
+    // Un seul répartiteur pour toute la silhouette : clic, double-clic et glisser partagent la même surface, la décision vit
+    // dans AutomateGeste (pur) puis ArbitreClicCentre (inchangé). Filtre GÉOMÉTRIQUE avant d'armer : des pixels peints
+    // existent hors silhouette (pastilles inertes, flèche de reset de Braises, mot « indisponible »), ils ne doivent pas
+    // déclencher de geste. Pas d'abonnement « handled inclus » : les pastilles boutons marquent leur appui Handled et doivent le garder
+    // (le geste ne se réveille pas sous elles).
+
+    // Appui gauche : seul le MouseDown porte ClickCount. Double-clic → Historique tout de suite (sans bascule) ; sinon on
+    // capture la souris pour suivre le MouseMove même hors de la fenêtre.
+    private void Racine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState != MouseButtonState.Pressed) return;
-        _enDeplacement = true;
-        try { DragMove(); }                  // BLOQUE jusqu'au relâchement (consomme le MouseUp)
-        finally { _enDeplacement = false; }
-        _controller.SnapToNearestCorner();   // snap AU RETOUR de DragMove (pas de handler MouseUp — Pitfall 3)
+        var silhouette = ZoneGeste.Trouver(Racine);
+        if (silhouette is null || !ZoneGeste.Contient(silhouette, LirePosition(e, silhouette))) return;   // hors silhouette : rien
+        var p = LirePosition(e, Racine);
+        var action = _geste.Appui(p.X, p.Y, e.ClickCount);
+        if (action.EstClic) _vm.ClicCentre(action.ClickCount);       // double-clic → Historique, sans bascule
+        else Racine.CaptureMouse();                                  // on suit le MouseMove même hors de la fenêtre
+        e.Handled = true;
     }
 
-    // Clic au CENTRE (ACC-02) : la vue ne fait que TRANSMETTRE le compte de clics — simple clic = bascule
-    // pourcentages ↔ temps à l'échéance du délai de double-clic ; double-clic = Historique (l'arbitre pur décide).
-    // Handled : l'événement ne remonte PAS au handler de fenêtre (Cadran_MouseLeftButtonDown) → pas de DragMove depuis le centre.
-    private void CentreHit_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    // Déplacement : au-delà du seuil de glisser de Windows (SM_CXDRAG / SM_CYDRAG, en DIP), la fenêtre suit le curseur
+    // (DragMove, boucle système bloquante) puis s'accroche au coin le plus proche AU RETOUR de DragMove.
+    private void Racine_MouseMove(object sender, MouseEventArgs e)
     {
-        (DataContext as MainViewModel)?.ClicCentre(e.ClickCount);
-        e.Handled = true;
+        var p = LirePosition(e, Racine);
+        if (_geste.Deplacement(p.X, p.Y, SystemParameters.MinimumHorizontalDragDistance,
+                               SystemParameters.MinimumVerticalDragDistance) != ActionGeste.CommencerGlisser) return;
+        // L'automate est DÉJÀ en « Glisse » : le relâchement synthétique que DragMove envoie pendant son appel (réentrance) et
+        // la perte de capture tombent sur un état qui les ignore — aucune bascule après un déplacement.
+        Racine.ReleaseMouseCapture();
+        _enDeplacement = true;                                       // CAD-02 : SizeChanged ignoré pendant le glisser
+        try { if (Mouse.LeftButton == MouseButtonState.Pressed) DragMove(); }   // BLOQUE jusqu'au relâchement
+        catch (InvalidOperationException) { }                                     // bouton déjà relâché : DragMove lève
+        finally { _enDeplacement = false; _geste.Relache(); }
+        _controller.SnapToNearestCorner();                                        // accroche AU RETOUR de DragMove
+    }
+
+    // Relâchement : e.ClickCount vaut 0 ici, on ne le lit jamais. Un appui non transformé en glisser devient un simple clic,
+    // que l'arbitre ne bascule qu'à l'échéance du délai de double-clic.
+    private void Racine_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var action = _geste.Relache();
+        if (Racine.IsMouseCaptured) Racine.ReleaseMouseCapture();
+        if (action.EstClic) _vm.ClicCentre(1);                       // simple clic → bascule à l'échéance de l'arbitre
+    }
+
+    // Perte de capture (Alt+Tab, fenêtre système…) : un appui en cours est annulé, sans clic.
+    private void Racine_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        _geste.PerteCapture();
     }
 
     // Clic DROIT : ouvre la fenêtre de réglages (quick 260927-reglages-v2), ou la RAMÈNE si elle est déjà ouverte — par l'ouvreur
