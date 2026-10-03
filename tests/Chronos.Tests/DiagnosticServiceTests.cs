@@ -1686,4 +1686,43 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("Fuseau : " + fuseau.Id, avecFuseau);
         Assert.DoesNotContain("Fuseau : UTC (fuseau non injecté)", avecFuseau);
     }
+
+    // SOC-01 (phase 36) — une ligne « Réglages (settings.json) : » sous [Magasins persistants], hors section [Réglage].
+
+    private static async Task<string> RapportAvecSettings(string json)
+    {
+        var paths = TempPaths();
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(paths.SettingsFile)!);
+        System.IO.File.WriteAllText(paths.SettingsFile, json);
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
+                                         new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
+                                         machine: new FakeInventaireMachine());
+        return await diag.BuildReportAsync();
+    }
+
+    [Fact]
+    public async Task Rapport_nomme_les_reglages_retombes_sur_leur_defaut()
+    {
+        var report = await RapportAvecSettings("{\"ThemeKey\":\"nord\",\"CadranStyle\":\"Spirale\",\"SessionStyle\":\"Inconnu\"}");
+
+        Assert.Contains("Réglages (settings.json) : 2 valeur(s) retombée(s) sur leur défaut — CadranStyle, SessionStyle", report);
+        var reglage = report[report.IndexOf("[Réglage]")..report.IndexOf("[Source exacte — login OAuth Chronos]")];
+        Assert.DoesNotContain("Réglages (settings.json)", reglage);
+    }
+
+    [Fact]
+    public async Task Rapport_signale_des_reglages_illisibles()
+    {
+        var report = await RapportAvecSettings("{\"ThemeKey\":\"nord\"");
+
+        Assert.Contains("Réglages (settings.json) : illisible — défauts entiers", report);
+    }
+
+    [Fact]
+    public async Task Rapport_dit_que_les_reglages_sont_lus_sans_retombee()
+    {
+        var report = await RapportAvecSettings("{\"ThemeKey\":\"nord\"}");
+
+        Assert.Contains("Réglages (settings.json) : lus, aucune valeur retombée", report);
+    }
 }

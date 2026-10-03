@@ -147,6 +147,8 @@ public sealed class DiagnosticService
     public async Task<string> BuildReportAsync(CancellationToken ct = default)
     {
         var s = _settings.Load();
+        // SOC-01 — relevé AVANT tout await : aucune autre lecture ne peut s'intercaler et écraser ce rapport.
+        var lectureReglages = _settings.DerniereLecture;
 
         // ORDRE CRITIQUE — interroger la chaîne AVANT de rendre la moindre section.
         // C'est cet appel qui déclenche la première sonde et peuple l'état serveur. Le laisser à sa
@@ -445,6 +447,7 @@ public sealed class DiagnosticService
         catch (Exception ex) { echecProcessus = ex; }
 
         sb.AppendLine("[Magasins persistants]");
+        sb.AppendLine("  Réglages (settings.json) : " + LibelleLectureReglages(lectureReglages));
         sb.AppendLine("  Vue AppData : " + DetecteurVueAppData.Libelle(
             DetecteurVueAppData.Detecter(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData))));
         sb.AppendLine("  " + LigneMagasin(NomsMagasins.DernierExact, _paths.LastExactFile, "fichier"));
@@ -704,6 +707,17 @@ public sealed class DiagnosticService
 
         return sb.ToString();
     }
+
+    /// <summary>SOC-01 — une ligne par démarrage (chronos.log est réécrit à chaque lancement) : jamais de bruit à chaque Load.
+    /// Hors section [Réglage], que la phase 37 remanie.</summary>
+    private static string LibelleLectureReglages(LectureReglages lecture) => lecture.Issue switch
+    {
+        IssueLectureReglages.Absent => "absent — défauts",
+        IssueLectureReglages.Illisible => "illisible — défauts entiers",
+        IssueLectureReglages.LuAvecRetombees => lecture.Retombees.Count + " valeur(s) retombée(s) sur leur défaut — "
+                                                + string.Join(", ", lecture.Retombees.OrderBy(n => n, StringComparer.Ordinal)),
+        _ => "lus, aucune valeur retombée",
+    };
 
     // Libellé français de l'état d'authentification. Chaque branche dit à l'utilisateur s'il a
     // quelque chose à FAIRE : « hors ligne » est informatif, « déconnecté » est actionnable —
