@@ -145,7 +145,10 @@ n'est pas retirée — sort en silence au lieu de lancer l'overlay ou la boîte 
      dans `App.xaml.cs` (SOC-02).
   4. **Rien d'autre ne bouge** : `--hook`, le mode CLI, `--cadrans`, `--historique` et `--sessions` se comportent comme en
      3.4.0 (tests existants verts), et la suite reste à 0 échec, 0 warning (SOC-02).
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 36-01-PLAN.md — Lecture des réglages tolérante valeur par valeur (pré-passe JsonNode) + ligne de diagnostic (SOC-01)
+- [ ] 36-02-PLAN.md — Tri pur des arguments en liste blanche, inconnu → sortie code 0 avant le verrou, gardes réécrites (SOC-02)
 
 ### Phase 37: Une chaîne de données claire
 **Goal**: La chaîne de données se réduit à ce qui a réellement produit des relevés —
