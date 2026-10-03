@@ -1,15 +1,19 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
+using Chronos.Rendering;
 
 namespace Chronos.Controls;
 
 /// <summary>
-/// CADRAN « fusible » (piste 2). Une mèche horizontale qui se consume. La LONGUEUR du cordon restant
-/// (à droite du front) = temps restant (Fraction 0..1) ; l'ÉPAISSEUR (CordThickness) + la couleur
-/// (QuotaBrush) = quota. La part écoulée reste un sillon creux (piste sombre), donc le gris reste
-/// réservé au quota épuisé. Estimated (plancher « ≥ ») : cordon MUET + trait pointillé (grain), jamais
-/// le mark du temps. Une instance par fenêtre (5 h / 7 j).
+/// CADRAN « fusible » (piste 2). Une mèche qui se consume, dans les DEUX sens (Orientation) :
+/// horizontal (défaut historique) — le cordon restant est à DROITE du front ; vertical — il reste en BAS
+/// (la mèche brûle de haut en bas). La LONGUEUR du cordon restant = temps restant (Fraction 0..1) ;
+/// l'ÉPAISSEUR (CordThickness) + la couleur (QuotaBrush) = quota. La part écoulée reste un sillon creux
+/// (piste sombre), donc le gris reste réservé au quota épuisé. Une étincelle (NotchBrush) marque le front,
+/// le « maintenant ». Estimated (plancher « ≥ ») : cordon MUET + trait pointillé (grain), jamais le mark
+/// du temps. Toute la géométrie vient de <see cref="GeometrieCadrans"/> (Fusible). Une instance par fenêtre (5 h / 7 j).
 /// </summary>
 public sealed class FuseBar : FrameworkElement
 {
@@ -40,6 +44,11 @@ public sealed class FuseBar : FrameworkElement
         DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(FuseBar),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    // Sens de la mèche (CAD-03) : horizontal par défaut (sens historique), vertical dans le gabarit en colonne.
+    public static readonly DependencyProperty OrientationProperty =
+        DependencyProperty.Register(nameof(Orientation), typeof(Orientation), typeof(FuseBar),
+            new FrameworkPropertyMetadata(Orientation.Horizontal, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public double Fraction      { get => (double)GetValue(FractionProperty);      set => SetValue(FractionProperty, value); }
     public double CordThickness { get => (double)GetValue(CordThicknessProperty); set => SetValue(CordThicknessProperty, value); }
     public Brush? QuotaBrush    { get => (Brush?)GetValue(QuotaBrushProperty);     set => SetValue(QuotaBrushProperty, value); }
@@ -48,47 +57,47 @@ public sealed class FuseBar : FrameworkElement
     public bool   Estimated     { get => (bool)GetValue(EstimatedProperty);       set => SetValue(EstimatedProperty, value); }
     public bool   HasData       { get => (bool)GetValue(HasDataProperty);         set => SetValue(HasDataProperty, value); }
     public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
+    public Orientation Orientation { get => (Orientation)GetValue(OrientationProperty); set => SetValue(OrientationProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
         double w = ActualWidth, h = ActualHeight;
         if (w <= 0 || h <= 0) return;
 
-        double pad = 4, x0 = pad, x1 = w - pad, cy = h / 2;
+        // Aucun rembourrage interne : la position et la taille viennent du gabarit (plans 04-05).
         double th = CordThickness;
+        var g = GeometrieCadrans.Fusible(new Size(w, h), Orientation, Fraction, th);
 
-        // Sillon creux (piste sombre) sur toute la largeur : la part écoulée reste vide, PAS cendre.
-        dc.DrawRoundedRectangle(TrackBrush, null, new Rect(x0, cy - 3, Math.Max(0, x1 - x0), 6), 3, 3);
+        // Sillon creux (piste sombre) sur toute la longueur : la part écoulée reste vide, PAS cendre.
+        dc.DrawRoundedRectangle(TrackBrush, null, g.Sillon, 2.7, 2.7);
 
         // EN ATTENTE : pas de temps de reset → cordon neutre pleine longueur (fin), jamais un sillon vide.
         if (!HasData)
         {
-            dc.DrawRoundedRectangle(WaitBrush, null, new Rect(x0, cy - th * 0.3, Math.Max(0, x1 - x0), th * 0.6), th * 0.3, th * 0.3);
+            dc.DrawRoundedRectangle(WaitBrush, null, g.Attente, 0.3 * th, 0.3 * th);
             return;
         }
 
-        double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
-        var quota = QuotaBrush;
-
-        double fx = x1 - (x1 - x0) * frac;                              // front de combustion
-        var cord = new Rect(fx, cy - th / 2, Math.Max(0, x1 - fx), th); // cordon restant (droite)
-
         if (Estimated)
         {
-            dc.DrawRoundedRectangle(WithAlpha(quota, 0.5), null, cord, th / 2, th / 2);
+            dc.DrawRoundedRectangle(WithAlpha(QuotaBrush, 0.5), null, g.Cordon, th / 2, th / 2);
             var grain = new Pen(TrackBrush, 1.6) { DashStyle = new DashStyle(new double[] { 1.5, 1.6 }, 0) };
             grain.Freeze();
-            dc.DrawLine(grain, new Point(fx, cy), new Point(x1, cy));   // grain = trait brisé sur le cordon
+            dc.DrawLine(grain, g.DebutGrain, g.FinGrain);               // grain = trait brisé sur le cordon
         }
         else
         {
-            dc.DrawRoundedRectangle(quota, null, cord, th / 2, th / 2);
+            dc.DrawRoundedRectangle(QuotaBrush, null, g.Cordon, th / 2, th / 2);
         }
 
-        // Front de combustion : encoche vive (blanc chaud), le « maintenant ».
-        var notch = new Pen(NotchBrush, 2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-        notch.Freeze();
-        dc.DrawLine(notch, new Point(fx, cy - th / 2 - 4), new Point(fx, cy + th / 2 + 4));
+        // Front de combustion : étincelle (pinceau thémé, TextePrincipal), le « maintenant ».
+        double longueur = Orientation == Orientation.Horizontal ? g.Cordon.Width : g.Cordon.Height;
+        if (longueur > 0)
+        {
+            dc.PushOpacity(0.9);
+            dc.DrawEllipse(NotchBrush, null, g.Front, g.RayonEtincelle, g.RayonEtincelle);
+            dc.Pop();
+        }
     }
 
     private static Brush? WithAlpha(Brush? b, double f)

@@ -1,14 +1,18 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
+using Chronos.Rendering;
 
 namespace Chronos.Controls;
 
 /// <summary>
-/// CADRAN « marée » (piste 3). Une colonne verticale : la HAUTEUR de lumière restante (par le haut)
-/// = temps restant (Fraction 0..1) — l'ombre monte par le bas et « referme » la fenêtre vers le reset.
-/// La LUMINANCE de la partie éclairée (QuotaBrush) = quota. Estimated (plancher « ≥ ») : waterline
-/// frangée + grain sur la partie éclairée, jamais sur la hauteur (le temps). Une instance par fenêtre.
+/// CADRAN « marée » (piste 3), dans les DEUX sens (Orientation) : vertical (défaut historique) — la HAUTEUR
+/// de lumière restante part du haut et l'ombre monte par le bas ; horizontal — la lumière part de la GAUCHE
+/// et la ligne d'eau devient une onde verticale. L'étendue de lumière = temps restant (Fraction 0..1) ;
+/// la LUMINANCE de la partie éclairée (QuotaBrush) = quota. Estimated (plancher « ≥ ») : ligne d'eau
+/// frangée + grain sur la partie éclairée, jamais sur l'étendue (le temps). Géométrie : <see cref="GeometrieCadrans"/> (Marée).
+/// Une instance par fenêtre.
 /// </summary>
 public sealed class TideColumn : FrameworkElement
 {
@@ -36,6 +40,11 @@ public sealed class TideColumn : FrameworkElement
         DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(TideColumn),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    // Sens de la marée (CAD-03) : vertical par défaut (sens historique), horizontal dans le gabarit en bande.
+    public static readonly DependencyProperty OrientationProperty =
+        DependencyProperty.Register(nameof(Orientation), typeof(Orientation), typeof(TideColumn),
+            new FrameworkPropertyMetadata(Orientation.Vertical, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public double Fraction       { get => (double)GetValue(FractionProperty);       set => SetValue(FractionProperty, value); }
     public Brush? QuotaBrush     { get => (Brush?)GetValue(QuotaBrushProperty);      set => SetValue(QuotaBrushProperty, value); }
     public Brush? TrackBrush     { get => (Brush?)GetValue(TrackBrushProperty);      set => SetValue(TrackBrushProperty, value); }
@@ -43,46 +52,47 @@ public sealed class TideColumn : FrameworkElement
     public bool   Estimated      { get => (bool)GetValue(EstimatedProperty);        set => SetValue(EstimatedProperty, value); }
     public bool   HasData        { get => (bool)GetValue(HasDataProperty);          set => SetValue(HasDataProperty, value); }
     public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
+    public Orientation Orientation { get => (Orientation)GetValue(OrientationProperty); set => SetValue(OrientationProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
         double w = ActualWidth, h = ActualHeight;
         if (w <= 0 || h <= 0) return;
 
-        double pad = 2, x = pad, colW = w - 2 * pad, top = 3, bot = h - 3, colH = bot - top;
-        var channel = new Rect(x, top, colW, colH);
-        dc.DrawRoundedRectangle(TrackBrush, null, channel, 5, 5);
+        // Aucun rembourrage interne : la position et la taille viennent du gabarit (plans 04-05).
+        var g = GeometrieCadrans.Maree(new Size(w, h), Orientation, Fraction);
+        dc.DrawRoundedRectangle(TrackBrush, null, g.Canal, 5, 5);
 
-        // EN ATTENTE : pas de temps de reset → colonne voilée d'un neutre translucide, jamais un vide.
+        dc.PushClip(new RectangleGeometry(g.Canal, 5, 5));
+
+        // EN ATTENTE : pas de temps de reset → canal voilé d'un neutre translucide, jamais un vide.
         if (!HasData)
         {
-            dc.PushClip(new RectangleGeometry(channel, 5, 5));
-            dc.DrawRectangle(WaitBrush, null, channel);
+            dc.DrawRectangle(WaitBrush, null, g.Canal);
             dc.Pop();
             return;
         }
 
-        double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
-        double litH = colH * frac;
-        var quota = QuotaBrush;
-
-        dc.PushClip(new RectangleGeometry(channel, 5, 5));
-        dc.DrawRectangle(quota, null, new Rect(x, top, colW, litH));    // lumière par le HAUT = temps
+        dc.DrawRectangle(QuotaBrush, null, g.Lumiere);                  // lumière = temps restant
         if (Estimated)
         {
             var grain = new Pen(WithAlpha(TrackBrush, 0.7), 1.2); grain.Freeze();
-            for (double gy = top + 3; gy < top + litH - 1; gy += 4)
-                dc.DrawLine(grain, new Point(x + 2, gy), new Point(x + colW - 2, gy));
+            foreach (var (a, b) in GeometrieCadrans.GrainMaree(g.Lumiere, Orientation))
+                dc.DrawLine(grain, a, b);
         }
         dc.Pop();
 
-        double wy = top + litH;                                         // waterline = front de l'ombre
+        if (!g.LigneVisible) return;
+
+        // Ligne d'eau = front de l'ombre : droite en vertical, ondulée en horizontal (pointillée si plancher).
         var wl = Estimated
             ? new Pen(WithAlpha(WaterlineBrush, 0.5), 1) { DashStyle = new DashStyle(new double[] { 3, 2 }, 0) }
             : new Pen(WithAlpha(WaterlineBrush, 0.85), 1.6);
         wl.Freeze();
-        if (frac > 0.001 && frac < 0.999)
-            dc.DrawLine(wl, new Point(x, wy), new Point(x + colW, wy));
+        if (Orientation == Orientation.Vertical)
+            dc.DrawLine(wl, new Point(0, g.PositionLigne), new Point(w, g.PositionLigne));
+        else
+            dc.DrawGeometry(null, wl, GeometrieCadrans.LigneDEauOndulee(g.PositionLigne, h));
     }
 
     private static Brush? WithAlpha(Brush? b, double f)

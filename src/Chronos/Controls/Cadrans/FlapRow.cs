@@ -1,14 +1,18 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
+using Chronos.Rendering;
 
 namespace Chronos.Controls;
 
 /// <summary>
-/// CADRAN « afficheur à volets » (piste 4) — rangée de volets (repère périphérique du temps). Le NOMBRE
-/// de volets allumés = fraction de fenêtre restante (Fraction 0..1). Le chiffre EXACT du compte à rebours
-/// et la luminance de la plaque (quota) sont portés par le XAML autour ; ce contrôle ne dessine que la
-/// piste de volets. Volet allumé = OnBrush (blanc chaud), éteint = OffBrush (sombre).
+/// CADRAN « afficheur à volets » (piste 4) — piste de volets (repère périphérique du temps), dans les DEUX sens
+/// (Orientation) : horizontal (défaut historique) — volets en ligne, allumés depuis la gauche ; vertical — volets
+/// empilés, allumés depuis le haut. Le NOMBRE de volets allumés = fraction de fenêtre restante (Fraction 0..1).
+/// Le chiffre EXACT du compte à rebours et la luminance de la plaque (quota) sont portés par le XAML autour ;
+/// ce contrôle ne dessine que la piste de volets. Volet allumé = OnBrush, éteint = OffBrush.
+/// Géométrie : <see cref="GeometrieCadrans"/> (Volets) (écart 2,5, maquette).
 /// </summary>
 public sealed class FlapRow : FrameworkElement
 {
@@ -33,32 +37,33 @@ public sealed class FlapRow : FrameworkElement
         DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(FlapRow),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    // Sens de la piste (CAD-03) : horizontal par défaut (sens historique), vertical dans le gabarit en colonne.
+    public static readonly DependencyProperty OrientationProperty =
+        DependencyProperty.Register(nameof(Orientation), typeof(Orientation), typeof(FlapRow),
+            new FrameworkPropertyMetadata(Orientation.Horizontal, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public double Fraction { get => (double)GetValue(FractionProperty); set => SetValue(FractionProperty, value); }
     public int    Count    { get => (int)GetValue(CountProperty);       set => SetValue(CountProperty, value); }
     public Brush? OnBrush  { get => (Brush?)GetValue(OnBrushProperty);    set => SetValue(OnBrushProperty, value); }
     public Brush? OffBrush { get => (Brush?)GetValue(OffBrushProperty);   set => SetValue(OffBrushProperty, value); }
     public bool   HasData  { get => (bool)GetValue(HasDataProperty);     set => SetValue(HasDataProperty, value); }
     public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
+    public Orientation Orientation { get => (Orientation)GetValue(OrientationProperty); set => SetValue(OrientationProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
         double w = ActualWidth, h = ActualHeight;
         if (w <= 0 || h <= 0) return;
 
-        int n = Math.Max(1, Count);
-        double gap = 3;
-        double fw = (w - (n - 1) * gap) / n;
-        if (fw <= 0) return;
+        var volets = GeometrieCadrans.Volets(new Size(w, h), Orientation, Count);
+        if (volets.Count == 0) return;
+        int lit = GeometrieCadrans.VoletsAllumes(Fraction, Count);
 
-        double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
-        int lit = (int)Math.Round(frac * n, MidpointRounding.AwayFromZero);
-
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < volets.Count; i++)
         {
-            double x = i * (fw + gap);
-            // EN ATTENTE : volets neutres (ni allumés ni éteints) → jamais un rang vide.
+            // EN ATTENTE : volets neutres (ni allumés ni éteints) → jamais une piste vide.
             var brush = !HasData ? WaitBrush : (i < lit ? OnBrush : OffBrush);
-            dc.DrawRoundedRectangle(brush, null, new Rect(x, 0, fw, h), 2, 2);
+            dc.DrawRoundedRectangle(brush, null, volets[i], 2, 2);
         }
     }
 }

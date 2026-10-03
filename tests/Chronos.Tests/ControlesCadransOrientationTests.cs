@@ -73,6 +73,9 @@ public class ControlesCadransOrientationTests
 
     private static bool EstRouge((byte A, byte R, byte G, byte B) p) => p.A > 200 && p.R > 200 && p.G < 60 && p.B < 60;
     private static bool EstClair((byte A, byte R, byte G, byte B) p) => p.R > 200 && p.G > 200 && p.B > 200;
+    /// <summary>Ligne d'eau (blanc à 85 % sur 1,6 px, anticrénelée sur deux pixels) : ni la lumière rouge (G = 0)
+    /// ni la piste (0x20) n'atteignent ce niveau de vert et de bleu.</summary>
+    private static bool EstLigneDEau((byte A, byte R, byte G, byte B) p) => p.G > 120 && p.B > 120;
     private static bool EstGrisAttente((byte A, byte R, byte G, byte B) p)
         => p.A == 255 && Math.Abs(p.R - 0x80) <= 3 && Math.Abs(p.G - 0x80) <= 3 && Math.Abs(p.B - 0x80) <= 3;
     private static bool EstEteint((byte A, byte R, byte G, byte B) p)
@@ -163,12 +166,12 @@ public class ControlesCadransOrientationTests
         Assert.False(EstRouge(img.Couleur(85, 16)), $"l'ombre (droite) ne doit pas être rouge : {img.Couleur(85, 16)}");
 
         bool ligne = false;
-        for (int x = 49; x <= 54; x++) ligne |= EstClair(img.Couleur(x, 16));
+        for (int x = 49; x <= 54; x++) ligne |= EstLigneDEau(img.Couleur(x, 16));
         Assert.True(ligne, "une ligne d'eau claire est attendue autour de x = 51 à mi-hauteur");
 
         // L'ondulation : la ligne s'écarte de x = 51 au quart de la hauteur (sommet de la première Bézier, côté droit).
         bool ecartee = false;
-        for (int x = 52; x <= 54; x++) ecartee |= EstClair(img.Couleur(x, 8));
+        for (int x = 52; x <= 54; x++) ecartee |= EstLigneDEau(img.Couleur(x, 8));
         Assert.True(ecartee, "la ligne d'eau horizontale doit onduler (décalée vers la droite au quart de la hauteur)");
     }
 
