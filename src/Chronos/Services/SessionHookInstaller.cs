@@ -25,7 +25,7 @@ namespace Chronos.Services;
 /// pas au fichier. On ne repart JAMAIS d'un objet vide, ce qui effacerait tout le fichier.</para>
 ///
 /// Rappel prouvé : la config des hooks est lue au DÉMARRAGE d'une session → seules les sessions Claude
-/// Code lancées APRÈS l'installation seront suivies (comme pour statusLine).
+/// Code lancées APRÈS l'installation seront suivies.
 /// </summary>
 /// <summary>Un événement CÂBLÉ par Chronos : son nom, le matcher qui le filtre (<c>null</c> = tout), et ce
 /// qu'il produit. Le rôle n'est pas décoratif : c'est lui qu'on recopie dans docs/ (EVT-05).</summary>

@@ -39,7 +39,7 @@ internal static class MontageReglages
         Func<ChronosSettings, ChronosSettings>? reglagesInitiaux = null,
         FakeEtatJournal? journal = null, FakeClock? clock = null,
         HistoriqueViewModel? historique = null, IOuvreurHistorique? ouvreur = null,
-        FakeSessionsController? sessions = null, FakeStatusLineSetup? barreStatut = null,
+        FakeSessionsController? sessions = null,
         FakePressePapiers? pressePapiers = null)
     {
         var paths = TempPaths();
@@ -47,12 +47,12 @@ internal static class MontageReglages
         if (reglagesInitiaux is not null) settings.Save(reglagesInitiaux(settings.Load()));
 
         var provider = new FakeUsageProvider();
-        var orch = new RefreshOrchestrator(provider, paths, RefreshOptions.Default); // JAMAIS démarré : aucun I/O
+        var orch = new RefreshOrchestrator(provider, RefreshOptions.Default); // JAMAIS démarré : aucun I/O
         clock ??= new FakeClock(Now);
         return new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
             new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(paths, settings, provider, clock),
-            barreStatut ?? new FakeStatusLineSetup(), new FakeOAuthLogin(), sessions ?? new FakeSessionsController(),
+            new FakeOAuthLogin(), sessions ?? new FakeSessionsController(),
             new FakeAuthStatus(), new FakeEtatServeur(), journal, ouvreurHistorique: ouvreur, historique: historique,
             pressePapiers: pressePapiers);
     }

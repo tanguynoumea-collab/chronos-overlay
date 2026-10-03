@@ -36,6 +36,7 @@ public sealed class DiagnosticService
     private readonly IReadOnlyList<IEtatMagasin>? _magasins;
     private readonly IEtatReconstruction? _reconstruction;
     private readonly TimeZoneInfo? _fuseau;
+    private readonly ClaudeSettingsReconciler? _reglagesClaude;
     private readonly DateTimeOffset _demarrage;
 
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
@@ -75,13 +76,18 @@ public sealed class DiagnosticService
     /// fin de reconstruction), celui de la fenêtre Historique. OPTIONNEL et en DERNIÈRE position à dessein (même protocole que les
     /// précédents) ; câblé par la racine de composition (35-05). <c>null</c> → la section parle en UTC et le DIT (« Fuseau : UTC
     /// (fuseau non injecté) ») : jamais le fuseau local de la machine deviné ici (décision 5 de la phase 35).</param>
+    /// <param name="reglagesClaude">DAT-03 — le réconciliateur de <c>~/.claude/settings.json</c>, la MÊME instance que celle appelée au
+    /// démarrage : son <see cref="ClaudeSettingsReconciler.DernierBilan"/> remplit la section « Réglages de Claude Code » (retrait de
+    /// la barre de statut, sauvegarde). OPTIONNEL et en DERNIÈRE position à dessein (même protocole que les précédents) ; <c>null</c> →
+    /// la section le dit (« non câblé »).</param>
     public DiagnosticService(ChronosPaths paths, SettingsService settings, IUsageProvider composite, IClock clock,
                              IAuthStatus? authStatus = null, IEtatServeur? etatServeur = null,
                              SessionMonitor? moniteurSessions = null,
                              IReadOnlyList<IEtatMagasin>? magasins = null,
                              DateTimeOffset? demarrageProcessus = null,
                              IEtatReconstruction? reconstruction = null,
-                             TimeZoneInfo? fuseau = null)
+                             TimeZoneInfo? fuseau = null,
+                             ClaudeSettingsReconciler? reglagesClaude = null)
     {
         _paths = paths;
         _settings = settings;
@@ -94,6 +100,7 @@ public sealed class DiagnosticService
         _demarrage = demarrageProcessus ?? clock.UtcNow;   // D-32-21 : référence basse de « journal muet »
         _reconstruction = reconstruction;
         _fuseau = fuseau;   // pas de repli local : voir le XML-doc (D-35-12)
+        _reglagesClaude = reglagesClaude;   // pas de repli : voir le XML-doc (DAT-03)
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
@@ -496,10 +503,51 @@ public sealed class DiagnosticService
 
         sb.AppendLine();
 
+        // 4c) DAT-03 — ce que la réconciliation de ce lancement a fait de la barre de statut, puis ce que le fichier porte
+        // MAINTENANT. Lu sur le fichier du réconciliateur injecté quand il l'est (le même que celui qu'il a réconcilié).
+        sb.AppendLine("[Réglages de Claude Code]");
+        sb.AppendLine("  Ce lancement : " + LibelleBilan(_reglagesClaude?.DernierBilan, _reglagesClaude is not null));
+        sb.AppendLine("  Barre de statut actuelle : " + BarreActuelle(_reglagesClaude?.SettingsPath ?? claudeSettings));
+        sb.AppendLine();
+
         // DAT-04 — la durée, en dernière ligne (format épinglé par test, aucun seuil).
         sb.AppendLine();
         sb.AppendLine($"Rapport construit en {chrono.ElapsedMilliseconds} ms (dont chaîne de données {msChaine} ms)");
         return sb.ToString();
+    }
+
+    /// <summary>DAT-03 — bilan lisible du dernier passage de la réconciliation (« non câblé », « pas encore passée », ou l'issue).</summary>
+    private static string LibelleBilan(BilanReconciliation? bilan, bool cable)
+    {
+        if (!cable) return "non câblé";
+        if (bilan is null) return "pas encore passée";
+        if (bilan.Cause is not null) return bilan.Cause;
+        var sauvegarde = bilan.Sauvegarde is { } chemin ? " — sauvegarde " + Path.GetFileName(chemin) : "";
+        return bilan.Barre switch
+        {
+            IssueBarreStatut.Retiree   => "barre de statut Chronos retirée" + sauvegarde,
+            IssueBarreStatut.Restauree => "barre de statut d'origine restaurée" + sauvegarde,
+            IssueBarreStatut.Tierce    => "barre tierce laissée intacte",
+            IssueBarreStatut.Absente   => "aucune barre Chronos (rien à retirer)",
+            _                          => "issue inconnue",
+        };
+    }
+
+    /// <summary>DAT-03 — la barre de statut que porte le fichier À L'INSTANT du rapport. Lecture seule, jamais une exception.</summary>
+    private static string BarreActuelle(string cheminSettingsClaude)
+    {
+        try
+        {
+            if (!File.Exists(cheminSettingsClaude)) return "absente (settings.json Claude absent)";
+            var racine = ClaudeSettingsJson.ParseOrNull(File.ReadAllText(cheminSettingsClaude));
+            if (racine is null) return "inconnue (settings.json illisible)";
+            if (!racine.ContainsKey("statusLine")) return "absente";
+            var cmd = ClaudeSettingsJson.CommandOf(racine["statusLine"]);
+            return ClaudeSettingsJson.IsChronosCommand(cmd, ClaudeSettingsJson.StatusLineMarker)
+                ? "Chronos (retirée au prochain lancement)"
+                : "tierce (laissée intacte)";
+        }
+        catch { return "inconnue (lecture impossible)"; }
     }
 
     /// <summary>DAT-04 — âge du dernier exact persisté : l'âge connu du PROCESSUS (magasin injecté) prime, sinon le mtime

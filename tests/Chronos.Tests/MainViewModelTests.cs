@@ -85,12 +85,12 @@ public class MainViewModelTests
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
         // l'orchestrateur et en comptant les GetAsync. Sans cette prise, « un rafraîchissement a été
         // demandé » serait invérifiable depuis l'extérieur du VM.
-        var orch = orchestrator ?? new RefreshOrchestrator(provider, TempPaths(), options);
+        var orch = orchestrator ?? new RefreshOrchestrator(provider, options);
         var diag = new DiagnosticService(TempPaths(), settings, provider, clock);
         // etatServeur passe par le helper et NON par un nouveau site de construction : le 13e paramètre
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, settings, diag,
-            new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
+            login ?? new FakeOAuthLogin(), new FakeSessionsController(),
             auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction, ouvreurHistorique: ouvreur);
     }
 
@@ -125,7 +125,7 @@ public class MainViewModelTests
         };
         var provider = new FakeUsageProvider { Next = snap };
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero); // isole la charge initiale
-        var orch = new RefreshOrchestrator(provider, TempPaths(), options);
+        var orch = new RefreshOrchestrator(provider, options);
         var ui = new FakeUiDispatcher { OnUiThread = false };  // simule le thread pool de l'orchestrateur
         var clock = new FakeClock(Now);
         var settings = new SettingsService(TempPaths());
@@ -133,7 +133,7 @@ public class MainViewModelTests
             new FakeWindowController(), new FakeAutostartService(),
             settings,
             new DiagnosticService(TempPaths(), settings, provider, clock),
-            new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
+            new FakeOAuthLogin(), new FakeSessionsController(),
             new FakeAuthStatus());
         try
         {
@@ -673,7 +673,7 @@ public class MainViewModelTests
         // mutation). Un test d'ordre serait donc une fausse assurance ; l'invariant est tenu par la
         // lecture du code et par la XML-doc de ReconnecterAsync.
         var provider = new FakeUsageProvider();
-        var orch = new RefreshOrchestrator(provider, TempPaths(),
+        var orch = new RefreshOrchestrator(provider,
                                            new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
         var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
         var vm = Build(new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), provider,
@@ -794,7 +794,7 @@ public class MainViewModelTests
         // Sans RequestRefresh, couper ou rallumer la sonde n'aurait d'effet qu'au prochain tick — ou, pire,
         // l'utilisateur qui vient de couper une dépense verrait une requête partir encore après son clic.
         var provider = new FakeUsageProvider();
-        var orch = new RefreshOrchestrator(provider, TempPaths(),
+        var orch = new RefreshOrchestrator(provider,
                                            new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
         var vm = VmSonde(new FakeUiDispatcher { OnUiThread = true }, orchestrator: orch, provider: provider);
         try

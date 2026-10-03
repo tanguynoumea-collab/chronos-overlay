@@ -18,7 +18,8 @@ namespace Chronos.Services;
 /// déclenchait jamais et un groupe de hooks s'ajoutait à chaque version. Cinq chemins d'exe (v2.5, v2.5.1,
 /// v2.6, v2.8.1 et le build Debug) ont ainsi produit <b>25 groupes de hooks au lieu de 5</b>. Le chemin est
 /// précisément la variable qu'il faut cesser de suivre : on retient le marqueur d'argument
-/// (<c>--hook</c> / <c>--statusline</c>) ET le nom de fichier <c>Chronos*.exe</c>. Le marqueur seul serait
+/// (<c>--hook</c>, ou <c>--statusline</c> pour reconnaître les anciennes barres à retirer) ET le nom de
+/// fichier <c>Chronos*.exe</c>. Le marqueur seul serait
 /// imprudent (rien n'empêche un outil tiers d'adopter <c>--hook</c>) ; le nom de fichier borne le rayon
 /// d'action sans réintroduire la dépendance au chemin.</para>
 ///
@@ -38,7 +39,7 @@ public static class ClaudeSettingsJson
     /// <summary>Marqueur d'argument des hooks de session Chronos.</summary>
     public const string HookMarker = "--hook";
 
-    /// <summary>Marqueur d'argument du pont statusLine Chronos.</summary>
+    /// <summary>Marqueur des anciennes barres statusLine Chronos, à retirer (le mode n'existe plus depuis la 3.5).</summary>
     public const string StatusLineMarker = "--statusline";
 
     // Lecture volontairement permissive : un settings.json édité à la main peut contenir des

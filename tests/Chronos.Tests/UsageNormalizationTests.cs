@@ -83,8 +83,8 @@ public class UsageNormalizationTests
     [Fact]
     public void Les_epochs_des_fixtures_existantes_traversent_intacts()
     {
-        // usage-valid.json : resets_at 1738425600 et capturedAt 1751976000000, tous deux
-        // POSTÉRIEURS au plancher — aucune fixture de la suite ne doit casser.
+        // Epochs historiques des fixtures (resets_at 1738425600 en secondes, capturedAt 1751976000000 en
+        // millisecondes), tous deux POSTÉRIEURS au plancher — aucune fixture de la suite ne doit casser.
         Assert.Equal(new DateTimeOffset(2025, 2, 1, 16, 0, 0, TimeSpan.Zero),
                      UsageNormalization.InstantDepuisEpochSecondes(1738425600));
         Assert.Equal(new DateTimeOffset(2025, 7, 8, 12, 0, 0, TimeSpan.Zero),

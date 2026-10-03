@@ -313,7 +313,6 @@ public class ReglagesWindowTests
         {
             ("LoginClaude", SectionReglages.Donnees, vm.LoginClaudeCommand),
             ("ToggleSondeEnTetes", SectionReglages.Donnees, vm.ToggleSondeEnTetesCommand),
-            ("ToggleStatusLineSource", SectionReglages.Donnees, vm.ToggleStatusLineSourceCommand),
             ("OuvrirHistorique", SectionReglages.Historique, vm.OuvrirHistoriqueCommand),
             ("Historique.ChoisirStyle", SectionReglages.Historique, historique.ChoisirStyleCommand),
             ("SelectTheme", SectionReglages.Apparence, vm.SelectThemeCommand),
@@ -369,8 +368,7 @@ public class ReglagesWindowTests
         foreach (var libelle in new[]
                  {
                      "Données", "Historique", "Apparence", "Sessions", "Comportement", "Diagnostic",
-                     "Connexion Claude", "Sonde d'en-têtes", "Barre de statut de Claude Code",
-                     "installe ou retire le pont statusLine dans les réglages de Claude Code (utile en terminal)",
+                     "Connexion Claude", "Sonde d'en-têtes",
                      "Historique d'utilisation", "THÈME", "STYLE DU CADRAN", "Mode étendu",
                      "Widget sessions Claude Code", "STYLE DU WIDGET", "Disposition verticale",
                      "Arrière-plan", "Lancer au démarrage",
@@ -379,25 +377,17 @@ public class ReglagesWindowTests
             Assert.True(textes.Contains(libelle), $"libellé du plan absent : « {libelle} »");
 
         Assert.DoesNotContain(textes, t => t.Contains("Source terminal"));
+        Assert.DoesNotContain(textes, t => t.Contains("Barre de statut de Claude Code"));   // DAT-03 (37-05) : carte retirée
         Assert.DoesNotContain(textes, t => t.Contains("Recalibrer"));   // DAT-02 (37-04) : carte retirée
         Assert.DoesNotContain("RÉGLAGES", textes);
     }
 
     [WpfFact]
-    public void La_barre_de_statut_est_un_interrupteur_lie_a_sa_commande_et_a_son_etat()
+    public void La_barre_de_statut_a_quitte_Donnees()
     {
-        var vm = NouveauVm(barreStatut: new FakeStatusLineSetup { Enabled = true });
+        var vm = NouveauVm();
         var f = Monter(vm, SectionReglages.Donnees);
-        var inter = Nomme<ToggleButton>(f, "InterrupteurBarreStatut");
-
-        Assert.Same(vm.ToggleStatusLineSourceCommand, inter.Command);
-        Assert.True(vm.IsStatusLineSourceEnabled);
-        Assert.True(inter.IsChecked);
-
-        inter.Command!.Execute(null);
-        MettreEnPage(f, ParDefaut);
-        Assert.False(vm.IsStatusLineSourceEnabled);
-        Assert.False(inter.IsChecked);
+        Assert.Null(f.FindName("InterrupteurBarreStatut"));   // DAT-03 (37-05) : la barre est retirée, plus d'interrupteur
     }
 
     [WpfFact]

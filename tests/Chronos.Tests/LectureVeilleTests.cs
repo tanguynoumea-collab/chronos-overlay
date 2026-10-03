@@ -106,10 +106,10 @@ public class LectureVeilleTests
         var releves = new List<ReleveJournal>
         {
             R(DernierMardi, SourceUsage.SondeEnTetes),
-            R(DernierMardi + TimeSpan.FromMinutes(30), SourceUsage.PontStatusLine),
+            R(DernierMardi + TimeSpan.FromMinutes(30), SourceUsage.EndpointOAuthChronos),
         };
         releves.AddRange(Toutes5Min(PremierMercredi, Utc("2026-09-23T06:00:00Z")).Select(t => R(t, SourceUsage.SondeEnTetes)));
-        releves.Add(R(Utc("2026-09-23T06:02:00Z"), SourceUsage.PontStatusLine));
+        releves.Add(R(Utc("2026-09-23T06:02:00Z"), SourceUsage.EndpointOAuthChronos));
         var large = new LectureJournal(releves.OrderBy(r => r.T).ToList(), Array.Empty<EvenementJournal>(), 0, null, new Plage(Mercredi.Debut - LectureVeille.Horizon, Mercredi.Fin));
 
         var jour = LectureVeille.PourLeJour(large, Mercredi, Cadence);
@@ -117,7 +117,7 @@ public class LectureVeilleTests
         var veille = Assert.Single(jour.Releves, r => r.T < Mercredi.Debut);
         Assert.Equal(DernierMardi, veille.T);
         Assert.Equal(SourceUsage.SondeEnTetes, veille.Source);
-        Assert.Contains(jour.Releves, r => r.Source == SourceUsage.PontStatusLine && Mercredi.Contient(r.T));   // le jour reste entier
+        Assert.Contains(jour.Releves, r => r.Source == SourceUsage.EndpointOAuthChronos && Mercredi.Contient(r.T));   // le jour reste entier
     }
 
     [Fact]

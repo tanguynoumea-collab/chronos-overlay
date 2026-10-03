@@ -1,7 +1,7 @@
 namespace Chronos.Models;
 
 /// <summary>
-/// EXA-06 — QUI a produit un chiffre d'usage. Les quatre membres sont calqués sur la chaîne DI réelle
+/// EXA-06 — QUI a produit un chiffre d'usage. Les trois membres sont calqués sur la chaîne DI réelle
 /// (App.xaml.cs), de l'externe vers l'interne : rien n'est prévu « au cas où », chaque membre correspond
 /// à un producteur réellement inscrit.
 ///
@@ -23,9 +23,6 @@ public enum SourceUsage
 
     /// <summary>ChronosOAuthUsageProvider — /api/oauth/usage, jeton du login Chronos.</summary>
     EndpointOAuthChronos,
-
-    /// <summary>ClaudeUsageObjectProvider — usage.json écrit par le pont statusLine.</summary>
-    PontStatusLine,
 
     /// <summary>LastExactStore.Reconstruire — dernier relevé exact persisté sur disque.</summary>
     MagasinDernierExact,

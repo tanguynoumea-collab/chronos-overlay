@@ -7,8 +7,8 @@ namespace Chronos.Services;
 /// <summary>
 /// HDR-01 / HDR-02 / HDR-06 — LA SONDE. Provider EXACT qui n'obtient pas ses chiffres d'un corps de
 /// réponse mais des EN-TÊTES d'une requête JETABLE : <c>POST /v1/messages</c>, <c>max_tokens</c> à 1,
-/// sur le modèle le moins cher de la gamme. Deux fenêtres exactes, sans pont statusLine, sans
-/// <c>usage.json</c>.
+/// sur le modèle le moins cher de la gamme. Deux fenêtres exactes ; seule source qui interroge le
+/// serveur à cadence fixe.
 ///
 /// RAISON D'ÊTRE : répondre MÊME QUAND L'API REFUSE. <c>GET /api/oauth/usage</c> ne rend rien
 /// d'utile en erreur (vérifié : son 401 est rendu en bordure, <c>request_id</c> nul, aucun en-tête de

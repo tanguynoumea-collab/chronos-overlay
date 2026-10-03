@@ -116,10 +116,11 @@ public class GardesDoctrineTests
     /// PREUVE DE COMPORTEMENT, dans l'esprit de la garde de position de la phase 18.
     ///
     /// L'équivalence « porte d'âge au-dessus du composite ≡ porte d'âge dans Best() » repose sur un fait
-    /// d'ORDRE : la seule source à ancienneté non bornée (l'objet d'usage sur disque) est le repli le plus
-    /// interne, donc elle ne peut gagner que lorsque tout ce qui est au-dessus est indisponible. Un
-    /// réordonnancement futur de la chaîne casserait cette équivalence EN SILENCE. Ce test transforme la
-    /// fragilité en signal : trois sources exactes aux chiffres différents, c'est la plus externe qui sort.
+    /// d'ORDRE : une source à ancienneté non bornée ne peut être que le repli le plus interne, donc elle ne
+    /// gagne que lorsque tout ce qui est au-dessus est indisponible. Depuis la 3.5 la chaîne n'en contient
+    /// plus aucune (le dernier exact persisté vit AU-DESSUS du composite, sous la doctrine) ; la règle
+    /// d'ordre reste gardée pour le jour où une telle source reviendrait. Ce test transforme la fragilité
+    /// en signal : trois sources exactes aux chiffres différents, c'est la plus externe qui sort.
     /// </summary>
     [Fact]
     public async Task Le_repli_le_plus_interne_est_bien_celui_a_anciennete_non_bornee()
@@ -203,9 +204,10 @@ public class GardesDoctrineTests
     ///
     /// Le nom de la source est posé sur <c>WindowState</c> et NON sur <c>UsageSnapshot</c>, parce que
     /// <c>Best()</c> rend l'INSTANCE gagnante par référence alors que la recomposition du snapshot se
-    /// fait par « new » — un champ de snapshot serait détruit à chaque passage. La chaîne réelle compte
-    /// TROIS composites imbriqués : ce test monte la même profondeur, fait gagner la source la plus
-    /// interne (les deux au-dessus sont indisponibles), et exige que son nom arrive intact.
+    /// fait par « new » — un champ de snapshot serait détruit à chaque passage. La chaîne réelle ne compte
+    /// plus qu'un composite depuis la 3.5, mais le composite reste générique : ce test monte trois niveaux,
+    /// fait gagner la source la plus interne (les deux au-dessus sont indisponibles), et exige que son nom
+    /// arrive intact.
     ///
     /// Ce test TOMBE si quelqu'un déplace ce champ vers <c>UsageSnapshot</c>, ou si <c>Best()</c> se met
     /// un jour à recomposer une fenêtre par « new » au lieu de rendre l'instance.
@@ -215,7 +217,7 @@ public class GardesDoctrineTests
     {
         var externe = new FakeUsageProvider { Next = SnapMuet() };
         var median = new FakeUsageProvider { Next = SnapMuet() };
-        var interne = new FakeUsageProvider { Next = Snap(0.33, SourceUsage.PontStatusLine) };
+        var interne = new FakeUsageProvider { Next = Snap(0.33, SourceUsage.EndpointOAuthChronos) };
 
         var chaine = new CompositeUsageProvider(
             externe,
@@ -223,8 +225,8 @@ public class GardesDoctrineTests
 
         var snap = await chaine.GetAsync();
 
-        Assert.Equal(SourceUsage.PontStatusLine, snap.FiveHour.Source);
-        Assert.Equal(SourceUsage.PontStatusLine, snap.SevenDay.Source);
+        Assert.Equal(SourceUsage.EndpointOAuthChronos, snap.FiveHour.Source);
+        Assert.Equal(SourceUsage.EndpointOAuthChronos, snap.SevenDay.Source);
         Assert.Equal(0.33, snap.FiveHour.Utilization);   // c'est bien la fenêtre interne qui a gagné
     }
 

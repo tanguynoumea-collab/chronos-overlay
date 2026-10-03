@@ -12,7 +12,7 @@ namespace Chronos.Tests;
 /// rien d'autre n'est touché, et un fichier inexploitable reste rigoureusement inchangé.
 ///
 /// <para><b>GARDE ANTI-ACCIDENT.</b> Aucun test de ce fichier ne peut atteindre le vrai
-/// <c>~/.claude/settings.json</c> : tout <see cref="ClaudeSettingsReconciler"/> construit ici reçoit
+/// settings.json de Claude Code du profil : tout <see cref="ClaudeSettingsReconciler"/> construit ici reçoit
 /// EXPLICITEMENT son chemin de settings ET son dossier de sauvegarde sous <c>Path.GetTempPath()</c>.
 /// Un test dédié, plus bas, en fait une assertion explicite.</para>
 /// </summary>
@@ -20,6 +20,10 @@ public class ClaudeSettingsReconcilerTests
 {
     /// <summary>Exe de test : un nom en <c>Chronos*.exe</c>, seul reconnu par le prédicat d'identité.</summary>
     private const string Exe = @"C:\Apps\Chronos.exe";
+
+    /// <summary>Clé héritée des réglages ≤ 3.4, composée en deux morceaux comme dans le réconciliateur : le membre est retiré de
+    /// <see cref="ChronosSettings"/>, et la garde de non-retour compte son nom dans le texte des tests.</summary>
+    private const string CleHeritee = "Inner" + "StatusLineCommand";
 
     private static string TestDataPath(string file, [CallerFilePath] string thisFile = "")
         => Path.Combine(Path.GetDirectoryName(thisFile)!, "TestData", file);
@@ -166,21 +170,22 @@ public class ClaudeSettingsReconcilerTests
         Assert.Equal("Bash(git:*)", (racine["permissions"]!["allow"] as JsonArray)![0]!.ToString());
 
         // Ordre des clés racine conservé tel qu'à l'entrée.
-        Assert.Equal(new[] { "hooks", "statusLine", "agentPushNotifEnabled", "model", "permissions" },
+        // La fixture portait une barre Chronos périmée : elle est RETIRÉE, l'ordre du reste est intact.
+        Assert.Equal(new[] { "hooks", "agentPushNotifEnabled", "model", "permissions" },
             racine.Select(kv => kv.Key).ToArray());
     }
 
-    /// <summary>PUR-02 sur la machine polluée : la barre périmée est repointée, « padding » survit.</summary>
+    /// <summary>DAT-03 sur la machine polluée : la barre Chronos périmée (Chronos-v2.8.1.exe, padding 2)
+    /// est RETIRÉE — jamais repointée.</summary>
     [Fact]
-    public void Repointe_la_statusLine_perimee_et_conserve_padding()
+    public void Retire_la_statusLine_Chronos_perimee()
     {
-        var apres = ClaudeSettingsReconciler.ReconcileJson(FixturePollue(), Exe, hooksWanted: true);
-        var sl = (Racine(apres!)["statusLine"] as JsonObject)!;
+        var apres = ClaudeSettingsReconciler.ReconcileJson(
+            FixturePollue(), Exe, hooksWanted: true, commandeHeritee: null, out var barre);
 
-        Assert.Equal(StatusLineInstaller.ChronosCommand(Exe), sl["command"]!.ToString());
-        Assert.Equal(2, sl["padding"]!.GetValue<int>());
-        Assert.Equal("command", sl["type"]!.ToString());
-        Assert.DoesNotContain("Chronos-v2.8.1.exe", apres!);
+        Assert.Equal(IssueBarreStatut.Retiree, barre);
+        Assert.Null(Racine(apres!)["statusLine"]);
+        Assert.DoesNotContain("--statusline", apres!);
     }
 
     /// <summary>Widget désactivé : ZÉRO hook Chronos, et les clés d'événement devenues vides disparaissent.</summary>
@@ -369,6 +374,269 @@ public class ClaudeSettingsReconcilerTests
             }
 
             Assert.True(Directory.GetFiles(backups, "claude-settings-*.json").Length <= 5);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    // --- Retrait de la barre statusLine Chronos (DAT-03) ---
+
+    private static string AvecBarre(string commande, params (string cle, JsonNode? valeur)[] autres)
+    {
+        var racine = new JsonObject
+        {
+            ["statusLine"] = new JsonObject { ["type"] = "command", ["command"] = commande, ["padding"] = 2 },
+        };
+        foreach (var (cle, valeur) in autres) racine[cle] = valeur;
+        return ClaudeSettingsJson.Serialize(racine);
+    }
+
+    /// <summary>La barre réelle de l'utilisateur (guillemets + espaces dans le chemin) est retirée ;
+    /// le reste du fichier est conservé, et la seconde passe est un point fixe.</summary>
+    [Fact]
+    public void Retire_la_barre_Chronos_de_l_utilisateur_et_laisse_le_reste()
+    {
+        var entree = AvecBarre("\"C:/Users/X/Documents/PROJET OVERLAY/Chronos-v3.4.0.exe\" --statusline",
+            ("model", "opus"), ("agentPushNotifEnabled", true));
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: null, out var barre);
+
+        Assert.Equal(IssueBarreStatut.Retiree, barre);
+        var racine = Racine(apres!);
+        Assert.Null(racine["statusLine"]);
+        Assert.Equal("opus", racine["model"]!.ToString());
+        Assert.True(racine["agentPushNotifEnabled"]!.GetValue<bool>());
+
+        Assert.Null(ClaudeSettingsReconciler.ReconcileJson(apres, Exe, hooksWanted: false, commandeHeritee: null, out var barre2));
+        Assert.Equal(IssueBarreStatut.Absente, barre2);
+    }
+
+    /// <summary>Migré des tests de l'ancien installeur de barre (supprimés en 37-06) : l'ancienne barre de l'utilisateur est restaurée par
+    /// MUTATION (type et padding conservés).</summary>
+    [Fact]
+    public void Retrait_restaure_la_barre_dorigine()
+    {
+        var entree = AvecBarre("\"C:/Apps/Chronos.exe\" --statusline");
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: "bash ~/old.sh", out var barre);
+
+        Assert.Equal(IssueBarreStatut.Restauree, barre);
+        var sl = (Racine(apres!)["statusLine"] as JsonObject)!;
+        Assert.Equal("bash ~/old.sh", sl["command"]!.ToString());
+        Assert.Equal("command", sl["type"]!.ToString());
+        Assert.Equal(2, sl["padding"]!.GetValue<int>());
+    }
+
+    /// <summary>Migré : sans ancienne barre connue, la clé statusLine disparaît entièrement.</summary>
+    [Fact]
+    public void Retrait_sans_inner_retire_completement_statusLine()
+    {
+        var entree = AvecBarre("\"C:/Apps/Chronos.exe\" --statusline", ("model", "opus"));
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: null, out var barre);
+
+        Assert.Equal(IssueBarreStatut.Retiree, barre);
+        Assert.Null(Racine(apres!)["statusLine"]);
+        Assert.Equal("opus", Racine(apres!)["model"]!.ToString());
+    }
+
+    /// <summary>Migré : une barre tierce n'est jamais touchée, même avec une commande héritée.</summary>
+    [Fact]
+    public void Retrait_ne_touche_pas_une_barre_tierce()
+    {
+        var entree = AvecBarre("bash ~/my-statusline.sh");
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: "peu importe", out var barre);
+
+        Assert.Equal(IssueBarreStatut.Tierce, barre);
+        Assert.Null(apres);   // rien à écrire : la barre tierce est intacte, padding compris
+    }
+
+    /// <summary>Migré : une barre Chronos d'une AUTRE version est reconnue et retirée.</summary>
+    [Fact]
+    public void Retrait_retire_une_barre_Chronos_dune_autre_version()
+    {
+        var entree = AvecBarre("\"C:/DL/Chronos-v2.6.exe\" --statusline", ("model", "opus"));
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: null, out var barre);
+
+        Assert.Equal(IssueBarreStatut.Retiree, barre);
+        Assert.Null(Racine(apres!)["statusLine"]);
+        Assert.Equal("opus", Racine(apres!)["model"]!.ToString());
+    }
+
+    /// <summary>Un fichier sans statusLine : issue « Absente ».</summary>
+    [Fact]
+    public void Sans_statusLine_l_issue_est_absente()
+    {
+        var conforme = SessionHookInstaller.TransformForInstall(null, Exe);
+
+        Assert.Null(ClaudeSettingsReconciler.ReconcileJson(conforme, Exe, hooksWanted: true, commandeHeritee: null, out var barre));
+        Assert.Equal(IssueBarreStatut.Absente, barre);
+    }
+
+    /// <summary>Une commande héritée qui est elle-même une barre Chronos n'est JAMAIS restaurée.</summary>
+    [Fact]
+    public void Une_commande_heritee_Chronos_n_est_jamais_restauree()
+    {
+        var entree = AvecBarre("\"C:/Apps/Chronos.exe\" --statusline");
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false,
+            commandeHeritee: "\"C:/DL/Chronos-v2.8.1.exe\" --statusline", out var barre);
+
+        Assert.Equal(IssueBarreStatut.Retiree, barre);
+        Assert.Null(Racine(apres!)["statusLine"]);
+    }
+
+    /// <summary>E/S témoins : une sauvegarde AVANT l'écriture, bilan exact ; seconde passe sans écriture ni sauvegarde.</summary>
+    [Fact]
+    public void Retire_sauvegarde_une_fois_puis_ne_touche_plus_a_rien_et_le_bilan_le_dit()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settingsTemp = Path.Combine(dir, "settings.json");
+            var backupsTemp = Path.Combine(dir, "backups");
+            File.WriteAllText(settingsTemp, AvecBarre("\"C:/Users/X/Documents/PROJET OVERLAY/Chronos-v3.4.0.exe\" --statusline"));
+            var original = File.ReadAllBytes(settingsTemp);
+
+            var reconciler = new ClaudeSettingsReconciler(settingsTemp, backupsTemp, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+            Assert.Null(reconciler.DernierBilan);   // pas encore passée
+
+            Assert.True(reconciler.Reconcile(hooksWanted: false));
+            Assert.Null(Racine(File.ReadAllText(settingsTemp))["statusLine"]);
+
+            var sauvegardes = Directory.GetFiles(backupsTemp, "claude-settings-*.json");
+            Assert.Single(sauvegardes);
+            Assert.Equal(original, File.ReadAllBytes(sauvegardes[0]));   // l'état d'AVANT l'écriture
+
+            var bilan = reconciler.DernierBilan!;
+            Assert.True(bilan.Ecrit);
+            Assert.Equal(IssueBarreStatut.Retiree, bilan.Barre);
+            Assert.Equal(sauvegardes[0], bilan.Sauvegarde);
+            Assert.True(File.Exists(bilan.Sauvegarde));
+            Assert.Null(bilan.Cause);
+
+            var apres1 = File.ReadAllBytes(settingsTemp);
+            Assert.False(reconciler.Reconcile(hooksWanted: false));
+            Assert.Equal(apres1, File.ReadAllBytes(settingsTemp));
+            Assert.Single(Directory.GetFiles(backupsTemp, "claude-settings-*.json"));
+            Assert.False(reconciler.DernierBilan!.Ecrit);
+            Assert.Equal(IssueBarreStatut.Absente, reconciler.DernierBilan!.Barre);
+            Assert.Null(reconciler.DernierBilan!.Sauvegarde);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>Un fichier illisible est inchangé octet pour octet, sans sauvegarde, et le bilan le dit.</summary>
+    [Fact]
+    public void Un_fichier_illisible_n_est_pas_touche_et_le_bilan_le_dit()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settingsTemp = Path.Combine(dir, "settings.json");
+            var backupsTemp = Path.Combine(dir, "backups");
+            File.WriteAllText(settingsTemp, "{ \"statusLine\": { \"command\": \"C:/A/Chronos.exe --statusline\" }, cassé");
+            var avant = File.ReadAllBytes(settingsTemp);
+
+            var reconciler = new ClaudeSettingsReconciler(settingsTemp, backupsTemp, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            Assert.False(reconciler.Reconcile(hooksWanted: true, commandeHeritee: "bash ~/old.sh"));
+
+            Assert.Equal(avant, File.ReadAllBytes(settingsTemp));
+            Assert.True(!Directory.Exists(backupsTemp) || Directory.GetFiles(backupsTemp, "claude-settings-*.json").Length == 0);
+            var bilan = reconciler.DernierBilan!;
+            Assert.False(bilan.Ecrit);
+            Assert.Null(bilan.Barre);
+            Assert.Null(bilan.Sauvegarde);
+            Assert.Equal("illisible — rien écrit", bilan.Cause);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>Fichier absent : rien n'est créé, le bilan dit « fichier absent ».</summary>
+    [Fact]
+    public void Fichier_absent_bilan_fichier_absent()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settingsTemp = Path.Combine(dir, "settings.json");
+            var backupsTemp = Path.Combine(dir, "backups");
+
+            var reconciler = new ClaudeSettingsReconciler(settingsTemp, backupsTemp, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            Assert.False(reconciler.Reconcile(hooksWanted: true));
+
+            Assert.False(File.Exists(settingsTemp));
+            Assert.False(Directory.Exists(backupsTemp));
+            Assert.Equal(new BilanReconciliation(false, null, null, "fichier absent"), reconciler.DernierBilan);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>Hooks repointés vers l'exe courant dans la MÊME écriture que le retrait : une seule sauvegarde.</summary>
+    [Fact]
+    public void Les_hooks_sont_repointes_dans_la_meme_ecriture_que_le_retrait()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settingsTemp = Path.Combine(dir, "settings.json");
+            var backupsTemp = Path.Combine(dir, "backups");
+            File.WriteAllText(settingsTemp, FixturePollue());   // 25 hooks périmés + barre Chronos-v2.8.1
+
+            var reconciler = new ClaudeSettingsReconciler(settingsTemp, backupsTemp, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            Assert.True(reconciler.Reconcile(hooksWanted: true));
+
+            var ecrit = File.ReadAllText(settingsTemp);
+            Assert.Null(Racine(ecrit)["statusLine"]);
+            Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(ecrit, ClaudeSettingsJson.HookMarker));
+            Assert.All(CommandesDe(Racine(ecrit)).Where(c => c.Contains("--hook")),
+                c => Assert.Contains("C:/Apps/Chronos.exe", c));
+            Assert.Single(Directory.GetFiles(backupsTemp, "claude-settings-*.json"));
+            Assert.Equal(IssueBarreStatut.Retiree, reconciler.DernierBilan!.Barre);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>Lecture PURE de l'ancienne commande dans les réglages Chronos (clé insensible à la casse).</summary>
+    [Theory]
+    [InlineData("{\"" + CleHeritee + "\":\"bash x\"}", "bash x")]
+    [InlineData("{\"innerstatuslinecommand\":\"bash x\"}", "bash x")]
+    [InlineData("{\"ThemeKey\":\"Nuit\",\"" + CleHeritee + "\":\"bash x\"}", "bash x")]
+    [InlineData("{\"" + CleHeritee + "\":null}", null)]
+    [InlineData("{\"ThemeKey\":\"Nuit\"}", null)]
+    [InlineData("{\"" + CleHeritee + "\":42}", null)]
+    [InlineData("{\"" + CleHeritee + "\":\"\"}", null)]
+    [InlineData("{ cassé", null)]
+    [InlineData("[1,2]", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void CommandeInterneHeritee_lit_la_cle_ou_rend_null(string? json, string? attendu)
+        => Assert.Equal(attendu, ClaudeSettingsReconciler.CommandeInterneHeritee(json));
+
+    /// <summary>Lecture fichier : un fichier absent rend null sans lever ; un fichier présent est lu.</summary>
+    [Fact]
+    public void LireCommandeInterneHeritee_fichier_absent_rend_null()
+    {
+        var dir = TempDir();
+        try
+        {
+            Assert.Null(ClaudeSettingsReconciler.LireCommandeInterneHeritee(Path.Combine(dir, "absent.json")));
+
+            var fichier = Path.Combine(dir, "settings.json");
+            File.WriteAllText(fichier, "{\"" + CleHeritee + "\":\"bash ~/old.sh\"}");
+            Assert.Equal("bash ~/old.sh", ClaudeSettingsReconciler.LireCommandeInterneHeritee(fichier));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

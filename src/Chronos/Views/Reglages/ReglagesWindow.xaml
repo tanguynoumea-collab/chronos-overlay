@@ -660,25 +660,6 @@
                                                   AutomationProperties.Name="Sonde d'en-têtes"/>
                                 </Grid>
                             </Border>
-
-                            <!-- Ex-« Source terminal » (bouton) : renommé et devenu un interrupteur qui dit ce qu'il fait. -->
-                            <Border Style="{StaticResource Carte}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Text="Barre de statut de Claude Code" Style="{StaticResource TitreCarte}"/>
-                                        <TextBlock Style="{StaticResource Aide}"
-                                                   Text="installe ou retire le pont statusLine dans les réglages de Claude Code (utile en terminal)"/>
-                                    </StackPanel>
-                                    <ToggleButton x:Name="InterrupteurBarreStatut" Grid.Column="1" Style="{StaticResource Interrupteur}"
-                                                  IsChecked="{Binding IsStatusLineSourceEnabled, Mode=OneWay}"
-                                                  Command="{Binding ToggleStatusLineSourceCommand}"
-                                                  AutomationProperties.Name="Barre de statut de Claude Code"/>
-                                </Grid>
-                            </Border>
                         </StackPanel>
 
                         <!-- ============================== HISTORIQUE ============================== -->

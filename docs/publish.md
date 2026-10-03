@@ -130,14 +130,14 @@ C'est l'utilisateur qui lance le nouvel exe, par l'Explorateur (double-clic) ou 
 depuis un terminal ouvert dans l'app Claude. Depuis la 3.2.2, **une seule instance** de l'overlay
 tourne par session Windows (mutex `Local\Chronos-overlay`, `VerrouInstanceUnique`) : un second exe
 affiche « Chronos tourne déjà… » et se retire sans toucher à l'autre. Le verrou ne connaît pas les exe
-ANTÉRIEURS à la 3.2.2 : quitter d'abord ceux-là (réglages → « Quitter Chronos », en bas du rail depuis la 3.4.0). Les modes `--hook`
-et `--statusline` restent multi-instances.
+ANTÉRIEURS à la 3.2.2 : quitter d'abord ceux-là (réglages → « Quitter Chronos », en bas du rail depuis la 3.4.0). Le mode `--hook`
+reste multi-instances.
 
-Au premier lancement en mode overlay, `ClaudeSettingsReconciler` repointe les huit groupes de hooks
-(widget de sessions activé ; désactivé, il les retire) et la statusLine vers le nouvel exe, après
-une sauvegarde `%APPDATA%\Chronos\backups\claude-settings-<horodatage>.json`. Le constater dans le
-FICHIER — la sauvegarde est l'état avant ; le fichier courant est la sauvegarde où l'ancien nom
-d'exe devient le nouveau — et non dans `chronos.log`, écrit avant la réconciliation.
+À chaque lancement en mode overlay, `ClaudeSettingsReconciler` repointe les huit groupes de hooks
+(widget de sessions activé ; désactivé, il les retire) vers le nouvel exe, après une sauvegarde
+`%APPDATA%\Chronos\backups\claude-settings-<horodatage>.json`. Depuis la 3.5, le bilan du passage est écrit dans
+`chronos.log` (section « [Réglages de Claude Code] » : ce qui a été fait, nom de la sauvegarde, état actuel de la
+barre de statut) : le log de démarrage est écrit APRÈS la réconciliation.
 
 Garder l'ancien exe sur le disque tant que des sessions ouvertes avant la réconciliation tournent :
 elles l'appellent encore. Activer « Lancer au démarrage » DEPUIS le nouvel exe : le raccourci vise
@@ -169,3 +169,17 @@ l'exe qui l'a créé.
 - **Nouveaux champs de `settings.json`** : `ReglagesX`, `ReglagesY`, `ReglagesWidth`, `ReglagesHeight`, `ReglagesSection`.
   Absents d'un ancien fichier → fenêtre centrée, section Données ; bornés à l'écran au rétablissement.
 - **Réconciliation inchangée** (chemins des hooks et de la statusLine réécrits vers le nouvel exe, sauvegarde préalable).
+
+### Premier lancement de la 3.5.0
+
+- **Barre de statut retirée** : la 3.5 ne fournit plus de barre de statut à Claude Code. Au premier lancement, la
+  réconciliation sauvegarde `~/.claude/settings.json` (sous `%APPDATA%\Chronos\backups\`), puis retire la barre
+  Chronos, quels que soient son chemin et sa version ; si l'ancienne barre de l'utilisateur est connue (réglages ≤ 3.4),
+  elle est restaurée à la place. Une barre d'un tiers reste intacte. Les hooks sont repointés dans la même écriture.
+  Relancer ne change plus rien (idempotent).
+- **Bilan** : dans `chronos.log`, section « [Réglages de Claude Code] » (barre retirée ou restaurée, nom de la
+  sauvegarde), écrit après la réconciliation.
+- **Sessions Claude Code déjà ouvertes** : elles appellent encore l'ancien exe pour leur barre jusqu'à leur redémarrage —
+  garder l'ancien exe sur le disque tant qu'elles tournent (s'il a été supprimé, leur barre reste vide, sans gravité). Un
+  appel `--statusline` qui atteint l'exe 3.5 sort en silence (argument inconnu, code 0, aucune fenêtre).
+- **Carte retirée** : la carte « Barre de statut de Claude Code » disparaît de la section Données.

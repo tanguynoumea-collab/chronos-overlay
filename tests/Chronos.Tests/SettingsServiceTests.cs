@@ -129,7 +129,7 @@ public sealed class SettingsServiceTests : IDisposable
     // ---------------------------------------------------------------------------------------
 
     // Chemin de la fixture résolu à la COMPILATION ([CallerFilePath]) — motif déjà en place dans
-    // TranscriptActivityProviderTests / ClaudeUsageObjectProviderTests, aucun couplage au .csproj.
+    // TranscriptActivityProviderTests, aucun couplage au .csproj.
     private static string TestDataPath(string file, [CallerFilePath] string thisFile = "")
         => Path.Combine(Path.GetDirectoryName(thisFile)!, "TestData", file);
 
@@ -149,7 +149,8 @@ public sealed class SettingsServiceTests : IDisposable
     /// LE test DEL-06. Le settings.json de production (v2.8.1, portant les six champs de plafonds)
     /// s'ouvre sans erreur avec le schéma amputé, et les DIX-HUIT préférences de l'utilisateur sont
     /// restituées à l'identique — y compris l'offset +02:00 de l'ancre hebdo et les styles de la
-    /// refonte visuelle. C'est la preuve qu'aucun migrateur n'est nécessaire.
+    /// refonte visuelle. C'est la preuve qu'aucun migrateur n'est nécessaire. (Depuis 37-05, les deux préférences de la
+    /// barre de statut retirée sont à leur tour des membres inconnus : ignorées sans erreur, comme les plafonds.)
     /// </summary>
     [Fact]
     public void Reglages_avec_anciens_plafonds_s_ouvrent_sans_erreur_et_conservent_les_18_preferences()
@@ -166,8 +167,7 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(60, s.RefreshIntervalSeconds);
         Assert.Equal(new DateTimeOffset(2026, 07, 11, 00, 00, 00, TimeSpan.FromHours(2)), s.WeeklyAnchor);
         // « OAuthUsageEnabled » est encore dans la fixture : depuis 37-03 c'est un membre inconnu, ignoré sans erreur.
-        Assert.Null(s.InnerStatusLineCommand);
-        Assert.False(s.StatusLinePromptDismissed);
+        // Idem depuis 37-05 pour les deux clés de la barre de statut (commande chaînée, proposition écartée) : ignorées.
         Assert.Equal("ardoise", s.ThemeKey);
         Assert.True(s.SessionsWidgetEnabled);
         Assert.Equal(-77.60000000000001, s.SessionsX);
@@ -288,7 +288,8 @@ public sealed class SettingsServiceTests : IDisposable
     private static string FixtureValeursInconnues() => File.ReadAllText(TestDataPath("settings-valeurs-inconnues.json"));
 
     /// <summary>Une valeur fautive ne coûte qu'elle-même : les quatre enums inconnus retombent sur LEUR défaut, tout le reste
-    /// (thème, coin, moniteur, mode, commande chaînée, 10 géométries) est conservé ; le membre inconnu est ignoré.</summary>
+    /// (thème, coin, moniteur, mode, 10 géométries) est conservé ; les membres inconnus (dont la commande chaînée de la barre
+    /// de statut, retirée en 37-05) sont ignorés.</summary>
     [Fact]
     public void Fixture_valeurs_inconnues_ne_coute_que_les_valeurs_fautives()
     {
@@ -300,7 +301,6 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
         Assert.Equal(@"\\.\DISPLAY2", s.MonitorDeviceName);
         Assert.Equal(CadranDisplayMode.Etendu, s.CadranMode);
-        Assert.Equal("echo hi", s.InnerStatusLineCommand);
         Assert.Equal(100, s.HistoriqueX);
         Assert.Equal(120, s.HistoriqueY);
         Assert.Equal(1000, s.HistoriqueWidth);
@@ -323,7 +323,8 @@ public sealed class SettingsServiceTests : IDisposable
     }
 
     /// <summary>Save(Load()) grave les valeurs conservées à l'identique, remplace les fautives par leur défaut et fait
-    /// disparaître le membre inconnu ; la relecture suivante ne signale plus rien.</summary>
+    /// disparaître les membres inconnus (dont la commande chaînée héritée : le réconciliateur la lit AVANT tout Save) ; la
+    /// relecture suivante ne signale plus rien.</summary>
     [Fact]
     public void Save_apres_retombees_reecrit_le_fichier_sans_perte()
     {
@@ -334,7 +335,7 @@ public sealed class SettingsServiceTests : IDisposable
         var texte = File.ReadAllText(_paths.SettingsFile);
 
         Assert.Contains("nord", texte, StringComparison.Ordinal);
-        Assert.Contains("echo hi", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("echo hi", texte, StringComparison.Ordinal);   // clé héritée ≤ 3.4 : membre inconnu depuis 37-05
         Assert.Contains("\"CadranStyle\": \"Arcs\"", texte, StringComparison.Ordinal);
         Assert.DoesNotContain("Spirale", texte, StringComparison.Ordinal);
         Assert.DoesNotContain("Fantome", texte, StringComparison.Ordinal);
@@ -378,13 +379,13 @@ public sealed class SettingsServiceTests : IDisposable
         var defauts = new ChronosSettings();
         foreach (var p in proprietes)
         {
-            EcrireSettings("{\"ThemeKey\":\"nord\",\"InnerStatusLineCommand\":\"echo hi\",\"" + p.Name + "\":\"Fantome\"}");
+            EcrireSettings("{\"ThemeKey\":\"nord\",\"MonitorDeviceName\":\"ECRAN2\",\"" + p.Name + "\":\"Fantome\"}");
 
             var lu = _service.Load();
 
             Assert.Equal(p.GetValue(defauts), p.GetValue(lu));
             Assert.Equal("nord", lu.ThemeKey);
-            Assert.Equal("echo hi", lu.InnerStatusLineCommand);
+            Assert.Equal("ECRAN2", lu.MonitorDeviceName);
             Assert.Equal(new[] { p.Name }, _service.DernieresRetombees);
         }
     }
@@ -400,7 +401,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal("nord", s.ThemeKey);
         Assert.Equal(OverlayCorner.BottomLeft, s.Corner);
-        Assert.Equal("echo hi", s.InnerStatusLineCommand);
+        Assert.Equal(@"\\.\DISPLAY2", s.MonitorDeviceName);
         Assert.Equal(1000, s.HistoriqueWidth);
         Assert.Equal(600, s.ReglagesHeight);
     }

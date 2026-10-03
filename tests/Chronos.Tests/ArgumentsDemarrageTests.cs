@@ -16,9 +16,10 @@ public sealed class ArgumentsDemarrageTests
     [InlineData("Stop", ModeDemarrage.Overlay, null)]
     [InlineData("-x", ModeDemarrage.Overlay, null)]
     [InlineData("/foo", ModeDemarrage.Overlay, null)]
+    // Mode retiré en 3.5 (pont de la barre de statut) : sortie silencieuse, quelle que soit la casse.
+    [InlineData("--statusline", ModeDemarrage.ArgumentInconnu, null)]
+    [InlineData("--STATUSLINE", ModeDemarrage.ArgumentInconnu, null)]
     // Modes connus, insensibles à la casse.
-    [InlineData("--statusline", ModeDemarrage.StatusLine, null)]
-    [InlineData("--STATUSLINE", ModeDemarrage.StatusLine, null)]
     [InlineData("--hook Stop", ModeDemarrage.Hook, "Stop")]
     [InlineData("--hook", ModeDemarrage.Hook, null)]
     [InlineData("--HOOK Notification", ModeDemarrage.Hook, "Notification")]
@@ -32,8 +33,9 @@ public sealed class ArgumentsDemarrageTests
     // Un mode connu présent n'importe où l'emporte sur un inconnu qui l'accompagne.
     [InlineData("--hook Stop --zzz", ModeDemarrage.Hook, "Stop")]
     [InlineData("--zzz --cadrans", ModeDemarrage.GalerieCadrans, null)]
-    // Préséance 3.4.0 : --statusline > --hook > --cadrans > --sessions > --historique.
-    [InlineData("--statusline --hook X", ModeDemarrage.StatusLine, null)]
+    // Préséance : --hook > --cadrans > --sessions > --historique. Changement assumé de la 3.5 : --statusline n'est plus un
+    // mode, le --hook qui l'accompagne l'emporte.
+    [InlineData("--statusline --hook X", ModeDemarrage.Hook, "X")]
     [InlineData("--hook X --cadrans", ModeDemarrage.Hook, "X")]
     [InlineData("--cadrans --sessions", ModeDemarrage.GalerieCadrans, null)]
     [InlineData("--sessions --historique", ModeDemarrage.GalerieSessions, null)]
@@ -57,12 +59,13 @@ public sealed class ArgumentsDemarrageTests
             Assert.NotEqual(ModeDemarrage.Overlay, mode);
         }
 
-        // la phase 37 retire --statusline : passer à 4
-        Assert.Equal(5, ArgumentsDemarrage.ModesConnus.Count);
+        // --hook, --cadrans, --sessions, --historique (--statusline retiré en phase 37).
+        Assert.Equal(4, ArgumentsDemarrage.ModesConnus.Count);
     }
 
     /// <summary>Preuve de la liste blanche : un « --nom » qui n'y figure pas (proche d'un mode, ancien, inventé) sort en silence.</summary>
     [Theory]
+    [InlineData("--statusline")]
     [InlineData("--statusline-v2")]
     [InlineData("--recalibrer")]
     [InlineData("--oauth")]

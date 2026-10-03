@@ -64,6 +64,8 @@ public class GardesPerimetreTests
             // étape 4 — recalibrage
             "WeeklyRecalibration", "RecalibrationViewModel", "RecalibrationDialog", "RecalibrationPrompt",
             "IRecalibrationPrompt",
+            // étape 5 — pont statusLine
+            "ClaudeUsageObjectProvider", "StatusLineBridge", "StatusLineInstaller", "StatusLineSetup", "IStatusLineSetup",
         };
         var revenants = asm.GetTypes().Where(t => retires.Contains(t.Name)).Select(t => t.FullName).ToList();
         Assert.True(revenants.Count == 0,
@@ -77,6 +79,13 @@ public class GardesPerimetreTests
         Assert.Null(vm.GetProperty("RecalibrateCommand"));
         Assert.Null(typeof(Chronos.Services.ChronosSettings).GetProperty("OAuthUsageEnabled"));
         Assert.DoesNotContain("EndpointOAuthClaude", Enum.GetNames(typeof(Chronos.Models.SourceUsage)));
+        // étape 5 — pont statusLine : réglages, valeur de source, mode de démarrage, commande de la carte.
+        Assert.Null(typeof(Chronos.Services.ChronosSettings).GetProperty("InnerStatusLineCommand"));
+        Assert.Null(typeof(Chronos.Services.ChronosSettings).GetProperty("StatusLinePromptDismissed"));
+        Assert.DoesNotContain("PontStatusLine", Enum.GetNames(typeof(Chronos.Models.SourceUsage)));
+        Assert.DoesNotContain("StatusLine", Enum.GetNames(typeof(Chronos.Services.ModeDemarrage)));
+        Assert.Null(vm.GetProperty("ToggleStatusLineSourceCommand"));
+        Assert.Null(vm.GetProperty("IsStatusLineSourceEnabled"));
     }
 
     // Une garde qui ne verrait AUCUN type serait muette (assembly mal résolu, réflexion cassée).
@@ -523,8 +532,8 @@ public class GardesPerimetreTests
     /// <summary>
     /// GARDE DE PLACEMENT (CPT-03, phase 32 ; SOC-02, phase 36). Le verrou mono-instance ne vaut que par sa POSITION dans
     /// <c>OnStartup</c> : posé avant les court-circuits, il ferait échouer les hooks <c>--hook</c> (Claude Code en lance jusqu'à 5
-    /// en parallèle), le mode <c>--statusline</c> et la sortie silencieuse des arguments inconnus (SOC-02 : sinon boîte « tourne
-    /// déjà ») ; posé après le Host, la seconde instance aurait déjà démarré ses services, réconcilié <c>~/.claude/settings.json</c>
+    /// en parallèle) et la sortie silencieuse des arguments inconnus (SOC-02 : sinon boîte « tourne déjà » — c'est par elle que
+    /// sort désormais un ancien appel de barre de statut) ; posé après le Host, la seconde instance aurait déjà démarré ses services, réconcilié <c>~/.claude/settings.json</c>
     /// et écrasé <c>chronos.log</c> — exactement ce qui s'est produit le 2026-09-27 avec trois exe.
     /// Contrôle de SOURCE (<c>OnStartup</c> monte un host WPF, il n'est pas instanciable sous test) : l'acquisition est unique,
     /// vient après le tri des arguments (<c>ArgumentsDemarrage.Trier</c>) et chacun de ses court-circuits (<c>case ModeDemarrage.…</c>),
@@ -546,7 +555,6 @@ public class GardesPerimetreTests
         var iHost       = texte.IndexOf("Host.CreateApplicationBuilder()", StringComparison.Ordinal);
         var iTri        = texte.IndexOf("ArgumentsDemarrage.Trier(e.Args)", StringComparison.Ordinal);
         var iInconnu    = texte.LastIndexOf("case ModeDemarrage.ArgumentInconnu", StringComparison.Ordinal);
-        var iStatus     = texte.LastIndexOf("case ModeDemarrage.StatusLine", StringComparison.Ordinal);
         var iHook       = texte.LastIndexOf("case ModeDemarrage.Hook", StringComparison.Ordinal);
         var iCadrans    = texte.LastIndexOf("case ModeDemarrage.GalerieCadrans", StringComparison.Ordinal);
         var iSessions   = texte.LastIndexOf("case ModeDemarrage.GalerieSessions", StringComparison.Ordinal);
@@ -560,9 +568,6 @@ public class GardesPerimetreTests
 
         Assert.True(iTri < iVerrou, "Le verrou doit venir APRÈS le tri des arguments (SOC-02)");
         Assert.True(iInconnu < iVerrou, "Le verrou doit venir APRÈS la sortie silencieuse des arguments inconnus (SOC-02)");
-        // la phase 37 retire ce mode : la garde n'exige pas sa présence
-        if (iStatus >= 0)
-            Assert.True(iStatus < iVerrou, "Le verrou doit venir APRÈS le court-circuit --statusline");
         Assert.True(iHook < iVerrou, "Le verrou doit venir APRÈS le court-circuit --hook (les hooks restent multi-instances)");
         Assert.True(iCadrans < iVerrou, "Le verrou doit venir APRÈS le court-circuit --cadrans");
         Assert.True(iSessions < iVerrou, "Le verrou doit venir APRÈS le court-circuit --sessions");
@@ -577,8 +582,8 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
-    /// GARDE D'ORDRE (SOC-02, phase 36). La phase 37 retire <c>--statusline</c>, que Claude Code continuera d'émettre tant que sa
-    /// barre n'est pas retirée : sans tri préalable, chaque rendu de la barre lancerait l'overlay complet, réconcilierait les hooks
+    /// GARDE D'ORDRE (SOC-02, phase 36). La phase 37 a retiré le mode de la barre de statut, que les sessions Claude Code déjà
+    /// ouvertes continuent d'appeler jusqu'à leur redémarrage : sans tri préalable, chaque rendu de la barre lancerait l'overlay complet, réconcilierait les hooks
     /// et heurterait le verrou (boîte « Chronos tourne déjà »). Le tri PUR (<c>ArgumentsDemarrage.Trier</c>, testé par
     /// <c>ArgumentsDemarrageTests</c>) doit donc être la PREMIÈRE instruction d'<c>OnStartup</c>, avant <c>base.OnStartup</c>, le
     /// verrou, le Host et la réconciliation ; et la branche « argument inconnu » sort en code 0 sans fenêtre, sans service, sans
@@ -710,9 +715,58 @@ public class GardesPerimetreTests
         Assert.Contains("EcritureRatee +=", texte, StringComparison.Ordinal);
         Assert.Contains("SignalerEcritureRatee(\"last-exact\"", texte, StringComparison.Ordinal);
 
-        // 5) Un seul composite par niveau, rien de dupliqué en déplaçant la chaîne : 2 jusqu'au retrait du pont statusLine
-        //    (étape 5 de la purge), 1 ensuite.
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("new CompositeUsageProvider(")).Count);
+        // 5) Un seul composite : sonde → OAuth Chronos (DAT-02, chaîne finale depuis l'étape 5 de la purge).
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("new CompositeUsageProvider(")));
+    }
+
+    /// <summary>
+    /// GARDE D'ORDRE DU DÉMARRAGE (DAT-03, 37-05). La commande héritée des réglages ≤ 3.4 (ancienne barre de l'utilisateur) doit
+    /// être lue AVANT <c>window.Show()</c> : le placement de la fenêtre sauvegarde les réglages, et ce Save effacerait la clé
+    /// devenue inconnue. La réconciliation (qui retire la barre Chronos) vient après l'affichage, et le log de démarrage
+    /// (<c>LogStartupAsync</c>) APRÈS la réconciliation : sinon <c>chronos.log</c> ne contiendrait pas le bilan du retrait.
+    /// Contrôle de SOURCE : <c>OnStartup</c> monte WPF, il n'est pas instanciable sous test.
+    /// </summary>
+    [Fact]
+    public void La_commande_heritee_est_lue_avant_Show_et_la_reconciliation_precede_le_log_de_demarrage()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        var iLecture   = texte.IndexOf("LireCommandeInterneHeritee", StringComparison.Ordinal);
+        var iShow      = texte.IndexOf("window.Show()", StringComparison.Ordinal);
+        var iReconcile = texte.IndexOf(".Reconcile(", StringComparison.Ordinal);
+        var iLog       = texte.IndexOf("LogStartupAsync()", StringComparison.Ordinal);
+
+        // Anti-mutisme : un repère disparu rendrait chaque comparaison vide de sens.
+        Assert.True(iLecture >= 0, "La lecture de la commande héritée a disparu d'App.xaml.cs");
+        Assert.True(iShow >= 0, "window.Show() introuvable dans App.xaml.cs");
+        Assert.True(iReconcile >= 0, "La réconciliation (.Reconcile() a disparu d'App.xaml.cs");
+        Assert.True(iLog >= 0, "LogStartupAsync() introuvable dans App.xaml.cs");
+
+        Assert.True(iLecture < iShow, "La commande héritée doit être lue AVANT window.Show() (le placement sauvegarde les réglages)");
+        Assert.True(iShow < iReconcile, "La réconciliation vient après l'affichage de la fenêtre");
+        Assert.True(iReconcile < iLog, "La réconciliation doit précéder LogStartupAsync() (le bilan du retrait va dans chronos.log)");
+    }
+
+    /// <summary>
+    /// GARDE DE NON-RETOUR (DAT-03, 37-05). Le réconciliateur RETIRE la barre de statut Chronos ; il ne la pose ni ne la repointe
+    /// plus jamais vers l'exe courant (c'était le rôle de l'installeur supprimé). Contrôle de SOURCE.
+    /// </summary>
+    [Fact]
+    public void Le_reconciliateur_ne_pose_ni_ne_repointe_jamais_une_barre()
+    {
+        var fichier = Path.Combine(CheminSources(), "Services", "ClaudeSettingsReconciler.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        Assert.DoesNotContain("ApplyStatusLine", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("StatusLineInstaller", texte, StringComparison.Ordinal);
+        // Fabrique de la commande de barre (« "exe" --statusline ») ; IsChronosCommand( — le PRÉDICAT de reconnaissance — reste permis.
+        Assert.DoesNotMatch(new System.Text.RegularExpressions.Regex(@"\bChronosCommand\("), texte);
+        Assert.Contains("root.Remove(\"statusLine\")", texte, StringComparison.Ordinal);
     }
 
     /// <summary>Le chemin des sources est INJECTÉ par MSBuild, jamais deviné (Assembly.Location est VIDE

@@ -29,6 +29,8 @@ public sealed class GardeDocumentationChaineTests
         "Usage exact (OAuth)", "Estimation (repli)", "estimation par transcripts", "repli JSONL",
         // étape 3 — la valeur d'enum de la source retirée (jeton de l'app bureau)
         "EndpointOAuthClaude",
+        // étape 5 — le pont de la barre de statut, son fichier d'usage et son mode de démarrage
+        "PontStatusLine", "usage.json", "pont statusLine", "--statusline",
     };
 
     private static string CheminDocs()

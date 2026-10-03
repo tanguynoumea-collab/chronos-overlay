@@ -67,8 +67,8 @@ public sealed class CompositeUsageProvider : IUsageProvider
 
     // Meilleure source pour UNE fenetre : on classe par fiabilite (Exact > Estimated > Unavailable) et
     // on retient le repli SEULEMENT s'il est STRICTEMENT plus fiable (egalite -> primaire prioritaire).
-    // Generalise le choix pour l'IMBRICATION (INT-01) : un repli qui produit lui-meme un Exact (composite
-    // interne statusLine) doit primer sur un primaire Unavailable — l'ancien code ne promouvait que
+    // Generalise le choix pour l'IMBRICATION (INT-01) : un repli qui produit lui-meme un Exact (le secours
+    // OAuth Chronos, ou un composite imbrique) doit primer sur un primaire Unavailable — l'ancien code ne promouvait que
     // l'Estimated du repli et ratait ce cas. Les 6 cas d'origine restent inchanges (primaire prioritaire
     // a fiabilite egale ou superieure).
     private static WindowState Best(WindowState primary, WindowState fallback) =>

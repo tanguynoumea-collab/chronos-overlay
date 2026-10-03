@@ -47,7 +47,6 @@ public class CompositionRootTests
         var tmpUsage = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(), "ChronosDI_" + System.Guid.NewGuid().ToString("N"), "usage.json");
         services.AddSingleton(ChronosPaths.Default() with { UsageFile = tmpUsage });
-        services.AddSingleton<ClaudeUsageObjectProvider>();
 
         // Source de delta (DEL-01/DEL-02) : enregistree HORS de la chaine composite — elle n'est
         // plus un IUsageProvider. Une DI oubliant cet enregistrement compilerait et ne planterait
@@ -60,12 +59,12 @@ public class CompositionRootTests
                 sp.GetRequiredService<IClock>()),
             sp.GetRequiredService<IClock>()));
 
-        // EXA-01 : le decorateur de persistance coiffe la chaine exacte (ici reduite au pont
-        // statusLine, seul maillon reproduit dans ce conteneur miroir).
+        // EXA-01 : le decorateur de persistance coiffe la chaine exacte (ici reduite a un faux en bout de
+        // chaine : la position de la sonde est prouvee par La_sonde_d_en_tetes_est_le_PRIMAIRE_de_la_chaine_exacte).
         services.AddSingleton(sp => new LastExactStore(
             sp.GetRequiredService<ChronosPaths>().LastExactFile));
         services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
-            inner: sp.GetRequiredService<ClaudeUsageObjectProvider>(),
+            inner: new FakeUsageProvider(),
             store: sp.GetRequiredService<LastExactStore>(),
             clock: sp.GetRequiredService<IClock>(),
             activite: sp.GetRequiredService<ITranscriptActivitySource>()));
@@ -89,10 +88,14 @@ public class CompositionRootTests
             sp.GetRequiredService<ChronosPaths>(),
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IUsageProvider>(),
-            sp.GetRequiredService<IClock>()));
+            sp.GetRequiredService<IClock>(),
+            // DAT-03 : comme en production, le diagnostic reçoit le réconciliateur — ici sur TROIS chemins temporaires
+            // (settings, sauvegardes, exe) : aucune lecture ni écriture du vrai ~/.claude/settings.json.
+            reglagesClaude: new ClaudeSettingsReconciler(
+                System.IO.Path.Combine(System.IO.Path.GetDirectoryName(tmpUsage)!, "claude-settings.json"),
+                System.IO.Path.Combine(System.IO.Path.GetDirectoryName(tmpUsage)!, "backups"),
+                System.IO.Path.Combine(System.IO.Path.GetDirectoryName(tmpUsage)!, "Chronos.exe"))));
 
-        // Source exacte via pont statusLine : le ctor de MainViewModel dépend d'IStatusLineSetup.
-        services.AddSingleton<IStatusLineSetup>(_ => new FakeStatusLineSetup());
         // Login OAuth intégré : le ctor de MainViewModel dépend d'IOAuthLogin.
         services.AddSingleton<IOAuthLogin>(_ => new FakeOAuthLogin());
         // Phase 17 : le ctor de MainViewModel dépendra d'IAuthStatus (plan 17-05). L'enregistrer dès
@@ -269,14 +272,15 @@ public class CompositionRootTests
         var services = new ServiceCollection();
         var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosDI_" + System.Guid.NewGuid().ToString("N"));
         services.AddSingleton(_ => new SessionHookInstaller(System.IO.Path.Combine(tmp, "settings.json")));
-        services.AddSingleton<StatusLineInstaller>(_ => new StatusLineInstaller(System.IO.Path.Combine(tmp, "settings.json")));
         services.AddSingleton(_ => new ClaudeSettingsReconciler(
-            System.IO.Path.Combine(tmp, "settings.json"), System.IO.Path.Combine(tmp, "backups")));
+            System.IO.Path.Combine(tmp, "settings.json"), System.IO.Path.Combine(tmp, "backups"),
+            System.IO.Path.Combine(tmp, "Chronos.exe")));
 
         var provider = services.BuildServiceProvider();
         var recon = provider.GetRequiredService<ClaudeSettingsReconciler>();
         Assert.NotNull(recon);
         Assert.StartsWith(System.IO.Path.GetTempPath(), recon.SettingsPath);   // garde anti-accident
+        Assert.StartsWith(System.IO.Path.GetTempPath(), recon.BackupDir);
         Assert.False(recon.Reconcile(hooksWanted: true));   // fichier absent → aucune écriture, aucun crash
         provider.Dispose();
     }
@@ -362,7 +366,7 @@ public class CompositionRootTests
     /// chiffres de /api/oauth/usage et ce test tomberait — avec lui, le statut serveur et le dépassement.
     ///
     /// Portée ASSUMÉE : ce test prouve la POSITION, pas la résolution du graphe complet (déjà couverte par
-    /// Host_resout_et_dispose_les_singletons). L'innermost fallback est donc un FakeUsageProvider.
+    /// Host_resout_et_dispose_les_singletons). Depuis la 3.5 le composite est unique : sonde en primaire, OAuth Chronos en secours.
     ///
     /// SÉCURITÉ : coffre et magasin sous Path.GetTempPath(), tout le trafic par FakeHttpMessageHandler.
     /// Aucune requête réelle, le refresh token de l'utilisateur n'est ni lu, ni déchiffré, ni envoyé.
@@ -411,11 +415,10 @@ public class CompositionRootTests
 
         services.AddSingleton(sp => new LastExactStore(sp.GetRequiredService<ChronosPaths>().LastExactFile));
         services.AddSingleton<IUsageProvider>(sp => new LastExactUsageProvider(
+            // Miroir de la chaîne finale (DAT-02) : UN composite, sonde → OAuth Chronos.
             inner: new CompositeUsageProvider(
                 primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
-                fallback: new CompositeUsageProvider(
-                    primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
-                    fallback: new FakeUsageProvider())),
+                fallback: sp.GetRequiredService<ChronosOAuthUsageProvider>()),
             store: sp.GetRequiredService<LastExactStore>(),
             clock: sp.GetRequiredService<IClock>(),
             // La sonde pose CapturedAt = now et FakeClock est figee : l'age vaut zero, donc la doctrine
@@ -444,7 +447,7 @@ public class CompositionRootTests
         Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
         Assert.Equal(0.01, snap.FiveHour.Utilization!.Value, 9);
 
-        // Et le statut serveur traverse réellement les deux composites imbriqués ET le décorateur :
+        // Et le statut serveur traverse réellement le composite ET le décorateur :
         // c'est ce voyage par référence qui rend HDR-03/HDR-04 vivants en production.
         Assert.Equal(StatutServeur.Autorise, snap.FiveHour.StatutServeur);
     }

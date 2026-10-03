@@ -24,7 +24,7 @@ Ce document est écrit pour que la **prochaine** dérive soit détectable — vo
 **Rappel de terrain, valable pour tout ce qui suit.** La configuration des hooks est lue au **DÉMARRAGE**
 d'une session Claude Code. Seules les sessions ouvertes **après** une réconciliation de
 `~/.claude/settings.json` sont suivies — et cette réconciliation n'a lieu qu'au **lancement de l'overlay**,
-en **mode overlay uniquement** (les modes `--hook` et `--statusline` sortent bien avant), et seulement si le
+en **mode overlay uniquement** (le mode `--hook` sort bien avant), et seulement si le
 widget de sessions est activé. Republier l'exe ne suffit donc pas : il faut le relancer, puis rouvrir les
 sessions.
 

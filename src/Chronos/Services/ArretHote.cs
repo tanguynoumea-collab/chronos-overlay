@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Extensions.Hosting;
 
 namespace Chronos.Services;
@@ -34,7 +35,7 @@ public static class ArretHote
         var arret = Etape(() => host.StopAsync(cts.Token), delai, "arrêt");
         if (arret is not null) cause = arret;
 
-        // Libération des singletons IDisposable (watcher, minuteurs…), elle aussi hors thread appelant et bornée.
+        // Libération des singletons IDisposable (minuteurs, flux…), elle aussi hors thread appelant et bornée.
         var liberation = Etape(() => { host.Dispose(); return Task.CompletedTask; }, delai, "libération");
         if (liberation is not null) cause = cause is null ? liberation : cause + " ; " + liberation;
 
@@ -60,5 +61,22 @@ public static class ArretHote
         {
             return $"{nom} du Host en échec : {ex.GetType().Name}: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Best-effort : une ligne datée dans <c>chronos.log</c> (sous <paramref name="dossier"/>) quand l'arrêt a dépassé son
+    /// délai. Ne lève jamais. Le dossier est CRÉÉ s'il manque : depuis la 3.5, plus aucune surveillance de fichier ne le crée
+    /// au démarrage, chaque écrivain sous <c>%APPDATA%\Chronos</c> crée donc le sien.
+    /// </summary>
+    public static void SignalerDepassement(string? dossier, string? cause)
+    {
+        if (dossier is null) return;
+        try
+        {
+            Directory.CreateDirectory(dossier);
+            File.AppendAllText(Path.Combine(dossier, "chronos.log"),
+                $"{Environment.NewLine}[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] arrêt dépassé : {cause} — sortie forcée{Environment.NewLine}");
+        }
+        catch { /* le diagnostic ne doit jamais empêcher la sortie */ }
     }
 }

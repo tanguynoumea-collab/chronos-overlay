@@ -5,13 +5,14 @@ namespace Chronos.Services;
 /// <summary>
 /// HDR-05 — LE POINT UNIQUE de conversion d'unité d'usage du projet.
 ///
-/// Le projet fait circuler la même donnée sous TROIS unités et <c>resets_at</c> sous DEUX formats :
+/// Le projet fait circuler la même donnée sous DEUX unités et <c>resets_at</c> sous DEUX formats :
 /// <list type="bullet">
 ///   <item>en-têtes <c>anthropic-ratelimit-unified-*</c> : <c>utilization</c> en 0..1, en TEXTE,
 ///         <c>reset</c> en epoch SECONDES (texte) ;</item>
-///   <item><c>GET /api/oauth/usage</c> : <c>utilization</c> en 0..100, <c>resets_at</c> en ISO 8601 ;</item>
-///   <item>pont statusLine : <c>used_percentage</c> en 0..100, <c>resets_at</c> en epoch SECONDES.</item>
+///   <item><c>GET /api/oauth/usage</c> : <c>utilization</c> en 0..100, <c>resets_at</c> en ISO 8601.</item>
 /// </list>
+/// (Jusqu'à la 3.4, la barre de statut de Claude Code ajoutait une troisième forme : pourcentage 0..100 et epoch
+/// SECONDES. Elle est retirée depuis la 3.5 ; les conversions restent, elles servent encore aux deux sources.)
 /// Chaque conversion dispersée est un point de divergence futur : toutes vivent ici, et un test de
 /// balayage du texte source (<c>NormalisationUniqueTests</c>) interdit d'en réintroduire une ailleurs.
 ///
@@ -27,7 +28,7 @@ public static class UsageNormalization
     /// Plancher de sanité des instants de reset. Antérieur à l'existence des fenêtres d'usage Claude,
     /// donc aucun reset légitime ne peut tomber avant.
     ///
-    /// Motif RÉEL de son existence : le <c>usage.json</c> de production de cette machine contient
+    /// Motif RÉEL de son existence : le fichier d'usage qu'écrivait la barre de statut (≤ 3.4) sur cette machine contenait
     /// <c>{"five_hour":{"used_percentage":10,"resets_at":9}}</c>. L'epoch 9 — janvier 1970 — ne décrit
     /// rien, mais il était servi comme un instant valide et produisait une géométrie fausse sur le
     /// cadran. On rend désormais l'inconnu plutôt qu'un dessin faux.
@@ -52,7 +53,7 @@ public static class UsageNormalization
         return f < 0.0 ? null : f;
     }
 
-    /// <summary>Pourcentage 0..100 (<c>/api/oauth/usage</c>, pont statusLine) vers fraction 0..1.</summary>
+    /// <summary>Pourcentage 0..100 (<c>/api/oauth/usage</c>) vers fraction 0..1.</summary>
     public static double? FractionDepuisPourcentage(double? p0a100)
         => FractionDepuisFraction(p0a100 is { } v ? v / 100.0 : null);
 
@@ -91,8 +92,8 @@ public static class UsageNormalization
     /// <summary>
     /// Epoch MILLISECONDES vers instant, MÊME plancher de sanité.
     ///
-    /// Cette surcharge existe pour que <c>capturedAt</c> du pont statusLine et les horodatages du
-    /// rapport de diagnostic passent AUSSI par le point unique : sans elle, la garde de non-retour
+    /// Cette surcharge existe pour que les horodatages en millisecondes (ceux du rapport de diagnostic, et
+    /// jusqu'à la 3.4 ceux de la barre de statut) passent AUSSI par le point unique : sans elle, la garde de non-retour
     /// devrait exempter <c>DiagnosticService.cs</c>, et une garde trouée ne garde rien.
     /// </summary>
     public static DateTimeOffset? InstantDepuisEpochMillisecondes(long? millisecondes)

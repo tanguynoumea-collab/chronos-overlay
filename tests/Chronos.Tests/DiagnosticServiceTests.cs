@@ -1,3 +1,4 @@
+using System.IO;
 using Chronos.Models;
 using Chronos.Models.Historique.Tokens;
 using Chronos.Services;
@@ -1776,5 +1777,55 @@ public class DiagnosticServiceTests : IDisposable
         var report = await RapportAvecSettings("{\"ThemeKey\":\"nord\"}");
 
         Assert.Contains("Réglages (settings.json) : lus, aucune valeur retombée", report);
+    }
+    // ---------------------------------------------------------------- DAT-03 (37-05) : bilan du retrait de la barre de statut
+
+    /// <summary>
+    /// Le rapport journalise le bilan du retrait : sur un fichier témoin portant une barre Chronos (version et chemin quelconques),
+    /// le réconciliateur — construit avec les TROIS chemins temporaires, jamais le vrai profil — sauvegarde puis retire la barre,
+    /// et la section « [Réglages de Claude Code] » le dit, sauvegarde nommée. La ligne « Barre de statut actuelle » relit le
+    /// fichier témoin (et non le vrai settings.json) : la barre y est désormais absente.
+    /// </summary>
+    [Fact]
+    public async Task Le_rapport_journalise_le_bilan_du_retrait_de_la_barre()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Chronos_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "settings.json"),
+                "{\"statusLine\":{\"type\":\"command\",\"command\":\"\\\"C:/X/Chronos-v3.4.0.exe\\\" --statusline\"}}");
+            var reconciler = new ClaudeSettingsReconciler(
+                Path.Combine(dir, "settings.json"), Path.Combine(dir, "backups"), Path.Combine(dir, "Chronos.exe"));
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            Assert.True(reconciler.Reconcile(false));
+
+            var paths = TempPaths();
+            var settings = new SettingsService(paths);
+            var diag = new DiagnosticService(paths, settings, new StubProvider(UsageSnapshot.Empty),
+                                             new FakeClock(DateTimeOffset.UtcNow), reglagesClaude: reconciler);
+            var report = await diag.BuildReportAsync();
+
+            Assert.Contains("[Réglages de Claude Code]", report);
+            Assert.Contains("barre de statut Chronos retirée — sauvegarde claude-settings-", report);
+            Assert.Contains("Barre de statut actuelle : absente", report);
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
+    }
+
+    /// <summary>Sans réconciliateur injecté, la section existe et dit « non câblé » — jamais un bilan inventé.</summary>
+    [Fact]
+    public async Task Sans_reconciliateur_le_rapport_dit_non_cable()
+    {
+        var paths = TempPaths();
+        var settings = new SettingsService(paths);
+        var diag = new DiagnosticService(paths, settings, new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("[Réglages de Claude Code]", report);
+        Assert.Contains("  Ce lancement : non câblé", report);
     }
 }

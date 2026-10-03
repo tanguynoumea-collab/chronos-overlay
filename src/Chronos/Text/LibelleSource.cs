@@ -27,7 +27,6 @@ public static class LibelleSource
     {
         Chronos.Models.SourceUsage.SondeEnTetes         => "sonde d'en-têtes de rate-limit",
         Chronos.Models.SourceUsage.EndpointOAuthChronos => "endpoint OAuth (login Chronos)",
-        Chronos.Models.SourceUsage.PontStatusLine       => "pont statusLine Claude Code",
         Chronos.Models.SourceUsage.MagasinDernierExact  => "dernier exact persisté",
         _                                               => "non renseignée",
     };

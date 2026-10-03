@@ -46,8 +46,8 @@ public sealed class ResultatVerrou
 /// survivrait à un crash et bloquerait le redémarrage). POURQUOI <c>Local\</c> et pas <c>Global\</c> : aucun droit
 /// requis, et un autre utilisateur de la même machine peut avoir son propre Chronos (D-32-09).</para>
 ///
-/// <para>Posé dans <c>App.OnStartup</c> APRÈS les court-circuits <c>--statusline</c>, <c>--hook</c>, <c>--cadrans</c>,
-/// <c>--sessions</c> et AVANT le Host : les hooks (Claude Code en lance jusqu'à 5 en parallèle) et les modes CLI restent
+/// <para>Posé dans <c>App.OnStartup</c> APRÈS les court-circuits <c>--hook</c>, <c>--cadrans</c>, <c>--sessions</c>,
+/// <c>--historique</c> et AVANT le Host : les hooks (Claude Code en lance jusqu'à 5 en parallèle) et les modes CLI restent
 /// multi-instances par construction, et la seconde instance se retire sans avoir démarré un seul service.</para>
 ///
 /// <para>Type NEUTRE (aucun WPF) : la mécanique se prouve par <c>VerrouInstanceUniqueTests</c> sur de vrais threads.

@@ -75,14 +75,6 @@ public sealed record ChronosSettings
     /// non mappés, précédent DEL-06).</summary>
     public bool SondeEnTetesActivee { get; init; } = true;
 
-    /// <summary>Commande statusLine préexistante de l'utilisateur, mémorisée lors de l'installation du
-    /// pont Chronos pour le chaînage non destructif et la restauration à la désinstallation. null = aucune.</summary>
-    public string? InnerStatusLineCommand { get; init; }
-
-    /// <summary>L'utilisateur a-t-il déjà répondu à la proposition d'activer la source exacte (pont
-    /// statusLine) ? true → ne plus reproposer au démarrage (qu'il ait accepté ou refusé).</summary>
-    public bool StatusLinePromptDismissed { get; init; }
-
     /// <summary>Clé du thème visuel sélectionné (« minuit » par défaut). Voir Chronos.Theming.ThemeCatalog.</summary>
     public string ThemeKey { get; init; } = "minuit";
 

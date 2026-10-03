@@ -211,7 +211,7 @@ public class JournalRelevesTests : IDisposable
         var second = Journal();
         Assert.Equal(Now.AddMinutes(10), second.DernierT(SourceUsage.SondeEnTetes));
         Assert.Equal(Now.AddMinutes(7), second.DernierT(SourceUsage.EndpointOAuthChronos));
-        Assert.Null(second.DernierT(SourceUsage.PontStatusLine));
+        Assert.Null(second.DernierT(SourceUsage.MagasinDernierExact));   // source jamais écrite ici
 
         // Et l'idempotence tient à travers les instances : le second refuse ce que le premier a écrit.
         Assert.False(second.AjouterReleve(Releve(Now.AddMinutes(10))));

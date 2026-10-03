@@ -101,7 +101,7 @@ public class ArretHoteTests
         // Périodique court : la boucle de l'orchestrateur tourne pour de vrai pendant le scénario.
         services.AddSingleton(new RefreshOptions(TimeSpan.FromMilliseconds(50), TimeSpan.Zero));
         services.AddSingleton(sp => new RefreshOrchestrator(
-            sp.GetRequiredService<JournalisationUsageProvider>(), paths, sp.GetRequiredService<RefreshOptions>()));
+            sp.GetRequiredService<JournalisationUsageProvider>(), sp.GetRequiredService<RefreshOptions>()));
         services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
 
         complement?.Invoke(services);
@@ -314,4 +314,30 @@ public class ArretHoteTests
                .GetCustomAttributes<AssemblyMetadataAttribute>()
                .FirstOrDefault(a => a.Key == "CheminSourcesChronos")?.Value
            ?? "";
+    // ------------------------------------------------------------------------------------------
+    // 37-06 : la ligne « arrêt dépassé » crée son dossier (plus aucune surveillance de fichier ne le crée au démarrage)
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>Jusqu'à la 3.4, la surveillance de <c>usage.json</c> créait <c>%APPDATA%\Chronos</c> au démarrage ; elle est
+    /// retirée. La ligne « arrêt dépassé » doit donc créer son dossier elle-même : sur un dossier temporaire ABSENT (imbriqué),
+    /// elle le crée et écrit une ligne datée dans <c>chronos.log</c>. Un dossier null ne lève pas.</summary>
+    [Fact]
+    public void La_ligne_d_arret_depasse_cree_son_dossier_absent()
+    {
+        var racine = Path.Combine(Path.GetTempPath(), "ChronosArretLog_" + Guid.NewGuid().ToString("N"));
+        var dossier = Path.Combine(racine, "Chronos");
+        Assert.StartsWith(Path.GetTempPath(), dossier);
+        Assert.False(Directory.Exists(dossier));
+        try
+        {
+            ArretHote.SignalerDepassement(dossier, "arrêt du Host non terminé après 5 s");
+
+            var log = Path.Combine(dossier, "chronos.log");
+            Assert.True(File.Exists(log), "chronos.log doit être écrit même si le dossier n'existait pas");
+            Assert.Contains("arrêt dépassé : arrêt du Host non terminé après 5 s — sortie forcée", File.ReadAllText(log));
+
+            ArretHote.SignalerDepassement(null, "x");   // ne lève jamais
+        }
+        finally { try { Directory.Delete(racine, recursive: true); } catch { /* nettoyage best-effort */ } }
+    }
 }

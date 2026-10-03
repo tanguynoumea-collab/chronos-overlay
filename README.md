@@ -31,8 +31,7 @@ position et la dernière section ouverte. Elle ne se ferme plus quand tu cliques
 ferment, et un second clic droit la ramène au premier plan. Six sections dans le rail de gauche (clic, **↑ / ↓**,
 **Ctrl+1…6**) :
 
-- **Données** — connexion à Claude, sonde d'en-têtes (son coût est écrit), **barre de statut de Claude Code** (installe
-  ou retire le pont statusLine, utile en terminal).
+- **Données** — connexion à Claude, sonde d'en-têtes (son coût est écrit).
 - **Historique** — ouvre la fenêtre Historique, choisit le style de la vue Semaine.
 - **Apparence** — thème (9) et style du cadran (5), avec un **aperçu en direct** du vrai cadran ; mode étendu (Anneaux).
 - **Sessions** — widget des sessions Claude Code, son style (8) avec aperçu, disposition verticale.

@@ -32,7 +32,6 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly RefreshOrchestrator _orchestrator;
     private readonly SettingsService _settingsService;
     private readonly DiagnosticService _diagnostic;
-    private readonly IStatusLineSetup _statusLineSetup;
     private readonly IOAuthLogin _oauthLogin;
     private readonly ISessionsController _sessions;
     private readonly IAuthStatus _authStatus;
@@ -82,9 +81,6 @@ public sealed partial class MainViewModel : ObservableObject
     // État reflété dans les items « à cocher » du menu (FEN-05 / DEP-02).
     [ObservableProperty] private bool _isBackground;
     [ObservableProperty] private bool _isAutostart;
-
-    // État reflété dans l'item « Source exacte (Claude Code) » : le pont statusLine est-il installé ?
-    [ObservableProperty] private bool _isStatusLineSourceEnabled;
 
     // État reflété dans l'item « Se connecter à Claude » : un jeton OAuth Chronos est-il présent ?
     [ObservableProperty] private bool _isLoggedIn;
@@ -367,7 +363,7 @@ public sealed partial class MainViewModel : ObservableObject
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
         SettingsService settings,
-        DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
+        DiagnosticService diagnostic, IOAuthLogin oauthLogin,
         ISessionsController sessions, IAuthStatus authStatus,
         IEtatServeur? etatServeur = null,
         IEtatJournal? journal = null,
@@ -384,7 +380,6 @@ public sealed partial class MainViewModel : ObservableObject
         _orchestrator = orchestrator; // mémorisé pour re-déclencher un recalcul immédiat (bascule de source, login OAuth)
         _settingsService = settings;
         _diagnostic = diagnostic;
-        _statusLineSetup = statusLineSetup;
         _oauthLogin = oauthLogin;
         _sessions = sessions;
         _ouvreurHistorique = ouvreurHistorique;   // ACC-02 : optionnel, en fin de liste (motif 32-05 / 33-05)
@@ -400,7 +395,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsBackground = _settings.Background;
         IsAutostart = _autostart.IsEnabled();
         IsSondeEnTetesActivee = _settings.SondeEnTetesActivee;   // HDR-06 — miroir de l'état RÉEL, comme ci-dessus
-        IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
         IsLoggedIn = _oauthLogin.IsLoggedIn;
         IsSessionsWidgetEnabled = _sessions.IsEnabled;
         IsModeEtendu = _settings.CadranMode == CadranDisplayMode.Etendu; // défaut Normal
@@ -793,16 +787,6 @@ public sealed partial class MainViewModel : ObservableObject
         if (!ok) return;
         _authStatus.ReinitialiserApresLogin();
         _orchestrator.RequestRefresh();
-    }
-
-    /// <summary>Active/désactive la SOURCE EXACTE via le pont statusLine de Claude Code (installe ou
-    /// retire l'intégration dans ~/.claude/settings.json) et reflète l'état RÉEL dans le menu.</summary>
-    [RelayCommand]
-    private void ToggleStatusLineSource()
-    {
-        if (_statusLineSetup.IsEnabled()) _statusLineSetup.Disable();
-        else _statusLineSetup.Enable();
-        IsStatusLineSourceEnabled = _statusLineSetup.IsEnabled();
     }
 
     /// <summary>Construit le rapport de diagnostic (token, appel OAuth, sources, résultat)

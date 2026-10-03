@@ -22,18 +22,17 @@ public class LibelleSourceTests
 
     // ==================== Le nom du producteur ====================
 
-    /// <summary>Les quatre membres de l'enum, nommés un par un. Ce sont ces chaînes que l'utilisateur
+    /// <summary>Les trois membres de l'enum, nommés un par un. Ce sont ces chaînes que l'utilisateur
     /// lira dans le diagnostic : « alimenté par la sonde d'en-têtes de rate-limit ».</summary>
     [Theory]
     [InlineData(SourceUsage.SondeEnTetes, "sonde d'en-têtes de rate-limit")]
     [InlineData(SourceUsage.EndpointOAuthChronos, "endpoint OAuth (login Chronos)")]
-    [InlineData(SourceUsage.PontStatusLine, "pont statusLine Claude Code")]
     [InlineData(SourceUsage.MagasinDernierExact, "dernier exact persisté")]
     public void Chaque_source_a_son_libelle_francais(SourceUsage source, string attendu)
         => Assert.Equal(attendu, LibelleSource.Format(source));
 
     /// <summary>Une fenêtre qui ne nomme personne ne se voit JAMAIS attribuer un producteur par défaut.
-    /// Un repli qui dirait « pont statusLine » ferait croire à une source vivante là où il n'y a
+    /// Un repli qui nommerait un producteur ferait croire à une source vivante là où il n'y a
     /// qu'une absence d'information.</summary>
     [Fact]
     public void Une_source_absente_ne_recoit_aucun_nom_de_producteur()
@@ -55,8 +54,8 @@ public class LibelleSourceTests
     {
         var membres = System.Enum.GetValues<SourceUsage>();
 
-        // 4 depuis 37-03 (la source « jeton de l'app bureau » est retirée) ; 3 après le retrait du pont statusLine (étape 5).
-        Assert.True(membres.Length >= 4,$"Seulement {membres.Length} membres vus : la garde est muette.");
+        // 3 depuis 37-05 : sonde, OAuth Chronos, dernier exact persisté.
+        Assert.True(membres.Length >= 3,$"Seulement {membres.Length} membres vus : la garde est muette.");
 
         foreach (var m in membres)
         {

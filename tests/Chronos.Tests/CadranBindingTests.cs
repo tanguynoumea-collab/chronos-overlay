@@ -52,12 +52,12 @@ public class CadranBindingTests
         // même endroit — sinon le contrôleur d'overlay relirait les réglages du profil réel.
         var paths = TempPaths();
         var prov = new FakeUsageProvider();
-        var orch = new RefreshOrchestrator(prov, paths, RefreshOptions.Default);
+        var orch = new RefreshOrchestrator(prov, RefreshOptions.Default);
         var settings = new SettingsService(paths);
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
             new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(paths, settings, prov, new FakeClock(Now)),
-            new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
+            new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
 
         // Neutralisation EXPLICITE des deux réglages qui pilotent le rendu : aucun test de cette phase
         // ne doit dépendre d'un réglage persisté, fût-il dans un répertoire temporaire préexistant.

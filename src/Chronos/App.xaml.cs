@@ -26,18 +26,10 @@ public partial class App : Application
         switch (invocation.Mode)
         {
             case ModeDemarrage.ArgumentInconnu:
-                // Argument « --xxx » inconnu ou RETIRÉ (ex. --statusline après la phase 37, que Claude Code continue d'émettre tant
-                // que sa barre n'est pas retirée) : sortie SILENCIEUSE, code 0 — ni fenêtre, ni verrou (pas de boîte « tourne déjà »),
+                // Argument « --xxx » inconnu ou RETIRÉ (ex. l'ancien mode de barre de statut, que les sessions Claude Code déjà
+                // ouvertes continuent d'émettre jusqu'à leur redémarrage) : sortie SILENCIEUSE, code 0 — ni fenêtre, ni verrou (pas de boîte « tourne déjà »),
                 // ni réconciliation des hooks, ni stderr (Claude Code afficherait le stderr à l'utilisateur).
                 Environment.Exit(0);
-                return;
-
-            case ModeDemarrage.StatusLine:
-                // MODE PONT statusLine (--statusline) : court-circuit AVANT toute initialisation WPF/host.
-                // Claude Code invoque « Chronos.exe --statusline » à chaque rendu de sa barre : on lit stdin,
-                // on matérialise usage.json, on chaîne l'éventuelle barre préexistante, puis on sort tout de suite.
-                RunStatusLineBridge();
-                Environment.Exit(0);   // sortie immédiate : ne charge jamais l'overlay (rapidité de la barre)
                 return;
 
             case ModeDemarrage.Hook:
@@ -88,7 +80,7 @@ public partial class App : Application
         base.OnStartup(e);
 
         // CPT-03 — UNE SEULE INSTANCE de l'overlay par session Windows. Posé ici, APRÈS les court-circuits du tri des arguments
-        // (ArgumentInconnu, --statusline, --hook, --cadrans, --sessions, --historique ; multi-instances par construction : Claude Code
+        // (ArgumentInconnu, --hook, --cadrans, --sessions, --historique ; multi-instances par construction : Claude Code
         // lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
         // le second exe n'a démarré aucun service, n'a pas réconcilié ~/.claude/settings.json et n'a pas écrasé chronos.log.
         // Il se retire en le DISANT et ne tue jamais l'autre : le 2026-09-27, trois exe tournaient ensemble et écrivaient les mêmes fichiers.
@@ -108,16 +100,18 @@ public partial class App : Application
         ConfigureServices(builder.Services);
         _host = builder.Build();
 
+        // DAT-03 — l'ancienne barre de l'utilisateur (clé héritée des réglages ≤ 3.4), lue BRUTE avant tout Save : la clé, devenue
+        // inconnue en 3.5, disparaîtrait au premier Save(Load() with …) déclenché par le placement/DPI. Elle sert à restaurer
+        // la barre d'origine à la place de la barre Chronos retirée plus bas. Toute panne ⇒ null (simple retrait).
+        var commandeHeritee = ClaudeSettingsReconciler.LireCommandeInterneHeritee(
+            _host.Services.GetRequiredService<ChronosPaths>().SettingsFile);
+
         // Ordre de démarrage (Pitfall 3) : résoudre le VM AVANT StartAsync pour forcer son abonnement
         // à RefreshOrchestrator.SnapshotChanged. Sinon la charge initiale (émise pendant StartAsync)
         // partirait avant tout abonné → overlay vide jusqu'au prochain tick périodique (~60 s).
         _ = _host.Services.GetRequiredService<MainViewModel>();
 
         await _host.StartAsync();                    // charge initiale → atteint le VM (Post mis en file via BeginInvoke)
-
-        // Log automatique au démarrage (observabilité) : écrit %APPDATA%/Chronos/chronos.log avec l'état réel
-        // (token/OAuth/sources). Fire-and-forget, ne bloque pas et ne peut pas casser le lancement.
-        _ = _host.Services.GetRequiredService<DiagnosticService>().LogStartupAsync();
 
         // Restauration AVANT Show (FEN-07) : on fournit l'état persisté à la fenêtre ; SourceInitialized
         // appliquera RestorePlacement (coin + device = vérité) avant le premier rendu → pas de flash.
@@ -128,31 +122,32 @@ public partial class App : Application
                                                      // se centrent sur l'overlay (Owner), FEN-07
         window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
 
-        // PUR-01/02/03 — réconcilier ~/.claude/settings.json AVANT de proposer la source exacte, pour que
-        // l'offre porte sur un état déjà propre (une barre Chronos périmée est repointée ici, donc
-        // IsEnabled() répond juste juste après). Mode OVERLAY UNIQUEMENT : les modes --statusline et --hook
-        // sortent bien plus haut (en tête d'OnStartup, via ArgumentsDemarrage.Trier) et ne doivent JAMAIS atteindre ce point — 5 processus
-        // --hook concurrents en lire-modifier-écrire perdraient les purges, et --statusline est invoqué à
-        // chaque rendu de la barre. Best-effort et silencieux : ne peut pas empêcher le démarrage.
+        // PUR-01/02/03, DAT-03 — réconcilier ~/.claude/settings.json : la barre de statut Chronos est RETIRÉE (sauvegarde
+        // d'abord ; la barre d'origine est restaurée si elle est connue ; une barre tierce reste intacte), et les hooks sont
+        // repointés vers l'exe courant dans la même écriture. Le bilan du passage est écrit dans chronos.log par le journal de
+        // démarrage, lancé JUSTE APRÈS. Mode OVERLAY UNIQUEMENT : le mode --hook sort bien plus haut (en tête d'OnStartup, via
+        // ArgumentsDemarrage.Trier) et ne doit JAMAIS atteindre ce point — 5 processus --hook concurrents en lire-modifier-écrire
+        // perdraient les purges. Best-effort et silencieux : ne peut pas empêcher le démarrage.
         try
         {
             _host.Services.GetRequiredService<ClaudeSettingsReconciler>()
-                 .Reconcile(settings.SessionsWidgetEnabled);
+                 .Reconcile(settings.SessionsWidgetEnabled, commandeHeritee);
         }
         catch { }
 
+        // Log automatique au démarrage (observabilité) : écrit %APPDATA%/Chronos/chronos.log avec l'état réel
+        // (token/OAuth/sources, bilan de la réconciliation). APRÈS la réconciliation, pour que le bilan y figure.
+        // Fire-and-forget, ne bloque pas et ne peut pas casser le lancement.
+        _ = _host.Services.GetRequiredService<DiagnosticService>().LogStartupAsync();
+
         // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la réconciliation
-        // ci-dessus : mode OVERLAY uniquement (les modes --hook et --statusline sortent bien plus haut),
+        // ci-dessus : mode OVERLAY uniquement (le mode --hook sort bien plus haut),
         // best-effort et silencieux, il ne peut pas empêcher le démarrage. Mesuré le 2026-09-12 : 54 états,
         // dont 48 de plus de sept jours, plus 12 fichiers temporaires abandonnés.
         //
         // Expirer, c'est ne plus savoir : ce qui est balayé disparaît, rien n'est déclaré terminé ni traité.
         try { _host.Services.GetRequiredService<BalayageMagasinSessions>().Balayer(); }
         catch { }
-
-        // Première exécution : proposer d'activer la SOURCE EXACTE (pont statusLine Claude Code).
-        // Une seule fois (StatusLinePromptDismissed), non bloquant pour le rendu de l'overlay.
-        _host.Services.GetRequiredService<IStatusLineSetup>().OfferOnFirstRun();
 
         // Widget de sessions : réafficher le panneau s'il était activé.
         _host.Services.GetRequiredService<ISessionsController>().ShowIfEnabled();
@@ -198,8 +193,8 @@ public partial class App : Application
     }
 
     // Écrit une ligne sur le flux d'erreur du processus en UTF-8 STRICT. Pas via Console.Error : son
-    // encodage OEM par défaut mutilerait les accents, exactement la leçon déjà tirée pour la barre de
-    // statut (RunStatusLineBridge). Ne lève jamais : signaler un échec ne doit pas en produire un second.
+    // encodage OEM par défaut mutilerait les accents (leçon tirée de l'ancienne barre de statut, qui
+    // écrivait elle aussi en UTF-8 strict). Ne lève jamais : signaler un échec ne doit pas en produire un second.
     private static void SignalerSurErreurStandard(string message)
     {
         try
@@ -211,34 +206,6 @@ public partial class App : Application
             flux.Flush();
         }
         catch { }
-    }
-
-    // Exécuté en mode --statusline : neutre, sans WPF ni DI. Ne lève jamais (ne doit pas casser la barre).
-    // Lecture stdin / écriture stdout en UTF-8 STRICT (Claude Code parle UTF-8) — pas via Console.In/Out,
-    // dont l'encodage OEM par défaut mutilerait les caractères non-ASCII de la barre.
-    private static void RunStatusLineBridge()
-    {
-        try
-        {
-            var utf8 = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-            var paths = ChronosPaths.Default();
-            var settings = new SettingsService(paths).Load();
-
-            string input;
-            using (var sr = new System.IO.StreamReader(Console.OpenStandardInput(), utf8))
-                input = sr.ReadToEnd();
-
-            var sb = new System.Text.StringBuilder();
-            using (var sw = new System.IO.StringWriter(sb))
-                StatusLineBridge.Run(paths, settings.InnerStatusLineCommand,
-                    new System.IO.StringReader(input), sw, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-
-            var bytes = utf8.GetBytes(sb.ToString());
-            using var stdout = Console.OpenStandardOutput();
-            stdout.Write(bytes, 0, bytes.Length);
-            stdout.Flush();
-        }
-        catch { /* jamais casser la barre de statut de Claude Code */ }
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -253,7 +220,7 @@ public partial class App : Application
         {
             var dossierLog = DossierLog(_host);   // lu AVANT l'arrêt : le conteneur est libéré ensuite
             if (!ArretHote.Arreter(_host, ArretHote.DelaiParDefaut, out cause))
-                SignalerArretDepasse(dossierLog, cause);
+                ArretHote.SignalerDepassement(dossierLog, cause);
         }
         _verrou?.Liberer();   // sur le thread UI, celui qui a acquis (ReleaseMutex l'exige) ; l'OS le ferait à la mort du processus, on le fait proprement
         base.OnExit(e);
@@ -266,18 +233,6 @@ public partial class App : Application
     {
         try { return System.IO.Path.GetDirectoryName(host.Services.GetService<ChronosPaths>()?.SettingsFile); }
         catch { return null; }
-    }
-
-    /// <summary>Best-effort : une ligne datée dans chronos.log quand l'arrêt a dépassé son délai. Ne lève jamais.</summary>
-    private static void SignalerArretDepasse(string? dossier, string? cause)
-    {
-        if (dossier is null) return;
-        try
-        {
-            System.IO.File.AppendAllText(System.IO.Path.Combine(dossier, "chronos.log"),
-                $"{Environment.NewLine}[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] arrêt dépassé : {cause} — sortie forcée{Environment.NewLine}");
-        }
-        catch { /* le diagnostic ne doit jamais empêcher la sortie */ }
     }
 
     private static void ConfigureServices(IServiceCollection services)
@@ -314,13 +269,6 @@ public partial class App : Application
 
         // Menu contextuel 06-04 (FEN-06) : autostart shell:startup (DEP-02, service neutre de 06-02)
         services.AddSingleton<IAutostartService>(_ => new AutostartService());
-
-        // Source EXACTE via pont statusLine Claude Code : installateur (édite ~/.claude/settings.json)
-        // + setup WPF (menu + proposition au 1er lancement). C'est la voie universelle recommandée.
-        services.AddSingleton<StatusLineInstaller>(_ => new StatusLineInstaller());
-        services.AddSingleton<IStatusLineSetup>(sp => new Views.StatusLineSetup(
-            sp.GetRequiredService<StatusLineInstaller>(),
-            sp.GetRequiredService<SettingsService>()));
 
         // Widget de sessions Claude Code : moniteur des fichiers d'état (écrits par le mode --hook),
         // installateur des hooks, contrôleur du panneau flottant.
@@ -365,8 +313,8 @@ public partial class App : Application
 
         services.AddSingleton(_ => new SessionHookInstaller());
 
-        // PUR-03 : réconciliation de ~/.claude/settings.json au démarrage (purge des entrées fantômes des
-        // versions révolues + repointage de la barre). Chemins par défaut = profil utilisateur ; les tests
+        // PUR-03, DAT-03 : réconciliation de ~/.claude/settings.json au démarrage (purge des entrées fantômes des
+        // versions révolues, hooks repointés, retrait de la barre de statut Chronos). Chemins par défaut = profil utilisateur ; les tests
         // injectent systématiquement des chemins temp.
         services.AddSingleton(_ => new ClaudeSettingsReconciler());
 
@@ -383,7 +331,6 @@ public partial class App : Application
         // Chemins via Environment (jamais Assembly.Location, mono-fichier).
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton(ChronosPaths.Default());
-        services.AddSingleton<ClaudeUsageObjectProvider>();
 
         // DEL-01/DEL-02 : les transcripts ne repondent plus qu'a deux questions bornees (activite
         // depuis T ? tokens depuis T ?) — ils ne sont PLUS un IUsageProvider et sont donc HORS de la
@@ -458,7 +405,7 @@ public partial class App : Application
         services.AddSingleton<IEtatJournal>(sp => sp.GetRequiredService<JournalReleves>());   // le VM et les réglages ne voient que l'âge (JRN-04)
 
         // Chaîne exacte par imbrication, MEILLEURE source PAR FENÊTRE (composite) :
-        //   sonde d'en-têtes → login OAuth Chronos → pont statusLine (retiré à l'étape suivante de la purge).
+        //   sonde d'en-têtes → login OAuth Chronos (UN SEUL composite).
         // LA SONDE EST EN PRIMAIRE, et c'est une contrainte mécanique, pas un goût : Best() ne retient le
         // fallback que s'il est STRICTEMENT plus fiable, et les deux produisent Exact. En fallback, la sonde
         // ne gagnerait JAMAIS tant que /api/oauth/usage répond — or son snapshot est le SEUL porteur du statut
@@ -470,10 +417,8 @@ public partial class App : Application
         // « arret » suit le dernier (ordre d'inscription au Start, inverse au Stop). Aucun appel réseau : il observe ce que la chaîne produit.
         services.AddSingleton(sp => new JournalisationUsageProvider(
             inner: new CompositeUsageProvider(
-                primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),
-                fallback: new CompositeUsageProvider(
-                    primary:  sp.GetRequiredService<ChronosOAuthUsageProvider>(),
-                    fallback: sp.GetRequiredService<ClaudeUsageObjectProvider>())),
+                primary:  sp.GetRequiredService<RateLimitHeaderUsageProvider>(),   // sonde : seule porteuse du statut serveur
+                fallback: sp.GetRequiredService<ChronosOAuthUsageProvider>()),     // secours exact
             journal: sp.GetRequiredService<JournalReleves>(),
             etatServeur: sp.GetRequiredService<IEtatServeur>(),      // sonde_refusee (transition)
             authStatus: sp.GetRequiredService<IAuthStatus>(),        // jeton_invalide (transition vers Deconnecte)
@@ -543,6 +488,8 @@ public partial class App : Application
             reconstruction: sp.GetRequiredService<IEtatReconstruction>(),
             // Décision 5 (phase 35) : heures de la section « Journal d'historique » dans le fuseau injecté (celui de la fenêtre
             // Historique), jamais le fuseau local deviné dans le code neutre.
-            fuseau: sp.GetRequiredService<TimeZoneInfo>()));
+            fuseau: sp.GetRequiredService<TimeZoneInfo>(),
+            // DAT-03 — la MÊME instance que celle appelée au démarrage : section « [Réglages de Claude Code] », bilan du retrait.
+            reglagesClaude: sp.GetRequiredService<ClaudeSettingsReconciler>()));
     }
 }
