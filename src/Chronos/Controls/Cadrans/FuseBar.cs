@@ -8,7 +8,7 @@ namespace Chronos.Controls;
 /// CADRAN « fusible » (piste 2). Une mèche horizontale qui se consume. La LONGUEUR du cordon restant
 /// (à droite du front) = temps restant (Fraction 0..1) ; l'ÉPAISSEUR (CordThickness) + la couleur
 /// (QuotaBrush) = quota. La part écoulée reste un sillon creux (piste sombre), donc le gris reste
-/// réservé au quota épuisé. Estimated (repli JSONL) : cordon MUET + trait pointillé (grain), jamais
+/// réservé au quota épuisé. Estimated (plancher « ≥ ») : cordon MUET + trait pointillé (grain), jamais
 /// le mark du temps. Une instance par fenêtre (5 h / 7 j).
 /// </summary>
 public sealed class FuseBar : FrameworkElement

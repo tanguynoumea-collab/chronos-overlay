@@ -34,7 +34,7 @@ public class DiagnosticServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Rapport_sans_token_conseille_et_n_expose_jamais_le_token()
+    public async Task Rapport_sans_token_n_expose_jamais_un_jeton()
     {
         var paths = TempPaths();
         var settings = new SettingsService(paths);
@@ -50,9 +50,8 @@ public class DiagnosticServiceTests : IDisposable
         var report = await diag.BuildReportAsync();
 
         Assert.Contains("Diagnostic", report);
-        Assert.Contains("Usage exact (OAuth)", report);
-        Assert.Contains("Token déchiffré : OUI", report);          // présence signalée…
-        Assert.DoesNotContain("SECRET-TOKEN", report);              // …mais JAMAIS la valeur
+        Assert.Contains("[Chaîne de données]", report);
+        Assert.DoesNotContain("SECRET-TOKEN", report);              // JAMAIS la valeur d'un jeton
         // 19-04/20-05 : le mot « estimé » n'existe plus, et le tilde non plus — l'incertitude d'un
         // plancher est UNILATÉRALE. Forme DÉGRADÉE (ni Source ni Provenance), qui doit rester lisible.
         Assert.Contains("PLANCHER", report);                        // résultat affiché décrit
@@ -62,7 +61,7 @@ public class DiagnosticServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Rapport_token_absent_le_signale_clairement()
+    public async Task Le_rapport_ne_contient_plus_les_sections_mortes()
     {
         var paths = TempPaths();
         var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
@@ -71,15 +70,84 @@ public class DiagnosticServiceTests : IDisposable
 
         var report = await diag.BuildReportAsync();
 
-        Assert.Contains("Token déchiffré : NON", report);
-        Assert.Contains("Conseil", report);
+        // Phase 37 (DAT-04) : ces sections décrivaient des sources retirées ou mortes.
+        Assert.DoesNotContain("[Réglage]", report);
+        Assert.DoesNotContain("Usage exact (OAuth)", report);
+        Assert.DoesNotContain("[Source exacte — pont statusLine Claude Code]", report);
+        Assert.DoesNotContain("[Source exacte — endpoint OAuth (repli)]", report);
+        Assert.DoesNotContain("Token déchiffré", report);
+        Assert.DoesNotContain("[Conseil]", report);
+    }
+
+    /// <summary>DAT-04 — la durée de construction du rapport est mesurée (Stopwatch) et dite en dernière ligne : elle se
+    /// consigne d'elle-même dans chronos.log à chaque lancement. FORMAT seulement, aucun seuil de temps (flottant).</summary>
+    [Fact]
+    public async Task Le_rapport_finit_par_sa_duree_de_construction()
+    {
+        var paths = TempPaths();
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
+                                         machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        var derniere = report.Split('\n').Select(l => l.TrimEnd('\r')).Last(l => l.Trim().Length > 0);
+        Assert.StartsWith("Rapport construit en ", derniere);
+        Assert.Contains(" ms (dont chaîne de données ", derniere);
+        Assert.EndsWith(" ms)", derniere);
+    }
+
+    /// <summary>DAT-04 — la section « [Chaîne de données] » décrit la chaîne réelle DANS SON ORDRE : sonde d'en-têtes,
+    /// secours OAuth du login Chronos, dernier exact persisté, journal.</summary>
+    [Fact]
+    public async Task Le_rapport_decrit_la_chaine_dans_l_ordre()
+    {
+        var paths = TempPaths();
+        var diag = new DiagnosticService(new FakeClaudeTokenReader { Token = null }, paths,
+            new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow),
+                                         machine: new FakeInventaireMachine());
+
+        var report = await diag.BuildReportAsync();
+
+        var iSection = report.IndexOf("[Chaîne de données]", StringComparison.Ordinal);
+        Assert.True(iSection >= 0, "section [Chaîne de données] absente");
+        var iChaine = report.IndexOf("Chaîne : ", iSection, StringComparison.Ordinal);
+        var iSonde = report.IndexOf("Sonde d'en-têtes", iSection, StringComparison.Ordinal);
+        var iSecours = report.IndexOf("Secours OAuth", iSection, StringComparison.Ordinal);
+        var iDernier = report.IndexOf("Dernier exact persisté", iSection, StringComparison.Ordinal);
+        var iJournal = report.IndexOf("Journal : ", iSection, StringComparison.Ordinal);
+        Assert.True(iChaine > iSection && iSonde > iChaine && iSecours > iSonde && iDernier > iSecours && iJournal > iDernier,
+            $"ordre inattendu : section {iSection}, chaîne {iChaine}, sonde {iSonde}, secours {iSecours}, dernier exact {iDernier}, journal {iJournal}");
+        // La section est bornée : tout cela se dit avant la section suivante.
+        Assert.True(iJournal < report.IndexOf("[Transcripts JSONL", StringComparison.Ordinal));
+    }
+
+    /// <summary>DAT-04 — garde STRUCTURELLE : le diagnostic ne cherche plus les coffres (≈ 17 s mesurées), ne cartographie
+    /// plus les dossiers et n'appelle plus le réseau. Lit le source via AssemblyMetadata("CheminSourcesChronos").</summary>
+    [Fact]
+    public void Le_diagnostic_ne_cherche_plus_les_coffres_ni_n_appelle_le_reseau()
+    {
+        var racine = typeof(DiagnosticServiceTests).Assembly
+                         .GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+                         .Cast<System.Reflection.AssemblyMetadataAttribute>()
+                         .FirstOrDefault(a => a.Key == "CheminSourcesChronos")?.Value ?? "";
+        Assert.False(string.IsNullOrWhiteSpace(racine), "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : cette garde ne lirait rien.");
+        var chemin = System.IO.Path.Combine(racine, "Services", "DiagnosticService.cs");
+        Assert.True(System.IO.File.Exists(chemin), "DiagnosticService.cs introuvable : " + chemin);
+        var lignes = System.IO.File.ReadAllLines(chemin);
+        Assert.True(lignes.Length > 500, $"DiagnosticService.cs ne fait que {lignes.Length} lignes : garde muette ?");
+        var texte = string.Join("\n", lignes);
+
+        foreach (var interdit in new[] { "CoffresOAuth", "WindowsCredentialStore", "TryReadAccessToken", "HttpClient",
+                                         "api/oauth/usage", "EnumerateDirectories(", "[Conseil]", "pont statusLine" })
+            Assert.False(texte.Contains(interdit, StringComparison.Ordinal), $"DiagnosticService.cs contient encore « {interdit} ».");
+        Assert.Contains("[Chaîne de données]", texte, StringComparison.Ordinal);
     }
 
     /// <summary>TOK-02 : le rapport nomme l'état d'authentification RÉEL, pas la seule présence
     /// du fichier oauth.dat — c'est cette confusion qui a laissé l'utilisateur deux mois dans le noir
     /// (jeton expiré le 2026-07-12, oauth.dat parfaitement présent, diagnostic affichant « Connecté :
-    /// OUI »). Montage à Token = null : la sonde réseau est gardée par `if (token is not null)`,
-    /// donc ce test n'émet AUCUNE requête.</summary>
+    /// OUI »). Le rapport n'émet plus aucune requête réseau (phase 37) : le composite est un stub.</summary>
     [Fact]
     public async Task Le_rapport_nomme_l_etat_d_authentification_reel()
     {
@@ -94,14 +162,12 @@ public class DiagnosticServiceTests : IDisposable
         var report = await diag.BuildReportAsync();
 
         Assert.Contains("État d'authentification : DÉCONNECTÉ", report);
-        Assert.Contains("Token déchiffré : NON", report);   // assertion existante préservée
     }
 
     // --- Phase 18 (HDR-01/HDR-03/HDR-04/HDR-06) : le rapport dit ce que la SONDE reçoit ---
     //
-    // SÉCURITÉ, commune aux quatre tests : tous montent un FakeClaudeTokenReader à Token = null, donc la
-    // sonde réseau de la section « endpoint OAuth » — gardée par `if (token is not null)` — n'est JAMAIS
-    // atteinte. Aucune requête ne part, aucun coffre réel n'est lu, et le settings.json vit sous %TEMP%.
+    // SÉCURITÉ, commune aux quatre tests : le rapport n'émet plus aucune requête réseau ni ne lit aucun coffre
+    // (phase 37) ; le composite est un stub et le settings.json vit sous %TEMP%.
 
     /// <summary>HDR-01/HDR-02/HDR-06 : la sonde est la première source de la chaîne, et l'utilisateur doit
     /// pouvoir constater SEUL ce qu'elle a reçu. Le cas asserté est celui qui justifie toute la phase :
@@ -126,7 +192,8 @@ public class DiagnosticServiceTests : IDisposable
 
         var report = await diag.BuildReportAsync();
 
-        Assert.Contains("[Source exacte — sonde d'en-têtes de rate-limit]", report);
+        Assert.Contains("[Chaîne de données]", report);
+        Assert.Contains("Sonde d'en-têtes", report);
         Assert.Contains("429 — en-têtes lus quand même", report);
         Assert.Contains(EnTetesDeReference.H5hUtil, report);
         Assert.Contains(EnTetesDeReference.H5hReset, report);
@@ -211,13 +278,11 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("aucun dépassement rapporté", report);
         Assert.Contains("PLANCHER", report);                 // assertion existante, vocabulaire 19-04
         Assert.DoesNotContain("~", LigneCinqHeures(report));  // « ≥ » partout, plus jamais « ~ »
-        Assert.Contains("Token déchiffré : NON", report);    // assertion existante préservée
     }
     // --- Phase 20 (EXA-06) : le rapport nomme QUI alimente chaque fenêtre, et DEPUIS QUAND ---
     //
-    // SÉCURITÉ, commune aux quatre tests : Token = null, donc la sonde réseau de la section
-    // « endpoint OAuth » — gardée par « if (token is not null) » — n'est jamais atteinte. Aucune
-    // requête ne part. Le faux inventaire de machine évite les 18 s de sondage d'environnement réel.
+    // SÉCURITÉ, commune aux quatre tests : le rapport n'émet plus aucune requête réseau (phase 37) ;
+    // le composite est un stub.
 
     /// <summary>EXA-06, première moitié : le rapport nomme la source de CHAQUE fenêtre, et les deux
     /// peuvent différer — le composite choisit la meilleure source PAR FENÊTRE.</summary>
@@ -277,7 +342,7 @@ public class DiagnosticServiceTests : IDisposable
 
     /// <summary>Règle de non-retour : une absence de source ne produit JAMAIS d'affirmation. Le dernier
     /// Assert vise la LIGNE de résultat et non la section de la sonde, qui porte légitimement le même
-    /// libellé entre crochets (« [Source exacte — sonde d'en-têtes de rate-limit] »).</summary>
+    /// libellé (« Sonde d'en-têtes » sous « [Chaîne de données] »).</summary>
     [Fact]
     public async Task Une_source_absente_se_dit_non_renseignee_et_JAMAIS_un_nom_par_defaut()
     {
@@ -489,9 +554,8 @@ public class DiagnosticServiceTests : IDisposable
 
     // --- Phase 22 (OBS-01/OBS-02) : le rapport décrit LE moniteur du widget, et nomme ce qui est masqué ---
     //
-    // SÉCURITÉ, commune à ces tests : FakeClaudeTokenReader à Token = null (la sonde réseau est gardée par
-    // `if (token is not null)`, aucune requête ne part), FakeInventaireMachine (aucun balayage de coffre),
-    // et TOUS les chemins de moniteur/magasins sont sous %TEMP%. Aucun n'écrit dans %APPDATA%\Chronos.
+    // SÉCURITÉ, commune à ces tests : le rapport n'émet plus aucune requête réseau ni ne balaie aucun coffre
+    // (phase 37), et TOUS les chemins de moniteur/magasins sont sous %TEMP%. Aucun n'écrit dans %APPDATA%\Chronos.
 
     private static readonly DateTimeOffset T22 = new(2026, 9, 12, 13, 28, 0, TimeSpan.Zero);
 
@@ -804,7 +868,7 @@ public class DiagnosticServiceTests : IDisposable
 
         Assert.Contains($"({dir}) : 2", report);    // 2 fichiers sur disque…
         Assert.Contains("PROJET SAIN", report);     // …1 seul lisible, et le rapport tient debout
-        Assert.Contains("[Conseil]", report);
+        Assert.Contains("Rapport construit en", report);
     }
 
     /// <summary>Le rapport inspecte le dossier que le MONITEUR lit, pas un dossier déduit d'un autre
@@ -1327,8 +1391,8 @@ public class DiagnosticServiceTests : IDisposable
         public string? DerniereErreur { get; init; }
     }
 
-    /// <summary>Montage à Token = null : la sonde réseau est gardée par <c>if (token is not null)</c>, donc AUCUNE
-    /// requête n'est émise ; le composite est un stub. Seul le paramètre <c>magasins</c> varie.</summary>
+    /// <summary>Le rapport n'émet aucune requête (phase 37) ; le composite est un stub. Seul le paramètre
+    /// <c>magasins</c> varie.</summary>
     private static DiagnosticService DiagAvecMagasins(ChronosPaths paths, FakeClock clock, IReadOnlyList<IEtatMagasin>? magasins)
         => new(new FakeClaudeTokenReader { Token = null }, paths, new SettingsService(paths),
                new StubProvider(UsageSnapshot.Empty), clock, machine: new FakeInventaireMachine(), magasins: magasins);
@@ -1687,7 +1751,8 @@ public class DiagnosticServiceTests : IDisposable
         Assert.DoesNotContain("Fuseau : UTC (fuseau non injecté)", avecFuseau);
     }
 
-    // SOC-01 (phase 36) — une ligne « Réglages (settings.json) : » sous [Magasins persistants], hors section [Réglage].
+    // SOC-01 (phase 36) — une ligne « Réglages (settings.json) : » sous [Magasins persistants] (la section [Réglage] est
+    // retirée en phase 37).
 
     private static async Task<string> RapportAvecSettings(string json)
     {
@@ -1706,8 +1771,8 @@ public class DiagnosticServiceTests : IDisposable
         var report = await RapportAvecSettings("{\"ThemeKey\":\"nord\",\"CadranStyle\":\"Spirale\",\"SessionStyle\":\"Inconnu\"}");
 
         Assert.Contains("Réglages (settings.json) : 2 valeur(s) retombée(s) sur leur défaut — CadranStyle, SessionStyle", report);
-        var reglage = report[report.IndexOf("[Réglage]")..report.IndexOf("[Source exacte — login OAuth Chronos]")];
-        Assert.DoesNotContain("Réglages (settings.json)", reglage);
+        var magasins = report[report.IndexOf("[Magasins persistants]")..report.IndexOf("[Journal d'historique]")];
+        Assert.Contains("Réglages (settings.json)", magasins);
     }
 
     [Fact]

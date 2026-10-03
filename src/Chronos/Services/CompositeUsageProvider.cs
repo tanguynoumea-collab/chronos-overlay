@@ -3,19 +3,21 @@ using Chronos.Models;
 namespace Chronos.Services;
 
 /// <summary>
-/// Provider COMPOSITE (DAT-06) : tente le primaire (objet d'usage Exact) puis bascule sur le repli
-/// (estimation JSONL) — bascule PAR FENETRE. Chaque fenetre (5 h / 7 j) pouvant etre independamment
-/// absente du primaire, le composite prend la MEILLEURE source par fenetre :
-/// Exact prioritaire, sinon Estimated, sinon Unavailable (ROB-01 en aval, pas de crash).
+/// Provider COMPOSITE (DAT-06) : le composite retient, PAR FENÊTRE, la source la plus fiable entre un
+/// primaire et un repli exacts (sonde d'en-têtes, secours OAuth du login Chronos). Chaque fenêtre
+/// (5 h / 7 j) pouvant être indépendamment absente du primaire, le composite prend la MEILLEURE source
+/// par fenêtre, primaire prioritaire à fiabilité égale, sinon Unavailable (ROB-01 en aval, pas de crash).
+/// Un non-exact n'entre jamais ici : le seul chiffre non exact, le plancher « ≥ », est fabriqué par la
+/// tête (LastExactUsageProvider / DoctrineFraicheur).
 ///
 /// <para><b>Phase 19 — où vit la doctrine, et pourquoi pas ici.</b> Ce composite ne juge PAS la
 /// fraîcheur : il classe par fiabilité et rien d'autre, délibérément. La doctrine (DoctrineFraicheur)
 /// vit dans la couche de tête, LastExactUsageProvider, pour trois raisons mécaniques : Best() ne reçoit
 /// que deux WindowState nus (ni horloge, ni magasin, ni journal d'activité) ; la chaîne réelle est faite
 /// de TROIS composites imbriqués, donc une doctrine placée ici s'exécuterait trois fois par tick et
-/// statuerait sur une information partielle ; et la seule source à ancienneté non bornée est le repli
-/// le plus interne, qui ne peut gagner que lorsque tout ce qui est au-dessus est indisponible —
-/// appliquer la porte d'âge AU-DESSUS du composite y est donc strictement équivalent.</para>
+/// statuerait sur une information partielle ; et une source à ancienneté non bornée, placée en repli,
+/// ne peut gagner que lorsque tout ce qui est au-dessus est indisponible — appliquer la porte d'âge
+/// AU-DESSUS du composite y est donc strictement équivalent.</para>
 /// <para><b>Corollaire à ne jamais enfreindre :</b> Best() ne doit JAMAIS arbitrer par récence entre deux
 /// sources exactes. La porte d'âge est BINAIRE (certifiable ou non), pas un classement. Un arbitrage par
 /// récence ferait gagner l'endpoint OAuth contre le cache légitime de la sonde, et emporterait avec lui
@@ -23,8 +25,8 @@ namespace Chronos.Services;
 /// </summary>
 public sealed class CompositeUsageProvider : IUsageProvider
 {
-    private readonly IUsageProvider _primary;   // ClaudeUsageObjectProvider (Exact)
-    private readonly IUsageProvider _fallback;  // JsonlEstimationProvider (Estimated)
+    private readonly IUsageProvider _primary;   // source exacte prioritaire (ex. sonde d'en-têtes)
+    private readonly IUsageProvider _fallback;  // source exacte de secours (ex. login OAuth Chronos)
 
     public CompositeUsageProvider(IUsageProvider primary, IUsageProvider fallback)
     {
@@ -44,8 +46,8 @@ public sealed class CompositeUsageProvider : IUsageProvider
 
         // Honnêteté du staleness : SourceCapturedAt doit refléter la source qui ALIMENTE réellement
         // l'affichage. Si au moins une fenêtre vient du primaire (Exact), son horodatage prime ;
-        // sinon (tout vient du repli JSONL, calculé à l'instant), c'est celui du repli — un usage.json
-        // périmé ne doit pas marquer « données périmées » une estimation fraîche.
+        // sinon (tout vient du repli), c'est celui du repli — l'horodatage d'une source écartée ne doit
+        // pas qualifier un chiffre qu'elle n'a pas fourni.
         //
         // Phase 19 : UnExactADejaEteObtenu n'est PAS recomposé ici, et c'est correct — ce champ est posé
         // par la couche de doctrine, qui est AU-DESSUS de tous les composites. Aucun composite ne le voit

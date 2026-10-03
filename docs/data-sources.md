@@ -1,144 +1,65 @@
 # Chronos — Sources de données
 
-> **Capturé le 2026-07-08** — Claude Code runtime 2.1.202 / binaire disque 2.1.87 /
-> doc officielle statusLine courante à cette date.
->
-> **⚠️ API privée de facto** : bien que le contrat statusLine soit officiellement
-> documenté, le bloc `rate_limits` n'est pas un contrat de données garanti. Le schéma est
-> susceptible de changer à toute mise à jour de Claude Code (voir
-> [§4 Hypothèses & points de fragilité](#4-hypothèses--points-de-fragilité)).
+> **Réécrit en 2026-10 (phase 37, purge R5) — méthodologie unique.** Ce document décrit la seule chaîne qui alimente le
+> cadran : d'où vient chaque chiffre, ce qui est exact et ce qui ne l'est pas. Les sources retirées sont nommées au §5,
+> une ligne chacune ; les §6 à §9 (widget de sessions, journal d'historique, agrégats de tokens, lecture par la fenêtre
+> Historique) sont inchangés.
 
-Ce document caractérise **empiriquement** la méthode d'obtention de l'objet d'usage Claude
-Code (fenêtres `five_hour` / `seven_day`). Il est le préalable **STRICT et BLOQUANT** à tout
-code de provider (Phase 3) : sans lui, l'abstraction `IUsageProvider` se bâtirait sur des
-hypothèses fausses (le champ `utilization` 0..1 attendu par la modélisation projet **n'existe
-pas** — c'est `used_percentage` 0..100).
-
-Cette phase est **DOCUMENTAIRE** : le livrable est ce document, PAS du code. Aucun provider,
-aucune classe C#, aucun script de pont n'est écrit ici.
-
----
-
-## 1. Source primaire — objet d'usage (rate_limits via statusLine)
-
-### Localisation exacte
-
-L'objet d'usage est le bloc **`rate_limits`** du contrat JSON de la fonctionnalité
-**statusLine** de Claude Code — un point d'extension **officiellement documenté et supporté**
-(`code.claude.com/docs/en/statusline`). Ce sont ces champs qui alimentent la commande
-`/usage`.
-
-**Point crucial : cet objet n'est persisté dans AUCUN fichier sur disque.** Vérifié
-exhaustivement en lecture seule sous `%USERPROFILE%\.claude` et `%USERPROFILE%\.claude.json` :
-**0 occurrence structurée** d'un objet `"used_percentage": <nombre>` ou
-`"utilization": <nombre>`. Les seules occurrences des chaînes `five_hour` / `seven_day` sur
-disque sont (a) le schéma embarqué dans le binaire `claude-2.1.87-win32-x64.exe`, et (b) de la
-**prose** dans les transcripts (ce projet Chronos discute littéralement ces noms) — jamais un
-objet d'usage réellement loggé.
-
-L'objet ne transite donc que **transitoirement par le `stdin`** de la commande statusLine,
-pendant qu'une session Claude Code tourne et rend sa barre de statut.
-
-### Mécanisme d'accès — pont statusLine → fichier
-
-statusLine **ne « rend » pas un fichier** : Claude Code **POUSSE** le JSON de session sur le
-`stdin` d'une commande configurée dans `~/.claude/settings.json`
-(`statusLine.command`). Il n'existe donc aucun `usage.json` à poller tant qu'aucun mécanisme
-ne le persiste.
-
-Pour qu'un overlay externe (Chronos) consomme `rate_limits`, la source primaire n'est pas
-« un fichier à surveiller » mais **un pont à mettre en place** :
-
-- une commande statusLine (script, ou un mode CLI de Chronos) lit le JSON sur `stdin`,
-- en extrait le bloc `rate_limits`,
-- l'écrit **atomiquement** dans un fichier watchable, p. ex. `%APPDATA%\Chronos\usage.json`,
-- que l'overlay surveille via `FileSystemWatcher` (aligné RAF-01).
-
-**Contrainte non destructive** : ce poste a déjà une commande statusLine active
-(`gsd-statusline.js`). Une seule commande est configurable dans `settings.json` ; le pont doit
-donc **RÉ-ÉMETTRE la barre existante sur `stdout`** et n'ajouter QUE l'écriture du fichier
-`usage.json` — jamais casser l'affichage en place.
-
-> **`à documenter ici, à CODER en Phase 3 — aucun code de pont n'est écrit dans cette phase`.**
-> L'esquisse ci-dessous est une **illustration** de référence pour la Phase 3, **à ne pas
-> implémenter en Phase 2** :
->
-> ```javascript
-> // Source : contrat statusLine officiel (code.claude.com/docs/en/statusline)
-> // ILLUSTRATION — À NE PAS IMPLÉMENTER EN PHASE 2
-> process.stdin.on('end', () => {
->   const d  = JSON.parse(input);
->   const rl = d.rate_limits;              // peut être absent (non-abonné / avant 1re réponse)
->   if (rl) fs.writeFileSync(usageTmp, JSON.stringify({
->     five_hour: rl.five_hour ?? null,     // { used_percentage, resets_at } | null
->     seven_day: rl.seven_day ?? null,
->     capturedAt: Date.now()
->   }));
->   fs.renameSync(usageTmp, usageFinal);   // écriture atomique
->   process.stdout.write(originalStatusLine); // ne pas casser la barre existante
-> });
-> ```
-
-### Schéma des champs
-
-Documenté **verbatim** à partir du schéma embarqué dans le binaire `claude-2.1.87` et
-**confirmé mot pour mot par la doc officielle** courante :
-
-| Champ | Type | Unité / plage | Remarque |
-|-------|------|---------------|----------|
-| `rate_limits.five_hour.used_percentage` | nombre | **0 à 100** (décimales possibles) | Pourcentage de la limite 5 h consommé |
-| `rate_limits.five_hour.resets_at`       | nombre | **Unix epoch SECONDES** | Instant de reset de la fenêtre 5 h |
-| `rate_limits.seven_day.used_percentage` | nombre | **0 à 100** (décimales possibles) | Pourcentage de la limite 7 j consommé |
-| `rate_limits.seven_day.resets_at`       | nombre | **Unix epoch SECONDES** | Instant de reset de la fenêtre 7 j |
-
-**⚠️ CORRECTION MAJEURE.** La modélisation projet (PROJECT.md / CLAUDE.md) parle d'un champ
-`utilization` normalisé **0..1**. **Ce nom N'EXISTE PAS dans la source.** Le champ réel
-s'appelle **`used_percentage`** et vaut **0..100**. La normalisation `Utilization = used_percentage / 100`
-doit être faite côté modèle (voir [§3](#3-mapping-vers-usagesnapshot-phase-3)). De même,
-`resets_at` est en **epoch secondes** — PAS de l'ISO, PAS des millisecondes.
-
-### Échantillon réel anonymisé
-
-Valeurs synthétiques plausibles (aucune donnée réelle) :
-
-```jsonc
-"rate_limits": {
-  "five_hour": { "used_percentage": 23.5, "resets_at": 1738425600 },
-  "seven_day": { "used_percentage": 41.2, "resets_at": 1738857600 }
-}
+```
+ sonde d'en-têtes de rate-limit ─┐
+                                 ├─► composite PAR FENÊTRE ─► journal ─► dernier exact ─► cadran
+ secours OAuth du login Chronos ─┘   (sonde prioritaire)     (observe)   (tête + doctrine
+                                                                          de fraîcheur)
 ```
 
-### Conditions de présence
-
-Le bloc `rate_limits` est **optionnel** :
-
-- il n'apparaît **que pour les abonnés Claude.ai (Pro / Max)** ;
-- et seulement **APRÈS la 1re réponse API de la session** ;
-- chaque fenêtre (`five_hour`, `seven_day`) peut être **indépendamment absente**.
-
-**Conséquence** : le provider doit **dégrader** vers « indisponible » ou basculer sur le
-repli JSONL, **jamais inventer de valeur**.
-
-### Fréquence de mise à jour
-
-`rate_limits` est rafraîchi **à chaque rendu de la barre statusLine**, donc **UNIQUEMENT
-pendant qu'une session Claude Code est active** (best-effort ; la cadence interne / debounce de
-Claude Code n'est pas documentée — **ne pas en dépendre**). Overlay ouvert sans session
-active ⇒ dernière valeur figée (voir staleness en [§4](#4-hypothèses--points-de-fragilité)).
-
-### SourceReliability
-
-**`Fiable`** — objet officiellement documenté, noms de champs concordants entre binaire local
-2.1.87 et doc courante.
+Règle cardinale : `utilization` / `resets_at` fournis par le serveur priment sur tout comptage local, et **le seul chiffre
+non exact que Chronos affiche est le plancher « ≥ X % »** (§3). Jamais une estimation présentée comme exacte.
 
 ---
 
-## 2. Source de repli — estimation par transcripts JSONL
+## 1. La chaîne exacte — source → cadran
+
+**Sonde d'en-têtes (source primaire).** Une requête jetable `POST /v1/messages` (`max_tokens` à 1, modèle le moins cher
+de la gamme), au plus **une toutes les 300 s** (`RateLimitHeaderUsageProvider.CadenceNominale`), authentifiée par le
+jeton du login Chronos. Le corps de la réponse n'est jamais lu : les chiffres viennent des **en-têtes**
+`anthropic-ratelimit-unified-*` — utilisation et reset de la fenêtre 5 h et de la fenêtre hebdomadaire, **statut serveur**
+déclaré (autorisé / avertissement / rejeté) et **dépassement** éventuel (canal latéral `IEtatServeur`). Elle répond même
+quand l'API sature : un 429 porte ses en-têtes. Interrupteur dans les réglages (section Données), coût écrit à côté.
+
+**Secours OAuth du login Chronos.** `GET /api/oauth/usage` avec le jeton **propre à Chronos**, obtenu par le login intégré
+(« Se connecter à Claude ») et rangé chiffré par DPAPI (portée utilisateur) dans `%APPDATA%\Chronos\oauth.dat`. Aucun autre
+coffre n'est lu. Une seule autorité de jeton (`ChronosTokenAuthority`) le distribue à la sonde et au secours : deux
+détenteurs concurrents du jeton de renouvellement produiraient une fausse déconnexion.
+
+**Composite PAR FENÊTRE.** `CompositeUsageProvider` retient, fenêtre par fenêtre, la source la plus fiable ; à fiabilité
+égale, la sonde gagne — `Best()` ne retient le secours que s'il est **strictement** plus fiable. Il ne juge jamais la
+fraîcheur ni la récence entre deux exacts : la porte d'âge vit plus haut.
+
+**Journal.** `JournalisationUsageProvider`, entre la tête et le composite, voit le relevé brut (avant toute substitution
+par le dernier exact) et l'écrit dans le journal d'historique (§7). Il observe, il ne décide rien.
+
+**Tête : dernier exact + doctrine de fraîcheur.** `LastExactUsageProvider` persiste chaque relevé exact
+(`last-exact.json`) et `DoctrineFraicheur` statue sur chaque fenêtre (§3) : frais, encore valide, plancher ou indisponible.
+Le cadran n'affiche que ce que la tête rend.
+
+---
+
+## 2. Transcripts JSONL — activité et plancher, jamais un pourcentage
 
 ### Localisation
 
 `~/.claude/projects/<slug-projet>/<session-uuid>.jsonl` — un transcript par session, en
 append continu pendant que la session tourne.
+
+### Ce qu'ils servent
+
+Les transcripts ne produisent **jamais un pourcentage** : les plafonds du forfait ne sont pas publiés, et les transcripts
+ignorent l'app bureau et Cowork, qui consomment le même pool. Ils servent à trois choses :
+
+- **l'activité** : y a-t-il eu une réponse assistant depuis le dernier relevé exact ? C'est ce qui sépare « encore
+  valide » du plancher (§3) ;
+- **le plancher** : le nombre de tokens consommés depuis ce relevé, porté avec le plancher ;
+- **l'Historique** : les agrégats de tokens du §8, sur leur propre axe, jamais convertis en pourcentage du forfait.
 
 ### Schéma d'une ligne `assistant`
 
@@ -148,11 +69,7 @@ Chaque ligne est un objet JSON autonome. Clés de haut niveau observées :
 `sessionId`, `timestamp`, `type`, `userType`, `uuid`, `version`.
 
 Filtrer sur `o["type"] == "assistant"` (et `message.role == "assistant"`) pour ne retenir que
-les réponses porteuses d'usage.
-
-### Objet `message.usage` (cœur du repli, DAT-05)
-
-Échantillon anonymisé (valeurs synthétiques) :
+les réponses porteuses d'usage. Objet `message.usage` (valeurs synthétiques) :
 
 ```jsonc
 "usage": {
@@ -160,16 +77,9 @@ les réponses porteuses d'usage.
   "output_tokens": 1496,
   "cache_creation_input_tokens": 7814,
   "cache_read_input_tokens": 30962,
-  "server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
-  "service_tier": "standard",
-  "cache_creation": { "ephemeral_1h_input_tokens": 7814, "ephemeral_5m_input_tokens": 0 }
+  "service_tier": "standard"
 }
 ```
-
-L'estimation **somme les tokens** sur la fenêtre considérée. Les **plafonds ne sont pas
-publiés** (et sont mouvants : ×2 le 6 mai, +50 % hebdo jusqu'au 13 juillet 2026) ⇒ l'estimation
-est **structurellement approximative**, d'où le marquage **`Estimé`** (jamais présenter comme
-exact).
 
 > **2026-09-27 (phase 32, CPT-01)** : une ligne `assistant` par bloc de contenu d'un même `message.id`,
 > `output_tokens` partiel et croissant (8 → 8 → 256), les trois autres champs identiques ; 491 ids sur
@@ -177,147 +87,71 @@ exact).
 > par `message.id`, repli `requestId`, dictionnaire global à la passe) : sommer les lignes compterait
 > l'entrée ×2,1.
 
-### Format des timestamps
+`timestamp` = **ISO 8601 UTC** avec millisecondes et suffixe `Z`. Lecture en streaming, `FileShare.ReadWrite` (le fichier
+est en cours d'écriture), dernière ligne partielle ignorée sans bruit.
 
-`o["timestamp"]` = **ISO 8601 UTC** avec millisecondes et suffixe `Z`, p. ex.
-`"2026-07-08T12:20:42.428Z"`.
+### Blocs sous-agents
 
-**⚠️ AVERTISSEMENT — deux formats de temps distincts à NE PAS confondre :**
-
-| Source | Champ | Format |
-|--------|-------|--------|
-| Primaire | `rate_limits.<window>.resets_at` | **Unix epoch SECONDES** |
-| Repli    | `timestamp` (ligne JSONL) | **ISO 8601 UTC** (suffixe `Z`, millisecondes) |
-
-### Taille typique & implications performance
-
-~3 Ko / ligne ; à titre d'exemple, **1.1 Mo pour 336 lignes** sur une session en cours. Les
-sessions longues produisent des fichiers **plurimégaoctets**. Conséquences pour la Phase 3
-(ROB-02) :
-
-- lecture en **streaming** (ne pas charger le fichier entier en mémoire) ;
-- ouverture en **`FileShare.ReadWrite`** — le fichier est en cours d'écriture par Claude Code ;
-- **tolérance de la dernière ligne partielle** (une ligne peut être en cours d'écriture) :
-  ignorer silencieusement une ligne invalide et continuer.
-
-### Blocs sous-agents (note V2-01 — différé, ne pas coder)
-
-En **v2.1.202**, les sous-agents ne sont **PLUS** des blocs `tool_use` `name=Task` inline dans
-le transcript principal. Ils vivent dans un sous-dossier dédié :
-
-`~/.claude/projects/<slug>/<session-uuid>/subagents/`, contenant par agent :
-
-- `agent-<id>.jsonl` — transcript du sous-agent (lignes `assistant` avec `usage` tokens,
-  `isSidechain: true`) ;
-- `agent-<id>.meta.json` — `{ agentType, description, spawnDepth, toolUseId }`.
-
-**À consigner comme piste V2-01, sans coder** : la future bande d'activité des sous-agents lira
-ce dossier `subagents/`, et non des blocs `Task` inline.
+Les sous-agents vivent dans `~/.claude/projects/<slug>/<session-uuid>/subagents/` (`agent-<id>.jsonl`, lignes
+`isSidechain: true`, et `agent-<id>.meta.json`).
 
 **Lu par le widget de sessions depuis la phase 30.1 (SUB-01)** — seulement l'instant du dernier message
 de chaque `agent-<id>.jsonl`, comme signal de TRAVAIL de sa session, jamais comme ligne ni comme compte de
 tokens : voir `docs/hooks-contract.md` §3 et §4. La bande d'activité V2-01 reste différée.
 
-### SourceReliability
-
-**`Estimé`** — plafonds non publiés ⇒ estimation par sommation de tokens, toujours marquée
-comme telle dans l'UI.
-
 ---
 
-## 3. Mapping vers UsageSnapshot (Phase 3)
+## 3. Ce qui est exact, ce qui ne l'est pas
 
-Table de correspondance **source → modèle neutre** (guide direct pour `IUsageProvider`) :
+Une fenêtre affichée est dans l'un de ces quatre états, décidés par `DoctrineFraicheur` :
 
-| Source (champ réel) | Modèle `UsageSnapshot` | Conversion |
-|---------------------|------------------------|------------|
-| `rate_limits.<window>.used_percentage` (0..100) | `Utilization` (0..1) | `used_percentage / 100.0` |
-| `rate_limits.<window>.resets_at` (epoch s) | `ResetsAt` (`DateTimeOffset`) | `DateTimeOffset.FromUnixTimeSeconds(resets_at)` |
-| fenêtre / bloc absent | `SourceReliability` → repli ou indisponible | **jamais** de valeur inventée |
-| repli JSONL `message.usage.*_tokens` (somme) | `Utilization` estimée | `SourceReliability = Estimé` |
+| État | Condition | Affichage |
+|------|-----------|-----------|
+| **Exact — frais** | relevé de la sonde ou du secours OAuth, ou dernier exact persisté, âgé d'au plus **360 s** (`DoctrineFraicheur.LimiteAge` = cadence de la sonde + 60 s, non réglable) | le pourcentage, sans signe |
+| **Exact — encore valide** | relevé plus ancien, mais **aucune activité Claude Code** depuis (transcripts) : l'utilisation n'a pas bougé | le pourcentage, sans signe |
+| **Plancher (non exact)** | relevé plus ancien **et** Claude Code a travaillé depuis | **« ≥ X % »** : le vrai chiffre est au moins celui-là ; la borne supérieure est inconnue |
+| **Indisponible** | aucun relevé, relevé sans horodatage, ou activité impossible à établir | neutre, « données indisponibles » — jamais une valeur inventée |
 
-> **Rappel : `utilization` (0..1) est un champ FANTÔME côté source.** Il n'existe que côté
-> modèle, **après** la conversion `/ 100.0`. Ne jamais parser un champ `utilization` dans la
-> source : le champ à lire est `used_percentage`.
+**Seul le plancher « ≥ » n'est pas exact.** Sa valeur n'est jamais augmentée d'un delta calculé : c'est la qualification
+du chiffre qui change, pas le chiffre. Le « ≥ » et non un « ~ » : l'incertitude est unilatérale.
 
-`<window>` désigne indifféremment `five_hour` (→ arc extérieur 5 h) ou `seven_day` (→ arc
-intérieur hebdo). Le repli hebdo dérive (~72 h, ancrage non documenté) : traiter `resets_at`
-tel que fourni, best-effort et recalibrable (voir [§4](#4-hypothèses--points-de-fragilité)).
+**Les resets viennent toujours du serveur** (`resets_at` des en-têtes ou du secours). Aucune ancre manuelle n'entre dans le
+cadran ; l'ancre hebdomadaire déjà enregistrée par une ancienne version n'est plus que **lue en secours** par l'Historique.
+
+Toutes les conversions d'unité (pourcentage ↔ fraction, epoch ↔ instant) passent par `UsageNormalization`, point unique.
 
 ---
 
 ## 4. Hypothèses & points de fragilité
 
-Chaque risque ci-dessous est un **guide direct pour la conception de `IUsageProvider`**
-(Phase 3) : l'abstraction doit isoler ces points de rupture du cadran.
-
-- **API privée de facto.** Le contrat statusLine est documenté, mais `rate_limits` n'est PAS
-  un contrat de données garanti : un champ peut être renommé ou déplacé à toute mise à jour de
-  Claude Code. *Recommandation* : **test de contrat** sur échantillon en Phase 3 ; dégradation
-  vers « indisponible » si un champ ou une fenêtre est absent, plutôt que du code défensif
-  exotique.
-
-- **Écart de version.** Binaire sur disque **2.1.87** vs runtime actif **2.1.202**
-  (`sessions/30656.json`). Le schéma est confirmé **identique** entre le binaire 2.1.87 et la
-  doc officielle courante, mais **2.1.202 n'a pas été vérifié champ par champ** (pas de binaire
-  2.1.202 sur disque) → confiance **MEDIUM** sur la stabilité inter-versions. *Recommandation* :
-  dater la capture (fait dans l'en-tête) et **revalider à chaque MAJ majeure**.
-
-- **Staleness hors session active.** `used_percentage` n'est rafraîchi que quand une session
-  Claude tourne et rend sa barre. Overlay ouvert **sans session** ⇒ valeur **figée** au dernier
-  connu (à marquer comme **potentiellement périmée**). Le `resets_at` (epoch) permet néanmoins
-  d'**interpoler le compte à rebours** localement (aligné RAF-03), sans dépendre d'un
-  rafraîchissement.
-
-- **Présence conditionnelle.** Rappel : `rate_limits` n'existe que pour **Pro / Max**, **après
-  la 1re réponse API**, et **chaque fenêtre peut être indépendamment absente**. Le provider doit
-  gérer l'absence **sans crash** (ROB-01) et **basculer sur le repli JSONL** (DAT-06).
-
-- **Reset hebdo dérivant.** La fenêtre 7 j dérive (~72 h, horaire d'ancrage non documenté) →
-  traiter `resets_at` **tel que fourni**, best-effort et **recalibrable** par l'utilisateur
-  (ROB-03).
-
-- **Faux positifs JSONL.** Les chaînes « five_hour » / « seven_day » trouvées dans les
-  transcripts sont de la **PROSE** (ce projet en discute), **PAS** un objet d'usage loggé.
-  Exiger un **objet structuré** (`"used_percentage": <nombre>`), jamais une chaîne dans un champ
-  `content` / `text`. Rappel : **aucun objet d'usage n'est matérialisé sur disque**.
-
-- **Sécurité.** Ne **jamais** lire ni logger `.credentials.json` (tokens OAuth), ni le
-  **contenu** des conversations. Ne compter que **tokens / métadonnées**. Lecture seule stricte
-  sous le profil utilisateur, aucun droit admin.
+- **Famille d'en-têtes « unified » non documentée.** `anthropic-ratelimit-unified-*` n'apparaît nulle part dans la
+  documentation publique d'Anthropic : elle peut être renommée à tout moment. Le diagnostic liste les noms reconnus (jamais
+  leurs valeurs) ; un 200 sans aucun en-tête reconnu est dit tel quel (« la famille a peut-être été renommée ») et rien
+  n'est affiché plutôt qu'un chiffre inventé.
+- **Endpoint OAuth non documenté.** `/api/oauth/usage` n'est pas un contrat public ; il peut changer à une mise à jour de
+  Claude. En cas d'échec, la fenêtre passe à « indisponible » (ou reste sur la sonde), jamais un plantage.
+- **Modèle de la sonde.** La sonde vise le modèle le moins cher de la gamme ; un identifiant retiré par le serveur est dit
+  « modèle refusé » dans le diagnostic et se met à jour dans le code.
+- **Coût.** Une micro-requête toutes les 300 s au plus (≈ 288 par jour), sur le compte de l'utilisateur ; une sonde
+  rejetée (429) ne consomme pas de quota. Désactivable dans les réglages.
+- **Présence conditionnelle.** Chaque fenêtre peut être indépendamment absente d'une réponse : le composite choisit par
+  fenêtre et l'absence se dégrade en « indisponible » (ROB-01), sans crash.
+- **Sécurité.** Le jeton n'est jamais écrit dans un rapport ni un journal ; le contenu des conversations n'est jamais lu
+  (tokens et métadonnées seulement). Lecture seule sous le profil utilisateur, aucun droit admin.
 
 ---
 
-## 5. Reproductibilité — recapture (lecture seule stricte)
+## 5. Sources retirées en 3.5
 
-Méthode pour **re-vérifier la source** à une future version de Claude Code, **sans écrire de
-code de provider** et **sans jamais modifier** un fichier sous `~/.claude` :
+Retirées par la purge de la phase 37 ; chacune décrivait un chemin mort ou trompeur.
 
-1. **Vérifier la config statusLine active** : lire `~/.claude/settings.json`, clé
-   `statusLine.command` (constate quelle commande reçoit le JSON stdin).
-2. **Confirmer l'absence de persistance** : grep ciblé d'un objet **structuré**
-   `"used_percentage":` / `"utilization":` sous `~/.claude` et `~/.claude.json`
-   (attendu : **0 occurrence structurée**).
-3. **Confirmer le schéma courant** : doc officielle `code.claude.com/docs/en/statusline`
-   (table des champs) ; à défaut, extraire les **chaînes printables** du binaire
-   `~/.claude/downloads/claude-<ver>-win32-x64.exe` (section « How to use the statusLine
-   command »).
-4. **Ré-échantillonner le repli** : dernières lignes `type=assistant` d'un
-   `~/.claude/projects/<slug>/<uuid>.jsonl` pour `message.usage` + `timestamp` ; lister
-   `subagents/` pour le layout sous-agents.
-5. **Impératif** : NE MODIFIER aucun fichier de `~/.claude` ; **anonymiser** toute capture avant
-   de la coller dans ce document (valeurs synthétiques, placeholders `<slug>` / `<uuid>` /
-   `%USERPROFILE%`).
-
-### Traçabilité des sources & niveaux de confiance
-
-| Source consultée | Rôle | Confiance |
-|------------------|------|-----------|
-| Doc officielle `code.claude.com/docs/en/statusline` | Table des champs `rate_limits` (0-100, epoch s), conditions de présence | Localisation / schéma : **HIGH** |
-| Binaire local `claude-2.1.87-win32-x64.exe` (chaînes embarquées) | Schéma statusLine verbatim, confirme les noms de champs | **HIGH** |
-| Sondage filesystem `~/.claude` + `~/.claude.json` | Absence prouvée d'objet d'usage persisté | **HIGH** |
-| Échantillon réel `~/.claude/projects/<slug>/<uuid>.jsonl` + `subagents/*.meta.json` | Structure `usage`/tokens, timestamps ISO 8601, layout sous-agents v2.1.202 | Structure JSONL : **HIGH** |
-| Concordance exacte du schéma en runtime 2.1.202 | Non vérifié champ par champ | Stabilité inter-versions : **MEDIUM** |
+- **Lecture du jeton de l'app bureau Claude** (coffre chiffré de l'app, gestionnaire d'identifiants Windows) : remplacée par
+  le login propre à Chronos ; plus aucun autre coffre n'est lu.
+- **Barre de statut de Claude Code** comme source d'usage : le pont qui recopiait son bloc d'usage dans un fichier local
+  disparaît, et la barre installée par Chronos est retirée au premier lancement (une barre d'un tiers reste intacte).
+- **Recalibrage manuel du reset hebdomadaire** : les resets viennent toujours du serveur.
+- **Estimation par comptage de tokens** rapportée à un plafond supposé : les transcripts ne donnent plus qu'activité et
+  plancher (§2).
 
 ---
 
@@ -430,8 +264,8 @@ l'app produit un second jeu de fichiers**, journal compris — c'est l'utilisate
   `Anormal` : s'il s'en produit sans changement de `resets_at`, l'hypothèse tombe.
 - **HYP-3 — reset hebdo à l'heure locale au changement d'heure** : `resets_at` 7 j = samedi 00:00 heure locale
   (`2026-09-18T22:00Z` constaté = samedi 19/09 00:00 Paris). Le **25/10/2026** (fin de l'heure d'été), la semaine du
-  24 au 31 octobre dure 169 h et l'attendu est **`2026-10-30T23:00Z`** ; `WeeklyWindow`/`WeeklyRecalibration.NextReset`
-  (7 × 24 h fixes) diraient `2026-10-30T22:00Z` — écart d'exactement 1 h (`BornesPlage`, 32-06). Le journal tranchera
+  24 au 31 octobre dure 169 h et l'attendu est **`2026-10-30T23:00Z`** ; un calcul local à 7 × 24 h fixes depuis la
+  dernière ancre dirait `2026-10-30T22:00Z` — écart d'exactement 1 h (`BornesPlage`, 32-06). Le journal tranchera
   (`r7` de la première semaine de novembre) ; jusque-là la borne de forfait est un calcul local, best-effort.
 
 ### Ce que le journal n'est pas
@@ -622,5 +456,6 @@ galerie `--historique`, sans aucun fichier).
 
 ---
 
-*Fin du document — capturé le 2026-07-08, à revalider à chaque MAJ majeure de Claude Code (schéma = API privée de facto) ;
-complété le 2026-09-27 (§7, note CPT-01 du §2 ; §8 agrégats de tokens ; §9 lecture par la fenêtre Historique).*
+*Fin du document — §1 à §5 réécrits en 2026-10 (phase 37, méthodologie unique : sonde d'en-têtes, secours OAuth du login
+Chronos, journal, dernier exact ; seul le plancher « ≥ » n'est pas exact) ; §6 à §9 inchangés (§7 journal d'historique,
+§8 agrégats de tokens, §9 lecture par la fenêtre Historique).*

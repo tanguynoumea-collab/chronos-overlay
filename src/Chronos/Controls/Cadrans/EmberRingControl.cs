@@ -8,7 +8,7 @@ namespace Chronos.Controls;
 /// CADRAN « anneau de braises » (piste 1). Une couronne de N pastilles discrètes sur un cercle.
 /// Le NOMBRE de braises allumées = temps restant (Fraction 0..1) ; la couleur = quota (QuotaBrush,
 /// thémé). La dernière braise allumée est à demi-lueur (incertitude native ±1 braise) ; Estimated
-/// (repli JSONL) rend les braises allumées en CONTOUR pointillé (grain) au lieu du plein.
+/// (plancher « ≥ ») rend les braises allumées en CONTOUR pointillé (grain) au lieu du plein.
 /// FrameworkElement + OnRender (per-pip) car un Shape ne porte qu'un Stroke/Fill unique.
 /// </summary>
 public sealed class EmberRingControl : FrameworkElement

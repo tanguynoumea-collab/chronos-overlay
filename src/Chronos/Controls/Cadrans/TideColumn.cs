@@ -7,7 +7,7 @@ namespace Chronos.Controls;
 /// <summary>
 /// CADRAN « marée » (piste 3). Une colonne verticale : la HAUTEUR de lumière restante (par le haut)
 /// = temps restant (Fraction 0..1) — l'ombre monte par le bas et « referme » la fenêtre vers le reset.
-/// La LUMINANCE de la partie éclairée (QuotaBrush) = quota. Estimated (repli JSONL) : waterline
+/// La LUMINANCE de la partie éclairée (QuotaBrush) = quota. Estimated (plancher « ≥ ») : waterline
 /// frangée + grain sur la partie éclairée, jamais sur la hauteur (le temps). Une instance par fenêtre.
 /// </summary>
 public sealed class TideColumn : FrameworkElement

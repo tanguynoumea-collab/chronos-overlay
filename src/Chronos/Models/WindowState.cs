@@ -4,8 +4,8 @@ namespace Chronos.Models;
 public sealed record WindowState
 {
     public required WindowKind Kind { get; init; }
-    public double? Utilization { get; init; }            // 0..1 ; null si inconnu (repli sans plafond)
-    public DateTimeOffset? ResetsAt { get; init; }        // null si inconnu (repli JSONL)
+    public double? Utilization { get; init; }            // 0..1 ; null si inconnu (Estimated = plancher « ≥ »)
+    public DateTimeOffset? ResetsAt { get; init; }        // null si inconnu (jamais inventé)
     public double? FractionTimeRemaining { get; init; }   // 0..1 clampé ; null si ResetsAt inconnu
     public required SourceReliability Reliability { get; init; }
 

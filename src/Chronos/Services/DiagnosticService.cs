@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Chronos.Models;
@@ -13,42 +12,41 @@ namespace Chronos.Services;
 
 /// <summary>
 /// Diagnostic auto-explicatif (observabilité pour un outil distribué) : dit POURQUOI l'affichage
-/// n'a pas de couleurs sur une machine donnée. Rassemble l'état réel — token trouvé ? statut de
-/// l'appel OAuth ? sources présentes ? source active par fenêtre — et écrit un rapport
-/// lisible dans %APPDATA%/Chronos/diagnostic.txt, qu'il ouvre ensuite.
+/// n'a pas de couleurs sur une machine donnée. Rassemble l'état réel — la chaîne de données (sonde
+/// d'en-têtes, secours OAuth du login Chronos, dernier exact persisté, journal), les magasins, la
+/// source active par fenêtre — et écrit un rapport lisible dans %APPDATA%/Chronos/diagnostic.txt,
+/// qu'il ouvre ensuite. Phase 37 : aucun appel réseau, aucune recherche de coffres ni de dossiers.
 ///
 /// SÉCURITÉ : le token n'est JAMAIS écrit dans le rapport (seulement « trouvé : oui/non »). Neutre
 /// (aucun type WPF) : ouvre le fichier via l'application par défaut du système (Process.Start).
 /// </summary>
 public sealed class DiagnosticService
 {
-    private const string UsageUrl = "https://api.anthropic.com/api/oauth/usage";
-
     // Combien de fichiers d'état le rapport détaille. Une borne de LISIBILITÉ, pas une troncature muette :
     // le reste est annoncé sur une ligne dédiée, et le compte total du dossier est donné avant la liste.
     private const int MaxFichiersEtat = 8;
 
-    private readonly IClaudeTokenReader _tokenReader;
     private readonly ChronosPaths _paths;
     private readonly SettingsService _settings;
     private readonly IUsageProvider _composite;
     private readonly IClock _clock;
     private readonly IAuthStatus? _authStatus;
     private readonly IEtatServeur? _etatServeur;
-    private readonly IInventaireMachine _machine;
     private readonly SessionMonitor? _moniteurSessions;
     private readonly IReadOnlyList<IEtatMagasin>? _magasins;
     private readonly IEtatReconstruction? _reconstruction;
     private readonly TimeZoneInfo? _fuseau;
     private readonly DateTimeOffset _demarrage;
 
+    /// <param name="tokenReader">Inutilisé depuis la phase 37 (étape 1) ; retiré à l'étape 3 avec son type.</param>
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
     /// tests) compilent sans retouche, et la DI passe le vrai service.</param>
     /// <param name="etatServeur">Canal latéral de la sonde d'en-têtes (HDR-03/HDR-04) et son issue.
     /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants (1 en
     /// production, 9 en tests) compilent sans retouche. Précédent : authStatus, phase 17.</param>
-    /// <param name="machine">Les deux sondages d'environnement MESURÉS chers (coffres OAuth 17 703 ms,
+    /// <param name="machine">Inutilisé depuis la phase 37 (étape 1) ; retiré à l'étape 3 avec son type.
+    /// Historique : les deux sondages d'environnement MESURÉS chers (coffres OAuth 17 703 ms,
     /// poll UIA 936 ms — 99,4 % du coût d'un rapport ; 7 tests payaient 2 min 8 s pour cela seul).
     /// OPTIONNEL et en DERNIÈRE position à dessein : les 10 sites de construction préexistants
     /// compilent sans retouche. Le repli <c>?? new InventaireMachine()</c> laisse la PRODUCTION
@@ -95,14 +93,12 @@ public sealed class DiagnosticService
                              IEtatReconstruction? reconstruction = null,
                              TimeZoneInfo? fuseau = null)
     {
-        _tokenReader = tokenReader;
         _paths = paths;
         _settings = settings;
         _composite = composite;
         _clock = clock;
         _authStatus = authStatus;
         _etatServeur = etatServeur;
-        _machine = machine ?? new InventaireMachine();
         _moniteurSessions = moniteurSessions;   // pas de repli : voir le XML-doc ci-dessus
         _magasins = magasins;
         _demarrage = demarrageProcessus ?? clock.UtcNow;   // D-32-21 : référence basse de « journal muet »
@@ -146,6 +142,9 @@ public sealed class DiagnosticService
     /// <summary>Rapport textuel (testable). N'expose JAMAIS le token.</summary>
     public async Task<string> BuildReportAsync(CancellationToken ct = default)
     {
+        // DAT-04 — durée de CALCUL du rapport (Stopwatch, jamais IClock) : dite en dernière ligne, elle se consigne
+        // d'elle-même dans chronos.log à chaque lancement (la recherche des coffres coûtait ≈ 17 s avant la phase 37).
+        var chrono = Stopwatch.StartNew();
         var s = _settings.Load();
         // SOC-01 — relevé AVANT tout await : aucune autre lecture ne peut s'intercaler et écraser ce rapport.
         var lectureReglages = _settings.DerniereLecture;
@@ -161,6 +160,7 @@ public sealed class DiagnosticService
         string? echecLecture = null;
         try { affiche = await _composite.GetAsync(ct); }
         catch (Exception ex) { echecLecture = ex.Message; }
+        long msChaine = chrono.ElapsedMilliseconds;
 
         var sb = new StringBuilder();
         sb.AppendLine("=== Chronos — Diagnostic ===");
@@ -168,32 +168,19 @@ public sealed class DiagnosticService
         sb.AppendLine("Version : " + VersionEmbarquee());
         sb.AppendLine();
 
-        // 1) Réglage
-        sb.AppendLine("[Réglage]");
-        sb.AppendLine("  Usage exact (OAuth) : " + (s.OAuthUsageEnabled ? "ACTIVÉ" : "DÉSACTIVÉ (menu)"));
-        sb.AppendLine();
+        // 1) DAT-04 — LA CHAÎNE DE DONNÉES, dans son ordre réel. Rien ici n'appelle le réseau ni ne cherche sur disque :
+        // la section lit l'état déjà connu (canal latéral de la sonde, autorité de jeton, état des magasins), peuplé par
+        // le SEUL appel au composite fait en tête de méthode. Les lignes de la sonde et du secours sont celles des
+        // anciennes sections « Source exacte », mot pour mot (des tests les assertent).
+        sb.AppendLine("[Chaîne de données]");
+        sb.AppendLine("  Chaîne : sonde d'en-têtes → secours OAuth du login Chronos (meilleure source PAR FENÊTRE) → journal → dernier exact → cadran");
 
-        // 2a) Source exacte PRIMAIRE : login OAuth intégré de Chronos (coffre chiffré oauth.dat).
-        sb.AppendLine("[Source exacte — login OAuth Chronos]");
-        var oauthDat = Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "oauth.dat");
-        sb.AppendLine("  Connecté : " + (File.Exists(oauthDat)
-            ? "OUI (jeton chiffré présent) — les chiffres exacts arrivent au prochain rafraîchissement"
-            : "non (menu clic droit → « Se connecter à Claude »)"));
-        // TOK-02 : « le fichier existe » n'a JAMAIS voulu dire « authentifié ». Le jeton de cette
-        // machine a expiré le 2026-07-12 alors que oauth.dat était bien présent : c'est exactement le
-        // silence que la phase 17 brise. On affiche donc l'état RÉEL, pas la présence d'un fichier.
-        sb.AppendLine("  État d'authentification : " + LibelleAuth(_authStatus?.Etat));
-        sb.AppendLine();
-
-        // 2a-bis) LA SONDE D'EN-TÊTES (HDR-01/HDR-02/HDR-06) : désormais la PREMIÈRE source de la chaîne
-        // exacte, et la SEULE qui réponde encore quand l'API refuse. Cette section est la seule fenêtre de
-        // l'utilisateur sur ce qu'elle reçoit réellement : la famille d'en-têtes « unified » n'est
-        // documentée NULLE PART chez Anthropic, donc seul un rapport de terrain peut dire si elle existe
-        // toujours sous ce nom. (Le préfixe littéral n'est écrit QU'UNE fois dans ce fichier, dans le
-        // filtre de l'inventaire ci-dessous : un préfixe dupliqué est un préfixe qui divergera.)
-        sb.AppendLine("[Source exacte — sonde d'en-têtes de rate-limit]");
+        // 1a) LA SONDE D'EN-TÊTES (HDR-01/HDR-02/HDR-06) : la PREMIÈRE source de la chaîne exacte, et la SEULE qui
+        // réponde encore quand l'API refuse. La famille d'en-têtes « unified » n'est documentée NULLE PART chez
+        // Anthropic, donc seul un rapport de terrain peut dire si elle existe toujours sous ce nom.
+        sb.AppendLine("  Sonde d'en-têtes :");
         if (!s.SondeEnTetesActivee)
-            sb.AppendLine("  Interrupteur : désactivée (menu clic droit → Réglages) — aucune requête, aucun coût");
+            sb.AppendLine("    Interrupteur : désactivée (menu clic droit → Réglages) — aucune requête, aucun coût");
         else
         {
             // Cadence et coût DÉRIVÉS de la constante du provider, jamais recopiés : un chiffre recopié
@@ -201,14 +188,14 @@ public sealed class DiagnosticService
             var minutes = (int)RateLimitHeaderUsageProvider.CadenceNominale.TotalMinutes;
             var parJour = (int)(TimeSpan.FromDays(1).TotalSeconds
                                 / RateLimitHeaderUsageProvider.CadenceNominale.TotalSeconds);
-            sb.AppendLine($"  Interrupteur : ACTIVÉE — une micro-requête sur ton compte toutes les {minutes} min (≈ {parJour}/jour)");
-            sb.AppendLine("  Dernière sonde : " + LibelleSonde(_etatServeur?.DernierResultat));
+            sb.AppendLine($"    Interrupteur : ACTIVÉE — une micro-requête sur ton compte toutes les {minutes} min (≈ {parJour}/jour)");
+            sb.AppendLine("    Dernière sonde : " + LibelleSonde(_etatServeur?.DernierResultat));
 
             // SÉCURITÉ : ces noms proviennent des CONSTANTES de la sonde, jamais du serveur (invariant
             // prouvé au plan 18-04, test en casse mélangée). Les NOMS, et JAMAIS leurs valeurs : une
             // valeur d'en-tête venue du réseau ne doit pas pouvoir se réinjecter dans un affichage.
             var noms = _etatServeur?.NomsEnTetesRecus ?? Array.Empty<string>();
-            sb.AppendLine("  En-têtes « unified » reconnus : " + (noms.Count == 0
+            sb.AppendLine("    En-têtes « unified » reconnus : " + (noms.Count == 0
                 ? "AUCUN — la famille « unified » n'est documentée nulle part chez Anthropic et peut avoir changé de nom"
                 : string.Join(", ", noms) + $" ({noms.Count})"));
 
@@ -219,7 +206,7 @@ public sealed class DiagnosticService
             // compte à son sujet. Les confondre produisait « Dépassement :  · serveur : REJETÉ » sur un
             // compte à 23 % dont les deux fenêtres disaient « autorisé » — séparateur orphelin ET
             // contresens alarmant (constaté en production le 2026-09-12).
-            sb.AppendLine("  Dépassement : " + (dep is null || !dep.EstRenseigne
+            sb.AppendLine("    Dépassement : " + (dep is null || !dep.EstRenseigne
                 ? "aucun dépassement rapporté"
                 : !dep.EstEnCours
                     ? "aucun dépassement en cours · politique du compte : " + LibellePolitiqueDepassement(dep.Statut)
@@ -227,205 +214,32 @@ public sealed class DiagnosticService
                       + (dep.ResetsAt is { } dr ? " (reset le " + dr.ToLocalTime().ToString("yyyy-MM-dd HH:mm") + ")" : "")
                       + " · serveur : " + LibelleStatutServeur(dep.Statut)));
         }
-        sb.AppendLine();
 
-        // 2b) Source exacte secondaire : pont statusLine Claude Code (usage.json), terminal uniquement.
-        sb.AppendLine("[Source exacte — pont statusLine Claude Code]");
-        var claudeSettings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
-        bool bridgeInstalled = false;
-        string? statusLineCmd = null;
-        try
-        {
-            if (File.Exists(claudeSettings))
-            {
-                using var sd = JsonDocument.Parse(File.ReadAllText(claudeSettings));
-                if (sd.RootElement.TryGetProperty("statusLine", out var slNode)
-                    && slNode.TryGetProperty("command", out var cmdEl) && cmdEl.ValueKind == JsonValueKind.String)
-                {
-                    statusLineCmd = cmdEl.GetString();
-                    bridgeInstalled = statusLineCmd is not null
-                        && statusLineCmd.Contains("--statusline", StringComparison.OrdinalIgnoreCase)
-                        && statusLineCmd.Contains("Chronos", StringComparison.OrdinalIgnoreCase);
-                }
-            }
-        }
-        catch { }
-        sb.AppendLine("  Intégration Claude Code : " + (bridgeInstalled ? "INSTALLÉE (statusLine → Chronos)"
-            : File.Exists(claudeSettings) ? "non installée (menu « Source exacte (Claude Code) »)"
-            : "settings.json Claude absent (Claude Code jamais lancé ?)"));
+        // 1b) Le SECOURS : login OAuth intégré de Chronos (coffre chiffré oauth.dat). Le composite ne le retient, PAR
+        // FENÊTRE, que s'il est strictement plus fiable que la sonde.
+        sb.AppendLine("  Secours OAuth (login Chronos) — utilisé seulement quand la sonde n'a pas de chiffre :");
+        var oauthDat = Path.Combine(Path.GetDirectoryName(_paths.UsageFile)!, "oauth.dat");
+        sb.AppendLine("    Connecté : " + (File.Exists(oauthDat)
+            ? "OUI (jeton chiffré présent) — les chiffres exacts arrivent au prochain rafraîchissement"
+            : "non (menu clic droit → « Se connecter à Claude »)"));
+        // TOK-02 : « le fichier existe » n'a JAMAIS voulu dire « authentifié ». Le jeton de cette
+        // machine a expiré le 2026-07-12 alors que oauth.dat était bien présent : c'est exactement le
+        // silence que la phase 17 brise. On affiche donc l'état RÉEL, pas la présence d'un fichier.
+        sb.AppendLine("    État d'authentification : " + LibelleAuth(_authStatus?.Etat));
 
-        // Fraîcheur de usage.json (le fichier que le pont écrit et que l'overlay lit).
-        try
-        {
-            if (File.Exists(_paths.UsageFile))
-            {
-                using var ud = JsonDocument.Parse(File.ReadAllText(_paths.UsageFile));
-                var r = ud.RootElement;
-                // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
-                string W(string w) => r.TryGetProperty(w, out var o) && o.TryGetProperty("used_percentage", out var p) && p.TryGetDouble(out var v)
-                    ? UsageNormalization.PourcentagePourAffichage(UsageNormalization.FractionDepuisPourcentage(v)) : "absent";
-                string age = "inconnu";
-                if (r.TryGetProperty("capturedAt", out var ca) && ca.TryGetInt64(out var ms)
-                    && UsageNormalization.InstantDepuisEpochMillisecondes(ms) is { } capture)
-                {
-                    var mins = (_clock.UtcNow - capture).TotalMinutes;
-                    age = mins < 1 ? "à l'instant" : $"il y a {mins:F0} min";
-                }
-                sb.AppendLine($"  usage.json : présent — 5 h {W("five_hour")}, hebdo {W("seven_day")} (maj {age})");
-            }
-            else
-                sb.AppendLine("  usage.json : ABSENT (le pont n'a pas encore reçu de données — lance un message dans Claude Code)");
-        }
-        catch { sb.AppendLine("  usage.json : illisible"); }
-        sb.AppendLine();
+        // 1c) La TÊTE : le dernier relevé exact persisté et la doctrine de fraîcheur. Âge connu du processus si le magasin
+        // est injecté, sinon faits disque ; limite d'âge DÉRIVÉE de DoctrineFraicheur, jamais recopiée.
+        sb.AppendLine("  Dernier exact persisté : " + AgeDernierExact() + " (détail sous [Magasins persistants])");
+        sb.AppendLine($"    Fraîcheur : exact jusqu'à {(int)DoctrineFraicheur.LimiteAge.TotalSeconds} s après le relevé, puis « encore valide »"
+                      + " tant que Claude Code n'a pas travaillé ; sinon plancher « ≥ X % » (seul chiffre non exact)");
 
-        // 3) Source exacte — OAuth (repli historique, désormais secondaire)
-        sb.AppendLine("[Source exacte — endpoint OAuth (repli)]");
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var cfg = Path.Combine(appData, "Claude", "config.json");
-        var ls = Path.Combine(appData, "Claude", "Local State");
-        sb.AppendLine("  Coffre app bureau Claude :");
-        sb.AppendLine("    config.json  : " + (File.Exists(cfg) ? "présent" : "ABSENT (app bureau non installée ?)"));
-        sb.AppendLine("    Local State  : " + (File.Exists(ls) ? "présent" : "ABSENT"));
-        var creds = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", ".credentials.json");
-        sb.AppendLine("  Repli Claude Code CLI :");
-        sb.AppendLine("    .credentials.json : " + (File.Exists(creds) ? "présent" : "ABSENT"));
-
-        // Découverte : OÙ l'app range-t-elle réellement son coffre ? (le chemin varie selon l'app/version)
-        sb.AppendLine("  Recherche du coffre (config.json contenant « oauth:tokenCache ») :");
-        int found = 0;
-        foreach (var (label, root) in new[]
-        {
-            ("%APPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
-            ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
-        })
-        {
-            foreach (var hit in _machine.CoffresOAuth(root))
-            {
-                sb.AppendLine("    ✓ " + hit.Replace(root, label));
-                found++;
-            }
-            // liste aussi les dossiers « Claude/Cowork/Anthropic » présents (même sans tokenCache)
-            try
-            {
-                foreach (var d in Directory.EnumerateDirectories(root)
-                             .Where(d => { var n = Path.GetFileName(d).ToLowerInvariant(); return n.Contains("claude") || n.Contains("cowork") || n.Contains("anthropic"); }))
-                    sb.AppendLine("    · dossier : " + d.Replace(root, label));
-            }
-            catch { }
-        }
-        if (found == 0) sb.AppendLine("    (aucun coffre oauth:tokenCache trouvé sous %APPDATA%/%LOCALAPPDATA%)");
-
-        // Cartographie des dossiers Claude non vides → localiser le vrai magasin du token.
-        sb.AppendLine("  Structure des dossiers Claude (pour localiser le token) :");
-        foreach (var (label, rt) in new[]
-        {
-            ("%APPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)),
-            ("%LOCALAPPDATA%", Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
-        })
-        {
-            IEnumerable<string> dirs;
-            try { dirs = Directory.EnumerateDirectories(rt).Where(d => { var n = Path.GetFileName(d).ToLowerInvariant(); return n.Contains("claude") || n.Contains("cowork") || n.Contains("anthropic"); }); }
-            catch { continue; }
-            foreach (var d in dirs)
-            {
-                string[] entries;
-                try { entries = Directory.GetFileSystemEntries(d); } catch { continue; }
-                if (entries.Length == 0) continue; // ignore les dossiers vides (comme mon sandbox)
-                sb.AppendLine("    " + d.Replace(rt, label) + " :");
-                sb.AppendLine("      Local State: " + (File.Exists(Path.Combine(d, "Local State")) ? "OUI" : "non")
-                            + " | leveldb: " + (Directory.Exists(Path.Combine(d, "Local Storage", "leveldb")) ? "OUI" : "non"));
-                var names = entries.Select(Path.GetFileName).Where(n => n is not null).Take(14);
-                sb.AppendLine("      contient: " + string.Join(", ", names));
-            }
-        }
-
-        // Clés de premier niveau de .credentials.json (dit si le jeton principal « claudeAiOauth » y est,
-        // ou seulement les jetons MCP « mcpOAuth »). On n'affiche QUE les noms de clés, jamais les valeurs.
-        if (File.Exists(creds))
-        {
-            try
-            {
-                using var cd = JsonDocument.Parse(File.ReadAllText(creds));
-                var keys = cd.RootElement.ValueKind == JsonValueKind.Object
-                    ? string.Join(", ", cd.RootElement.EnumerateObject().Select(p => p.Name))
-                    : "(pas un objet)";
-                sb.AppendLine("    .credentials.json clés : " + keys);
-                var hasMain = cd.RootElement.TryGetProperty("claudeAiOauth", out var cao)
-                              && cao.ValueKind == JsonValueKind.Object
-                              && cao.TryGetProperty("accessToken", out var caoTok)
-                              && caoTok.ValueKind == JsonValueKind.String
-                              && !string.IsNullOrEmpty(caoTok.GetString());
-                sb.AppendLine("    jeton principal (claudeAiOauth.accessToken) : " + (hasMain ? "PRÉSENT" : "absent"));
-            }
-            catch { sb.AppendLine("    .credentials.json : illisible/JSON invalide"); }
-        }
-
-        // Gestionnaire d'identifiants Windows : où Claude Code range souvent le jeton sous Windows.
-        // On liste les cibles « claude/anthropic », la taille du blob et sa forme (clés JSON), + si un
-        // jeton en a été extrait. JAMAIS la valeur du jeton.
-        sb.AppendLine("  Gestionnaire d'identifiants Windows (cibles claude/anthropic) :");
-        try
-        {
-            var entries = WindowsCredentialStore.ReadClaudeEntries();
-            if (entries.Count == 0) sb.AppendLine("    (aucune cible claude/anthropic)");
-            foreach (var en in entries)
-            {
-                var shape = DescribeBlobShape(en.Blob);
-                var parsed = ClaudeTokenReader.ParseCredentialBlob(en.Blob, out _) is not null;
-                sb.AppendLine($"    ✓ {en.TargetName} — {en.Blob.Length} o — {shape} — jeton: {(parsed ? "OUI" : "non")}");
-            }
-        }
-        catch (Exception ex) { sb.AppendLine("    (lecture impossible : " + ex.GetType().Name + ")"); }
-
-        var token = _tokenReader.TryReadAccessToken(out var exp);
-        sb.AppendLine("  Token déchiffré : " + (token is null ? "NON (pas de token lisible → pas de chiffres exacts)" : "OUI"));
-        if (exp is { } e) sb.AppendLine("  Expiration token : " + e.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
-
-        if (token is not null)
-        {
-            sb.AppendLine("  Appel " + UsageUrl + " :");
-            try
-            {
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-                using var req = new HttpRequestMessage(HttpMethod.Get, UsageUrl);
-                req.Headers.TryAddWithoutValidation("Authorization", "Bearer " + token);
-                req.Headers.TryAddWithoutValidation("anthropic-beta", "oauth-2025-04-20");
-                using var resp = await http.SendAsync(req, ct);
-                sb.AppendLine("    → HTTP " + (int)resp.StatusCode + " " + resp.StatusCode);
-
-                // OUVERTURE : on ne sait PAS si /api/oauth/usage porte AUSSI la famille unified.
-                // S'il la portait, HDR-01..HDR-04 seraient satisfaits SANS dépenser un jeton de quota et le
-                // coût de la sonde disparaîtrait (candidat phase 19+). Impossible à trancher sans jeton
-                // valide : son 401 est rendu en bordure (request_id nul) et ne porte aucun en-tête de
-                // limite. On liste donc les NOMS — JAMAIS les valeurs, JAMAIS le corps : la question se
-                // tranchera au premier rafraîchissement réussi de l'utilisateur.
-                var nomsLimite = resp.Headers.Select(h => h.Key)
-                    .Where(k => k.StartsWith("anthropic-ratelimit", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                sb.AppendLine("    → en-têtes de limite présents : " + (nomsLimite.Count == 0
-                    ? "AUCUN"
-                    : string.Join(", ", nomsLimite) + $" ({nomsLimite.Count})"));
-
-                if (resp.IsSuccessStatusCode)
-                {
-                    var body = await resp.Content.ReadAsStringAsync(ct);
-                    using var doc = JsonDocument.Parse(body);
-                    sb.AppendLine("    → five_hour : " + Pct(doc.RootElement, "five_hour")
-                                + "   seven_day : " + Pct(doc.RootElement, "seven_day"));
-                }
-                else if ((int)resp.StatusCode == 401 || (int)resp.StatusCode == 403)
-                    sb.AppendLine("    → token refusé/expiré : relance/ouvre l'app bureau Claude pour le rafraîchir.");
-                else if ((int)resp.StatusCode == 429)
-                    sb.AppendLine("    → rate limité (temporaire) : réessaie dans quelques minutes.");
-            }
-            catch (Exception ex)
-            {
-                sb.AppendLine("    → ÉCHEC RÉSEAU : " + ex.GetType().Name + " : " + ex.Message);
-                sb.AppendLine("      (pare-feu/proxy d'entreprise bloquant api.anthropic.com ? VPN ? TLS ?)");
-            }
-        }
+        // 1d) Le JOURNAL : âge de sa dernière écriture (état du magasin, jamais une relecture de sa queue) et la même
+        // alerte « journal muet » que [Magasins persistants], par la même aide.
+        var etatJournal = _magasins?.FirstOrDefault(m => m.Nom == NomsMagasins.JournalReleves);
+        sb.AppendLine("  Journal : " + (etatJournal is null
+            ? "non câblé (état du journal non injecté) — détail sous [Magasins persistants]"
+            : (etatJournal.DerniereEcriture is { } dj ? "dernière écriture " + LibelleSource.Anciennete(dj, _clock.UtcNow) : "aucune écriture depuis le démarrage")
+              + (AlerteJournalMuet(etatJournal) is { } alerteChaine ? " — " + alerteChaine : "")));
         sb.AppendLine();
 
         // 3) Transcripts JSONL — désormais source de DELTA (aucun plafond, aucun pourcentage)
@@ -458,13 +272,8 @@ public sealed class DiagnosticService
         // JRN-04 — le journal qui se tait doit être VU se taire. Mêmes mots que les réglages (D-32-22), un seul
         // libellé dans ce fichier. Référence = max(démarrage, dernière écriture) (D-32-21) : un processus lancé il y a 5 min n'est pas muet
         // parce que la dernière écriture date de la veille. Seuil dérivé de la cadence de la sonde, jamais 900 s en dur.
-        if (_magasins?.FirstOrDefault(m => m.Nom == NomsMagasins.JournalReleves) is { } j)
-        {
-            var reference = Max(_demarrage, j.DerniereEcriture ?? _demarrage);
-            var silence = _clock.UtcNow - reference;
-            if (silence > JournalReleves.SeuilMuet)
-                sb.AppendLine("    ALERTE — journal muet depuis " + (int)silence.TotalMinutes + " min");
-        }
+        if (AlerteJournalMuet(_magasins?.FirstOrDefault(m => m.Nom == NomsMagasins.JournalReleves)) is { } alerte)
+            sb.AppendLine("    " + alerte);
 
         // CPT-03 — combien de Chronos tournent, et qui tient le verrou mono-instance. Le relevé lit la table des processus de
         // la machine : sous try/catch, un relevé impossible se DIT, il ne fait jamais échouer le rapport.
@@ -518,6 +327,7 @@ public sealed class DiagnosticService
         sb.AppendLine("  Exe courant : " + (Environment.ProcessPath ?? "?"));
 
         // Hooks --hook présents dans ~/.claude/settings.json ? (+ chemin exe référencé)
+        var claudeSettings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
         try
         {
             if (File.Exists(claudeSettings))
@@ -610,8 +420,8 @@ public sealed class DiagnosticService
                 catch { }   // fichier illisible : ignoré, jamais fatal au rapport
             }
 
-            // NB : l'itérateur s'appelle « fic » et non « e » — un `e` est déjà déclaré plus haut dans
-            // cette même méthode (l'expiration du jeton), et C# interdit d'en masquer la portée (CS0136).
+            // NB : l'itérateur s'appelle « fic » (nom historique, conservé : aucun autre `e` n'est plus déclaré dans
+            // cette méthode depuis la phase 37).
             foreach (var fic in lus.OrderBy(x => x.Urgence)
                                    .ThenByDescending(x => x.Maj ?? System.DateTimeOffset.MinValue)
                                    .Take(MaxFichiersEtat))
@@ -696,20 +506,43 @@ public sealed class DiagnosticService
 
         sb.AppendLine();
 
-        // 5) Conseil
-        sb.AppendLine("[Conseil]");
-        if (!bridgeInstalled)
-            sb.AppendLine("  → Active « Source exacte (Claude Code) » dans le menu (clic droit). Chronos s'intègre à\n" +
-                          "    Claude Code : les vrais pourcentages 5 h/hebdo s'affichent dès ton prochain message.");
-        else
-            sb.AppendLine("  → Intégration active. Si usage.json est absent, envoie un message dans Claude Code :\n" +
-                          "    la barre de statut se met à jour à ce moment-là et alimente le cadran.");
-
+        // DAT-04 — la durée, en dernière ligne (format épinglé par test, aucun seuil).
+        sb.AppendLine();
+        sb.AppendLine($"Rapport construit en {chrono.ElapsedMilliseconds} ms (dont chaîne de données {msChaine} ms)");
         return sb.ToString();
     }
 
+    /// <summary>DAT-04 — âge du dernier exact persisté : l'âge connu du PROCESSUS (magasin injecté) prime, sinon le mtime
+    /// du fichier ; même règle que <see cref="LigneMagasin"/>. Faits disque best-effort : jamais une exception.</summary>
+    private string AgeDernierExact()
+    {
+        var etat = _magasins?.FirstOrDefault(m => m.Nom == NomsMagasins.DernierExact);
+        DateTimeOffset? mtime = null;
+        try
+        {
+            if (File.Exists(_paths.LastExactFile))
+                mtime = new DateTimeOffset(new FileInfo(_paths.LastExactFile).LastWriteTimeUtc, TimeSpan.Zero);
+        }
+        catch { /* chemin inaccessible : lu « aucune écriture connue » */ }
+        var derniere = etat?.DerniereEcriture ?? mtime;
+        var texte = derniere is null ? "aucune écriture connue" : "dernière écriture " + LibelleSource.Anciennete(derniere, _clock.UtcNow);
+        if (etat?.DerniereErreur is not null) texte += " — ÉCHEC de la dernière écriture";
+        return texte;
+    }
+
+    /// <summary>JRN-04 — « journal muet », UNE seule règle pour les deux sections qui la disent. Référence = max(démarrage,
+    /// dernière écriture) (D-32-21) ; seuil DÉRIVÉ de <see cref="JournalReleves.SeuilMuet"/>, jamais en dur. Null si le
+    /// journal n'est pas câblé ou parle.</summary>
+    private string? AlerteJournalMuet(IEtatMagasin? journal)
+    {
+        if (journal is null) return null;
+        var reference = Max(_demarrage, journal.DerniereEcriture ?? _demarrage);
+        var silence = _clock.UtcNow - reference;
+        return silence > JournalReleves.SeuilMuet ? "ALERTE — journal muet depuis " + (int)silence.TotalMinutes + " min" : null;
+    }
+
     /// <summary>SOC-01 — une ligne par démarrage (chronos.log est réécrit à chaque lancement) : jamais de bruit à chaque Load.
-    /// Hors section [Réglage], que la phase 37 remanie.</summary>
+    /// Sous [Magasins persistants], seule section qui parle des réglages depuis la phase 37.</summary>
     private static string LibelleLectureReglages(LectureReglages lecture) => lecture.Issue switch
     {
         IssueLectureReglages.Absent => "absent — défauts",
@@ -1083,38 +916,6 @@ public sealed class DiagnosticService
         StatutServeur.NonReconnu            => "politique non reconnue (valeur inconnue, non interprétée)",
         _                                   => "non rapportée",
     };
-
-    // La recherche des coffres OAuth vit désormais dans InventaireMachine (phase 20, vague 0) : elle a
-    // été DÉPLACÉE, pas dupliquée, afin d'être substituable sous test (17 703 ms mesurés par appel).
-
-    // Forme d'un blob d'identifiant SANS révéler son contenu : encodage probable + clés JSON de 1er niveau.
-    private static string DescribeBlobShape(byte[] blob)
-    {
-        if (blob is null || blob.Length == 0) return "vide";
-        foreach (var enc in new[] { Encoding.UTF8, Encoding.Unicode })
-        {
-            string text;
-            try { text = enc.GetString(blob).Trim(); } catch { continue; }
-            if (text.StartsWith("{"))
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(text);
-                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                        return enc.WebName + " JSON {" + string.Join(", ", doc.RootElement.EnumerateObject().Select(p => p.Name).Take(8)) + "}";
-                }
-                catch { }
-            }
-            else if (text.StartsWith("sk-ant-")) return enc.WebName + " jeton brut sk-ant-…";
-        }
-        return "binaire/opaque";
-    }
-
-    // HDR-05 : plus aucune conversion d'unité locale — tout passe par UsageNormalization.
-    private static string Pct(JsonElement root, string name)
-        => root.TryGetProperty(name, out var w) && w.ValueKind == JsonValueKind.Object
-           && w.TryGetProperty("utilization", out var u) && u.TryGetDouble(out var p)
-           ? UsageNormalization.PourcentagePourAffichage(UsageNormalization.FractionDepuisPourcentage(p)) : "absent";
 
     // HDR-03/HDR-04 — le statut serveur et le dépassement sont lus ICI, sur le snapshot DÉJÀ obtenu, et
     // non dans la section de la sonde : un second appel au composite déclencherait une seconde sonde, donc

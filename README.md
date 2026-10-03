@@ -17,7 +17,7 @@ Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau
 - **Anneau du milieu — fenêtre 5 h glissante** : idem pour la fenêtre de 5 heures.
 - **Anneau externe — timeline 24 h** : où tu en es dans la journée, avec des marques à chaque reset 5 h.
 - **Au centre** : les deux pourcentages d'utilisation. Un **clic** au centre bascule entre les pourcentages et le **temps avant reset** (après le délai de double-clic de Windows, ≈ 0,5 s) ; un **double-clic** ouvre l'**Historique** (voir [plus bas](#historique-dutilisation)).
-- **Couleurs** : vert → ambre → rouge selon l'utilisation, **gris** quand le quota est épuisé, **neutre** quand la donnée est inconnue (jamais de valeur inventée). Un `~` devant un pourcentage signale une **estimation**.
+- **Couleurs** : vert → ambre → rouge selon l'utilisation, **gris** quand le quota est épuisé, **neutre** quand la donnée est inconnue (jamais de valeur inventée). Un `≥` devant un pourcentage signale un **plancher** : le dernier relevé exact a vieilli pendant que Claude Code travaillait — le vrai chiffre est au moins celui-là.
 
 ## Installation (portable, sans droits admin)
 
@@ -45,17 +45,34 @@ Déplace l'overlay en le **glissant** par les anneaux ; il s'accroche au coin d'
 
 ## D'où viennent les chiffres
 
-Chronos lit **uniquement des sources locales**, dans ton profil utilisateur — il n'existe pas d'API publique pour ces données. Trois sources, en cascade :
+Une seule chaîne — la sonde d'en-têtes d'abord, son secours ensuite —, décrite en détail dans [`docs/data-sources.md`](docs/data-sources.md) :
 
-1. **Exact (OAuth)** — Chronos rejoue l'appel `/api/oauth/usage` que fait l'app bureau Claude pour son `/usage`, ce qui donne les **pourcentages exacts** des deux fenêtres, automatiquement.
-2. **Pont statusLine** — si tu utilises Claude Code en terminal, un petit pont peut matérialiser le bloc `rate_limits` de la statusLine dans un fichier local.
-3. **Estimation (repli)** — à défaut, Chronos estime l'usage à partir des transcripts JSONL (`~/.claude/projects`). Ces valeurs sont **toujours marquées « estimée »** (`~`).
+1. **Sonde d'en-têtes** (source principale) — au plus une micro-requête toutes les 5 minutes sur ton compte ; les
+   pourcentages exacts des deux fenêtres, leurs resets et le statut déclaré par le serveur arrivent dans les en-têtes de
+   la réponse. Elle répond même quand l'API sature. Désactivable dans les réglages (section **Données**), son coût est
+   écrit à côté.
+2. **Secours OAuth du login Chronos** — si la sonde n'a pas de chiffre pour une fenêtre, Chronos interroge
+   `/api/oauth/usage` avec son propre login (« Se connecter à Claude »).
+3. **Dernier exact** — le dernier relevé exact est gardé sur disque : il reste affiché tel quel tant qu'il est frais
+   (quelques minutes) ou que Claude Code n'a pas travaillé depuis.
+4. **Plancher** — si Claude Code a travaillé depuis ce relevé, le chiffre devient un plancher **« ≥ X % »** : c'est le
+   **seul chiffre non exact** que Chronos affiche. Sans aucun relevé, la fenêtre est dite indisponible — jamais une valeur
+   inventée.
+
+Les resets viennent toujours du serveur. Les transcripts locaux (`~/.claude/projects`) ne servent qu'à savoir si Claude
+Code a travaillé et à l'Historique : jamais à fabriquer un pourcentage.
 
 ### À propos du token (transparence)
 
-Pour la source **exacte**, Chronos doit lire ton token OAuth Claude, que l'app bureau stocke **chiffré** (safeStorage/DPAPI) sur ta machine. Chronos le **déchiffre en mémoire uniquement**, l'utilise **exclusivement** dans l'en-tête `Authorization` vers `api.anthropic.com`, et **ne le stocke jamais, ne le journalise jamais, ne l'envoie nulle part ailleurs**. Le coffre est lu en **lecture seule**. Tu peux **désactiver** complètement cet accès via le menu **« Usage exact (OAuth) »** : Chronos se rabat alors sur l'estimation sans jamais toucher au token.
+Chronos a **son propre login** : le jeton obtenu par « Se connecter à Claude » est propre à Chronos, **chiffré par DPAPI**
+(lisible par ton seul compte Windows) dans `%APPDATA%\Chronos\oauth.dat`. Il ne sert **qu'à** l'en-tête `Authorization`
+vers `api.anthropic.com` (sonde et secours), **n'est jamais écrit** dans un journal ni dans le diagnostic, et n'est envoyé
+nulle part ailleurs. **Aucun autre coffre n'est lu** : ni celui de l'app bureau Claude, ni le gestionnaire d'identifiants
+Windows.
 
-L'endpoint `/api/oauth/usage` n'est pas documenté publiquement : il peut changer à une mise à jour de Claude. En cas d'échec, Chronos bascule proprement sur l'estimation (jamais de plantage).
+La famille d'en-têtes de la sonde et l'endpoint `/api/oauth/usage` ne sont pas documentés publiquement : ils peuvent
+changer à une mise à jour de Claude. En cas d'échec, la fenêtre passe à « indisponible » (jamais de plantage), et le
+diagnostic dit ce qui a été reçu.
 
 ## Widget de sessions Claude Code
 

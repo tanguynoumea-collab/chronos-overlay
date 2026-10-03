@@ -11,8 +11,10 @@ C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) / Microsoft.Extensions.Dependen
 Rendu des arcs en XAML pur (Path/ArcSegment), aucune dépendance native (pas de SkiaSharp).
 
 ## Sources de données
-- Primaire : objet d'usage Claude Code (five_hour/seven_day : utilization + resets_at).
-- Repli : transcripts JSONL (~/.claude/projects), estimation marquée comme telle.
+- Primaire : sonde d'en-têtes de rate-limit (une requête / 5 min, statut serveur).
+- Secours : /api/oauth/usage avec le login OAuth propre à Chronos (oauth.dat, DPAPI).
+- Tête : dernier relevé exact persisté (frais ou encore valide), sinon plancher « ≥ » — seul chiffre non exact.
+- Transcripts JSONL (~/.claude/projects) : activité et plancher, jamais un pourcentage.
 - Abstraction IUsageProvider : sources interchangeables.
 - Pool partagé compte : Cowork déjà inclus dans l'usage de Code.
 
@@ -69,7 +71,7 @@ chiffre exact.
 ### Supporting Libraries
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| System.Text.Json | intégré (net8.0) | Parsing tolérant des JSONL + lecture/écriture `settings.json` | Déjà dans le framework — **ne rien ajouter**. Utiliser `JsonSerializerOptions` avec lecture tolérante (ignorer champs/lignes invalides) pour le repli JSONL. |
+| System.Text.Json | intégré (net8.0) | Parsing tolérant des JSONL + lecture/écriture `settings.json` | Déjà dans le framework — **ne rien ajouter**. Utiliser `JsonSerializerOptions` avec lecture tolérante (ignorer champs/lignes invalides) pour les transcripts JSONL. |
 | Microsoft.Extensions.Configuration + .Json | 8.0.x | Charger `%APPDATA%/Chronos/settings.json` | Optionnel : si on veut binder la config via le Host plutôt que sérialiser à la main. Sinon System.Text.Json seul suffit. |
 | Microsoft.Extensions.Logging.Debug | 8.0.x | Traces de dev (découverte des sources, parsing) | Optionnel, utile en phase découverte `docs/data-sources.md`. Retirer/mettre en niveau minimal en release. |
 ### Development Tools
