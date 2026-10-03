@@ -967,4 +967,41 @@ public class CadranBindingTests
             fenetre.Close();
         }
     }
+
+    /// <summary>
+    /// BRA-02 (phase 41) : dans la vraie MainWindow, Braises en mode temps montre « ↻ HH:MM » (heure LOCALE du reset 5 h,
+    /// issue de resets_at) ; sans resets_at, la ligne est masquée. MainViewModel construit sa sous-VM sans fuseau →
+    /// TimeZoneInfo.Local, d'où l'attendu calculé avec TimeZoneInfo.Local.
+    /// </summary>
+    [WpfFact]
+    public void Braises_en_mode_temps_affiche_l_heure_exacte_du_reset_et_rien_sans_resets_at()
+    {
+        var snap = new UsageSnapshot
+        {
+            FiveHour = new WindowState { Kind = WindowKind.FiveHour, Reliability = SourceReliability.Exact, Utilization = 0.3, ResetsAt = Now + TimeSpan.FromMinutes(140) },
+            SevenDay = new WindowState { Kind = WindowKind.SevenDay, Reliability = SourceReliability.Exact, Utilization = 0.6, ResetsAt = Now + TimeSpan.FromDays(3) },
+            SourceCapturedAt = Now,
+        };
+
+        var (_, racine) = MonterPastille(EtatAuthentification.Connecte, snap, out var vm);
+        vm.CadranStyle = CadranStyle.Braises;
+        vm.ShowCountdown = true;
+        Purger(racine);
+
+        var grille = Assert.IsAssignableFrom<Panel>(racine);
+        var vueBraises = grille.Children.OfType<Chronos.Views.Cadrans.CadranBraisesView>().Single();
+        var heure = Assert.IsType<TextBlock>(vueBraises.FindName("HeureResetBraises"));
+        Assert.Equal(Visibility.Visible, heure.Visibility);
+        Assert.Equal("↻ " + Chronos.Text.TextesHistorique.HeureMinute(Now + TimeSpan.FromMinutes(140), TimeZoneInfo.Local), heure.Text);
+
+        var (_, racineVide) = MonterPastille(EtatAuthentification.Connecte, UsageSnapshot.Empty, out var vmVide);
+        vmVide.CadranStyle = CadranStyle.Braises;
+        vmVide.ShowCountdown = true;
+        Purger(racineVide);
+
+        var vueVide = Assert.IsAssignableFrom<Panel>(racineVide).Children.OfType<Chronos.Views.Cadrans.CadranBraisesView>().Single();
+        var heureVide = Assert.IsType<TextBlock>(vueVide.FindName("HeureResetBraises"));
+        Assert.Equal(Visibility.Collapsed, heureVide.Visibility);
+        Assert.Equal("", vmVide.FiveHour.HeureResetTexte);
+    }
 }

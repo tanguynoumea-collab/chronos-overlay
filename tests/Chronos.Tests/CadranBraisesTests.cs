@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Chronos.Controls;
 using Chronos.Rendering;
+using Chronos.Text;
 using Chronos.Theming;
 using Chronos.ViewModels;
 using Chronos.Views.Cadrans;
@@ -157,5 +158,91 @@ public class CadranBraisesTests
         var xaml = File.ReadAllText(System.IO.Path.Combine(GardesPerimetreTests.CheminSources(), "Views", "Cadrans", "CadranBraisesView.xaml"));
         Assert.DoesNotContain("Storyboard", xaml);
         Assert.DoesNotContain("Animation", xaml);
+    }
+
+    // --- BRA-02 (plan 41-02) : heure exacte du reset dans le centre temps ---
+
+    /// <summary>Monte la vue Braises dans un hôte Border portant les pinceaux du thème par défaut ; renvoie (vue, hôte).</summary>
+    private static (CadranBraisesView vue, Border hote) Monter(CadranPreviewViewModel vm)
+    {
+        var vue = new CadranBraisesView();
+        var hote = new Border { DataContext = vm, Child = vue };
+        foreach (var kv in ThemeCatalog.Default.BrushTokens()) hote.Resources[kv.Key] = kv.Value;
+        hote.Measure(new Size(Cote, Cote));
+        hote.Arrange(new Rect(0, 0, Cote, Cote));
+        hote.UpdateLayout();
+        return (vue, hote);
+    }
+
+    [WpfFact]
+    public void Galerie_en_mode_temps_la_3e_ligne_montre_l_heure_du_reset()
+    {
+        var vm = new CadranPreviewViewModel { ShowCountdown = true };
+        var (vue, hote) = Monter(vm);
+
+        var heure = Assert.IsType<TextBlock>(vue.FindName("HeureResetBraises"));
+        Assert.Equal(Visibility.Visible, heure.Visibility);
+        Assert.Equal(10.5, heure.FontSize, 6);
+        Assert.Same(hote.Resources["TexteSecondaire"], heure.Foreground);
+
+        var attendu = "↻ " + TextesHistorique.HeureMinute(
+            new DateTimeOffset(2026, 10, 3, 14, 0, 0, TimeSpan.Zero) + TimeSpan.FromHours(5) * 0.62, TimeZoneInfo.Local);
+        Assert.Equal(attendu, heure.Text);
+
+        // 3e enfant du StackPanel temps, sous les deux comptes à rebours.
+        var panneauTemps = Assert.IsType<StackPanel>(heure.Parent);
+        Assert.Equal(3, panneauTemps.Children.Count);
+        Assert.Same(heure, panneauTemps.Children[2]);
+        Assert.Equal(Visibility.Visible, panneauTemps.Visibility);
+    }
+
+    [WpfFact]
+    public void En_mode_pourcentages_le_centre_reste_a_deux_lignes_sans_heure()
+    {
+        var vm = new CadranPreviewViewModel { ShowCountdown = false };
+        var (vue, _) = Monter(vm);
+
+        var heure = Assert.IsType<TextBlock>(vue.FindName("HeureResetBraises"));
+        var panneauTemps = Assert.IsType<StackPanel>(heure.Parent);
+        Assert.Equal(Visibility.Collapsed, panneauTemps.Visibility);
+
+        var grille = Assert.IsType<Grid>(vue.Content);
+        var panneauPct = grille.Children.OfType<StackPanel>().Single(sp => !ReferenceEquals(sp, panneauTemps));
+        var lignes = panneauPct.Children.OfType<TextBlock>().ToList();
+        Assert.Equal(2, lignes.Count);
+        Assert.Equal(2, panneauPct.Children.Count);
+        Assert.DoesNotContain(heure, lignes);
+        Assert.Equal(vm.FiveHour.UtilizationText, lignes[0].Text);
+        Assert.Equal(vm.SevenDay.UtilizationText, lignes[1].Text);
+    }
+
+    [WpfFact]
+    public void Sans_heure_de_reset_la_ligne_est_masquee_meme_en_mode_temps()
+    {
+        var vm = new CadranPreviewViewModel { ShowCountdown = true };
+        var (vue, hote) = Monter(vm);
+
+        vm.FiveHour.HasHeureReset = false;
+        hote.UpdateLayout();
+
+        var heure = Assert.IsType<TextBlock>(vue.FindName("HeureResetBraises"));
+        Assert.Equal(Visibility.Collapsed, heure.Visibility);
+    }
+
+    [WpfFact]
+    public void Galerie_aucune_heure_sur_l_hebdo_et_aucune_heure_sans_temps_restant()
+    {
+        var vm = new CadranPreviewViewModel();
+        Assert.True(vm.FiveHour.HasHeureReset);
+        Assert.False(vm.SevenDay.HasHeureReset);   // différé : pas d'heure sur l'hebdo
+        Assert.Equal("", vm.SevenDay.HeureResetTexte);
+
+        // Comme en production : un reset non futur (temps restant nul) ne montre pas d'heure.
+        vm.FiveTimePct = 0;
+        Assert.False(vm.FiveHour.HasHeureReset);
+        Assert.Equal("", vm.FiveHour.HeureResetTexte);
+
+        vm.FiveTimePct = 30;
+        Assert.True(vm.FiveHour.HasHeureReset);
     }
 }
