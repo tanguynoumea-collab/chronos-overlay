@@ -20,64 +20,76 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
-        // MODE PONT statusLine (--statusline) : court-circuit AVANT toute initialisation WPF/host.
-        // Claude Code invoque « Chronos.exe --statusline » à chaque rendu de sa barre : on lit stdin,
-        // on matérialise usage.json, on chaîne l'éventuelle barre préexistante, puis on sort tout de suite.
-        if (e.Args.Any(a => string.Equals(a, "--statusline", StringComparison.OrdinalIgnoreCase)))
+        // SOC-02 — le mode est décidé AVANT toute initialisation (ni verrou, ni Host, ni hooks), par un tri PUR testé
+        // (ArgumentsDemarrage, liste blanche). Préséance et sémantique identiques à la 3.4.0.
+        var invocation = ArgumentsDemarrage.Trier(e.Args);
+        switch (invocation.Mode)
         {
-            RunStatusLineBridge();
-            Environment.Exit(0);   // sortie immédiate : ne charge jamais l'overlay (rapidité de la barre)
-            return;
-        }
+            case ModeDemarrage.ArgumentInconnu:
+                // Argument « --xxx » inconnu ou RETIRÉ (ex. --statusline après la phase 37, que Claude Code continue d'émettre tant
+                // que sa barre n'est pas retirée) : sortie SILENCIEUSE, code 0 — ni fenêtre, ni verrou (pas de boîte « tourne déjà »),
+                // ni réconciliation des hooks, ni stderr (Claude Code afficherait le stderr à l'utilisateur).
+                Environment.Exit(0);
+                return;
 
-        // MODE HOOK (--hook <Event>) : Claude Code invoque « Chronos.exe --hook Notification/Stop/… » à
-        // chaque événement de session ; on lit le JSON stdin et on écrit l'état de la session sur disque.
-        int hookIdx = System.Array.FindIndex(e.Args, a => string.Equals(a, "--hook", StringComparison.OrdinalIgnoreCase));
-        if (hookIdx >= 0)
-        {
-            Environment.Exit(RunSessionHook(hookIdx + 1 < e.Args.Length ? e.Args[hookIdx + 1] : null));
-            return;
-        }
+            case ModeDemarrage.StatusLine:
+                // MODE PONT statusLine (--statusline) : court-circuit AVANT toute initialisation WPF/host.
+                // Claude Code invoque « Chronos.exe --statusline » à chaque rendu de sa barre : on lit stdin,
+                // on matérialise usage.json, on chaîne l'éventuelle barre préexistante, puis on sort tout de suite.
+                RunStatusLineBridge();
+                Environment.Exit(0);   // sortie immédiate : ne charge jamais l'overlay (rapidité de la barre)
+                return;
 
-        // MODE GALERIE CADRANS (--cadrans) : prototype visuel des 4 pistes de cadran (overlay 1). Court-circuite
-        // le pipeline temps réel et le host DI : une simple fenêtre avec des données d'échantillon pilotables,
-        // pour juger les concepts au coup d'œil. Sert la refonte visuelle (llm-council), hors app livrée.
-        if (e.Args.Any(a => string.Equals(a, "--cadrans", StringComparison.OrdinalIgnoreCase)))
-        {
-            base.OnStartup(e);
-            var gallery = new CadranGalleryWindow();
-            MainWindow = gallery;
-            gallery.Show();
-            return;
-        }
+            case ModeDemarrage.Hook:
+                // MODE HOOK (--hook <Event>) : Claude Code invoque « Chronos.exe --hook Notification/Stop/… » à
+                // chaque événement de session ; on lit le JSON stdin et on écrit l'état de la session sur disque.
+                Environment.Exit(RunSessionHook(invocation.EvenementHook));
+                return;
 
-        // MODE GALERIE SESSIONS (--sessions) : prototype visuel des 8 styles du widget de sessions (overlay 2),
-        // avec des données d'échantillon. Court-circuite le pipeline/host, comme --cadrans.
-        if (e.Args.Any(a => string.Equals(a, "--sessions", StringComparison.OrdinalIgnoreCase)))
-        {
-            base.OnStartup(e);
-            var gallery = new SessionsGalleryWindow();
-            MainWindow = gallery;
-            gallery.Show();
-            return;
-        }
+            case ModeDemarrage.GalerieCadrans:
+            {
+                // MODE GALERIE CADRANS (--cadrans) : prototype visuel des 4 pistes de cadran (overlay 1). Court-circuite
+                // le pipeline temps réel et le host DI : une simple fenêtre avec des données d'échantillon pilotables,
+                // pour juger les concepts au coup d'œil. Sert la refonte visuelle (llm-council), hors app livrée.
+                base.OnStartup(e);
+                var gallery = new CadranGalleryWindow();
+                MainWindow = gallery;
+                gallery.Show();
+                return;
+            }
 
-        // MODE GALERIE HISTORIQUE (--historique) : la fenêtre Historique RÉELLE sur la semaine de référence des maquettes (phase 34,
-        // D-34-26). Court-circuite le pipeline/host et le verrou d'instance unique comme --cadrans / --sessions : aucune réconciliation
-        // des hooks, aucun service résolu, aucune écriture dans settings.json (réglages en mémoire). Sert à la revue visuelle DESIGN_PLAN §8.
-        if (e.Args.Any(a => string.Equals(a, "--historique", StringComparison.OrdinalIgnoreCase)))
-        {
-            base.OnStartup(e);
-            var galerie = HistoriqueGalerie.Creer();
-            MainWindow = galerie;
-            galerie.Show();
-            return;
+            case ModeDemarrage.GalerieSessions:
+            {
+                // MODE GALERIE SESSIONS (--sessions) : prototype visuel des 8 styles du widget de sessions (overlay 2),
+                // avec des données d'échantillon. Court-circuite le pipeline/host, comme --cadrans.
+                base.OnStartup(e);
+                var gallery = new SessionsGalleryWindow();
+                MainWindow = gallery;
+                gallery.Show();
+                return;
+            }
+
+            case ModeDemarrage.GalerieHistorique:
+            {
+                // MODE GALERIE HISTORIQUE (--historique) : la fenêtre Historique RÉELLE sur la semaine de référence des maquettes (phase 34,
+                // D-34-26). Court-circuite le pipeline/host et le verrou d'instance unique comme --cadrans / --sessions : aucune réconciliation
+                // des hooks, aucun service résolu, aucune écriture dans settings.json (réglages en mémoire). Sert à la revue visuelle DESIGN_PLAN §8.
+                base.OnStartup(e);
+                var galerie = HistoriqueGalerie.Creer();
+                MainWindow = galerie;
+                galerie.Show();
+                return;
+            }
+
+            case ModeDemarrage.Overlay:
+                break;   // suite ci-dessous : overlay normal
         }
 
         base.OnStartup(e);
 
-        // CPT-03 — UNE SEULE INSTANCE de l'overlay par session Windows. Posé ici, APRÈS les court-circuits --statusline, --hook,
-        // --cadrans, --sessions et --historique (multi-instances par construction : Claude Code lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
+        // CPT-03 — UNE SEULE INSTANCE de l'overlay par session Windows. Posé ici, APRÈS les court-circuits du tri des arguments
+        // (ArgumentInconnu, --statusline, --hook, --cadrans, --sessions, --historique ; multi-instances par construction : Claude Code
+        // lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
         // le second exe n'a démarré aucun service, n'a pas réconcilié ~/.claude/settings.json et n'a pas écrasé chronos.log.
         // Il se retire en le DISANT et ne tue jamais l'autre : le 2026-09-27, trois exe tournaient ensemble et écrivaient les mêmes fichiers.
         // Mutex nommé Local\ (pas Global\ : aucun droit, un autre utilisateur a le sien) ; un abandon (instance morte sans libérer) = acquis.
@@ -119,7 +131,7 @@ public partial class App : Application
         // PUR-01/02/03 — réconcilier ~/.claude/settings.json AVANT de proposer la source exacte, pour que
         // l'offre porte sur un état déjà propre (une barre Chronos périmée est repointée ici, donc
         // IsEnabled() répond juste juste après). Mode OVERLAY UNIQUEMENT : les modes --statusline et --hook
-        // sortent bien plus haut (lignes 20 et 30) et ne doivent JAMAIS atteindre ce point — 5 processus
+        // sortent bien plus haut (en tête d'OnStartup, via ArgumentsDemarrage.Trier) et ne doivent JAMAIS atteindre ce point — 5 processus
         // --hook concurrents en lire-modifier-écrire perdraient les purges, et --statusline est invoqué à
         // chaque rendu de la barre. Best-effort et silencieux : ne peut pas empêcher le démarrage.
         try
@@ -137,7 +149,7 @@ public partial class App : Application
         // c'est laisser son contournement gravé dans ses données.
         //
         // Même régime que la réconciliation ci-dessus : mode OVERLAY uniquement (les modes --hook et
-        // --statusline sortent bien plus haut, l. 20 et 30), best-effort et silencieux — ne peut pas
+        // --statusline sortent bien plus haut, en tête d'OnStartup, via ArgumentsDemarrage.Trier), best-effort et silencieux — ne peut pas
         // empêcher le démarrage. Idempotent : une fois le fichier propre, l'appel suivant ne réécrit rien.
         try { _host.Services.GetRequiredService<ArchiveStore>().PurgerPrefixe("desktop:"); }
         catch { }

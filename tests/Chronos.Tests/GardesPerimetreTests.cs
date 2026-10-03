@@ -504,13 +504,15 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
-    /// GARDE DE PLACEMENT (CPT-03, phase 32). Le verrou mono-instance ne vaut que par sa POSITION dans <c>OnStartup</c> :
-    /// posé avant les court-circuits, il ferait échouer les hooks <c>--hook</c> (Claude Code en lance jusqu'à 5 en parallèle)
-    /// et le mode <c>--statusline</c> ; posé après le Host, la seconde instance aurait déjà démarré ses services, réconcilié
-    /// <c>~/.claude/settings.json</c> et écrasé <c>chronos.log</c> — exactement ce qui s'est produit le 2026-09-27 avec trois exe.
+    /// GARDE DE PLACEMENT (CPT-03, phase 32 ; SOC-02, phase 36). Le verrou mono-instance ne vaut que par sa POSITION dans
+    /// <c>OnStartup</c> : posé avant les court-circuits, il ferait échouer les hooks <c>--hook</c> (Claude Code en lance jusqu'à 5
+    /// en parallèle), le mode <c>--statusline</c> et la sortie silencieuse des arguments inconnus (SOC-02 : sinon boîte « tourne
+    /// déjà ») ; posé après le Host, la seconde instance aurait déjà démarré ses services, réconcilié <c>~/.claude/settings.json</c>
+    /// et écrasé <c>chronos.log</c> — exactement ce qui s'est produit le 2026-09-27 avec trois exe.
     /// Contrôle de SOURCE (<c>OnStartup</c> monte un host WPF, il n'est pas instanciable sous test) : l'acquisition est unique,
-    /// vient après le DERNIER court-circuit et avant <c>Host.CreateApplicationBuilder()</c>, et entre les deux la seconde
-    /// instance le dit (« tourne déjà ») et se retire (<c>Shutdown();</c>) sans jamais tuer l'autre.
+    /// vient après le tri des arguments (<c>ArgumentsDemarrage.Trier</c>) et chacun de ses court-circuits (<c>case ModeDemarrage.…</c>),
+    /// et avant <c>Host.CreateApplicationBuilder()</c> ; entre les deux la seconde instance le dit (« tourne déjà ») et se retire
+    /// (<c>Shutdown();</c>) sans jamais tuer l'autre.
     /// </summary>
     [Fact]
     public void Le_verrou_mono_instance_est_pose_apres_les_court_circuits_et_avant_le_Host()
@@ -523,21 +525,31 @@ public class GardesPerimetreTests
         const string acquisition = "VerrouInstanceUnique.Acquerir(VerrouInstanceUnique.NomOverlay)";
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape(acquisition)));
 
-        var iVerrou   = texte.IndexOf(acquisition, StringComparison.Ordinal);
-        var iHost     = texte.IndexOf("Host.CreateApplicationBuilder()", StringComparison.Ordinal);
-        var iStatus   = texte.LastIndexOf("\"--statusline\"", StringComparison.Ordinal);
-        var iHook     = texte.LastIndexOf("\"--hook\"", StringComparison.Ordinal);
-        var iCadrans  = texte.LastIndexOf("\"--cadrans\"", StringComparison.Ordinal);
-        var iSessions = texte.LastIndexOf("\"--sessions\"", StringComparison.Ordinal);
+        var iVerrou     = texte.IndexOf(acquisition, StringComparison.Ordinal);
+        var iHost       = texte.IndexOf("Host.CreateApplicationBuilder()", StringComparison.Ordinal);
+        var iTri        = texte.IndexOf("ArgumentsDemarrage.Trier(e.Args)", StringComparison.Ordinal);
+        var iInconnu    = texte.LastIndexOf("case ModeDemarrage.ArgumentInconnu", StringComparison.Ordinal);
+        var iStatus     = texte.LastIndexOf("case ModeDemarrage.StatusLine", StringComparison.Ordinal);
+        var iHook       = texte.LastIndexOf("case ModeDemarrage.Hook", StringComparison.Ordinal);
+        var iCadrans    = texte.LastIndexOf("case ModeDemarrage.GalerieCadrans", StringComparison.Ordinal);
+        var iSessions   = texte.LastIndexOf("case ModeDemarrage.GalerieSessions", StringComparison.Ordinal);
+        var iHistorique = texte.LastIndexOf("case ModeDemarrage.GalerieHistorique", StringComparison.Ordinal);
 
         Assert.True(iVerrou >= 0, "Acquisition du verrou introuvable dans App.xaml.cs");
         Assert.True(iHost >= 0, "Construction du Host introuvable dans App.xaml.cs");
-        Assert.True(iStatus >= 0 && iHook >= 0 && iCadrans >= 0 && iSessions >= 0, "Un court-circuit CLI a disparu d'App.xaml.cs");
+        Assert.True(iTri >= 0, "Le tri des arguments (ArgumentsDemarrage.Trier(e.Args)) a disparu d'App.xaml.cs");
+        Assert.True(iInconnu >= 0 && iHook >= 0 && iCadrans >= 0 && iSessions >= 0 && iHistorique >= 0,
+                    "Un court-circuit du tri des arguments a disparu d'App.xaml.cs");
 
-        Assert.True(iStatus < iVerrou, "Le verrou doit venir APRÈS le court-circuit --statusline");
+        Assert.True(iTri < iVerrou, "Le verrou doit venir APRÈS le tri des arguments (SOC-02)");
+        Assert.True(iInconnu < iVerrou, "Le verrou doit venir APRÈS la sortie silencieuse des arguments inconnus (SOC-02)");
+        // la phase 37 retire ce mode : la garde n'exige pas sa présence
+        if (iStatus >= 0)
+            Assert.True(iStatus < iVerrou, "Le verrou doit venir APRÈS le court-circuit --statusline");
         Assert.True(iHook < iVerrou, "Le verrou doit venir APRÈS le court-circuit --hook (les hooks restent multi-instances)");
         Assert.True(iCadrans < iVerrou, "Le verrou doit venir APRÈS le court-circuit --cadrans");
         Assert.True(iSessions < iVerrou, "Le verrou doit venir APRÈS le court-circuit --sessions");
+        Assert.True(iHistorique < iVerrou, "Le verrou doit venir APRÈS le court-circuit --historique");
         Assert.True(iVerrou < iHost, "Le verrou doit venir AVANT Host.CreateApplicationBuilder()");
 
         // Entre l'acquisition et le Host : la seconde instance le DIT et se retire, sans tuer l'autre.
@@ -545,6 +557,69 @@ public class GardesPerimetreTests
         Assert.Contains("tourne déjà", entre, StringComparison.Ordinal);
         Assert.Contains("Shutdown();", entre, StringComparison.Ordinal);
         Assert.DoesNotContain(".Kill(", entre, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE D'ORDRE (SOC-02, phase 36). La phase 37 retire <c>--statusline</c>, que Claude Code continuera d'émettre tant que sa
+    /// barre n'est pas retirée : sans tri préalable, chaque rendu de la barre lancerait l'overlay complet, réconcilierait les hooks
+    /// et heurterait le verrou (boîte « Chronos tourne déjà »). Le tri PUR (<c>ArgumentsDemarrage.Trier</c>, testé par
+    /// <c>ArgumentsDemarrageTests</c>) doit donc être la PREMIÈRE instruction d'<c>OnStartup</c>, avant <c>base.OnStartup</c>, le
+    /// verrou, le Host et la réconciliation ; et la branche « argument inconnu » sort en code 0 sans fenêtre, sans service, sans
+    /// stderr. Garde de SOURCE : <c>OnStartup</c> monte WPF, il n'est pas instanciable sous test.
+    /// </summary>
+    [Fact]
+    public void Le_tri_des_arguments_precede_le_verrou_et_l_inconnu_sort_en_silence()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        var debut = texte.IndexOf("protected override async void OnStartup(StartupEventArgs e)", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "OnStartup introuvable dans App.xaml.cs (garde muette)");
+        var accolade = texte.IndexOf('{', debut);
+        Assert.True(accolade > debut, "Corps d'OnStartup introuvable");
+
+        var iTri = texte.IndexOf("ArgumentsDemarrage.Trier(e.Args)", StringComparison.Ordinal);
+        Assert.True(iTri >= 0, "Le tri des arguments est absent d'App.xaml.cs");
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(texte, System.Text.RegularExpressions.Regex.Escape("ArgumentsDemarrage.Trier(")));
+        Assert.True(iTri > accolade, "Le tri des arguments doit être DANS OnStartup");
+
+        // PREMIÈRE instruction : seuls des commentaires (ou des lignes vides) le précèdent dans le corps. La dernière ligne
+        // découpée est le début de la ligne du tri lui-même (son indentation), contrôlée juste après.
+        var lignesAvant = texte[(accolade + 1)..iTri].Split('\n');
+        for (int k = 0; k < lignesAvant.Length - 1; k++)
+        {
+            var l = lignesAvant[k].Trim();
+            Assert.True(l.Length == 0 || l.StartsWith("//", StringComparison.Ordinal),
+                        $"Une instruction précède le tri des arguments dans OnStartup : « {l} »");
+        }
+        var debutLigne = texte.LastIndexOf('\n', iTri) + 1;
+        var finLigne = texte.IndexOf('\n', iTri);
+        var ligneTri = texte[debutLigne..(finLigne < 0 ? texte.Length : finLigne)].Trim();
+        Assert.StartsWith("var invocation = ArgumentsDemarrage.Trier(e.Args);", ligneTri, StringComparison.Ordinal);
+
+        // Le tri précède toute initialisation.
+        foreach (var repere in new[] { "base.OnStartup(e)", "VerrouInstanceUnique.Acquerir(", "Host.CreateApplicationBuilder()", ".Reconcile(" })
+        {
+            var i = texte.IndexOf(repere, StringComparison.Ordinal);
+            Assert.True(i >= 0, $"Repère « {repere} » introuvable dans App.xaml.cs (garde muette)");
+            Assert.True(iTri < i, $"Le tri des arguments doit précéder « {repere} »");
+        }
+
+        // La branche « argument inconnu » sort en silence, code 0 : ni fenêtre, ni service, ni stderr.
+        var iInconnu = texte.IndexOf("case ModeDemarrage.ArgumentInconnu", StringComparison.Ordinal);
+        Assert.True(iInconnu > iTri, "La branche ModeDemarrage.ArgumentInconnu est absente ou mal placée");
+        var fin = texte.IndexOf("return;", iInconnu, StringComparison.Ordinal);
+        Assert.True(fin > iInconnu, "Fin de la branche ArgumentInconnu introuvable");
+        var bloc = texte[iInconnu..fin];
+        Assert.Contains("Environment.Exit(0)", bloc, StringComparison.Ordinal);
+        foreach (var interdit in new[] { "MessageBox", ".Show(", "GetRequiredService", "SignalerSurErreurStandard", "Console.", "Reconcil", "base.OnStartup" })
+            Assert.DoesNotContain(interdit, bloc, StringComparison.Ordinal);
+
+        // Plus aucun ancien aiguillage par littéral.
+        Assert.DoesNotContain("e.Args.Any(", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Array.FindIndex(e.Args", texte, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -639,8 +714,8 @@ public class GardesPerimetreTests
 
         var texte = File.ReadAllText(fichier);
 
-        var i = texte.IndexOf("\"--historique\"", StringComparison.Ordinal);
-        Assert.True(i > 0, "la branche --historique est absente de App.xaml.cs");
+        var i = texte.IndexOf("case ModeDemarrage.GalerieHistorique", StringComparison.Ordinal);
+        Assert.True(i > 0, "la branche ModeDemarrage.GalerieHistorique (--historique) est absente de App.xaml.cs");
         var v = texte.IndexOf("VerrouInstanceUnique.Acquerir", StringComparison.Ordinal);
         Assert.True(v > 0, "le verrou d'instance unique est introuvable (garde muette)");
         Assert.True(i < v, "--historique doit précéder le verrou d'instance unique (multi-instances, comme --sessions)");
