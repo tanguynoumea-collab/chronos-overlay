@@ -184,6 +184,8 @@
             <!-- Puce de style (cadran : 5 ; widget : 8). Sélection = bordure Accent + texte Ink. -->
             <Style x:Key="Puce" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
+                <!-- Fond par défaut Panel2 ; une puce posée sur une carte (Panel2) le surcharge en Panel pour rester visible (§11 M2). -->
+                <Setter Property="Background" Value="{StaticResource Panel2}"/>
                 <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsAide}"/>
                 <Setter Property="Padding" Value="12,6"/>
                 <Setter Property="Margin" Value="0,0,8,8"/>
@@ -192,7 +194,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="puce" CornerRadius="{StaticResource ReglagesRayonPuce}" Background="{StaticResource Panel2}"
+                            <Border x:Name="puce" CornerRadius="{StaticResource ReglagesRayonPuce}" Background="{TemplateBinding Background}"
                                     BorderThickness="{StaticResource ReglagesBordureActive}" BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -626,7 +628,7 @@
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="Sonde d'en-têtes" Style="{StaticResource TitreCarte}"/>
                                         <TextBlock Style="{StaticResource Aide}"
-                                                   Text="chiffres exacts même en saturation — une micro-requête sur ton compte toutes les 5 min (≈ 288/jour)"/>
+                                                   Text="Chiffres exacts même en saturation — une micro-requête sur ton compte toutes les 5 min (≈ 288/jour)"/>
                                         <TextBlock x:Name="LigneEtatSonde" Style="{StaticResource Aide}" Margin="0,4,0,0"
                                                    Text="{Binding TexteEtatSonde}"
                                                    Visibility="{Binding AfficherEtatSonde, Converter={StaticResource BoolToVis}}"/>
@@ -707,47 +709,8 @@
                                 </Grid>
                             </Border>
 
-                            <TextBlock Text="THÈME" Style="{StaticResource Etiquette}"/>
-                            <!-- Section Thème en trois groupes titrés PÂLE · CLASSIQUE · VIVE (THM-01, §5.1). La commande de vignette
-                                 remonte à la Window : l'ItemsControl ancêtre le plus proche porte désormais un GroupeThemes. -->
-                            <ItemsControl x:Name="GrilleThemes" ItemsSource="{Binding GroupesThemes}" Focusable="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Titre}" Style="{StaticResource Etiquette}"/>
-                                            <ItemsControl ItemsSource="{Binding Themes}" Focusable="False">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Button Style="{StaticResource VignetteTheme}" ToolTip="{Binding Name}"
-                                                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                                                            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
-                                                                <Ellipse Width="{StaticResource ReglagesVignetteDisque}" Height="{StaticResource ReglagesVignetteDisque}"
-                                                                         Fill="{Binding Theme.PreviewDisc}" Stroke="{StaticResource Line}"
-                                                                         StrokeThickness="{StaticResource HistoEpaisseurFin}" HorizontalAlignment="Center"/>
-                                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
-                                                                             Margin="2,0" Fill="{Binding Theme.PreviewGreen}"/>
-                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
-                                                                             Margin="2,0" Fill="{Binding Theme.PreviewAmber}"/>
-                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
-                                                                             Margin="2,0" Fill="{Binding Theme.PreviewRed}"/>
-                                                                </StackPanel>
-                                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="{StaticResource ReglagesCorpsEtiquette}"
-                                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                                            </StackPanel>
-                                                        </Button>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
+                            <!-- Style et orientation d'abord : à 860 × 580, la carte Orientation reste visible sans défiler — §11 M3.
+                                 Les thèmes (trois groupes) suivent. -->
                             <TextBlock Text="STYLE DU CADRAN" Style="{StaticResource Etiquette}" Margin="0,8,0,8"/>
                             <ItemsControl x:Name="PucesStyleCadran" ItemsSource="{Binding CadranStyles}" Focusable="False">
                                 <ItemsControl.ItemsPanel>
@@ -788,15 +751,56 @@
                                     <TextBlock Text="Orientation" Style="{StaticResource TitreCarte}"/>
                                     <TextBlock Text="propre à chaque cadran — la fenêtre reste collée à son coin" Style="{StaticResource Aide}" Margin="0,0,0,8"/>
                                     <WrapPanel>
-                                        <Button x:Name="BoutonOrientationHorizontale" Style="{StaticResource Puce}" Content="Horizontal"
+                                        <Button x:Name="BoutonOrientationHorizontale" Style="{StaticResource Puce}" Content="Horizontal" Background="{StaticResource Panel}"
                                                 Tag="{Binding EstOrientationHorizontale}" Command="{Binding ChoisirOrientationCommand}"
                                                 CommandParameter="{x:Static svc:OrientationCadran.Horizontal}" AutomationProperties.Name="Orientation horizontale"/>
-                                        <Button x:Name="BoutonOrientationVerticale" Style="{StaticResource Puce}" Content="Vertical"
+                                        <Button x:Name="BoutonOrientationVerticale" Style="{StaticResource Puce}" Content="Vertical" Background="{StaticResource Panel}"
                                                 Tag="{Binding EstOrientationVerticale}" Command="{Binding ChoisirOrientationCommand}"
                                                 CommandParameter="{x:Static svc:OrientationCadran.Vertical}" AutomationProperties.Name="Orientation verticale"/>
                                     </WrapPanel>
                                 </StackPanel>
                             </Border>
+
+                            <TextBlock Text="THÈME" Style="{StaticResource Etiquette}"/>
+                            <!-- Section Thème en trois groupes titrés PÂLE · CLASSIQUE · VIVE (THM-01, §5.1). La commande de vignette
+                                 remonte à la Window : l'ItemsControl ancêtre le plus proche porte désormais un GroupeThemes. -->
+                            <ItemsControl x:Name="GrilleThemes" ItemsSource="{Binding GroupesThemes}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Titre}" Style="{StaticResource Etiquette}"/>
+                                            <ItemsControl ItemsSource="{Binding Themes}" Focusable="False">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Style="{StaticResource VignetteTheme}" ToolTip="{Binding Name}"
+                                                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                                                            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
+                                                                <Ellipse Width="{StaticResource ReglagesVignetteDisque}" Height="{StaticResource ReglagesVignetteDisque}"
+                                                                         Fill="{Binding Theme.PreviewDisc}" Stroke="{StaticResource Line}"
+                                                                         StrokeThickness="{StaticResource HistoEpaisseurFin}" HorizontalAlignment="Center"/>
+                                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                                             Margin="2,0" Fill="{Binding Theme.PreviewGreen}"/>
+                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                                             Margin="2,0" Fill="{Binding Theme.PreviewAmber}"/>
+                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                                             Margin="2,0" Fill="{Binding Theme.PreviewRed}"/>
+                                                                </StackPanel>
+                                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="{StaticResource ReglagesCorpsEtiquette}"
+                                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
                         <!-- ============================== SESSIONS ============================== -->

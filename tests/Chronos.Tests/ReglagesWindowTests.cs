@@ -566,6 +566,60 @@ public class ReglagesWindowTests
         Assert.True(EstAffiche(Nomme<FrameworkElement>(f, "CarteOrientation"), Racine(f)));
     }
 
+    // ================================================================== Amendement §11 (M2, M3, M15)
+
+    /// <summary>§11 M3 : dans Apparence, style et orientation passent AVANT les thèmes — à 860 × 580, la carte Orientation
+    /// n'est plus sous la ligne de flottaison.</summary>
+    [WpfFact]
+    public void Apparence_style_et_orientation_avant_les_themes()
+    {
+        var vm = NouveauVm(s => s with { CadranStyle = CadranStyle.Fusible });
+        var f = Monter(vm, SectionReglages.Apparence);
+        var section = Nomme<StackPanel>(f, "SectionApparence");
+        var enfants = section.Children.Cast<UIElement>().ToList();
+        int Index(string nom) => enfants.IndexOf(Nomme<UIElement>(f, nom));
+
+        Assert.True(Index("PucesStyleCadran") < Index("CarteModeEtendu"), "le style doit précéder le mode étendu");
+        Assert.True(Index("CarteOrientation") < Index("GrilleThemes"), "l'orientation doit précéder les thèmes");
+        var iGrille = Index("GrilleThemes");
+        var etiquette = Assert.IsType<TextBlock>(enfants[iGrille - 1]);
+        Assert.Equal("THÈME", etiquette.Text);
+    }
+
+    /// <summary>§11 M2 : la puce d'orientation non choisie a un fond visible, distinct de la carte qui la porte ; les puces de
+    /// style (posées sur le fond de section) gardent Panel2.</summary>
+    [WpfFact]
+    public void La_puce_d_orientation_non_choisie_a_un_fond_distinct_de_la_carte()
+    {
+        var vm = NouveauVm(s => s with { CadranStyle = CadranStyle.Fusible });
+        var f = Monter(vm, SectionReglages.Apparence);
+
+        var carte = Nomme<Border>(f, "CarteOrientation");
+        var fondCarte = Assert.IsAssignableFrom<SolidColorBrush>(carte.Background);
+        var v = Nomme<Button>(f, "BoutonOrientationVerticale");
+        Assert.Equal(false, v.Tag);
+        var fondPuce = Assert.IsAssignableFrom<SolidColorBrush>(BordurePuce(v).Background);
+        Assert.NotEqual(fondCarte.Color, fondPuce.Color);
+
+        var styles = Nomme<ItemsControl>(f, "PucesStyleCadran");
+        var conteneur = Assert.IsAssignableFrom<DependencyObject>(styles.ItemContainerGenerator.ContainerFromIndex(0));
+        var puceStyle = Descendants(conteneur).OfType<Button>().First();
+        Assert.Same(f.FindResource("Panel2"), BordurePuce(puceStyle).Background);
+    }
+
+    /// <summary>§11 M15 : le sous-texte de la sonde commence par une majuscule.</summary>
+    [WpfFact]
+    public void Le_sous_texte_de_la_sonde_commence_par_une_majuscule()
+    {
+        var vm = NouveauVm();
+        var f = Monter(vm, SectionReglages.Donnees);
+        var textes = Descendants(Nomme<DependencyObject>(f, "SectionDonnees")).OfType<TextBlock>()
+                     .Select(t => t.Text ?? "").ToList();
+
+        Assert.Contains(textes, t => t.StartsWith("Chiffres exacts même en saturation", StringComparison.Ordinal));
+        Assert.DoesNotContain(textes, t => t.StartsWith("chiffres exacts même en saturation", StringComparison.Ordinal));
+    }
+
     // ================================================================== Sessions
 
     [WpfFact]
