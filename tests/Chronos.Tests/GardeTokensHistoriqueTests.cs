@@ -326,4 +326,27 @@ public class GardeTokensHistoriqueXamlTests
         Assert.True(dict["Panel"] is System.Windows.Media.SolidColorBrush panel
                     && panel.Color == System.Windows.Media.Color.FromRgb(0x15, 0x13, 0x22));
     }
+
+    /// <summary>HIS-10 (phase 38) : les tokens non-doubles du mode normal (rangées de pistes en Auto, espacements fixes, plafonds infinis,
+    /// défilement automatique) — non comptés par la garde des sys:Double, vérifiés ici par type ET valeur une fois le BAML chargé.</summary>
+    [WpfFact]
+    public void Les_tokens_de_rangees_de_plafonds_et_de_defilement_sont_types()
+    {
+        var dict = (System.Windows.ResourceDictionary)System.Windows.Application.LoadComponent(
+            new Uri("/Chronos;component/Resources/DesignTokens.xaml", UriKind.Relative));
+
+        foreach (var cle in new[]
+                 {
+                     "HistoRangeeNiveauSemaine", "HistoRangeeRythmeSemaine", "HistoRangeeTokensSemaine",
+                     "HistoRangeeNiveauJour", "HistoRangeeRythmeJour", "HistoRangeeTokensJour", "HistoRangeeNiveauQuatreSemaines",
+                 })
+            Assert.True(dict[cle] is System.Windows.GridLength g && g.IsAuto, $"« {cle} » doit être un GridLength Auto en mode normal.");
+
+        Assert.Equal(new System.Windows.GridLength(6), Assert.IsType<System.Windows.GridLength>(dict["HistoRangeeEspaceSemaine"]));
+        Assert.Equal(new System.Windows.GridLength(8), Assert.IsType<System.Windows.GridLength>(dict["HistoRangeeEspaceJour"]));
+        Assert.True(dict["HistoPlafondNiveau"] is double n && double.IsPositiveInfinity(n), "HistoPlafondNiveau doit valoir +∞ en mode normal.");
+        Assert.True(dict["HistoPlafondPiste"] is double p && double.IsPositiveInfinity(p), "HistoPlafondPiste doit valoir +∞ en mode normal.");
+        Assert.Equal(System.Windows.Controls.ScrollBarVisibility.Auto,
+            Assert.IsType<System.Windows.Controls.ScrollBarVisibility>(dict["HistoDefilementVertical"]));
+    }
 }
