@@ -135,7 +135,7 @@
                 <ctrl:TickRing Radius="55.5" TickLength="7"
                                Angles="{Binding DaySubTickAngles}"
                                Stroke="{DynamicResource TexteSecondaire}" StrokeThickness="1.8"/>
-                <!-- Marques de reset 5 h projetées (JOUR-02) : couleur DISTINCTE (cyan TickReset) pour se démarquer
+                <!-- Marques de reset 5 h projetées (JOUR-02) : couleur DISTINCTE, TickReset (texte principal du thème), pour se démarquer
                      des sous-tirets horaires gris. Sur le trait, légèrement débordantes (R48–R57), épaisses, premier plan. -->
                 <ctrl:TickRing Radius="57" TickLength="9"
                                Angles="{Binding DayResetAngles}"
@@ -196,7 +196,7 @@
              l'absence seule est AMBIGUË avec l'état « en attente » (aucune donnée encore reçue), qui
              rend exactement le même neutre dans les quatre styles alternatifs. Sans le mot, la
              quatrième apparence de la sémiologie n'existe pas.
-             Couche racine => un seul exemplaire pour 5 styles × 2 modes × 9 thèmes, et le seul endroit
+             Couche racine => un seul exemplaire pour 5 styles × 2 modes × tous les thèmes, et le seul endroit
              du projet qui soit en {DynamicResource}. TexteSecondaire est déjà, par son commentaire
              d'origine, le token des mentions annexes (estimée, épuisé, indisponible, périmée) : aucun
              token nouveau, donc rien à ajouter aux neuf thèmes.

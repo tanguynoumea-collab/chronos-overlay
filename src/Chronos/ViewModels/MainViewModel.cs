@@ -324,6 +324,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Catalogue des thèmes affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
     public ObservableCollection<ThemeChoice> Themes { get; } = new();
 
+    /// <summary>Section Thème en trois groupes titrés (Pâle, Classique, Vive) : mêmes instances que <see cref="Themes"/>.</summary>
+    public ObservableCollection<GroupeThemes> GroupesThemes { get; } = new();
+
     /// <summary>Clé du thème actif (persisté). Consommé par la vue pour appliquer les pinceaux au démarrage.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NomThemeActif))]
@@ -426,6 +429,8 @@ public sealed partial class MainViewModel : ObservableObject
         SelectedThemeKey = _settings.ThemeKey;
         var active = ThemeCatalog.ByKey(SelectedThemeKey);
         foreach (var t in ThemeCatalog.All) Themes.Add(new ThemeChoice(t, t.Key == active.Key));
+        foreach (var cat in Enum.GetValues<CategorieTheme>())
+            GroupesThemes.Add(new GroupeThemes(GroupeThemes.TitreDe(cat), Themes.Where(c => c.Theme.Categorie == cat).ToList()));
         FiveHour.SetTheme(active);
         SevenDay.SetTheme(active);
 

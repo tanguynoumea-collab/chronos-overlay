@@ -325,5 +325,49 @@ public class ThemingTests
         Assert.NotNull(win.Content);
         Assert.Equal(ThemeCatalog.All.Count, vm.Themes.Count);   // tous les thèmes alimentent la grille
         Assert.Contains(vm.Themes, t => t.IsSelected);    // un thème est sélectionné
+        Assert.Equal(3, vm.GroupesThemes.Count);          // section Thème en trois groupes (THM-01)
+    }
+
+    // --- Groupes de la section Thème (THM-01, §5.1) ---
+
+    [WpfFact]
+    public void Les_groupes_de_themes_suivent_les_categories_et_partagent_les_choix()
+    {
+        var settings = new SettingsService(TempPaths());
+        settings.Save(settings.Load() with { ThemeKey = "nord" });   // thème persisté AVANT la construction du VM
+        var provider = new FakeUsageProvider();
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
+        var clock = new FakeClock(new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero));
+        var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
+            new FakeWindowController(), new FakeAutostartService(), settings,
+            new DiagnosticService(TempPaths(), settings, provider, clock),
+            new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
+
+        // Trois groupes, titres en capitales dans l'ordre de l'enum.
+        Assert.Equal(new[] { "PÂLE", "CLASSIQUE", "VIVE" }, vm.GroupesThemes.Select(g => g.Titre).ToArray());
+        Assert.Equal(new[] { "Nord", "Forêt", "Moka", "Roseraie", "Sauge", "Lavande" },
+            vm.GroupesThemes[0].Themes.Select(c => c.Name).ToArray());
+        Assert.Equal(new[] { "Minuit", "Ardoise", "Ambre chaud", "Graphite", "Marine" },
+            vm.GroupesThemes[1].Themes.Select(c => c.Name).ToArray());
+        Assert.Equal(new[] { "Néon", "Aurore", "Synthwave", "Lave" },
+            vm.GroupesThemes[2].Themes.Select(c => c.Name).ToArray());
+
+        // Mêmes instances que Themes (sinon la surbrillance de SelectTheme ne s'afficherait plus).
+        Assert.Equal(15, vm.Themes.Count);
+        Assert.Equal(vm.Themes.Count, vm.GroupesThemes.Sum(g => g.Themes.Count));
+        foreach (var choix in vm.GroupesThemes.SelectMany(g => g.Themes))
+            Assert.Same(vm.Themes.Single(t => t.Theme.Key == choix.Theme.Key), choix);
+
+        // Le persisté est en surbrillance, et lui seul.
+        var nord = vm.GroupesThemes[0].Themes.Single(c => c.Name == "Nord");
+        Assert.True(nord.IsSelected);
+        Assert.Single(vm.GroupesThemes.SelectMany(g => g.Themes), c => c.IsSelected);
+
+        // Sélection depuis le groupe VIVE.
+        var lave = vm.GroupesThemes[2].Themes.Single(c => c.Name == "Lave");
+        vm.SelectThemeCommand.Execute(lave);
+        Assert.True(lave.IsSelected);
+        Assert.False(nord.IsSelected);
+        Assert.Equal("lave", vm.SelectedThemeKey);
     }
 }
