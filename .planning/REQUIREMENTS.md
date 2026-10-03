@@ -64,9 +64,9 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
   plan) ; chaque thème porte sa catégorie.
 - [x] **THM-02**: **Six nouvelles palettes** (Sauge, Lavande, Graphite, Marine, Synthwave, Lave) aux valeurs du plan §5.2 ;
   Néon et Aurore ont une rampe corrigée qui finit sur un vrai rouge (décors inchangés).
-- [ ] **THM-03**: Pour **chaque** thème, le gris « épuisé » atteint un contraste ≥ 3:1 contre le disque et le rouge de fin de
+- [x] **THM-03**: Pour **chaque** thème, le gris « épuisé » atteint un contraste ≥ 3:1 contre le disque et le rouge de fin de
   rampe est dans la bande 335°–20° avec un contraste ≥ 3:1 — vérifié par test sur tout le catalogue.
-- [ ] **THM-04**: Braises, Fusible, Marée et Volets **suivent le thème** (textes, tuiles, fonds) et `TickReset` entre dans les
+- [x] **THM-04**: Braises, Fusible, Marée et Volets **suivent le thème** (textes, tuiles, fonds) et `TickReset` entre dans les
   pinceaux du thème ; plus aucune couleur fixe dans les quatre vues.
 
 ### Cadrans : taille et orientation (CAD) — R1, R2
@@ -143,8 +143,8 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 | HIS-11 | Phase 38 | Complete |
 | THM-01 | Phase 39 | Complete |
 | THM-02 | Phase 39 | Complete |
-| THM-03 | Phase 39 | Pending |
-| THM-04 | Phase 39 | Pending |
+| THM-03 | Phase 39 | Complete |
+| THM-04 | Phase 39 | Complete |
 | CAD-01 | Phase 40 | Pending |
 | CAD-02 | Phase 40 | Pending |
 | CAD-03 | Phase 40 | Pending |
