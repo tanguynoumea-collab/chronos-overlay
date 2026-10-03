@@ -28,7 +28,7 @@ created: 2026-10-03
 ## Fréquence d'échantillonnage
 
 - **Après chaque commit de tâche :** commande rapide (ou le filtre `<automated>` de la tâche).
-- **Après chaque vague :** suite complète.
+- **Après chaque vague :** suite complète. Vagues strictement séquentielles (01 → 02 → 03 → 04) : une tâche RED rend le projet de test non compilable et bin/obj sont partagés (pas de worktree).
 - **Avant `/gsd:verify-work` :** suite complète verte, build Debug et Release à 0 warning.
 - **Latence max de retour :** 60 s pour les filtres de tâche.
 
@@ -43,11 +43,11 @@ created: 2026-10-03
 | 39-01-03 | 01 | 1 | THM-04 | unit + WPF | `dotnet test … --filter "FullyQualifiedName~ThemingTests\|FullyQualifiedName~SessionStylesBindingTests\|FullyQualifiedName~ReglagesWindowTests\|FullyQualifiedName~GardeTokens"` | ❌ W0 (tâche 01-01) | ⬜ pending |
 | 39-02-01 | 02 | 2 | THM-01 | WPF | `dotnet test … --filter "FullyQualifiedName~ThemingTests"` | ✅ à étendre | ⬜ pending |
 | 39-02-02 | 02 | 2 | THM-01 | WPF (STA) | `dotnet test … --filter "FullyQualifiedName~ReglagesWindowTests\|FullyQualifiedName~GardeTokensReglagesTests\|FullyQualifiedName~ReglagesBindingTests\|FullyQualifiedName~ThemingTests"` | ✅ à adapter + nouveaux tests | ⬜ pending |
-| 39-03-01 | 03 | 2 | THM-04 | garde source + WPF (RED) | `dotnet build tests/Chronos.Tests/Chronos.Tests.csproj` (échec attendu sur WaitBrush) | ❌ W0 (crée GardeCouleursCadransTests, CadransThemeBindingTests) | ⬜ pending |
-| 39-03-02 | 03 | 2 | THM-04 | build | `dotnet build src/Chronos/Chronos.csproj -c Debug` (0 warning) | — | ⬜ pending |
-| 39-03-03 | 03 | 2 | THM-04 | garde source + WPF | `dotnet test … --filter "FullyQualifiedName~GardeCouleursCadrans\|FullyQualifiedName~CadransThemeBinding\|FullyQualifiedName~CadranBindingTests\|FullyQualifiedName~GardeGestesCadranTests"` | ❌ W0 (tâche 03-01) | ⬜ pending |
-| 39-04-01 | 04 | 3 | THM-03 | unit (STA) | `dotnet test … --filter "FullyQualifiedName~UtilizationToBrushConverterTests\|FullyQualifiedName~GardesPerimetreTests\|FullyQualifiedName~ServicesLayerPurityTests"` | ✅ à adapter | ⬜ pending |
-| 39-04-02 | 04 | 3 | THM-03/04 | WPF | `dotnet test … --filter "FullyQualifiedName~VueJourBindingTests\|…VueSemaineBindingTests\|…VueQuatreSemainesBindingTests\|…HistoriqueBindingTests\|…GardeTokensHistoriqueTests\|…HonneteteHistoriqueTests\|…PistesHistoriqueTests"` | ✅ à adapter | ⬜ pending |
+| 39-03-01 | 03 | 3 | THM-04 | garde source + WPF (RED) | `dotnet build tests/Chronos.Tests/Chronos.Tests.csproj` (échec attendu sur WaitBrush) | ❌ W0 (crée GardeCouleursCadransTests, CadransThemeBindingTests) | ⬜ pending |
+| 39-03-02 | 03 | 3 | THM-04 | build | `dotnet build src/Chronos/Chronos.csproj -c Debug` (0 warning) | — | ⬜ pending |
+| 39-03-03 | 03 | 3 | THM-04 | garde source + WPF | `dotnet test … --filter "FullyQualifiedName~GardeCouleursCadrans\|FullyQualifiedName~CadransThemeBinding\|FullyQualifiedName~CadranBindingTests\|FullyQualifiedName~GardeGestesCadranTests"` | ❌ W0 (tâche 03-01) | ⬜ pending |
+| 39-04-01 | 04 | 4 | THM-03 | unit (STA) | `dotnet test … --filter "FullyQualifiedName~UtilizationToBrushConverterTests\|FullyQualifiedName~GardesPerimetreTests\|FullyQualifiedName~ServicesLayerPurityTests"` | ✅ à adapter | ⬜ pending |
+| 39-04-02 | 04 | 4 | THM-03/04 | WPF | `dotnet test … --filter "FullyQualifiedName~VueJourBindingTests\|…VueSemaineBindingTests\|…VueQuatreSemainesBindingTests\|…HistoriqueBindingTests\|…GardeTokensHistoriqueTests\|…HonneteteHistoriqueTests\|…PistesHistoriqueTests"` | ✅ à adapter | ⬜ pending |
 
 *Statut : ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
