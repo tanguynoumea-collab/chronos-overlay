@@ -70,7 +70,7 @@ Milestone v1.9 « Lisible partout » (exe 3.5.0) — 25 exigences dans `.plannin
 HIS-09..11, THM-01..04, CAD-01..04, BRA-01..02, GST-01..03, VAL-06..07. VAL-07 reprend les constats reportés de v1.8
 (VAL-04, VAL-05) ; HIS-09 absorbe la suppression des styles Simplifié et Tuiles.
 
-Validées en cours de milestone : SOC-01, SOC-02 (phase 36 Socle, 2026-10-03 — lecture des réglages valeur par valeur, garde d'arguments inconnus) ; DAT-01..05 (phase 37, 2026-10-03 — chaîne réduite à sonde d'en-têtes + secours OAuth Chronos, barre statusLine retirée avec sauvegarde, diagnostic « Chaîne de données », méthodologie unique) ; HIS-09..11 (phase 38, 2026-10-03 — Pistes seul, plein écran général, Échap à deux niveaux ; revue visuelle humaine en attente) ; THM-01..04 (phase 39, 2026-10-03 — 15 thèmes en Pâle / Classique / Vive, gris épuisé ≥ 3:1, cadrans alternatifs et TickReset thémés) ; CAD-01..04 (phase 40, 2026-10-03 — cadrans à l'échelle 1, +20 % Fusible/Volets, orientations H/V, recalage au coin, carte Orientation, galerie à 8 variantes) ; BRA-01..02 (phase 41, 2026-10-03 — 20 braises en 5 groupes d'une heure, flèche de reset, « ↻ HH:MM »).
+Validées en cours de milestone : SOC-01, SOC-02 (phase 36 Socle, 2026-10-03 — lecture des réglages valeur par valeur, garde d'arguments inconnus) ; DAT-01..05 (phase 37, 2026-10-03 — chaîne réduite à sonde d'en-têtes + secours OAuth Chronos, barre statusLine retirée avec sauvegarde, diagnostic « Chaîne de données », méthodologie unique) ; HIS-09..11 (phase 38, 2026-10-03 — Pistes seul, plein écran général, Échap à deux niveaux ; revue visuelle humaine en attente) ; THM-01..04 (phase 39, 2026-10-03 — 15 thèmes en Pâle / Classique / Vive, gris épuisé ≥ 3:1, cadrans alternatifs et TickReset thémés) ; CAD-01..04 (phase 40, 2026-10-03 — cadrans à l'échelle 1, +20 % Fusible/Volets, orientations H/V, recalage au coin, carte Orientation, galerie à 8 variantes) ; BRA-01..02 (phase 41, 2026-10-03 — 20 braises en 5 groupes d'une heure, flèche de reset, « ↻ HH:MM ») ; GST-01..03 (phase 42, 2026-10-03 — geste unique sur toute la silhouette, clic qui traverse ailleurs ; clics réels à constater).
 
 ### Out of Scope
 
@@ -252,4 +252,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 — phase 41 (Braises) terminée*
+*Last updated: 2026-10-03 — phase 42 (gestes) terminée ; reste la phase 43 (release + constat)*
