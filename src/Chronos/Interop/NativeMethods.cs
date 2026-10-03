@@ -73,6 +73,8 @@ internal static class NativeMethods
     // que l'appelant IGNORE (best-effort : coins droits sur Windows 10, jamais d'exception grâce à PreserveSig = true).
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     public const int DWMWCP_ROUND = 2;
+    // Plein écran de l'Historique (phase 38) : coins carrés, sinon Windows 11 arrondit les quatre coins sur le bureau.
+    public const int DWMWCP_DONOTROUND = 1;
 
     // Réglages v2 (quick 260927) : agrandissement borné à la ZONE DE TRAVAIL du moniteur. Une fenêtre WindowStyle=None s'agrandirait
     // sinon à la taille du moniteur, barre des tâches comprise. ptMaxPosition est relatif au moniteur ; tout est en pixels physiques.

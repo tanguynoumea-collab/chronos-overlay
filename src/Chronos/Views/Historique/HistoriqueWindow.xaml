@@ -15,6 +15,9 @@
         ombre par WindowChrome, coins arrondis DWM best-effort posés dans le code-behind (rayon système ≈ 8 px, Windows 11 seulement).
         D-34-23 : pas d'Owner, pas de Topmost, pas de fermeture à la désactivation. D-34-25 : toutes les tailles viennent des tokens.
         Aucune logique métier ici : tout est dans HistoriqueViewModel ; les vues Semaine / Jour sont remplies par 34-06 / 34-07.
+        Phase 38 (HIS-10 / HIS-11) : Échap est à deux niveaux (quitte d'abord le plein écran, puis ferme) ; F11 et le bouton
+        « ⛶ Plein écran » basculent ; ✕ ferme toujours directement. Les tailles échelonnées sont en DynamicResource : le code-behind
+        fusionne le dictionnaire PleinEcran en dernier dans la fenêtre et dans chaque vue.
     -->
     <Window.Resources>
         <ResourceDictionary>
@@ -39,7 +42,7 @@
             <Style x:Key="Plat" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsGrand}"/>
+                <Setter Property="FontSize" Value="{DynamicResource HistoCorpsGrand}"/>
                 <Setter Property="Padding" Value="9,3"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
@@ -69,7 +72,7 @@
                 <Setter Property="Background" Value="{StaticResource Panel}"/>
                 <Setter Property="BorderBrush" Value="Transparent"/>
                 <Setter Property="BorderThickness" Value="{StaticResource HistoBordureActive}"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsMoyen}"/>
+                <Setter Property="FontSize" Value="{DynamicResource HistoCorpsMoyen}"/>
                 <Setter Property="Padding" Value="12,4"/>
                 <Setter Property="Margin" Value="0,0,4,0"/>
                 <Setter Property="Cursor" Value="Hand"/>
@@ -133,7 +136,9 @@
     </shell:WindowChrome.WindowChrome>
 
     <Window.InputBindings>
-        <KeyBinding Key="Escape" Command="{Binding FermerCommand}"/>
+        <!-- Échap à deux niveaux (HIS-11) ; F11 bascule. ✕ garde FermerCommand. -->
+        <KeyBinding Key="Escape" Command="{Binding EchapCommand}"/>
+        <KeyBinding Key="F11" Command="{Binding BasculerPleinEcranCommand}"/>
     </Window.InputBindings>
 
     <Border BorderBrush="{StaticResource Line}" BorderThickness="{StaticResource HistoBordureFenetre}" Background="{StaticResource Panel}">
@@ -145,7 +150,7 @@
             </Grid.RowDefinitions>
 
             <!-- ================= En-tête commun §2.1 (zone de drag) ================= -->
-            <Grid x:Name="EnTete" Grid.Row="0" Height="{StaticResource HistoHauteurEnTete}" Background="{StaticResource Panel}"
+            <Grid x:Name="EnTete" Grid.Row="0" Height="{DynamicResource HistoHauteurEnTete}" Background="{StaticResource Panel}"
                   MouseLeftButtonDown="EnTete_Drag" Margin="16,8,16,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -158,13 +163,13 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Width="{StaticResource HistoDiametrePointLogo}" Height="{StaticResource HistoDiametrePointLogo}"
                                  Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
-                        <TextBlock Text="Chronos" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsPetit}"
+                        <TextBlock Text="Chronos" Foreground="{StaticResource Ink2}" FontSize="{DynamicResource HistoCorpsPetit}"
                                    VerticalAlignment="Center" Margin="8,0,0,0"/>
                         <TextBlock Text="{x:Static txt:TextesHistorique.Titre}" Foreground="{StaticResource Ink}"
-                                   FontSize="{StaticResource HistoCorpsTitre}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                   FontSize="{DynamicResource HistoCorpsTitre}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
                     </StackPanel>
                     <Button Content="✕" Style="{StaticResource Plat}" Command="{Binding FermerCommand}" HorizontalAlignment="Right"
-                            FontSize="{StaticResource HistoCorpsMoyen}" Padding="8,3"/>
+                            FontSize="{DynamicResource HistoCorpsMoyen}" Padding="8,3"/>
                 </Grid>
 
                 <!-- Ligne 2 : [ Jour | Semaine | 4 semaines ]   ‹  période  ›                          [ Cette semaine / Aujourd'hui ] -->
@@ -179,28 +184,47 @@
                                 Command="{Binding ChoisirVueCommand}" CommandParameter="{x:Static mh:VueHistorique.QuatreSemaines}"/>
 
                         <Button Style="{StaticResource Plat}" Content="‹" Command="{Binding PrecedentCommand}" Margin="12,0,0,0"/>
-                        <TextBlock Text="{Binding LibellePeriode}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsGrand}"
+                        <TextBlock Text="{Binding LibellePeriode}" Foreground="{StaticResource Ink}" FontSize="{DynamicResource HistoCorpsGrand}"
                                    VerticalAlignment="Center" Margin="4,0,4,0"/>
                         <Button Style="{StaticResource Plat}" Content="›" Command="{Binding SuivantCommand}"/>
                     </StackPanel>
                     <Button Style="{StaticResource Plat}" Content="{Binding TexteRetourPresent}" Command="{Binding RetourPresentCommand}"
-                            HorizontalAlignment="Right" FontSize="{StaticResource HistoCorpsMoyen}" Background="{StaticResource Panel2}"/>
+                            HorizontalAlignment="Right" FontSize="{DynamicResource HistoCorpsMoyen}" Background="{StaticResource Panel2}"/>
                 </Grid>
 
-                <!-- Ligne 3 : fraîcheur · pastille « journal muet » (le bouton plein écran prendra la place du sélecteur, plan 06) -->
+                <!-- Ligne 3 : fraîcheur · pastille « journal muet »                ⛶ Plein écran / ⤢ Quitter le plein écran · Échap (§ 4.2) -->
+                <!-- La fraîcheur passe sur deux lignes si besoin au lieu de passer sous le bouton (§ 7). Le bouton est visible dans les
+                     trois vues (l'ancien sélecteur ne l'était qu'en Semaine) : aucune liaison de Visibility. -->
                 <Grid Grid.Row="2">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding TexteFraicheur}" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsPetit}"
-                                   VerticalAlignment="Center"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding TexteFraicheur}" Foreground="{StaticResource Ink2}" FontSize="{DynamicResource HistoCorpsPetit}"
+                                   VerticalAlignment="Center" TextWrapping="Wrap"/>
                         <StackPanel x:Name="PastilleAlerte" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0"
                                     Visibility="{Binding AlerteJournal, Converter={StaticResource BoolToVis}}">
                             <!-- Alerte en DynamicResource : la pastille suit le thème injecté dans les ressources de la fenêtre. -->
                             <Ellipse Width="{StaticResource HistoDiametrePastille}" Height="{StaticResource HistoDiametrePastille}"
                                      Fill="{DynamicResource Alerte}" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding TexteAlerteJournal}" Foreground="{DynamicResource Alerte}"
-                                       FontSize="{StaticResource HistoCorpsPetit}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                       FontSize="{DynamicResource HistoCorpsPetit}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                    </StackPanel>
+                    </WrapPanel>
+                    <Button x:Name="BoutonPleinEcran" Grid.Column="1" Command="{Binding BasculerPleinEcranCommand}" VerticalAlignment="Center"
+                            FontSize="{DynamicResource HistoCorpsMoyen}" Background="{StaticResource Panel2}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Plat}">
+                                <Setter Property="Content" Value="{x:Static txt:TextesHistorique.BoutonPleinEcran}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EstPleinEcran}" Value="True">
+                                        <Setter Property="Content" Value="{x:Static txt:TextesHistorique.BoutonQuitterPleinEcran}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </Grid>
             </Grid>
 
@@ -209,7 +233,7 @@
                     BorderThickness="{StaticResource HistoBordureBandeau}" Padding="16,7,16,7"
                     Visibility="{Binding AfficherBandeauF2, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
-                    <TextBlock Text="{Binding TexteBandeauF2}" Foreground="{StaticResource Ink}" FontSize="{StaticResource HistoCorpsMoyen}"/>
+                    <TextBlock Text="{Binding TexteBandeauF2}" Foreground="{StaticResource Ink}" FontSize="{DynamicResource HistoCorpsMoyen}"/>
                     <!-- Barre sans converter : la ProgressBar dimensionne elle-même PART_Indicator sur PART_Track. -->
                     <ProgressBar x:Name="BarreF2" Minimum="0" Maximum="1" Value="{Binding FractionBandeauF2, Mode=OneWay}"
                                  Height="{StaticResource HistoEpaisseurBordureActive}" Margin="0,5,0,4">
@@ -222,7 +246,7 @@
                             </ControlTemplate>
                         </ProgressBar.Template>
                     </ProgressBar>
-                    <TextBlock Text="{Binding SousTexteBandeauF2}" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsMini}"
+                    <TextBlock Text="{Binding SousTexteBandeauF2}" Foreground="{StaticResource Ink2}" FontSize="{DynamicResource HistoCorpsMini}"
                                TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
