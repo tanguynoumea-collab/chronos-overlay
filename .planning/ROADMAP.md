@@ -373,7 +373,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 36. Socle | v1.9 | 2/2 | Complete    | 2026-10-03 |
 | 37. Une chaîne de données claire | v1.9 | 6/6 | Complete    | 2026-10-03 |
 | 38. Historique : Pistes seul et plein écran | v1.9 | 6/6 | Complete    | 2026-10-03 |
-| 39. Thèmes Pâle / Classique / Vive | v1.9 | 4/4 | Complete   | 2026-10-03 |
+| 39. Thèmes Pâle / Classique / Vive | v1.9 | 4/4 | Complete    | 2026-10-03 |
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 0/? | Not started | - |
 | 41. Braises | v1.9 | 0/? | Not started | - |
 | 42. Un geste sur toute la silhouette | v1.9 | 0/? | Not started | - |
