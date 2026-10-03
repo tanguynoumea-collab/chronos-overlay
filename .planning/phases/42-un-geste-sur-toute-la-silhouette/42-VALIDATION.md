@@ -97,6 +97,7 @@ L'agent ne lance, n'arrête ni ne clique JAMAIS l'overlay (STATE.md). Ces vérif
 | Clic à côté du cadran (coin hors disque, au-delà du rectangle) → l'élément du bureau dessous reçoit le clic | GST-02 | Seul Windows décide (alpha 0) | Poser l'overlay sur une icône du bureau, cliquer dans le coin vide de l'empreinte d'Arcs |
 | Les pastilles (déconnexion, invitation) lancent toujours la reconnexion ; l'infobulle de la pastille d'âge s'ouvre sur tout son disque | GST-01, GST-02 | Interaction réelle | Survoler / cliquer les pastilles quand elles sont visibles |
 | Aucune trace visible de la silhouette (`#01000000` imperceptible) sur chaque thème | GST-02 | Jugement visuel | Regarder chaque variante devant un fond d'écran clair puis sombre |
+| Pastilles INERTES (âge, hors ligne) hors du disque d'Arcs / Braises : peintes à alpha ≥ 1, elles captent la souris sans geste (ni bascule, ni glisser, ni traversée vers le bureau) ; le clic droit y ouvre les réglages. **Comportement voulu (plan 42-03), à ne pas prendre pour une régression au constat.** | GST-01, GST-02 | Interaction réelle | Arcs, pastille d'âge visible : cliquer dessus → rien ne bascule et le bureau dessous ne reçoit rien ; l'infobulle s'ouvre sur tout le disque |
 
 ---
 

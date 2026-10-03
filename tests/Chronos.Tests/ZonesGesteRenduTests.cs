@@ -515,6 +515,62 @@ public class ZonesGesteRenduTests
     }
 
     /// <summary>
+    /// GST-01 — câblage RÉEL du répartiteur : MainWindow et MainViewModel réels, arbitre en pas à pas (horloge injectée).
+    /// Appui puis relâchement levés sur la grille Racine. La position du périphérique n'est pas plaçable en test : la
+    /// couture interne <c>LirePosition</c> renvoie le point témoin, exprimé dans le repère demandé (silhouette ou racine).
+    /// </summary>
+    [WpfFact]
+    public void Le_repartiteur_reel_arme_la_bascule_dans_la_silhouette_et_rien_dehors()
+    {
+        MouseButtonEventArgs Evenement(RoutedEvent evt)
+            => new(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left) { RoutedEvent = evt };
+
+        // Monte Arcs, place la souris virtuelle en (x,y) du repère de la racine, lève les événements demandés, puis fait
+        // avancer l'horloge bien au-delà de tout délai de double-clic et rend l'échéance de l'arbitre.
+        (bool appuiTraite, bool basculeAvantEcheance, bool basculeApresEcheance) Jouer(double x, double y, bool appui, bool relache)
+        {
+            var horloge = new FakeClock(Now);
+            var (fenetre, racine, vm, _) = Monter(CadranStyle.Arcs, OrientationCadran.Horizontal, SnapshotNominal(), horloge: horloge);
+            try
+            {
+                Assert.Equal("Racine", racine.Name);
+                fenetre.LirePosition = (_, relatif) => racine.TranslatePoint(new Point(x, y), (UIElement)relatif);
+                Assert.False(vm.ShowCountdown);
+
+                var traite = false;
+                if (appui)
+                {
+                    var down = Evenement(UIElement.MouseLeftButtonDownEvent);
+                    racine.RaiseEvent(down);
+                    traite = down.Handled;
+                }
+                if (relache) racine.RaiseEvent(Evenement(UIElement.MouseLeftButtonUpEvent));
+
+                var avant = vm.ShowCountdown;                        // l'arbitre n'a encore rien décidé
+                horloge.UtcNow = Now + TimeSpan.FromSeconds(10);
+                vm.EcheanceClicCentre();
+                return (traite, avant, vm.ShowCountdown);
+            }
+            finally { fenetre.Close(); }
+        }
+
+        // Dans la silhouette (entre-anneaux d'Arcs) : appui traité, bascule ARMÉE puis effective à l'échéance.
+        var dedans = Jouer(85.5, 40.5, appui: true, relache: true);
+        Assert.True(dedans.appuiTraite, "l'appui dans la silhouette doit être pris par le répartiteur (Handled)");
+        Assert.False(dedans.basculeAvantEcheance, "la bascule n'a lieu qu'à l'échéance de l'arbitre");
+        Assert.True(dedans.basculeApresEcheance, "un clic dans la silhouette doit armer la bascule (ClicCentre(1))");
+
+        // Hors silhouette (coin de l'empreinte) : rien n'est armé, l'appui n'est pas pris.
+        var dehors = Jouer(2.5, 2.5, appui: true, relache: true);
+        Assert.False(dehors.appuiTraite, "hors silhouette, le répartiteur ne prend pas l'appui");
+        Assert.False(dehors.basculeApresEcheance, "hors silhouette, aucune bascule ne doit être armée");
+
+        // Relâchement seul, sans appui : rien.
+        var seul = Jouer(85.5, 40.5, appui: false, relache: true);
+        Assert.False(seul.basculeApresEcheance, "un relâchement sans appui ne doit rien armer");
+    }
+
+    /// <summary>
     /// GST-02 — garde RUNTIME : rien de ce qui porte un geste n'a un pinceau nul ou d'alpha 0 (sur une fenêtre layered,
     /// alpha 0 = le clic traverse). Silhouettes : exactement ZoneSilhouette ; ButtonBase (et racine de leur gabarit) et
     /// porteurs d'infobulle : alpha ≥ 1. La Window (Background alpha 0 voulu) n'est pas dans le parcours.
