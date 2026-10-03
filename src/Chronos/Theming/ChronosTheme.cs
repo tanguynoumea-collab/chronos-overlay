@@ -18,6 +18,9 @@ public sealed class ChronosTheme
     public required string Key { get; init; }
     public required string Name { get; init; }
 
+    /// <summary>Famille du thème (Pâle · Classique · Vive, §5.1) : sert au regroupement de la section Thème des réglages.</summary>
+    public CategorieTheme Categorie { get; init; }
+
     // Tokens de couleur (miroir des clés de DesignTokens.xaml, appliqués en ressources dynamiques).
     public Color FondCadran { get; init; }
     public Color Rim { get; init; }
@@ -68,7 +71,7 @@ public sealed class ChronosTheme
         ["TextePrincipal"] = Frozen(TextePrincipal),
         ["TexteSecondaireClair"] = Frozen(TexteSecondaireClair),
         ["TexteSecondaire"] = Frozen(TexteSecondaire),
-        ["Alerte"] = Frozen(RampAmber),   // TOK-02 : la pastille de déconnexion suit les 9 thèmes.
+        ["Alerte"] = Frozen(RampAmber),   // TOK-02 : la pastille de déconnexion suit tous les thèmes.
                                           // Précédent exact : SessionBrushTokens()["SessAttention"].
     };
 
@@ -95,14 +98,15 @@ public sealed class ChronosTheme
     private static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
     /// <summary>Construit un thème à partir de 4 couleurs de base + 3 stops de rampe ; dérive le reste.</summary>
-    public static ChronosTheme From(string key, string name, string disc, string track, string tick, string ink,
-                                    string green, string amber, string red)
+    public static ChronosTheme From(string key, string name, CategorieTheme categorie, string disc, string track, string tick,
+                                    string ink, string green, string amber, string red)
     {
-        Color d = Hex(disc), tr = Hex(track), tk = Hex(tick), nk = Hex(ink);
+        Color d = Hex(disc), tr = Hex(track), tk = Hex(tick), nk = Hex(ink);   // d : disque OPAQUE
         return new ChronosTheme
         {
             Key = key,
             Name = name,
+            Categorie = categorie,
             FondCadran = WithAlpha(d, 0xE6),                // disque légèrement translucide (il flotte sur le bureau)
             Rim = Lerp(d, tk, 0.12),
             TickMineur = Lerp(d, tr, 0.6),
@@ -118,8 +122,24 @@ public sealed class ChronosTheme
             RampAmber = Hex(amber),
             RampRed = Hex(red),
             Neutre = Scale(tk, 0.5),
-            Epuise = Lerp(tr, tk, 0.18),
+            Epuise = EpuiseLisible(d, tr, tk),
         };
+    }
+
+    /// <summary>
+    /// Gris « épuisé » (règle §5.3) : le PLUS PETIT mélange piste → graduation (t ≥ 0,18, pas de 0,01) qui atteint un
+    /// contraste WCAG ≥ 3:1, mesuré contre le disque OPAQUE (jamais FondCadran, translucide). Compteur entier pour
+    /// éviter la dérive d'un <c>t += 0.01</c> ; comparaison sans arrondi (Lave vaut 3,0027). Un thème futur qui n'y
+    /// parvient pas retombe sur la graduation elle-même — et fait rougir ThemingTests.
+    /// </summary>
+    private static Color EpuiseLisible(Color disque, Color piste, Color graduation)
+    {
+        for (int pas = 18; pas <= 100; pas++)
+        {
+            var c = Lerp(piste, graduation, pas / 100.0);
+            if (ContrasteWcag.Ratio(c, disque) >= 3.0) return c;
+        }
+        return graduation;
     }
 
     // --- helpers couleur ---
@@ -138,25 +158,35 @@ public sealed class ChronosTheme
         (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));
 }
 
-/// <summary>Catalogue des thèmes embarqués (9). « minuit » est le défaut historique. Les trois derniers
-/// (Moka, Roseraie, Forêt) sont dérivés de palettes de référence largement adoptées (Catppuccin Mocha,
-/// Rosé Pine, Everforest) — teintes distinctes des six premiers (lavande pastel, rose mauve, vert forêt).</summary>
+/// <summary>Catalogue des thèmes embarqués (15), en trois familles Pâle · Classique · Vive (§5). « minuit » est le
+/// défaut historique et reste en tête (<see cref="Default"/>). Rangé par famille, dans l'ordre du plan à l'intérieur de
+/// chaque groupe ; les réglages regroupent ensuite dans l'ordre de <see cref="CategorieTheme"/>. Les clés existantes ne
+/// changent jamais : un thème déjà choisi reste choisi.</summary>
 public static class ThemeCatalog
 {
     public static readonly IReadOnlyList<ChronosTheme> All = new[]
     {
-        ChronosTheme.From("minuit",  "Minuit",      "#16151B", "#2A2932", "#C9C8D2", "#F4F2EC", "#7BB13C", "#EFA23A", "#D8503A"),
-        ChronosTheme.From("ardoise", "Ardoise",     "#1B2027", "#2C333D", "#CBD3DE", "#EEF2F6", "#5FB39A", "#E0A94E", "#E06B5A"),
-        ChronosTheme.From("nord",    "Nord",        "#2E3440", "#3B4252", "#D8DEE9", "#ECEFF4", "#A3BE8C", "#EBCB8B", "#BF616A"),
-        ChronosTheme.From("neon",    "Néon",        "#0E0A1F", "#241B3A", "#7DF9FF", "#E6E1FF", "#38E8C6", "#B14BFF", "#FF2E97"),
-        ChronosTheme.From("aurore",  "Aurore",      "#0E1726", "#1D2B44", "#BFE3FF", "#EAF2FF", "#4FD1C5", "#6D8CF0", "#C86BE0"),
-        ChronosTheme.From("ambre",   "Ambre chaud", "#1E1712", "#33271C", "#EAD9B8", "#F6ECD9", "#E4B24A", "#E07E3C", "#D24A3A"),
-        // Moka — d'après Catppuccin Mocha : dark lavande pastel, texte bleu-lavande, rampe vert menthe → pêche → rose-rouge.
-        ChronosTheme.From("moka",     "Moka",        "#1E1E2E", "#313244", "#BAC2DE", "#CDD6F4", "#A6E3A1", "#FAB387", "#F38BA8"),
-        // Roseraie — d'après Rosé Pine : dark rose-mauve, texte lilas clair, rampe écume (teal) → or → « love » (rose-rouge).
-        ChronosTheme.From("roseraie", "Roseraie",    "#191724", "#26233A", "#B3AECC", "#E0DEF4", "#9CCFD8", "#F6C177", "#EB6F92"),
+        // --- Classique (minuit en tête : Default => All[0]) ---
+        ChronosTheme.From("minuit",    "Minuit",      CategorieTheme.Classique, "#16151B", "#2A2932", "#C9C8D2", "#F4F2EC", "#7BB13C", "#EFA23A", "#D8503A"),
+        ChronosTheme.From("ardoise",   "Ardoise",     CategorieTheme.Classique, "#1B2027", "#2C333D", "#CBD3DE", "#EEF2F6", "#5FB39A", "#E0A94E", "#E06B5A"),
+        ChronosTheme.From("ambre",     "Ambre chaud", CategorieTheme.Classique, "#1E1712", "#33271C", "#EAD9B8", "#F6ECD9", "#E4B24A", "#E07E3C", "#D24A3A"),
+        ChronosTheme.From("graphite",  "Graphite",    CategorieTheme.Classique, "#121314", "#26282B", "#C4C7CC", "#F2F3F5", "#6DBE45", "#F0A830", "#E04B3C"),
+        ChronosTheme.From("marine",    "Marine",      CategorieTheme.Classique, "#0F1A2A", "#1E2D44", "#B9C9DE", "#EAF0F7", "#5DBB7A", "#F2B544", "#E25C4F"),
+        // --- Pâle ---
+        ChronosTheme.From("nord",      "Nord",        CategorieTheme.Pale,      "#2E3440", "#3B4252", "#D8DEE9", "#ECEFF4", "#A3BE8C", "#EBCB8B", "#BF616A"),
         // Forêt — d'après Everforest (dark) : vert forêt terreux, texte sauge, rampe vert olive → jaune blé → rouge doux.
-        ChronosTheme.From("foret",    "Forêt",       "#2D353B", "#3A454A", "#A6B0A0", "#D3C6AA", "#A7C080", "#DBBC7F", "#E67E80"),
+        ChronosTheme.From("foret",     "Forêt",       CategorieTheme.Pale,      "#2D353B", "#3A454A", "#A6B0A0", "#D3C6AA", "#A7C080", "#DBBC7F", "#E67E80"),
+        // Moka — d'après Catppuccin Mocha : dark lavande pastel, texte bleu-lavande, rampe vert menthe → pêche → rose-rouge.
+        ChronosTheme.From("moka",      "Moka",        CategorieTheme.Pale,      "#1E1E2E", "#313244", "#BAC2DE", "#CDD6F4", "#A6E3A1", "#FAB387", "#F38BA8"),
+        // Roseraie — d'après Rosé Pine : dark rose-mauve, texte lilas clair, rampe écume (teal) → or → « love » (rose-rouge).
+        ChronosTheme.From("roseraie",  "Roseraie",    CategorieTheme.Pale,      "#191724", "#26233A", "#B3AECC", "#E0DEF4", "#9CCFD8", "#F6C177", "#EB6F92"),
+        ChronosTheme.From("sauge",     "Sauge",       CategorieTheme.Pale,      "#262B28", "#343B37", "#AEB8B0", "#DCE3DD", "#8FB996", "#D9C27E", "#D08A7E"),
+        ChronosTheme.From("lavande",   "Lavande",     CategorieTheme.Pale,      "#22202C", "#302D3D", "#C3BCD9", "#E6E2F2", "#9FCFB0", "#E8C88E", "#E08E9E"),
+        // --- Vive --- (Néon et Aurore : rampe corrigée §5.2, ambre et rouge vrais ; décors inchangés)
+        ChronosTheme.From("neon",      "Néon",        CategorieTheme.Vive,      "#0E0A1F", "#241B3A", "#7DF9FF", "#E6E1FF", "#38E8C6", "#FFC23D", "#FF2E63"),
+        ChronosTheme.From("aurore",    "Aurore",      CategorieTheme.Vive,      "#0E1726", "#1D2B44", "#BFE3FF", "#EAF2FF", "#4FD1C5", "#F0C36D", "#F2577A"),
+        ChronosTheme.From("synthwave", "Synthwave",   CategorieTheme.Vive,      "#140B24", "#2A1745", "#9AE6FF", "#F5EEFF", "#2BFF88", "#FFD000", "#FF2D55"),
+        ChronosTheme.From("lave",      "Lave",        CategorieTheme.Vive,      "#1A0E0A", "#33190F", "#FFC9A3", "#FFF1E6", "#7CFF4F", "#FFB000", "#FF3B1F"),
     };
 
     public static ChronosTheme Default => All[0];
