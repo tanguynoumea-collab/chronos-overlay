@@ -13,7 +13,7 @@ namespace Chronos.Tests;
 /// <summary>
 /// Critère de succès 4 de la phase 21 : « aucun trou visuel ». Le retrait du libellé de type (bindé dans
 /// le seul template Pastilles, l. 70-79 de SessionStyles.xaml) ne doit laisser ni case vide ni décalage,
-/// sur les 8 styles de session et les 9 thèmes — 72 combinaisons.
+/// sur les 8 styles de session et tous les thèmes — 8 × ThemeCatalog.All.Count combinaisons.
 ///
 /// SUBSTITUTION ASSUMÉE : la contrainte de phase interdit de lancer l'overlay (une instance est en cours
 /// d'utilisation). Ce test est la vérification NON DESTRUCTIVE qui remplace le contrôle à l'œil : il charge
@@ -37,7 +37,7 @@ public class SessionStylesBindingTests
 
     // Source substituée : rend une liste FIXE couvrant les CINQ états, pour qu'aucun template ne soit
     // mesuré à vide (une fenêtre sans élément passerait le test sans rien prouver). L'attente DÉDUITE
-    // d'EVT-04 porte le libellé le PLUS LONG : sans elle dans la liste, la matrice 8 styles × 9 thèmes ne
+    // d'EVT-04 porte le libellé le PLUS LONG : sans elle dans la liste, la matrice 8 styles × tous les thèmes ne
     // mesurerait rien du cas le plus contraignant. L'état INDÉTERMINÉ (s4) reste dans la SOURCE alors
     // qu'il n'a plus de ligne dans le widget (LIB-01) : c'est ce qui prouve, au niveau du widget monté, que
     // le moniteur le masque bien — quatre lignes à l'écran pour cinq sessions lues.
@@ -142,13 +142,14 @@ public class SessionStylesBindingTests
     }
 
     [WpfFact]
-    public void Les_8_styles_et_les_9_themes_se_chargent_se_mesurent_et_se_disposent()
+    public void Les_8_styles_et_tous_les_themes_se_chargent_se_mesurent_et_se_disposent()
     {
         var styles = Enum.GetValues<SessionStyle>();
         var themes = ThemeCatalog.All;
 
-        Assert.Equal(8, styles.Length);      // garde anti-muette : la matrice est bien 8 × 9
-        Assert.Equal(9, themes.Count);
+        Assert.Equal(8, styles.Length);      // garde anti-muette : la matrice est bien 8 × tous les thèmes
+        Assert.Equal(ThemeCatalog.All.Count, themes.Count);
+        Assert.Equal(15, themes.Count);      // garde anti-mutisme : le catalogue n’a été ni vidé ni réduit en silence
 
         foreach (var theme in themes)
         foreach (var style in styles)
@@ -165,19 +166,19 @@ public class SessionStylesBindingTests
     }
 
     /// <summary>
-    /// LIB-01 et LIB-03, versant ÉCRAN, sur les 72 combinaisons : aucun ancien libellé n'est rendu ; les
+    /// LIB-01 et LIB-03, versant ÉCRAN, sur toutes les combinaisons : aucun ancien libellé n'est rendu ; les
     /// info-bulles des huit gabarits disent « projet — mot » sur leur PREMIÈRE ligne et, ensemble, les trois mots ;
     /// l'attente observée qui a un motif (s1, « permission_prompt ») le dit en mots sur une seconde ligne (APP-02,
     /// phase 29) ; sur Pastilles et Marge, les deux gabarits qui affichent le mot en texte, il se lit en entier —
     /// ni rogné, ni tronqué.
     /// </summary>
     [WpfFact]
-    public void Les_trois_mots_se_lisent_sur_les_8_styles_et_les_9_themes()
+    public void Les_trois_mots_se_lisent_sur_les_8_styles_et_tous_les_themes()
     {
         var styles = Enum.GetValues<SessionStyle>();
         var themes = ThemeCatalog.All;
         Assert.Equal(8, styles.Length);
-        Assert.Equal(9, themes.Count);
+        Assert.Equal(ThemeCatalog.All.Count, themes.Count);
 
         var combinaisons = 0;
         foreach (var theme in themes)
@@ -232,12 +233,12 @@ public class SessionStylesBindingTests
             combinaisons++;
         }
 
-        Assert.Equal(72, combinaisons);   // la matrice n'a pas été traversée à vide
+        Assert.Equal(8 * ThemeCatalog.All.Count, combinaisons);   // la matrice n'a pas été traversée à vide
     }
 
     /// <summary>
     /// APP-02, versant COMPACITÉ (Piège 11 de la recherche) : la fenêtre est en <c>SizeToContent</c> sans <c>MaxWidth</c> —
-    /// sans borne, un titre long l'ÉLARGIT, et <c>TextTrimming</c> ne coupe rien. Sur les 72 combinaisons, deux widgets
+    /// sans borne, un titre long l'ÉLARGIT, et <c>TextTrimming</c> ne coupe rien. Sur toutes les combinaisons, deux widgets
     /// identiques à un nom près : s2 porte le plus long dossier réel de la mesure de la recherche (29-RESEARCH Q4.d,
     /// 161 DIP en Segoe UI SemiBold 12,5 : « PROJET OLYMPE DATAMIND », 161,3 DIP — « PROJET ADVANCED SHEET » n'en fait
     /// que 151,4, c'est la MÉDIANE), sans titre dans l'un, avec un titre de 51 caractères dans l'autre (au-delà du plus
@@ -250,7 +251,7 @@ public class SessionStylesBindingTests
     /// Sur Pastilles et Marge, le titre est coupé par l'ellipse, borne 160, 160,5 DIP occupés au plus.</para>
     /// </summary>
     [WpfFact]
-    public void Un_titre_long_est_coupe_sans_elargir_le_widget_sur_les_8_styles_et_les_9_themes()
+    public void Un_titre_long_est_coupe_sans_elargir_le_widget_sur_les_8_styles_et_tous_les_themes()
     {
         const string dossier = "PROJET OLYMPE DATAMIND";   // 161,3 DIP : le maximum mesuré par la recherche
         const string titre = "Migration de l'API de facturation vers la v2 du SDK";
@@ -258,8 +259,8 @@ public class SessionStylesBindingTests
 
         var styles = Enum.GetValues<SessionStyle>();
         var themes = ThemeCatalog.All;
-        Assert.Equal(8, styles.Length);      // garde anti-muette : la matrice est bien 8 × 9
-        Assert.Equal(9, themes.Count);
+        Assert.Equal(8, styles.Length);      // garde anti-muette : la matrice est bien 8 × tous les thèmes
+        Assert.Equal(ThemeCatalog.All.Count, themes.Count);
         var grand = new Size(2000, 2000);
 
         var combinaisons = 0;
@@ -313,8 +314,8 @@ public class SessionStylesBindingTests
             combinaisons++;
         }
 
-        Assert.Equal(72, combinaisons);        // la matrice n'a pas été traversée à vide
-        Assert.Equal(4 * 9, nomsEcrits);       // Pastilles, Marge, Jetons, Annonciateur écrivent le nom, sur les 9 thèmes
+        Assert.Equal(8 * ThemeCatalog.All.Count, combinaisons);        // la matrice n'a pas été traversée à vide
+        Assert.Equal(4 * ThemeCatalog.All.Count, nomsEcrits);   // Pastilles, Marge, Jetons, Annonciateur écrivent le nom, sur tous les thèmes
     }
 
     /// <summary>Le compteur de l'Annonciateur n'a plus de littéral : il lit <c>LibelleCompteur</c>, qui vient
@@ -351,17 +352,17 @@ public class SessionStylesBindingTests
 
     /// <summary>
     /// TRT-03, versant ÉCRAN. La garde de SOURCE compte le câblage dans le texte du XAML ; celle-ci monte
-    /// les 72 combinaisons et exige que CHAQUE menu trouvé porte bien ses trois entrées. Aucun menu n'est
+    /// toutes les combinaisons et exige que CHAQUE menu trouvé porte bien ses trois entrées. Aucun menu n'est
     /// ouvert et aucune fenêtre n'est affichée : un <c>ContextMenu</c> est la VALEUR d'une propriété,
     /// peuplée par le BAML au chargement.
     /// </summary>
     [WpfFact]
-    public void Les_trois_gestes_sont_offerts_sur_les_8_styles_et_les_9_themes()
+    public void Les_trois_gestes_sont_offerts_sur_les_8_styles_et_tous_les_themes()
     {
         var styles = Enum.GetValues<SessionStyle>();
         var themes = ThemeCatalog.All;
         Assert.Equal(8, styles.Length);
-        Assert.Equal(9, themes.Count);
+        Assert.Equal(ThemeCatalog.All.Count, themes.Count);
 
         var stylesCouverts = new HashSet<SessionStyle>();
 

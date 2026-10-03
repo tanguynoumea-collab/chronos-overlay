@@ -22,12 +22,215 @@ public class ThemingTests
     private static string TempDir() => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "chronos-thm-" + Guid.NewGuid().ToString("N"));
     private static ChronosPaths TempPaths() { var d = TempDir(); System.IO.Directory.CreateDirectory(d); return new(System.IO.Path.Combine(d, "usage.json"), System.IO.Path.Combine(d, "projects")); }
 
-    [Fact]
-    public void Catalogue_a_six_themes_aux_cles_uniques()
+    // --- Helpers de test (copies indépendantes de la production, pour ne pas prouver le code par lui-même) ---
+
+    /// <summary>Parse « #RRGGBB » ou « #AARRGGBB ».</summary>
+    private static Color H(string hex)
     {
-        Assert.Equal(9, ThemeCatalog.All.Count);
-        Assert.Equal(ThemeCatalog.All.Count, ThemeCatalog.All.Select(t => t.Key).Distinct().Count());
+        var s = hex.TrimStart('#');
+        byte a = 0xFF;
+        if (s.Length == 8) { a = Convert.ToByte(s[..2], 16); s = s[2..]; }
+        return Color.FromArgb(a, Convert.ToByte(s[..2], 16), Convert.ToByte(s.Substring(2, 2), 16), Convert.ToByte(s.Substring(4, 2), 16));
+    }
+
+    /// <summary>Disque OPAQUE du thème (FondCadran est translucide E6 : le contraste se mesure sur le disque plein).</summary>
+    private static Color Disque(ChronosTheme t) => Color.FromRgb(t.FondCadran.R, t.FondCadran.G, t.FondCadran.B);
+
+    /// <summary>Copie exacte du Lerp de ChronosTheme : Math.Round par canal (arrondi bancaire), alpha FF.</summary>
+    private static Color LerpTest(Color a, Color b, double t) => Color.FromArgb(0xFF,
+        (byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));
+
+    /// <summary>Teinte HSV standard en degrés [0, 360) ; 0 pour un gris.</summary>
+    private static double TeinteHsv(Color c)
+    {
+        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
+        double max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b)), delta = max - min;
+        if (delta == 0) return 0;
+        double h;
+        if (max == r) h = 60 * (((g - b) / delta) % 6);
+        else if (max == g) h = 60 * (((b - r) / delta) + 2);
+        else h = 60 * (((r - g) / delta) + 4);
+        return h < 0 ? h + 360 : h;
+    }
+
+    /// <summary>Catalogue cible §5.2 : clé → disque, piste, graduation, texte, vert, ambre, rouge (valeurs EXACTES).</summary>
+    private static readonly (string Cle, string[] Hex)[] Palettes =
+    {
+        ("minuit",    new[] { "#16151B", "#2A2932", "#C9C8D2", "#F4F2EC", "#7BB13C", "#EFA23A", "#D8503A" }),
+        ("ardoise",   new[] { "#1B2027", "#2C333D", "#CBD3DE", "#EEF2F6", "#5FB39A", "#E0A94E", "#E06B5A" }),
+        ("ambre",     new[] { "#1E1712", "#33271C", "#EAD9B8", "#F6ECD9", "#E4B24A", "#E07E3C", "#D24A3A" }),
+        ("graphite",  new[] { "#121314", "#26282B", "#C4C7CC", "#F2F3F5", "#6DBE45", "#F0A830", "#E04B3C" }),
+        ("marine",    new[] { "#0F1A2A", "#1E2D44", "#B9C9DE", "#EAF0F7", "#5DBB7A", "#F2B544", "#E25C4F" }),
+        ("nord",      new[] { "#2E3440", "#3B4252", "#D8DEE9", "#ECEFF4", "#A3BE8C", "#EBCB8B", "#BF616A" }),
+        ("foret",     new[] { "#2D353B", "#3A454A", "#A6B0A0", "#D3C6AA", "#A7C080", "#DBBC7F", "#E67E80" }),
+        ("moka",      new[] { "#1E1E2E", "#313244", "#BAC2DE", "#CDD6F4", "#A6E3A1", "#FAB387", "#F38BA8" }),
+        ("roseraie",  new[] { "#191724", "#26233A", "#B3AECC", "#E0DEF4", "#9CCFD8", "#F6C177", "#EB6F92" }),
+        ("sauge",     new[] { "#262B28", "#343B37", "#AEB8B0", "#DCE3DD", "#8FB996", "#D9C27E", "#D08A7E" }),
+        ("lavande",   new[] { "#22202C", "#302D3D", "#C3BCD9", "#E6E2F2", "#9FCFB0", "#E8C88E", "#E08E9E" }),
+        ("neon",      new[] { "#0E0A1F", "#241B3A", "#7DF9FF", "#E6E1FF", "#38E8C6", "#FFC23D", "#FF2E63" }),
+        ("aurore",    new[] { "#0E1726", "#1D2B44", "#BFE3FF", "#EAF2FF", "#4FD1C5", "#F0C36D", "#F2577A" }),
+        ("synthwave", new[] { "#140B24", "#2A1745", "#9AE6FF", "#F5EEFF", "#2BFF88", "#FFD000", "#FF2D55" }),
+        ("lave",      new[] { "#1A0E0A", "#33190F", "#FFC9A3", "#FFF1E6", "#7CFF4F", "#FFB000", "#FF3B1F" }),
+    };
+
+    /// <summary>THM-01/02 : 15 thèmes aux clés uniques, minuit par défaut, trois familles 6/5/4 avec la composition exacte du §5.1.</summary>
+    [Fact]
+    public void Catalogue_quinze_themes_trois_categories()
+    {
+        Assert.Equal(15, ThemeCatalog.All.Count);
+        Assert.Equal(15, ThemeCatalog.All.Select(t => t.Key).Distinct().Count());
         Assert.Equal("minuit", ThemeCatalog.Default.Key);
+
+        string[] Cles(CategorieTheme c) => ThemeCatalog.All.Where(t => t.Categorie == c).Select(t => t.Key).OrderBy(k => k).ToArray();
+        Assert.Equal(new[] { "foret", "lavande", "moka", "nord", "roseraie", "sauge" }, Cles(CategorieTheme.Pale));
+        Assert.Equal(new[] { "ambre", "ardoise", "graphite", "marine", "minuit" }, Cles(CategorieTheme.Classique));
+        Assert.Equal(new[] { "aurore", "lave", "neon", "synthwave" }, Cles(CategorieTheme.Vive));
+    }
+
+    /// <summary>Un thème déjà choisi reste choisi : les neuf clés historiques sont toujours résolues telles quelles.</summary>
+    [Fact]
+    public void Les_neuf_cles_existantes_restent_resolues()
+    {
+        foreach (var cle in new[] { "minuit", "ardoise", "nord", "neon", "aurore", "ambre", "moka", "roseraie", "foret" })
+            Assert.Equal(cle, ThemeCatalog.ByKey(cle).Key);
+    }
+
+    /// <summary>THM-02 : chaque thème a EXACTEMENT ses sept couleurs (dont Néon/Aurore à rampe corrigée).</summary>
+    [Fact]
+    public void Chaque_theme_a_exactement_sa_palette()
+    {
+        Assert.Equal(ThemeCatalog.All.Count, Palettes.Length);
+        foreach (var (cle, hex) in Palettes)
+        {
+            var t = ThemeCatalog.ByKey(cle);
+            Assert.Equal(cle, t.Key);
+            Assert.True(H(hex[0]) == Disque(t), $"{cle} : disque");
+            Assert.True(H(hex[1]) == t.Piste5h, $"{cle} : piste");
+            Assert.True(H(hex[2]) == t.TickVisible, $"{cle} : graduation");
+            Assert.True(H(hex[3]) == t.TextePrincipal, $"{cle} : texte");
+            Assert.True(H(hex[4]) == t.RampGreen, $"{cle} : vert");
+            Assert.True(H(hex[5]) == t.RampAmber, $"{cle} : ambre");
+            Assert.True(H(hex[6]) == t.RampRed, $"{cle} : rouge");
+        }
+    }
+
+    /// <summary>Valeurs de référence WCAG 2.x : blanc/noir = 21:1, #777777 sur blanc ≈ 4,48:1, rapport symétrique.</summary>
+    [Fact]
+    public void Contraste_wcag_de_reference()
+    {
+        Assert.InRange(ContrasteWcag.Ratio(Colors.White, Colors.Black), 20.999, 21.001);
+        Assert.InRange(ContrasteWcag.Ratio(H("#777777"), H("#FFFFFF")), 4.47, 4.49);
+        Color a = H("#D8503A"), b = H("#16151B");
+        Assert.Equal(ContrasteWcag.Ratio(a, b), ContrasteWcag.Ratio(b, a));
+    }
+
+    /// <summary>THM-03 : le gris « épuisé » se lit (≥ 3:1) contre le disque opaque, sur tout le catalogue. Comparaison
+    /// SANS arrondi préalable (Lave vaut 3,0027).</summary>
+    [Fact]
+    public void Le_gris_epuise_est_lisible_sur_tout_le_catalogue()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var ratio = ContrasteWcag.Ratio(t.Epuise, Disque(t));
+            Assert.True(ratio >= 3.0, $"thème {t.Key} : épuisé {t.Epuise} à {ratio:F4}:1 contre le disque (< 3:1)");
+        }
+    }
+
+    /// <summary>THM-03 : le gris épuisé est le PLUS PETIT mélange piste → graduation (t ≥ 0,18, pas 0,01) qui atteint 3:1.</summary>
+    [Fact]
+    public void Le_gris_epuise_est_le_plus_petit_melange_qui_suffit()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var d = Disque(t);
+            int p = Enumerable.Range(18, 83).FirstOrDefault(i => LerpTest(t.Piste5h, t.TickVisible, i / 100.0) == t.Epuise, -1);
+            Assert.True(p >= 18, $"thème {t.Key} : épuisé {t.Epuise} n'est pas un mélange piste → graduation au pas de 0,01");
+            if (p > 18)
+                Assert.True(ContrasteWcag.Ratio(LerpTest(t.Piste5h, t.TickVisible, (p - 1) / 100.0), d) < 3.0,
+                    $"thème {t.Key} : le pas {p - 1} suffisait déjà, l'épuisé n'est pas minimal");
+        }
+    }
+
+    /// <summary>Ancrages calculés dans 39-RESEARCH (C# reproduit) : minuit, Lave (cas limite), Forêt (t le plus haut).</summary>
+    [Fact]
+    public void Ancrage_minuit()
+    {
+        Assert.Equal(H("#FF63626C"), ThemeCatalog.Default.Epuise);
+        Assert.Equal(H("#FF7C5844"), ThemeCatalog.ByKey("lave").Epuise);
+        Assert.Equal(H("#FF758079"), ThemeCatalog.ByKey("foret").Epuise);
+    }
+
+    /// <summary>THM-03 : le rouge de fin de rampe est bien ROUGE (teinte 335°–20°) et lisible (≥ 3:1) sur tout le catalogue.</summary>
+    [Fact]
+    public void Le_rouge_de_rampe_est_rouge_et_lisible_sur_tout_le_catalogue()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var teinte = TeinteHsv(t.RampRed);
+            Assert.True(teinte >= 335 || teinte <= 20, $"thème {t.Key} : rouge {t.RampRed} en teinte {teinte:F1}° (hors 335°–20°)");
+            var ratio = ContrasteWcag.Ratio(t.RampRed, Disque(t));
+            Assert.True(ratio >= 3.0, $"thème {t.Key} : rouge à {ratio:F4}:1 contre le disque (< 3:1)");
+        }
+    }
+
+    /// <summary>THM-04 (fondations) : les pinceaux consommés par les cadrans et l'Historique existent dans les 15 thèmes,
+    /// gelés, aux dérivations attendues.</summary>
+    [Fact]
+    public void Les_nouveaux_tokens_existent_dans_tous_les_themes()
+    {
+        foreach (var t in ThemeCatalog.All)
+        {
+            var tokens = t.BrushTokens();
+            foreach (var cle in new[] { "TickReset", "Epuise", "CadranTuile", "CadranAttente", "PlaqueTexte", "PlaqueFilet", "PlaqueHachure" })
+                Assert.True(tokens.ContainsKey(cle), $"thème {t.Key} : token {cle} manquant");
+
+            Color Couleur(string cle)
+            {
+                var b = Assert.IsType<SolidColorBrush>(tokens[cle]);
+                Assert.True(b.IsFrozen, $"thème {t.Key} : {cle} non gelé");
+                return b.Color;
+            }
+
+            var d = Disque(t);
+            var plaque = Color.FromRgb((byte)(d.R * 0.5), (byte)(d.G * 0.5), (byte)(d.B * 0.5));
+            Assert.Equal(t.TextePrincipal, Couleur("TickReset"));
+            Assert.Equal(t.Epuise, Couleur("Epuise"));
+            Assert.Equal(LerpTest(d, t.Piste5h, 0.5), Couleur("CadranTuile"));
+            Assert.Equal(Color.FromArgb(0x6E, t.TickVisible.R, t.TickVisible.G, t.TickVisible.B), Couleur("CadranAttente"));
+            Assert.Equal(plaque, Couleur("PlaqueTexte"));
+            Assert.Equal(Color.FromArgb(0x33, plaque.R, plaque.G, plaque.B), Couleur("PlaqueFilet"));
+            var hachure = Assert.IsType<DrawingBrush>(tokens["PlaqueHachure"]);
+            Assert.True(hachure.IsFrozen, $"thème {t.Key} : PlaqueHachure non gelé");
+        }
+    }
+
+    /// <summary>Ancrage des nouveaux tokens pour minuit (valeurs du tableau « Tokens à ajouter » de 39-RESEARCH).</summary>
+    [Fact]
+    public void Ancrage_tokens_minuit()
+    {
+        var tokens = ThemeCatalog.Default.BrushTokens();
+        Color C(string cle) => ((SolidColorBrush)tokens[cle]).Color;
+        Assert.Equal(H("#FFF4F2EC"), C("TickReset"));
+        Assert.Equal(H("#FF201F26"), C("CadranTuile"));
+        Assert.Equal(H("#6EC9C8D2"), C("CadranAttente"));
+        Assert.Equal(H("#FF0B0A0D"), C("PlaqueTexte"));
+        Assert.Equal(H("#330B0A0D"), C("PlaqueFilet"));
+    }
+
+    /// <summary>Les replis statiques de DesignTokens.xaml valent exactement les tokens de minuit (thème par défaut) :
+    /// une vue chargée avant l'application du thème ne flashe pas une autre couleur.</summary>
+    [WpfFact]
+    public void Les_replis_statiques_valent_minuit()
+    {
+        var dict = (ResourceDictionary)Application.LoadComponent(
+            new Uri("/Chronos;component/Resources/DesignTokens.xaml", UriKind.Relative));
+        var tokens = ThemeCatalog.Default.BrushTokens();
+        foreach (var cle in new[] { "TickReset", "Epuise", "CadranTuile", "CadranAttente", "PlaqueTexte", "PlaqueFilet" })
+        {
+            var repli = Assert.IsType<SolidColorBrush>(dict[cle]);
+            Assert.True(((SolidColorBrush)tokens[cle]).Color == repli.Color, $"repli {cle} : {repli.Color} ≠ minuit");
+        }
+        Assert.IsType<DrawingBrush>(dict["PlaqueHachure"]);
     }
 
     [Fact]
@@ -43,15 +246,16 @@ public class ThemingTests
         Assert.Equal(0xE6, ThemeCatalog.ByKey("minuit").FondCadran.A);
     }
 
-    /// <summary>TOK-02 : le token « Alerte » de la pastille de déconnexion suit les 9 thèmes. Un thème
+    /// <summary>TOK-02 : le token « Alerte » de la pastille de déconnexion suit tous les thèmes. Un thème
     /// où il manquerait rendrait la pastille invisible (pinceau non résolu) précisément chez les
     /// utilisateurs qui n'ont pas gardé « minuit » — panne silencieuse d'un signal anti-silence.
     /// AMBRE et non rouge : le rouge signifie déjà « quota épuisé » dans la rampe d'usage.</summary>
     [Fact]
-    public void Le_token_Alerte_existe_dans_les_neuf_themes_et_vaut_l_ambre_du_theme()
+    public void Le_token_Alerte_existe_dans_tous_les_themes_et_vaut_l_ambre_du_theme()
     {
         foreach (var t in ThemeCatalog.All)
         {
+            Assert.NotEqual(t.RampAmber, t.RampRed);   // ambre ≠ rouge dans la rampe elle-même
             var tokens = t.BrushTokens();
             Assert.True(tokens.ContainsKey("Alerte"), $"thème {t.Key} : token Alerte manquant");
             Assert.Equal(t.RampAmber, ((SolidColorBrush)tokens["Alerte"]).Color);
@@ -119,7 +323,7 @@ public class ThemingTests
         win.Arrange(new Rect(0, 0, 1000, 1000));
 
         Assert.NotNull(win.Content);
-        Assert.Equal(9, vm.Themes.Count);                 // les 9 thèmes alimentent la grille
+        Assert.Equal(ThemeCatalog.All.Count, vm.Themes.Count);   // tous les thèmes alimentent la grille
         Assert.Contains(vm.Themes, t => t.IsSelected);    // un thème est sélectionné
     }
 }

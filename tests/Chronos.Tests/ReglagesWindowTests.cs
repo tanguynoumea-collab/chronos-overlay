@@ -8,6 +8,7 @@ using System.Windows.Shapes;
 using System.Windows.Shell;
 using Chronos.Services;
 using Chronos.Services.Historique;
+using Chronos.Theming;
 using Chronos.ViewModels;
 using Chronos.ViewModels.Historique;
 using Chronos.Views.Reglages;
@@ -232,7 +233,7 @@ public class ReglagesWindowTests
         var vignettes = Enumerable.Range(0, vm.Themes.Count)
             .Select(i => Descendants(grille.ItemContainerGenerator.ContainerFromIndex(i)).OfType<Button>().First())
             .ToList();
-        Assert.Equal(9, vignettes.Count);
+        Assert.Equal(ThemeCatalog.All.Count, vignettes.Count);
 
         var rects = vignettes.Select(v => v.TransformToAncestor(defilement).TransformBounds(new Rect(v.RenderSize))).ToList();
         foreach (var (v, r) in vignettes.Zip(rects))
