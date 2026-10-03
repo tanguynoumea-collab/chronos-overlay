@@ -20,21 +20,25 @@ public sealed class FlapRow : FrameworkElement
             new FrameworkPropertyMetadata(6, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty OnBrushProperty =
         DependencyProperty.Register(nameof(OnBrush), typeof(Brush), typeof(FlapRow),
-            new FrameworkPropertyMetadata(Frozen(0xF4, 0xF2, 0xEC), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty OffBrushProperty =
         DependencyProperty.Register(nameof(OffBrush), typeof(Brush), typeof(FlapRow),
-            new FrameworkPropertyMetadata(Frozen(0x2A, 0x26, 0x34), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty HasDataProperty =
         DependencyProperty.Register(nameof(HasData), typeof(bool), typeof(FlapRow),
             new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    private static readonly Brush WaitFill = FrozenA(0x6E, 0xB0, 0xAE, 0xBA);
+    // Pinceau de l'état « en attente » (temps de reset inconnu) — fourni par le thème (CadranAttente).
+    public static readonly DependencyProperty WaitBrushProperty =
+        DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(FlapRow),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public double Fraction { get => (double)GetValue(FractionProperty); set => SetValue(FractionProperty, value); }
     public int    Count    { get => (int)GetValue(CountProperty);       set => SetValue(CountProperty, value); }
-    public Brush  OnBrush  { get => (Brush)GetValue(OnBrushProperty);    set => SetValue(OnBrushProperty, value); }
-    public Brush  OffBrush { get => (Brush)GetValue(OffBrushProperty);   set => SetValue(OffBrushProperty, value); }
+    public Brush? OnBrush  { get => (Brush?)GetValue(OnBrushProperty);    set => SetValue(OnBrushProperty, value); }
+    public Brush? OffBrush { get => (Brush?)GetValue(OffBrushProperty);   set => SetValue(OffBrushProperty, value); }
     public bool   HasData  { get => (bool)GetValue(HasDataProperty);     set => SetValue(HasDataProperty, value); }
+    public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -53,14 +57,8 @@ public sealed class FlapRow : FrameworkElement
         {
             double x = i * (fw + gap);
             // EN ATTENTE : volets neutres (ni allumés ni éteints) → jamais un rang vide.
-            var brush = !HasData ? WaitFill : (i < lit ? OnBrush : OffBrush);
+            var brush = !HasData ? WaitBrush : (i < lit ? OnBrush : OffBrush);
             dc.DrawRoundedRectangle(brush, null, new Rect(x, 0, fw, h), 2, 2);
         }
     }
-
-    private static SolidColorBrush Frozen(byte r, byte g, byte b)
-    { var s = new SolidColorBrush(Color.FromRgb(r, g, b)); s.Freeze(); return s; }
-
-    private static SolidColorBrush FrozenA(byte a, byte r, byte g, byte b)
-    { var s = new SolidColorBrush(Color.FromArgb(a, r, g, b)); s.Freeze(); return s; }
 }

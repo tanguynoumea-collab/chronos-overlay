@@ -21,13 +21,13 @@ public sealed class FuseBar : FrameworkElement
             new FrameworkPropertyMetadata(10d, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty QuotaBrushProperty =
         DependencyProperty.Register(nameof(QuotaBrush), typeof(Brush), typeof(FuseBar),
-            new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty TrackBrushProperty =
         DependencyProperty.Register(nameof(TrackBrush), typeof(Brush), typeof(FuseBar),
-            new FrameworkPropertyMetadata(Frozen(0x1D, 0x19, 0x26), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty NotchBrushProperty =
         DependencyProperty.Register(nameof(NotchBrush), typeof(Brush), typeof(FuseBar),
-            new FrameworkPropertyMetadata(Frozen(0xF4, 0xF2, 0xEC), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty EstimatedProperty =
         DependencyProperty.Register(nameof(Estimated), typeof(bool), typeof(FuseBar),
             new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -35,15 +35,19 @@ public sealed class FuseBar : FrameworkElement
         DependencyProperty.Register(nameof(HasData), typeof(bool), typeof(FuseBar),
             new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    private static readonly Brush WaitFill = FrozenA(0x6E, 0xB0, 0xAE, 0xBA);
+    // Pinceau de l'état « en attente » (temps de reset inconnu) — fourni par le thème (CadranAttente).
+    public static readonly DependencyProperty WaitBrushProperty =
+        DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(FuseBar),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public double Fraction      { get => (double)GetValue(FractionProperty);      set => SetValue(FractionProperty, value); }
     public double CordThickness { get => (double)GetValue(CordThicknessProperty); set => SetValue(CordThicknessProperty, value); }
-    public Brush  QuotaBrush    { get => (Brush)GetValue(QuotaBrushProperty);     set => SetValue(QuotaBrushProperty, value); }
-    public Brush  TrackBrush    { get => (Brush)GetValue(TrackBrushProperty);     set => SetValue(TrackBrushProperty, value); }
-    public Brush  NotchBrush    { get => (Brush)GetValue(NotchBrushProperty);     set => SetValue(NotchBrushProperty, value); }
+    public Brush? QuotaBrush    { get => (Brush?)GetValue(QuotaBrushProperty);     set => SetValue(QuotaBrushProperty, value); }
+    public Brush? TrackBrush    { get => (Brush?)GetValue(TrackBrushProperty);     set => SetValue(TrackBrushProperty, value); }
+    public Brush? NotchBrush    { get => (Brush?)GetValue(NotchBrushProperty);     set => SetValue(NotchBrushProperty, value); }
     public bool   Estimated     { get => (bool)GetValue(EstimatedProperty);       set => SetValue(EstimatedProperty, value); }
     public bool   HasData       { get => (bool)GetValue(HasDataProperty);         set => SetValue(HasDataProperty, value); }
+    public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -59,12 +63,12 @@ public sealed class FuseBar : FrameworkElement
         // EN ATTENTE : pas de temps de reset → cordon neutre pleine longueur (fin), jamais un sillon vide.
         if (!HasData)
         {
-            dc.DrawRoundedRectangle(WaitFill, null, new Rect(x0, cy - th * 0.3, Math.Max(0, x1 - x0), th * 0.6), th * 0.3, th * 0.3);
+            dc.DrawRoundedRectangle(WaitBrush, null, new Rect(x0, cy - th * 0.3, Math.Max(0, x1 - x0), th * 0.6), th * 0.3, th * 0.3);
             return;
         }
 
         double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
-        var quota = QuotaBrush ?? Brushes.Gray;
+        var quota = QuotaBrush;
 
         double fx = x1 - (x1 - x0) * frac;                              // front de combustion
         var cord = new Rect(fx, cy - th / 2, Math.Max(0, x1 - fx), th); // cordon restant (droite)
@@ -87,7 +91,7 @@ public sealed class FuseBar : FrameworkElement
         dc.DrawLine(notch, new Point(fx, cy - th / 2 - 4), new Point(fx, cy + th / 2 + 4));
     }
 
-    private static Brush WithAlpha(Brush b, double f)
+    private static Brush? WithAlpha(Brush? b, double f)
     {
         if (b is SolidColorBrush s)
         {
@@ -98,10 +102,4 @@ public sealed class FuseBar : FrameworkElement
         }
         return b;
     }
-
-    private static SolidColorBrush Frozen(byte r, byte g, byte b)
-    { var s = new SolidColorBrush(Color.FromRgb(r, g, b)); s.Freeze(); return s; }
-
-    private static SolidColorBrush FrozenA(byte a, byte r, byte g, byte b)
-    { var s = new SolidColorBrush(Color.FromArgb(a, r, g, b)); s.Freeze(); return s; }
 }

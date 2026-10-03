@@ -27,10 +27,10 @@ public sealed class EmberRingControl : FrameworkElement
             new FrameworkPropertyMetadata(4d, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty QuotaBrushProperty =
         DependencyProperty.Register(nameof(QuotaBrush), typeof(Brush), typeof(EmberRingControl),
-            new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty AshBrushProperty =
         DependencyProperty.Register(nameof(AshBrush), typeof(Brush), typeof(EmberRingControl),
-            new FrameworkPropertyMetadata(Frozen(0x46, 0x44, 0x4F), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty EstimatedProperty =
         DependencyProperty.Register(nameof(Estimated), typeof(bool), typeof(EmberRingControl),
             new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -39,16 +39,20 @@ public sealed class EmberRingControl : FrameworkElement
         DependencyProperty.Register(nameof(HasData), typeof(bool), typeof(EmberRingControl),
             new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    private static readonly Brush WaitFill = FrozenA(0x6E, 0xB0, 0xAE, 0xBA);   // neutre translucide, visible sur tout fond
+    // Pinceau de l'état « en attente » (temps de reset inconnu) — fourni par le thème (CadranAttente).
+    public static readonly DependencyProperty WaitBrushProperty =
+        DependencyProperty.Register(nameof(WaitBrush), typeof(Brush), typeof(EmberRingControl),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public double Fraction  { get => (double)GetValue(FractionProperty);  set => SetValue(FractionProperty, value); }
     public int    Count     { get => (int)GetValue(CountProperty);        set => SetValue(CountProperty, value); }
     public double Radius    { get => (double)GetValue(RadiusProperty);    set => SetValue(RadiusProperty, value); }
     public double PipRadius { get => (double)GetValue(PipRadiusProperty); set => SetValue(PipRadiusProperty, value); }
-    public Brush  QuotaBrush { get => (Brush)GetValue(QuotaBrushProperty); set => SetValue(QuotaBrushProperty, value); }
-    public Brush  AshBrush   { get => (Brush)GetValue(AshBrushProperty);   set => SetValue(AshBrushProperty, value); }
+    public Brush? QuotaBrush { get => (Brush?)GetValue(QuotaBrushProperty); set => SetValue(QuotaBrushProperty, value); }
+    public Brush? AshBrush   { get => (Brush?)GetValue(AshBrushProperty);   set => SetValue(AshBrushProperty, value); }
     public bool   Estimated  { get => (bool)GetValue(EstimatedProperty);   set => SetValue(EstimatedProperty, value); }
     public bool   HasData    { get => (bool)GetValue(HasDataProperty);     set => SetValue(HasDataProperty, value); }
+    public Brush? WaitBrush { get => (Brush?)GetValue(WaitBrushProperty); set => SetValue(WaitBrushProperty, value); }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -63,15 +67,15 @@ public sealed class EmberRingControl : FrameworkElement
             {
                 double aw = i * 360.0 / n * Math.PI / 180.0;
                 var pw = new Point(center.X + Radius * Math.Sin(aw), center.Y - Radius * Math.Cos(aw));
-                dc.DrawEllipse(WaitFill, null, pw, PipRadius * 0.7, PipRadius * 0.7);
+                dc.DrawEllipse(WaitBrush, null, pw, PipRadius * 0.7, PipRadius * 0.7);
             }
             return;
         }
 
         double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
         int lit = (int)Math.Round(frac * n, MidpointRounding.AwayFromZero);
-        var quota = QuotaBrush ?? Brushes.Gray;
-        var ash = AshBrush ?? Brushes.DimGray;
+        var quota = QuotaBrush;
+        var ash = AshBrush;
 
         Pen? estPen = null;
         if (Estimated) { estPen = new Pen(quota, 1.4) { DashStyle = new DashStyle(new double[] { 1.4, 1.4 }, 0) }; estPen.Freeze(); }
@@ -97,7 +101,7 @@ public sealed class EmberRingControl : FrameworkElement
         }
     }
 
-    private static Brush WithAlpha(Brush b, double f)
+    private static Brush? WithAlpha(Brush? b, double f)
     {
         if (b is SolidColorBrush s)
         {
@@ -108,10 +112,4 @@ public sealed class EmberRingControl : FrameworkElement
         }
         return b;
     }
-
-    private static SolidColorBrush Frozen(byte r, byte g, byte b)
-    { var s = new SolidColorBrush(Color.FromRgb(r, g, b)); s.Freeze(); return s; }
-
-    private static SolidColorBrush FrozenA(byte a, byte r, byte g, byte b)
-    { var s = new SolidColorBrush(Color.FromArgb(a, r, g, b)); s.Freeze(); return s; }
 }
