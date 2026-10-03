@@ -8,8 +8,10 @@ using System.Windows.Threading;
 using Chronos.Controls.Historique;
 using Chronos.Models.Historique;
 using Chronos.Models.Historique.Tokens;
+using Chronos.Placement;
 using Chronos.Services;
 using Chronos.Services.Historique;
+using Chronos.Text;
 using Chronos.ViewModels.Historique;
 using Chronos.Views.Historique;
 using Xunit;
@@ -113,17 +115,194 @@ public class HistoriqueBindingTests
         Assert.Equal(WindowStartupLocation.CenterScreen, fenetre.WindowStartupLocation);
     }
 
+    /// <summary>HIS-11 — Échap passe par la décision à deux niveaux, F11 bascule ; le bouton ✕ ferme toujours directement.</summary>
     [WpfFact]
-    public void Echap_est_lie_a_la_commande_de_fermeture_et_la_commande_ferme()
+    public void Echap_et_F11_sont_lies_aux_commandes_du_plein_ecran()
     {
-        var (fenetre, vm, _, _) = Monter();
+        var (fenetre, vm, racine, _) = Monter();
 
         var echap = Assert.Single(fenetre.InputBindings.OfType<KeyBinding>(), k => k.Key == Key.Escape);
-        Assert.Same(vm.FermerCommand, echap.Command);
+        Assert.Same(vm.EchapCommand, echap.Command);
+        var f11 = Assert.Single(fenetre.InputBindings.OfType<KeyBinding>(), k => k.Key == Key.F11);
+        Assert.Equal(ModifierKeys.None, f11.Modifiers);
+        Assert.Same(vm.BasculerPleinEcranCommand, f11.Command);
+        Assert.Same(vm.FermerCommand, Bouton(racine, "✕").Command);
 
-        // La fenêtre n'a jamais été montrée : le code-behind compte la demande et n'appelle Close() que si IsLoaded.
-        vm.FermerCommand.Execute(null);
+        // Hors plein écran, Échap ferme. La fenêtre n'a jamais été montrée : le code-behind compte la demande et n'appelle Close() que si IsLoaded.
+        vm.EchapCommand.Execute(null);
         Assert.Equal(1, fenetre.DemandesDeFermeture);
+    }
+
+    // ------------------------------------------------------------------ Plein écran (HIS-10 / HIS-11)
+
+    /// <summary>Met la racine en page à la taille donnée (deux passes : les DynamicResource basculées invalident la mesure).</summary>
+    private static void MettreEnPage(FrameworkElement racine, double largeur, double hauteur)
+    {
+        Idle(racine);
+        racine.Measure(new Size(largeur, hauteur));
+        racine.Arrange(new Rect(0, 0, largeur, hauteur));
+        racine.UpdateLayout();
+    }
+
+    private static void ChoisirVue(HistoriqueViewModel vm, FrameworkElement racine, VueHistorique vue, double largeur, double hauteur)
+    {
+        vm.ChoisirVueCommand.Execute(vue);
+        vm.AttendreLecture().GetAwaiter().GetResult();
+        MettreEnPage(racine, largeur, hauteur);
+    }
+
+    private static readonly RectangleEcran MoniteurInjecte = new(0, 0, 1536, 864);
+
+    [WpfFact]
+    public void Le_bouton_plein_ecran_est_visible_dans_les_trois_vues_avec_le_bon_libelle()
+    {
+        var (fenetre, vm, racine, _) = Monter();
+        fenetre.FournisseurBornesMoniteur = () => MoniteurInjecte;
+
+        foreach (var vue in new[] { VueHistorique.Semaine, VueHistorique.Jour, VueHistorique.QuatreSemaines })
+        {
+            ChoisirVue(vm, racine, vue, 920, 610);
+            var bouton = Bouton(racine, TextesHistorique.BoutonPleinEcran);
+            Assert.Same(vm.BasculerPleinEcranCommand, bouton.Command);
+            Assert.True(VisibleDans(bouton, racine), $"le bouton « ⛶ Plein écran » doit être visible en vue {vue}");
+            Assert.True(bouton.IsVisible || bouton.Visibility == Visibility.Visible);
+        }
+
+        vm.BasculerPleinEcranCommand.Execute(null);
+        MettreEnPage(racine, 1536, 864);
+        var quitter = Assert.IsType<Button>(fenetre.FindName("BoutonPleinEcran"));
+        Assert.Equal(TextesHistorique.BoutonQuitterPleinEcran, quitter.Content);
+        Assert.True(VisibleDans(quitter, racine), "en plein écran, le bouton de sortie reste visible dans l'en-tête");
+        Assert.Same(quitter, Bouton(racine, "⤢ Quitter le plein écran · Échap"));
+    }
+
+    [WpfFact]
+    public void Le_plein_ecran_couvre_le_moniteur_et_la_sortie_restaure_la_geometrie()
+    {
+        var reglages = new ReglagesHistoriqueMemoire(new ChronosSettings { HistoriqueX = 100, HistoriqueY = 50, HistoriqueWidth = 900, HistoriqueHeight = 600 });
+        var (fenetre, vm, _, _) = Monter(reglages: reglages);
+        fenetre.FournisseurBornesMoniteur = () => MoniteurInjecte;
+        var avant = (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height);
+        Assert.Equal((100d, 50d, 900d, 600d), avant);
+
+        vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.True(vm.EstPleinEcran);
+        Assert.True(fenetre.EstEnPleinEcran);
+        Assert.Equal((0d, 0d, 1536d, 864d), (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height));
+        Assert.Equal(ResizeMode.NoResize, fenetre.ResizeMode);
+        Assert.Equal(WindowState.Normal, fenetre.WindowState);   // posée à la main, jamais maximisée
+
+        // Pitfall 8 : la géométrie persistée reste celle du mode normal.
+        fenetre.EnregistrerGeometrie();
+        Assert.Equal(100, reglages.Courant.HistoriqueX);
+        Assert.Equal(50, reglages.Courant.HistoriqueY);
+        Assert.Equal(900, reglages.Courant.HistoriqueWidth);
+        Assert.Equal(600, reglages.Courant.HistoriqueHeight);
+
+        // Premier Échap : quitte le plein écran sans fermer, géométrie d'avant retrouvée.
+        vm.EchapCommand.Execute(null);
+        Assert.False(vm.EstPleinEcran);
+        Assert.False(fenetre.EstEnPleinEcran);
+        Assert.Equal(0, fenetre.DemandesDeFermeture);
+        Assert.Equal(avant, (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height));
+        Assert.Equal(ResizeMode.CanResize, fenetre.ResizeMode);
+
+        // Second Échap : ferme.
+        vm.EchapCommand.Execute(null);
+        Assert.Equal(1, fenetre.DemandesDeFermeture);
+    }
+
+    [WpfFact]
+    public void F11_bascule_et_rebascule_sur_la_meme_geometrie()
+    {
+        var reglages = new ReglagesHistoriqueMemoire(new ChronosSettings { HistoriqueX = 100, HistoriqueY = 50, HistoriqueWidth = 900, HistoriqueHeight = 600 });
+        var (fenetre, vm, _, _) = Monter(reglages: reglages);
+        fenetre.FournisseurBornesMoniteur = () => MoniteurInjecte;
+        var avant = (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height);
+
+        vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.Equal((0d, 0d, 1536d, 864d), (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height));
+        vm.BasculerPleinEcranCommand.Execute(null);
+
+        Assert.False(vm.EstPleinEcran);
+        Assert.False(fenetre.EstEnPleinEcran);
+        Assert.Equal(avant, (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height));
+        Assert.Equal(ResizeMode.CanResize, fenetre.ResizeMode);
+        Assert.Equal(0, fenetre.DemandesDeFermeture);
+    }
+
+    [WpfFact]
+    public void Sans_moniteur_lisible_la_bascule_est_annulee_sans_exception()
+    {
+        var (fenetre, vm, racine, _) = Monter();
+        fenetre.FournisseurBornesMoniteur = () => null;
+        var avant = (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height);
+
+        var erreur = Record.Exception(() => vm.BasculerPleinEcranCommand.Execute(null));
+
+        Assert.Null(erreur);
+        Assert.False(vm.EstPleinEcran);
+        Assert.False(fenetre.EstEnPleinEcran);
+        Assert.Equal(avant, (fenetre.Left, fenetre.Top, fenetre.Width, fenetre.Height));
+        Assert.Equal(ResizeMode.CanResize, fenetre.ResizeMode);
+        Idle(racine);
+        Assert.Equal(TextesHistorique.BoutonPleinEcran, Assert.IsType<Button>(fenetre.FindName("BoutonPleinEcran")).Content);
+    }
+
+    [WpfFact]
+    public void Le_dictionnaire_plein_ecran_atteint_la_fenetre_et_les_trois_vues()
+    {
+        var (fenetre, vm, racine, _) = Monter();
+        fenetre.FournisseurBornesMoniteur = () => MoniteurInjecte;
+        var enTete = Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName("EnTete"));
+        Assert.Equal(92, enTete.Height);
+
+        vm.BasculerPleinEcranCommand.Execute(null);
+        MettreEnPage(racine, 1536, 864);
+        Assert.Equal(124, enTete.Height);   // écart consigné au plan 03 (contrat : 92 inchangé)
+        Assert.Equal(18, Bouton(racine, "‹").FontSize);
+        VerifierLibelleNiveau(fenetre, vm, racine, 12, 1536, 864);
+
+        vm.BasculerPleinEcranCommand.Execute(null);
+        MettreEnPage(racine, 920, 610);
+        Assert.Equal(92, enTete.Height);
+        Assert.Equal(14, Bouton(racine, "‹").FontSize);
+        VerifierLibelleNiveau(fenetre, vm, racine, 9, 920, 610);
+        Assert.Single(fenetre.Resources.MergedDictionaries);   // seul DesignTokens.xaml reste : les instances ajoutées sont retirées
+    }
+
+    /// <summary>Dans chacune des trois vues, les libellés « NIVEAU » visibles ont la taille attendue (le dictionnaire est fusionné dans la vue).</summary>
+    private static void VerifierLibelleNiveau(HistoriqueWindow fenetre, HistoriqueViewModel vm, FrameworkElement racine, double taille,
+                                              double largeur, double hauteur)
+    {
+        foreach (var (vue, nom) in new[] { (VueHistorique.Semaine, "VueSemaine"), (VueHistorique.Jour, "VueJour"),
+                                           (VueHistorique.QuatreSemaines, "VueQuatreSemaines") })
+        {
+            ChoisirVue(vm, racine, vue, largeur, hauteur);
+            var hote = Assert.IsAssignableFrom<FrameworkElement>(fenetre.FindName(nom));
+            var libelles = Tous<TextBlock>(hote).Where(t => t.Text == TextesHistorique.PisteNiveau && VisibleDans(t, hote)).ToList();
+            Assert.True(libelles.Count > 0, $"vue {nom} : aucun libellé « NIVEAU » visible");
+            Assert.All(libelles, t => Assert.Equal(taille, t.FontSize));
+        }
+        ChoisirVue(vm, racine, VueHistorique.Semaine, largeur, hauteur);
+    }
+
+    [WpfFact]
+    public void Une_fenetre_rouverte_est_toujours_en_mode_normal()
+    {
+        var (premiere, vm, _, _) = Monter();
+        premiere.FournisseurBornesMoniteur = () => MoniteurInjecte;
+        vm.BasculerPleinEcranCommand.Execute(null);
+        Assert.True(vm.EstPleinEcran);   // le VM singleton survit à la fenêtre : il reste à vrai si rien ne le remet à faux
+
+        var seconde = new HistoriqueWindow(vm);
+
+        Assert.False(vm.EstPleinEcran);
+        Assert.False(seconde.EstEnPleinEcran);
+        Assert.Equal(ResizeMode.CanResize, seconde.ResizeMode);
+        Assert.Equal(920, seconde.Width);
+        Assert.Equal(610, seconde.Height);
+        Assert.Single(seconde.Resources.MergedDictionaries);
     }
 
     // ------------------------------------------------------------------ En-tête §2.1

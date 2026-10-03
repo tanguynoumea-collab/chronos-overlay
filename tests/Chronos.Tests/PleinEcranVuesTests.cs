@@ -467,8 +467,8 @@ public class PleinEcranVuesTests
 
     // ------------------------------------------------------------------ Garde textuelle (Pitfall 3)
 
-    /// <summary>Vues de l'Historique déjà converties au plein écran (les plans 04 et 06 étendent la liste).</summary>
-    private static readonly string[] VuesConverties = { "VueSemaineView.xaml", "VueJourView.xaml", "VueQuatreSemainesView.xaml" };
+    /// <summary>Vues de l'Historique converties au plein écran, et la fenêtre qui les héberge (en-tête, 38-06).</summary>
+    private static readonly string[] VuesConverties = { "VueSemaineView.xaml", "VueJourView.xaml", "VueQuatreSemainesView.xaml", "HistoriqueWindow.xaml" };
 
     /// <summary>Une <c>StaticResource</c> sur une clé échelonnée est résolue une fois au chargement : elle ne bascule JAMAIS, sans erreur.</summary>
     [Fact]
