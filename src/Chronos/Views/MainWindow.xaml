@@ -5,13 +5,16 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize" SizeToContent="Manual"
-        Width="170" Height="170" WindowStartupLocation="Manual">
+        Width="{Binding LargeurCadran, Mode=OneWay}" Height="{Binding HauteurCadran, Mode=OneWay}" WindowStartupLocation="Manual">
     <!-- Cadran complet (Pattern 6 : empilement du fond vers le premier plan).
          Aucune Storyboard/blur/shadow : AllowsTransparency force le rendu logiciel.
-         Aucun code-behind : uniquement des bindings + converters. Centre = 85,85 (Grid 170×170).
+         Aucun code-behind : uniquement des bindings + converters.
          Refonte visuelle : le style est sélectionnable (Anneaux / Braises / Fusible / Marée / Volets),
-         un seul groupe visible à la fois (IsStyleX). Les 4 nouvelles pistes réutilisent FiveHour/SevenDay
-         et sont mises à l'échelle par un Viewbox pour tenir dans l'empreinte 170×170. -->
+         un seul groupe visible à la fois (IsStyleX).
+         Phase 40 (CAD-01 / CAD-04) : plus aucun Viewbox. Chaque cadran est à l'échelle 1 et la fenêtre prend
+         l'EMPREINTE du style et de l'orientation courants (LargeurCadran / HauteurCadran du VM, miroir
+         d'EmpreinteCadran) : 170×170 pour Anneaux et Braises, rectangle propre pour Fusible, Marée, Volets.
+         Le centre est le milieu de l'empreinte. -->
     <Window.Resources>
         <!-- Tokens de design + converters, au niveau fenêtre : la vue est autonome (les StaticResource
              résolvent sans dépendre d'une Application démarrée). Source unique : Resources/DesignTokens.xaml. -->
@@ -26,24 +29,14 @@
         <cadv:CadranArcsView x:Name="VueArcs" Visibility="{Binding IsStyleArcs, Converter={StaticResource BoolToVis}}"/>
 
         <!-- ===================== NOUVELLES PISTES (refonte visuelle) =====================
-             Chacune réutilise FiveHour/SevenDay et est mise à l'échelle par un Viewbox pour tenir dans
-             l'empreinte 170×170 sans changer la taille de la fenêtre (ancrage/placement préservés). -->
-        <Viewbox Stretch="Uniform" Margin="4"
-                 Visibility="{Binding IsStyleBraises, Converter={StaticResource BoolToVis}}">
-            <cadv:CadranBraisesView/>
-        </Viewbox>
-        <Viewbox Stretch="Uniform" Margin="6"
-                 Visibility="{Binding IsStyleFusible, Converter={StaticResource BoolToVis}}">
-            <cadv:CadranFusibleView/>
-        </Viewbox>
-        <Viewbox Stretch="Uniform" Margin="6"
-                 Visibility="{Binding IsStyleMaree, Converter={StaticResource BoolToVis}}">
-            <cadv:CadranMareeView/>
-        </Viewbox>
-        <Viewbox Stretch="Uniform" Margin="6"
-                 Visibility="{Binding IsStyleVolets, Converter={StaticResource BoolToVis}}">
-            <cadv:CadranVoletsView/>
-        </Viewbox>
+             Chacune réutilise FiveHour/SevenDay. Phase 40 : échelle 1, enfants directs du Grid racine ; la
+             fenêtre prend l'empreinte du cadran visible. Les trois cadrans rectangulaires reçoivent
+             l'orientation MÉMORISÉE PAR CADRAN du VM (OrientationFusible / Maree / Volets), sans lien avec
+             la disposition du widget de sessions. -->
+        <cadv:CadranBraisesView Visibility="{Binding IsStyleBraises, Converter={StaticResource BoolToVis}}"/>
+        <cadv:CadranFusibleView Orientation="{Binding OrientationFusible}" Visibility="{Binding IsStyleFusible, Converter={StaticResource BoolToVis}}"/>
+        <cadv:CadranMareeView Orientation="{Binding OrientationMaree}" Visibility="{Binding IsStyleMaree, Converter={StaticResource BoolToVis}}"/>
+        <cadv:CadranVoletsView Orientation="{Binding OrientationVolets}" Visibility="{Binding IsStyleVolets, Converter={StaticResource BoolToVis}}"/>
 
         <!-- Zone de CLIC au centre PARTAGÉE par tous les styles (transparente, au-dessus de tout) :
              bascule %/temps. MouseLeftButtonDown marqué Handled (code-behind) → n'entraîne PAS le DragMove
@@ -64,12 +57,31 @@
              de la rangée de pastilles, quelle que soit la taille de celle-ci — un mot centré en bas
              entrerait en collision avec la rangée dès trois pastilles.
              IsHitTestVisible=False : le clic continue d'atteindre CentreHit, donc la bascule
-             pourcentage / temps fonctionne même quand il n'y a rien à afficher. -->
+             pourcentage / temps fonctionne même quand il n'y a rien à afficher.
+             Phase 40 : pour Fusible, Marée et Volets (déclencheur ci-dessous), le mot est CENTRÉ dans
+             l'empreinte (aucun anneau à éviter, et le bas-gauche d'une empreinte rectangulaire basse serait
+             trop près de la rangée) ; Anneaux et Braises gardent le bas-gauche. Alignements et marge passent
+             par le style : une valeur locale battrait le déclencheur. -->
         <TextBlock x:Name="MotIndisponible" Text="indisponible"
-                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,6"
                    FontSize="10.5" IsHitTestVisible="False"
                    Foreground="{DynamicResource TexteSecondaire}"
-                   Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}"/>
+                   Visibility="{Binding DataUnavailable, Converter={StaticResource BoolToVis}}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                    <Setter Property="VerticalAlignment" Value="Bottom"/>
+                    <Setter Property="Margin" Value="8,0,0,6"/>
+                    <Style.Triggers>
+                        <!-- Phase 40 (décision orchestrateur) : centré dans l'empreinte des cadrans rectangulaires ; Arcs/Braises inchangés (EXA-03). -->
+                        <DataTrigger Binding="{Binding MotIndisponibleAuCentre}" Value="True">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="0"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
 
         <!-- ============ RANGÉE DE PASTILLES (TOK-02 / TOK-03 / EXA-05 / EXA-03) ============
              DERNIERS enfants du Grid racine => au-dessus de TOUS les styles de cadran : uniques pour
