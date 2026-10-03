@@ -77,14 +77,12 @@ public class CompositionRootTests
         services.AddSingleton<SettingsService>();
         services.AddSingleton<OverlayController>();
 
-        // 06-04 : le ctor de MainViewModel dépend de IWindowController + IAutostartService +
-        // IRecalibrationPrompt (menu contextuel). On câble le controller réel (déjà résolu),
-        // un autostart pointant sur un dossier temp (aucune pollution de shell:startup) et un
-        // prompt neutre programmé (aucun dialogue WPF ouvert en test).
+        // 06-04 : le ctor de MainViewModel dépend de IWindowController + IAutostartService
+        // (menu contextuel). On câble le controller réel (déjà résolu) et un autostart pointant
+        // sur un dossier temp (aucune pollution de shell:startup).
         services.AddSingleton<IWindowController>(sp => sp.GetRequiredService<OverlayController>());
         services.AddSingleton<IAutostartService>(_ =>
             new AutostartService(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ChronosStartup_" + System.Guid.NewGuid().ToString("N"))));
-        services.AddSingleton<IRecalibrationPrompt>(_ => new FakeRecalibrationPrompt());
 
         // v1.4 : le ctor de MainViewModel dépend désormais aussi de DiagnosticService (menu « Diagnostic… »).
         services.AddSingleton(sp => new DiagnosticService(

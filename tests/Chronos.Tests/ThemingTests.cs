@@ -110,8 +110,7 @@ public class ThemingTests
         var orch = new RefreshOrchestrator(provider, TempPaths(), new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
         var clock = new FakeClock(new DateTimeOffset(2026, 7, 8, 12, 0, 0, TimeSpan.Zero));
         var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
-            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            settings,
+            new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(TempPaths(), settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
 

@@ -111,7 +111,7 @@ public class OuvreurReglagesTests
         var settings = new SettingsService(paths);
         var clock = new FakeClock(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.Zero));
         var vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
-            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(), settings,
+            new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(paths, settings, prov, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
         var guard = new TopmostGuard();

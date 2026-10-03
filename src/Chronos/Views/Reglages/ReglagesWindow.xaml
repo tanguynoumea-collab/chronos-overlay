@@ -95,7 +95,7 @@
             </Style>
 
             <!-- ============================== Contrôles ============================== -->
-            <!-- Bouton d'action dans une carte (Se connecter, Ouvrir, Recalibrer, Actualiser, Copier, Réessayer). -->
+            <!-- Bouton d'action dans une carte (Se connecter, Ouvrir, Actualiser, Copier, Réessayer). -->
             <Style x:Key="Plat" TargetType="Button">
                 <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                 <Setter Property="Background" Value="{StaticResource Panel}"/>
@@ -978,21 +978,6 @@
                                     <ToggleButton x:Name="InterrupteurDemarrage" Grid.Column="1" Style="{StaticResource Interrupteur}"
                                                   IsChecked="{Binding IsAutostart, Mode=OneWay}" Command="{Binding ToggleAutostartCommand}"
                                                   AutomationProperties.Name="Lancer au démarrage"/>
-                                </Grid>
-                            </Border>
-
-                            <Border Style="{StaticResource Carte}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Text="Recalibrer le reset hebdomadaire…" Style="{StaticResource TitreCarte}"/>
-                                        <TextBlock Text="cale la date du reset hebdomadaire quand aucune source exacte ne la donne" Style="{StaticResource Aide}"/>
-                                    </StackPanel>
-                                    <Button x:Name="BoutonRecalibrerHebdo" Grid.Column="1" Content="Recalibrer" Style="{StaticResource Plat}"
-                                            Command="{Binding RecalibrateCommand}"/>
                                 </Grid>
                             </Border>
                         </StackPanel>

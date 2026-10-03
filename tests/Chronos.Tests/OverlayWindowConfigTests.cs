@@ -21,8 +21,7 @@ public class OverlayWindowConfigTests
         var orchestrator = new RefreshOrchestrator(prov, ChronosPaths.Default(), RefreshOptions.Default);
         var settings = new SettingsService(ChronosPaths.Default());
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow),
-            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            settings,
+            new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(ChronosPaths.Default(), settings, prov, new FakeClock(DateTimeOffset.UtcNow)),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
         var guard = new TopmostGuard();

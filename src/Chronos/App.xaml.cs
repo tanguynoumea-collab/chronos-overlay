@@ -124,8 +124,8 @@ public partial class App : Application
         var settings = _host.Services.GetRequiredService<ChronosSettings>();
         var window = _host.Services.GetRequiredService<MainWindow>();
         window.ApplyRestoredState(settings);
-        MainWindow = window;                         // Application.MainWindow AVANT Show → le dialogue de
-                                                     // recalibrage se centre sur l'overlay (Owner), ROB-03/FEN-07
+        MainWindow = window;                         // Application.MainWindow AVANT Show → les dialogues
+                                                     // se centrent sur l'overlay (Owner), FEN-07
         window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
 
         // PUR-01/02/03 — réconcilier ~/.claude/settings.json AVANT de proposer la source exacte, pour que
@@ -313,9 +313,7 @@ public partial class App : Application
         services.AddSingleton<IWindowController>(sp => sp.GetRequiredService<OverlayController>());
 
         // Menu contextuel 06-04 (FEN-06) : autostart shell:startup (DEP-02, service neutre de 06-02)
-        // + dialogue de recalibrage hebdo (ROB-03) via le prompt WPF (namespace Views, hors pureté Services).
         services.AddSingleton<IAutostartService>(_ => new AutostartService());
-        services.AddSingleton<IRecalibrationPrompt, RecalibrationPrompt>();
 
         // Source EXACTE via pont statusLine Claude Code : installateur (édite ~/.claude/settings.json)
         // + setup WPF (menu + proposition au 1er lancement). C'est la voie universelle recommandée.

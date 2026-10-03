@@ -19,10 +19,9 @@ namespace Chronos.ViewModels;
 /// (RAF-04). L'affichage vit grâce à <see cref="Interpolate"/> (PUR, aucun I/O — RAF-03), piloté par un
 /// DispatcherTimer 1 s créé côté UI (<see cref="StartClock"/>) — jamais dans le ctor (Pitfall 4 : tests en [Fact] simple).
 ///
-/// 06-04 : expose les 4 commandes du menu contextuel (SEUL point d'accès/sortie, FEN-06) —
-/// arrière-plan (FEN-05), recalibrage hebdo best-effort (ROB-03), lancer au démarrage (DEP-02), quitter.
-/// Le recalibrage est appliqué DANS le pipeline temps réel (ApplySnapshot) via la fonction pure
-/// <see cref="WeeklyRecalibration"/> : il ne recale que le repli et CONSERVE le badge « estimée » (honnêteté).
+/// 06-04 : expose les commandes du menu contextuel (SEUL point d'accès/sortie, FEN-06) —
+/// arrière-plan (FEN-05), lancer au démarrage (DEP-02), quitter.
+/// Le reset hebdo affiché est toujours celui de la source : aucun reset synthétique n'est fabriqué ici.
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -30,7 +29,6 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IClock _clock;
     private readonly IWindowController _controller;
     private readonly IAutostartService _autostart;
-    private readonly IRecalibrationPrompt _prompt;
     private readonly RefreshOrchestrator _orchestrator;
     private readonly SettingsService _settingsService;
     private readonly DiagnosticService _diagnostic;
@@ -45,7 +43,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly DateTimeOffset _demarrage;    // JRN-04 / D-32-21 : référence basse de « muet » (instant de construction du VM)
 
     private ChronosSettings _settings;   // état persisté courant (coin/mode/ancre)
-    private UsageSnapshot? _last;         // dernier snapshot appliqué (pour ré-appliquer après recalibrage)
+    private UsageSnapshot? _last;         // dernier snapshot appliqué (mémorisé pour le reset 5 h local)
 
     public WindowGaugeViewModel FiveHour { get; } = new(TimeSpan.FromHours(5));
     public WindowGaugeViewModel SevenDay { get; } = new(TimeSpan.FromDays(7));
@@ -368,7 +366,7 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
         IWindowController controller, IAutostartService autostart,
-        IRecalibrationPrompt prompt, SettingsService settings,
+        SettingsService settings,
         DiagnosticService diagnostic, IStatusLineSetup statusLineSetup, IOAuthLogin oauthLogin,
         ISessionsController sessions, IAuthStatus authStatus,
         IEtatServeur? etatServeur = null,
@@ -383,7 +381,6 @@ public sealed partial class MainViewModel : ObservableObject
         _demarrage = clock.UtcNow;   // JRN-04 / D-32-21 : le démarrage du processus, pour ne pas crier sur l'écriture de la veille
         _controller = controller;
         _autostart = autostart;
-        _prompt = prompt;
         _orchestrator = orchestrator; // mémorisé pour re-déclencher un recalcul immédiat (bascule de source, login OAuth)
         _settingsService = settings;
         _diagnostic = diagnostic;
@@ -517,17 +514,13 @@ public sealed partial class MainViewModel : ObservableObject
         MajPastilles();
     }
 
-    /// <summary>Applique un snapshot (thread UI) : recalibre le repli hebdo, pousse chaque fenêtre, l'état global, puis rend.</summary>
+    /// <summary>Applique un snapshot (thread UI) : pousse chaque fenêtre, l'état global, puis rend.</summary>
     internal void ApplySnapshot(UsageSnapshot snap)
     {
-        _last = snap; // mémorisé pour une éventuelle ré-application après recalibrage
-
-        // ROB-03 : recalibrage best-effort AVANT SevenDay.Apply. La fonction pure ne touche PAS une
-        // source exacte (les chiffres exacts priment) et conserve Estimated pour le repli → badge « estimée ».
-        var weekly = WeeklyRecalibration.Apply(snap.SevenDay, _settings.WeeklyAnchor, _clock.UtcNow);
+        _last = snap; // mémorisé pour le reset 5 h local (timeline 24 h d'Interpolate)
 
         FiveHour.Apply(snap.FiveHour);
-        SevenDay.Apply(weekly);
+        SevenDay.Apply(snap.SevenDay);
         DataUnavailable = snap.FiveHour.Reliability == SourceReliability.Unavailable
                        && snap.SevenDay.Reliability == SourceReliability.Unavailable;
 
@@ -732,23 +725,6 @@ public sealed partial class MainViewModel : ObservableObject
         if (_autostart.IsEnabled()) _autostart.Disable();
         else _autostart.Enable();
         IsAutostart = _autostart.IsEnabled();
-    }
-
-    /// <summary>
-    /// ROB-03 : demande une ancre de reset hebdo ; si fournie, la persiste et ré-applique le dernier
-    /// snapshot → l'arc hebdo se recale MAIS reste « estimée ». Annulation → aucun changement.
-    /// </summary>
-    [RelayCommand]
-    private void Recalibrate()
-    {
-        var anchor = _prompt.Ask(_settings.WeeklyAnchor);
-        if (anchor is null) return;
-
-        // GAP-1 : relire l'état DISQUE avant d'écrire — l'OverlayController persiste coin/écran/arrière-plan
-        // indépendamment ; sauvegarder la copie du constructeur écraserait ces réglages plus récents.
-        _settings = _settingsService.Load() with { WeeklyAnchor = anchor };
-        _settingsService.Save(_settings);
-        if (_last is { } s) ApplySnapshot(s); // ré-applique → arc hebdo recalé, badge « estimée » conservé
     }
 
     /// <summary>Active/désactive le widget de sessions Claude Code (installe/retire les hooks + panneau).</summary>

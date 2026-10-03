@@ -61,6 +61,9 @@ public class GardesPerimetreTests
             // étape 3 — jeton de l'app bureau
             "ClaudeOAuthUsageProvider", "GatedOAuthUsageProvider", "ClaudeTokenReader",
             "IClaudeTokenReader", "WindowsCredentialStore", "InventaireMachine", "IInventaireMachine",
+            // étape 4 — recalibrage
+            "WeeklyRecalibration", "RecalibrationViewModel", "RecalibrationDialog", "RecalibrationPrompt",
+            "IRecalibrationPrompt",
         };
         var revenants = asm.GetTypes().Where(t => retires.Contains(t.Name)).Select(t => t.FullName).ToList();
         Assert.True(revenants.Count == 0,
@@ -71,6 +74,7 @@ public class GardesPerimetreTests
         var vm = typeof(Chronos.ViewModels.MainViewModel);
         Assert.Null(vm.GetProperty("IsOAuthUsageEnabled"));
         Assert.Null(vm.GetProperty("ToggleOAuthUsageCommand"));
+        Assert.Null(vm.GetProperty("RecalibrateCommand"));
         Assert.Null(typeof(Chronos.Services.ChronosSettings).GetProperty("OAuthUsageEnabled"));
         Assert.DoesNotContain("EndpointOAuthClaude", Enum.GetNames(typeof(Chronos.Models.SourceUsage)));
     }

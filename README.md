@@ -36,7 +36,7 @@ ferment, et un second clic droit la ramène au premier plan. Six sections dans l
 - **Historique** — ouvre la fenêtre Historique, choisit le style de la vue Semaine.
 - **Apparence** — thème (9) et style du cadran (5), avec un **aperçu en direct** du vrai cadran ; mode étendu (Anneaux).
 - **Sessions** — widget des sessions Claude Code, son style (8) avec aperçu, disposition verticale.
-- **Comportement** — arrière-plan, lancer au démarrage, recalibrer le reset hebdomadaire.
+- **Comportement** — arrière-plan, lancer au démarrage.
 - **Diagnostic** — ce que Chronos voit en ce moment, dans la fenêtre : **↻ Actualiser**, **⧉ Copier**.
 
 **« ⏻ Quitter Chronos »** est isolé en bas du rail.

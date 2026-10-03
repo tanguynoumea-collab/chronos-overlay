@@ -22,7 +22,7 @@ Rendu des arcs en XAML pur (Path/ArcSegment), aucune dépendance native (pas de 
 - MVVM strict, [ObservableProperty] / [RelayCommand], DI, dossiers Models/Views/ViewModels/Services.
 - Chemins sous profil utilisateur uniquement, aucun droit admin.
 - utilization/resets_at prioritaires sur le comptage de tokens ; ne jamais présenter une estimation comme exacte.
-- Reset hebdo best-effort et recalibrable.
+- Reset hebdo toujours fourni par le serveur ; l'ancre hebdo déjà enregistrée n'est plus que lue en secours par l'Historique.
 - UI et commentaires en français. Activer frontend-design + windows-wpf sur les tâches ui.
 
 ## Statut GSD

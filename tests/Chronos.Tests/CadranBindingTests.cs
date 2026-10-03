@@ -55,8 +55,7 @@ public class CadranBindingTests
         var orch = new RefreshOrchestrator(prov, paths, RefreshOptions.Default);
         var settings = new SettingsService(paths);
         vm = new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now),
-            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            settings,
+            new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(paths, settings, prov, new FakeClock(Now)),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
 

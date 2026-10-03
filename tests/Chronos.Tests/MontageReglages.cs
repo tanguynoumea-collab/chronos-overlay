@@ -50,8 +50,7 @@ internal static class MontageReglages
         var orch = new RefreshOrchestrator(provider, paths, RefreshOptions.Default); // JAMAIS démarré : aucun I/O
         clock ??= new FakeClock(Now);
         return new MainViewModel(orch, new FakeUiDispatcher { OnUiThread = true }, clock,
-            new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-            settings,
+            new FakeWindowController(), new FakeAutostartService(), settings,
             new DiagnosticService(paths, settings, provider, clock),
             barreStatut ?? new FakeStatusLineSetup(), new FakeOAuthLogin(), sessions ?? new FakeSessionsController(),
             new FakeAuthStatus(), new FakeEtatServeur(), journal, ouvreurHistorique: ouvreur, historique: historique,

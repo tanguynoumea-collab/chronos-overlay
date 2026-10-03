@@ -324,7 +324,6 @@ public class ReglagesWindowTests
             ("ToggleVerticalLayout", SectionReglages.Sessions, vm.ToggleVerticalLayoutCommand),
             ("ToggleBackground", SectionReglages.Comportement, vm.ToggleBackgroundCommand),
             ("ToggleAutostart", SectionReglages.Comportement, vm.ToggleAutostartCommand),
-            ("Recalibrate", SectionReglages.Comportement, vm.RecalibrateCommand),
             ("Reglages.ActualiserDiagnostic", SectionReglages.Diagnostic, vm.Reglages.ActualiserDiagnosticCommand),
             ("Reglages.CopierDiagnostic", SectionReglages.Diagnostic, vm.Reglages.CopierDiagnosticCommand),
         };
@@ -374,12 +373,13 @@ public class ReglagesWindowTests
                      "installe ou retire le pont statusLine dans les réglages de Claude Code (utile en terminal)",
                      "Historique d'utilisation", "THÈME", "STYLE DU CADRAN", "Mode étendu",
                      "Widget sessions Claude Code", "STYLE DU WIDGET", "Disposition verticale",
-                     "Arrière-plan", "Lancer au démarrage", "Recalibrer le reset hebdomadaire…",
+                     "Arrière-plan", "Lancer au démarrage",
                      "↻ Actualiser", "⧉ Copier", "Quitter Chronos",
                  })
             Assert.True(textes.Contains(libelle), $"libellé du plan absent : « {libelle} »");
 
         Assert.DoesNotContain(textes, t => t.Contains("Source terminal"));
+        Assert.DoesNotContain(textes, t => t.Contains("Recalibrer"));   // DAT-02 (37-04) : carte retirée
         Assert.DoesNotContain("RÉGLAGES", textes);
     }
 
@@ -401,13 +401,11 @@ public class ReglagesWindowTests
     }
 
     [WpfFact]
-    public void Recalibrer_est_dans_Comportement()
+    public void Le_recalibrage_hebdo_a_quitte_Comportement()
     {
         var vm = NouveauVm();
         var f = Monter(vm, SectionReglages.Comportement);
-        var bouton = Nomme<Button>(f, "BoutonRecalibrerHebdo");
-        Assert.Same(vm.RecalibrateCommand, bouton.Command);
-        Assert.True(EstAffiche(bouton, Racine(f)));
+        Assert.Null(f.FindName("BoutonRecalibrerHebdo"));
     }
 
     // ================================================================== Apparence : aperçu vivant

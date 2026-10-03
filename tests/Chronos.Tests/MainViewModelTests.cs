@@ -16,9 +16,8 @@ namespace Chronos.Tests;
 /// - RAF-03 : Interpolate(now) est PUR (recalcule fraction d'arc + compte à rebours) SANS aucun I/O
 ///   (GetAsync jamais appelé au tick) et sans AUCUN jugement d'ancienneté : depuis la phase 20, juger
 ///   l'âge d'un relevé appartient à la doctrine seule, le ViewModel se borne à le rapporter.
-/// - FEN-05/06, DEP-02, ROB-03 : ToggleBackground/ToggleAutostart/Recalibrate/Quit pilotent bien les
-///   collaborateurs (IWindowController/IAutostartService/IRecalibrationPrompt) et le recalibrage recale
-///   le repli hebdo EN CONSERVANT le badge « estimée » (honnêteté des chiffres).
+/// - FEN-05/06, DEP-02 : ToggleBackground/ToggleAutostart/Quit pilotent bien les collaborateurs
+///   (IWindowController/IAutostartService) ; le reset hebdo affiché n'est jamais synthétique (DAT-02).
 ///
 /// Tests en [Fact] SIMPLE (pas [WpfFact]) : preuve que le DispatcherTimer n'est PAS créé dans le ctor
 /// (il est créé côté UI via StartClock, Pitfall 4). Fakes déterministes (aucun écran/registre réel).
@@ -76,7 +75,7 @@ public class MainViewModelTests
     private static MainViewModel Build(
         FakeUiDispatcher ui, FakeClock clock, FakeUsageProvider provider,
         FakeWindowController controller, FakeAutostartService autostart,
-        FakeRecalibrationPrompt prompt, SettingsService settings,
+        SettingsService settings,
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
         RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null,
         FakeEtatJournal? journal = null, FakeEtatReconstruction? reconstruction = null,
@@ -90,7 +89,7 @@ public class MainViewModelTests
         var diag = new DiagnosticService(TempPaths(), settings, provider, clock);
         // etatServeur passe par le helper et NON par un nouveau site de construction : le 13e paramètre
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
-        return new MainViewModel(orch, ui, clock, controller, autostart, prompt, settings, diag,
+        return new MainViewModel(orch, ui, clock, controller, autostart, settings, diag,
             new FakeStatusLineSetup(), login ?? new FakeOAuthLogin(), new FakeSessionsController(),
             auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction, ouvreurHistorique: ouvreur);
     }
@@ -98,7 +97,6 @@ public class MainViewModelTests
     private static MainViewModel NewVmFull(
         out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider,
         out FakeWindowController controller, out FakeAutostartService autostart,
-        out FakeRecalibrationPrompt prompt,
         out SettingsService settings, bool onUiThread = true)
     {
         ui = new FakeUiDispatcher { OnUiThread = onUiThread };
@@ -106,14 +104,13 @@ public class MainViewModelTests
         provider = new FakeUsageProvider();
         controller = new FakeWindowController();
         autostart = new FakeAutostartService();
-        prompt = new FakeRecalibrationPrompt();
         settings = new SettingsService(TempPaths());
-        return Build(ui, clock, provider, controller, autostart, prompt, settings);
+        return Build(ui, clock, provider, controller, autostart, settings);
     }
 
     // Surcharge minimale conservée pour les tests RAF (fakes par défaut, non observés).
     private static MainViewModel NewVm(out FakeUiDispatcher ui, out FakeClock clock, out FakeUsageProvider provider)
-        => NewVmFull(out ui, out clock, out provider, out _, out _, out _, out _);
+        => NewVmFull(out ui, out clock, out provider, out _, out _, out _);
 
     // --- RAF-04 : franchissement de thread unique via IUiDispatcher.Post (exactement une fois) ---
 
@@ -134,7 +131,7 @@ public class MainViewModelTests
         var settings = new SettingsService(TempPaths());
         var vm = new MainViewModel(orch, ui, clock,
             new FakeWindowController(), new FakeAutostartService(),
-            new FakeRecalibrationPrompt(), settings,
+            settings,
             new DiagnosticService(TempPaths(), settings, provider, clock),
             new FakeStatusLineSetup(), new FakeOAuthLogin(), new FakeSessionsController(),
             new FakeAuthStatus());
@@ -346,7 +343,7 @@ public class MainViewModelTests
     [Fact]
     public void ToggleBackground_bascule_IsBackground_et_pilote_le_controller()
     {
-        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _);
+        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _);
         Assert.False(vm.IsBackground);
 
         vm.ToggleBackgroundCommand.Execute(null);
@@ -364,7 +361,7 @@ public class MainViewModelTests
     [Fact]
     public void ToggleAutostart_appelle_Enable_Disable_et_reflete_IsEnabled()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out var autostart, out _, out _);
+        var vm = NewVmFull(out _, out _, out _, out _, out var autostart, out _);
         Assert.False(vm.IsAutostart);
 
         vm.ToggleAutostartCommand.Execute(null);
@@ -386,7 +383,7 @@ public class MainViewModelTests
         var vm = Build(
             new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), new FakeUsageProvider(),
             new FakeWindowController(), new FakeAutostartService { Enabled = true },
-            new FakeRecalibrationPrompt(), new SettingsService(TempPaths()));
+            new SettingsService(TempPaths()));
 
         Assert.True(vm.IsAutostart);
         Assert.False(vm.IsBackground); // Background par défaut faux (settings absents)
@@ -397,35 +394,31 @@ public class MainViewModelTests
     [Fact]
     public void Quit_appelle_le_controller()
     {
-        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _, out _);
+        var vm = NewVmFull(out _, out _, out _, out var controller, out _, out _);
         vm.QuitCommand.Execute(null);
         Assert.Equal(1, controller.QuitCount);
     }
 
-    // --- ROB-03 : Recalibrate recale le repli hebdo, persiste l'ancre ET conserve le badge « estimée » ---
+    // --- DAT-02 (37-04) : plus de recalibrage — une ancre enregistrée ne fabrique JAMAIS de reset hebdo ---
 
     [Fact]
-    public void Recalibrate_recale_le_repli_hebdo_en_conservant_le_badge_estimee()
+    public void Une_fenetre_hebdo_sans_reset_reste_sans_reset_malgre_une_ancre()
     {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
+        var settings = new SettingsService(TempPaths());
+        var ancre = new DateTimeOffset(2026, 07, 11, 0, 0, 0, TimeSpan.FromHours(2));
+        settings.Save(settings.Load() with { WeeklyAnchor = ancre });   // ancre héritée d'un ancien recalibrage
+        var vm = Build(new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), new FakeUsageProvider(),
+                       new FakeWindowController(), new FakeAutostartService(), settings);
 
         vm.ApplySnapshot(new UsageSnapshot
         {
             FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
-            SevenDay = EstimatedWeekly(),           // repli, ResetsAt inconnu → countdown "—"
+            SevenDay = EstimatedWeekly(),           // aucune date de reset fournie par la source
             SourceCapturedAt = Now,
         });
-        var avant = vm.SevenDay.CountdownText;
-        Assert.True(vm.SevenDay.EstPlancher);
 
-        var ancre = Now - TimeSpan.FromDays(3);     // prochain reset synthétisé strictement futur
-        prompt.Result = ancre;
-        vm.RecalibrateCommand.Execute(null);
-
-        Assert.Equal(1, prompt.AskCount);
-        Assert.NotEqual(avant, vm.SevenDay.CountdownText);      // arc/compte à rebours recalé
-        Assert.True(vm.SevenDay.EstPlancher);                  // marque de plancher CONSERVÉE (honnêteté)
-        Assert.Equal(ancre, settings.Load().WeeklyAnchor);     // ancre persistée dans settings.json
+        Assert.False(vm.SevenDay.HasTime);                       // aucun reset synthétique
+        Assert.Equal(ancre, settings.Load().WeeklyAnchor);       // l'ancre n'est ni effacée ni réécrite
     }
 
     // --- Clic au centre : bascule pourcentages ↔ temps avant reset (ShowPercent = inverse) ---
@@ -452,7 +445,7 @@ public class MainViewModelTests
     {
         clock = new FakeClock(Now);
         return Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
-                     new FakeAutostartService(), new FakeRecalibrationPrompt(), new SettingsService(TempPaths()), ouvreur: ouvreur);
+                     new FakeAutostartService(), new SettingsService(TempPaths()), ouvreur: ouvreur);
     }
 
     [Fact]
@@ -520,81 +513,6 @@ public class MainViewModelTests
         Assert.Equal(1, ouvreur.Ouvertures);
     }
 
-    // --- GAP-1 (audit intégration) : le recalibrage ne doit PAS écraser les réglages écrits sur disque
-    // par un autre writer (OverlayController : coin/écran/arrière-plan) après la construction du VM ---
-
-    [Fact]
-    public void Recalibrate_n_ecrase_pas_les_reglages_persistes_par_un_autre_writer()
-    {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
-
-        // Simule l'OverlayController : APRÈS la construction du VM, un drag persiste un nouveau coin.
-        var externe = settings.Load() with { Corner = OverlayCorner.BottomLeft, Background = true };
-        settings.Save(externe);
-
-        vm.ApplySnapshot(new UsageSnapshot
-        {
-            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
-            SevenDay = EstimatedWeekly(),
-            SourceCapturedAt = Now,
-        });
-
-        var ancre = Now - TimeSpan.FromDays(3);
-        prompt.Result = ancre;
-        vm.RecalibrateCommand.Execute(null);
-
-        var apres = settings.Load();
-        Assert.Equal(ancre, apres.WeeklyAnchor);                    // l'ancre est bien persistée…
-        Assert.Equal(OverlayCorner.BottomLeft, apres.Corner);       // …SANS écraser le coin du drag
-        Assert.True(apres.Background);                              // …ni le mode arrière-plan
-    }
-
-    // --- ROB-03 : annulation du dialogue → aucun changement, aucune persistance ---
-
-    [Fact]
-    public void Recalibrate_annule_ne_change_rien()
-    {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out var settings);
-
-        vm.ApplySnapshot(new UsageSnapshot
-        {
-            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
-            SevenDay = EstimatedWeekly(),
-            SourceCapturedAt = Now,
-        });
-        var avant = vm.SevenDay.CountdownText;
-
-        prompt.Result = null; // l'utilisateur annule
-        vm.RecalibrateCommand.Execute(null);
-
-        Assert.Equal(1, prompt.AskCount);
-        Assert.Equal(avant, vm.SevenDay.CountdownText);
-        Assert.Null(settings.Load().WeeklyAnchor);
-    }
-
-    // --- ROB-03 : le recalibrage NE TOUCHE PAS une source hebdo exacte (les chiffres exacts priment) ---
-
-    [Fact]
-    public void Recalibrate_ne_touche_pas_une_source_hebdo_exacte()
-    {
-        var vm = NewVmFull(out _, out _, out _, out _, out _, out var prompt, out _);
-
-        vm.ApplySnapshot(new UsageSnapshot
-        {
-            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
-            SevenDay = Readable(WindowKind.SevenDay, Now, remaining: TimeSpan.FromDays(3)), // Exact + ResetsAt
-            SourceCapturedAt = Now,
-        });
-        var avant = vm.SevenDay.CountdownText;
-        Assert.False(vm.SevenDay.EstPlancher);
-
-        prompt.Result = Now - TimeSpan.FromDays(3);
-        vm.RecalibrateCommand.Execute(null);
-
-        Assert.Equal(avant, vm.SevenDay.CountdownText); // inchangé : la valeur exacte prime
-        Assert.False(vm.SevenDay.EstPlancher);
-    }
-
     // --- JOUR-01/02 : Interpolate pose DayFraction + DayResetAngles (angles vides si ResetsAt 5 h inconnu) ---
 
     [Fact]
@@ -637,8 +555,7 @@ public class MainViewModelTests
     private static MainViewModel VmAuth(FakeUiDispatcher ui, FakeAuthStatus auth,
                                         FakeOAuthLogin? login = null)
         => Build(ui, new FakeClock(Now), new FakeUsageProvider(), new FakeWindowController(),
-                 new FakeAutostartService(), new FakeRecalibrationPrompt(),
-                 new SettingsService(TempPaths()), login: login, auth: auth);
+                 new FakeAutostartService(), new SettingsService(TempPaths()), login: login, auth: auth);
 
     [Fact]
     public void L_etat_d_authentification_initial_est_applique_DES_le_ctor()
@@ -760,8 +677,7 @@ public class MainViewModelTests
                                            new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
         var auth = new FakeAuthStatus { Etat = EtatAuthentification.Deconnecte };
         var vm = Build(new FakeUiDispatcher { OnUiThread = true }, new FakeClock(Now), provider,
-                       new FakeWindowController(), new FakeAutostartService(), new FakeRecalibrationPrompt(),
-                       new SettingsService(TempPaths()),
+                       new FakeWindowController(), new FakeAutostartService(), new SettingsService(TempPaths()),
                        login: new FakeOAuthLogin { LoggedIn = true }, auth: auth, orchestrator: orch);
         try
         {
@@ -808,8 +724,7 @@ public class MainViewModelTests
                                          RefreshOrchestrator? orchestrator = null,
                                          FakeUsageProvider? provider = null)
         => Build(ui, new FakeClock(Now), provider ?? new FakeUsageProvider(), new FakeWindowController(),
-                 new FakeAutostartService(), new FakeRecalibrationPrompt(),
-                 settings ?? new SettingsService(TempPaths()),
+                 new FakeAutostartService(), settings ?? new SettingsService(TempPaths()),
                  orchestrator: orchestrator, etatServeur: etat);
 
     [Fact]
@@ -1117,7 +1032,7 @@ public class MainViewModelTests
     {
         clock = new FakeClock(Now);
         return Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
-                     new FakeAutostartService(), new FakeRecalibrationPrompt(), new SettingsService(TempPaths()), journal: journal);
+                     new FakeAutostartService(), new SettingsService(TempPaths()), journal: journal);
     }
 
     [Fact]
@@ -1197,7 +1112,7 @@ public class MainViewModelTests
     {
         clock = new FakeClock(Now);
         return Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
-                     new FakeAutostartService(), new FakeRecalibrationPrompt(), new SettingsService(TempPaths()), reconstruction: reconstruction);
+                     new FakeAutostartService(), new SettingsService(TempPaths()), reconstruction: reconstruction);
     }
 
     [Fact]
