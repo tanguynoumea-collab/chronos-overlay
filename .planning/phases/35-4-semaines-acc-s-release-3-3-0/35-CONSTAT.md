@@ -315,3 +315,7 @@ l'utilisateur au point (d)).
 ## 6. Verdict
 
 à rendre (après le point (d)).
+
+**Clôture de v1.8 (2026-10-03) :** verdict non rendu — le constat n'est pas joué (gestes de l'utilisateur requis). Le milestone v1.8
+est clos avec cet écart connu (VAL-05) ; le constat est **reporté dans la phase de constat du milestone suivant** (phase 43, exe
+3.5.0), avec le tableau L1…Q / V01…V12 de `32-CONSTAT.md`. Voir `.planning/MILESTONES.md` › v1.8 › Known Gaps.

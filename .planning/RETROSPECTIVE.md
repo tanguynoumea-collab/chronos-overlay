@@ -93,6 +93,58 @@
 - Modèles : profil `quality` (opus pour planners/executors). Sessions : 3 (25/09 soir, 26/09 journée, 26–27/09 nuit).
 - Notable : le conseil LLM (10 agents, ≈ 1,2 M tokens) a trouvé en 20 min deux défauts que 1 200 tests verts n'avaient pas vus.
 
+---
+
+## Milestone : v1.8 — Historique d'utilisation
+
+**Livré :** 2026-09-27 (exe 3.3.0 ; 3.2.2 intermédiaire ; puis 3.3.1 et 3.4.0 hors phases) — clos le 2026-10-03 avec écarts connus
+(constats VAL-04 et VAL-05 non joués, reportés au milestone suivant).
+**Phases :** 4 (32-35) | **Plans :** 26 / 28 | **Tests :** 1200 → 1648 (3.3.0) → 1707 (3.4.0) | **Commits :** 239 (2026-09-27 01:34 → 22:11)
+
+### Ce qui a été construit
+- Compter juste : dédup des `usage` par `message.id` (max par champ, dictionnaire global), magasins observables, vue AppData au
+  diagnostic, verrou mono-instance ; journal des relevés exacts et sa lecture par plage pure ; exe 3.2.2 publié seul (phase 32).
+- Agrégats de tokens 15 min UTC × modèle × sous-agent, reconstruction de fond (3,2 s à chaud) et curseurs, rendu DST juste (phase 33).
+- Fenêtre Historique : Semaine en trois styles, Jour, pistes `OnRender`, honnêteté testée mot pour mot, galerie `--historique` (phase 34).
+- Vue 4 semaines, deux gestes d'ouverture, section du diagnostic, docs sous garde de vocabulaire, exe 3.3.0 (phase 35).
+- Hors phases : arrêt sans processus zombie (3.3.1), réglages refondus en fenêtre classique (3.4.0).
+
+### Ce qui a marché
+- **Compter juste AVANT de dessiner.** Le conseil LLM du 26/09 a placé la dédup et l'observabilité en tête ; aucune ligne
+  d'historique n'a été écrite sur un compteur faux, et la 3.2.2 a commencé à journaliser des jours qui, sinon, étaient perdus.
+- **La recherche de phase a requalifié un « bug »** : le gel de `last-exact.json` n'existait pas (vue virtualisée MSIX). La
+  correction est devenue de l'observabilité au lieu d'un correctif sur une panne imaginaire.
+- **Le plan de design validé comme contrat** (pas de phase UI-SPEC) : les hauteurs de pistes du plan ont été vérifiées par
+  Measure/Arrange, et le vocabulaire d'honnêteté par une garde — le design ne s'est pas dilué à l'exécution.
+- **Un rythme très élevé** : 4 phases, 26 plans, ≈ 500 tests en une journée de mur, sans régression (0 warning tenu).
+
+### Ce qui a été inefficace
+- **Deux constats avec l'utilisateur non joués, pour la deuxième fois de suite.** La dette VAL-03 de v1.7 est devenue VAL-04, puis
+  a été absorbée par VAL-05, puis reportée encore. Les plans `autonomous: false` s'accumulent en fin de milestone pendant que
+  l'exécution autonome continue (3.3.1, 3.4.0 sortis avant le constat de la 3.3.0).
+- **Le cycle ZEUS n'a pas été mené au bout** : DESIGN-REVIEW de la galerie, DEV-COUNCIL et DEV-SENIOR absorbés par le cycle 2.
+- **Trois styles codés pour en garder un** : Simplifié et Tuiles seront supprimés au milestone suivant (décision utilisateur) —
+  le coût de « coder pour comparer » aurait pu se payer en maquettes seules.
+- **Un interblocage d'arrêt** (Host/Dispatcher) découvert après la 3.3.0, qui laissait un processus zombie et le mutex tenu : le
+  verrou mono-instance a rendu visible un défaut d'arrêt ancien.
+
+### Patterns établis
+- Toute persistance expose l'âge de sa dernière écriture et son erreur ; « journal muet depuis N min » au-delà de 15 min.
+- Deux séries de nature différente : deux axes, deux palettes, deux vocabulaires, une garde structurelle contre le pourcentage dérivé.
+- Un trou n'est jamais interpolé ; il porte sa cause journalisée (`demarrage`, `arret`, `jeton_invalide`, `sonde_refusee`, `reprise`).
+- Toute géométrie de rendu en classes pures testées ; les pistes ne se redessinent jamais au tick.
+
+### Leçons
+1. **Un constat avec l'utilisateur doit être planifié AVANT la release suivante, pas après** : ne pas publier N+1 tant que le
+   constat de N n'est pas joué, ou le déclarer explicitement comme non bloquant dès la roadmap.
+2. **Ne jamais juger un fichier de l'overlay depuis une session Claude Code** : la vue AppData y est virtualisée.
+3. **Comparer des variantes en maquette, pas en code**, sauf si l'utilisateur doit les vivre sur ses vraies données.
+4. **Un verrou mono-instance exige un arrêt propre** : tester l'arrêt du Host réel sous Dispatcher dès qu'on introduit un mutex.
+
+### Observations de coût
+- Modèles : profil `quality` (opus pour planners, executors, vérificateurs). Sessions : 2 principales (27/09 nuit et journée) + clôture.
+- Notable : 74 commits `test` pour 58 `feat` — la méthode RED/GREEN est systématique ; 97 commits `docs`.
+
 ## Tendances inter-milestones
 
 ### Évolution du processus
@@ -101,6 +153,8 @@
 |-----------|--------|-------|----------------|
 | v1.5 | 6 | 28 | Diagnostic sur la vraie machine avant la roadmap ; doctrine « exact ou rien » |
 | v1.6 | 6 | 19 | Même méthode appliquée au widget ; audit d'intégration inter-phases avant release |
+| v1.7 | 6 | 20 | Relevé in vivo avant la règle ; constat en production comme phase (partiel) |
+| v1.8 | 4 | 26 / 28 | Conseil LLM avant la roadmap ; plan de design validé comme contrat ; constats reportés |
 
 ### Qualité cumulée
 
@@ -108,8 +162,12 @@
 |-----------|-------|----------------------|
 | v1.5 | 328 → 752 | 0 |
 | v1.6 | 752 → 889 | 0 |
+| v1.7 | 896 → 1200 | 0 |
+| v1.8 | 1200 → 1707 | 0 |
 
 ### Leçons confirmées sur plusieurs milestones
 1. « Ne jamais présenter comme un fait ce qui n'a pas été observé » — validée sur le cadran (v1.5) puis sur le
    widget (v1.6).
 2. L'enquête chiffrée précède la roadmap — deux milestones sans phase réécrite.
+3. Le constat avec l'utilisateur est le maillon qui casse : partiel en v1.7, non joué en v1.8 — à traiter comme une porte de
+   release, pas comme une fin de phase optionnelle.

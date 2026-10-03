@@ -2,38 +2,41 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: — Historique d'utilisation
-status: executing
-last_updated: "2026-09-27T16:43:35.724Z"
-last_activity: 2026-09-27 -- Phase 35 execution started
+status: v1.8 milestone complete
+last_updated: "2026-10-03T12:00:00.000Z"
+last_activity: 2026-10-03 -- v1.8 milestone completed and archived (avec écarts connus)
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 4
   total_plans: 28
-  completed_plans: 20
+  completed_plans: 26
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-27)
+See: .planning/PROJECT.md (updated 2026-10-03)
 
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
-jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend. v1.8 : comprendre
-sa façon d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Phase 35 — 4 semaines, accès, release 3.3.0
+jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend ; et comprendre sa façon
+d'utiliser Claude au cours du temps, avec la même honnêteté.
+**Current focus:** Planning next milestone — milestone v1.8 clos, prochain milestone à définir (`/gsd:new-milestone`)
 
 ## Current Position
 
-Milestone: v1.8 — Historique d'utilisation
-Phase: 35 (4 semaines, accès, release 3.3.0) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 35
-Last activity: 2026-09-27 -- Phase 35 execution started
+Milestone: v1.8 — Historique d'utilisation — CLOS le 2026-10-03 (avec écarts connus)
+Phase: aucune en cours (phases 32 à 35 closes ; 26 / 28 plans)
+Plan: —
+Status: v1.8 milestone complete
+Last activity: 2026-10-03 -- v1.8 milestone completed and archived
 
-Progress: [░░░░░░░░░░] 0 %
+Progress: [██████████] v1.8 clos — prochain milestone à définir
 
-> Phase 32 : 7 plans / 8 exécutés, `Chronos-v3.2.2.exe` publié ; le plan 32-08 (constat VAL-04) attend les gestes de l'utilisateur (quitter 3.1.0 / 3.2.0 / 3.2.1, second lancement, tableau des gestes). La phase 33 démarre en parallèle sur décision de l'orchestrateur (vague 1 de la 33 indépendante du constat, cf. ROADMAP « Execution Order »).
+> Clos avec écarts connus : les plans 32-08 (constat VAL-04) et 35-07 (constat VAL-05), `autonomous: false`, ne sont pas joués
+> et sont reportés dans la phase de constat du milestone suivant. Exes publiés localement : 3.2.2, 3.3.0, 3.3.1, 3.4.0 (aucun tag
+> de release, aucun push). Archive : `.planning/milestones/v1.8-ROADMAP.md`, `v1.8-REQUIREMENTS.md` ; détail des écarts :
+> `.planning/MILESTONES.md` › v1.8 › Known Gaps.
 
 ## Accumulated Context
 
@@ -46,11 +49,16 @@ Progress: [░░░░░░░░░░] 0 %
 
 ### Blockers / dettes ouvertes
 
-- **Constat en production v1.7 PARTIEL** (VAL-03) : trois exécutables en marche (3.1.0, 3.2.0, 3.2.1), tableau des gestes non
-  joué → repris en tête de la phase 32 (VAL-04) sur la 3.2.2. L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
+- **Constats avec l'utilisateur non joués (VAL-04, VAL-05)** — protocoles écrits dans
+  `.planning/phases/32-compter-juste-puis-journaliser/32-CONSTAT.md` et `.planning/phases/35-4-semaines-acc-s-release-3-3-0/35-CONSTAT.md`
+  (écart E1-ter : plusieurs exécutables en marche ; le point (a) commence par les quitter tous, à la main). Reportés dans la
+  phase de constat du milestone suivant. L'agent ne lance, n'arrête ni ne clique jamais l'overlay.
+- **Étapes ZEUS du cycle n°1 non jouées** (DESIGN-REVIEW de la galerie Historique, DEV-COUNCIL, DEV-SENIOR) : absorbées par le
+  cycle n°2, qui couvre aussi ce code (`.zeus/state.json`).
+- **Décision utilisateur** : supprimer les styles Simplifié et Tuiles de la vue Semaine au milestone suivant.
 
-- **`last-exact.json` — le « gel » n'a jamais existé (établi le 2026-09-27, sondes WMI hors arbre du 25/09 21:17 et du 27/09 01:56 ; corrigé en 32-02).** Le fichier réel est réécrit chaque minute (mtime 01:55:37 pour une capture 23:53:37Z) ; la copie datée du 2026-09-13 12:44:59 est la vue virtualisée (copy-on-write) du paquet MSIX que toute session Claude Code lit — un overlay avait tourné SOUS l'arbre de l'app ce jour-là de 07:36 à 12:44. Le `try/catch` de `LastExactUsageProvider` n'a rien avalé. Livré : `IEtatMagasin`, `DerniereEcriture`/`DerniereErreur`/`EcritureRatee` sur `LastExactStore`, section `[Magasins persistants]` et ligne « Vue AppData » au diagnostic. Règle : ne jamais juger l'overlay depuis une session.
-- **Parser de tokens ×2 à 2,75** (lignes `assistant` dupliquées par bloc, même `usage`) → CPT-01.
+Résolus en v1.8 : parser de tokens ×2 à 2,75 (CPT-01, dédup `message.id`) ; « gel » de `last-exact.json` = vue virtualisée MSIX
+(CPT-02, vue AppData au diagnostic) ; absence de verrou mono-instance (CPT-03) ; processus zombie à l'arrêt (quick 260927, 3.3.1).
 
 ### Sécurité — contrainte qui prime sur tout
 
@@ -91,11 +99,14 @@ E 4 semaines, F1 carte des réglages, F2 bandeau), DoD `.zeus/DOD.md`, état `.z
 
 ## Performance Metrics
 
-- Suite de tests à l'entrée de v1.8 : **1200 verts / 0 échec** (fin de v1.7, `0bd27cb`), ≈ 10 s.
-- Exe courant : `Chronos-v3.2.1.exe` (77 385 116 o, md5 `3a1dc26f…`). Cibles : 3.2.2 (après la phase 32), 3.3.0 (fin de milestone).
-- Historique : v1.6 = 6 phases, 19 plans, 110 commits, 752 → 889 tests ; v1.7 = 6 phases, 20 plans, 125 commits, 896 → 1200 tests.
+- Suite de tests à la clôture de v1.8 : **1707 verts / 0 échec, 0 warning** Debug et Release (release 3.4.0, `8bec859`) ;
+  1648 à la 3.3.0.
+- Exe courant : `Chronos-v3.4.0.exe` (md5 `ddbe7995…`) ; précédents de v1.8 : 3.2.2, 3.3.0 (78 104 918 o), 3.3.1.
+- Historique : v1.6 = 6 phases, 19 plans, 110 commits, 752 → 889 tests ; v1.7 = 6 phases, 20 plans, 125 commits, 896 → 1200 tests ;
+  v1.8 = 4 phases, 26 / 28 plans, 239 commits, 1200 → 1707 tests.
 
 ## Milestones clos
 
-v1.7 clos le 2026-09-27 (écart connu, voir `.planning/MILESTONES.md` › Known Gaps). Détail : `.planning/milestones/v1.7-*.md`,
-`.planning/RETROSPECTIVE.md`.
+v1.8 clos le 2026-10-03 (écarts connus : VAL-04 et VAL-05 reportés, voir `.planning/MILESTONES.md` › Known Gaps). Détail :
+`.planning/milestones/v1.8-*.md`, `.planning/RETROSPECTIVE.md`.
+v1.7 clos le 2026-09-27 (écart connu VAL-03, repris en v1.8 puis à nouveau reporté avec VAL-04). Détail : `.planning/milestones/v1.7-*.md`.

@@ -217,3 +217,7 @@ L'overlay reste ouvert (la sonde T+60 attend).
 ## 4. Verdict
 
 à rendre (après le point (c) et la sonde T+60).
+
+**Clôture de v1.8 (2026-10-03) :** verdict non rendu — les points (a), (b) et (c) ne sont pas joués (gestes de l'utilisateur requis). Le
+milestone v1.8 est clos avec cet écart connu (VAL-04) ; le constat est **reporté dans la phase de constat du milestone suivant**
+(phase 43, exe 3.5.0). Voir `.planning/MILESTONES.md` › v1.8 › Known Gaps.

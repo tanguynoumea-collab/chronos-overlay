@@ -5,6 +5,62 @@ Historique des versions livrées. Le détail de chaque milestone (roadmap, exige
 
 ---
 
+## v1.8 — Historique d'utilisation — SHIPPED 2026-09-27 (clos le 2026-10-03, avec écarts connus)
+
+**Exe :** Chronos-v3.3.0 (release `9b74ed5`), après la 3.2.2 intermédiaire publiée seule à la fin de la phase 32 ; puis, hors
+phases, **3.3.1** (quick 260927 — « Quitter Chronos » sans processus zombie, `8723e2a`) et **3.4.0** (quick 260927-reglages-v2 —
+réglages refondus, `8bec859`). Exes publiés localement, ni tag de release ni push.
+**Phases :** 32 → 35 (4) · **Plans :** 26 / 28 (32 : 7/8, 33 : 5/5, 34 : 8/8, 35 : 6/7) · **Exigences :** 26 / 28 (VAL-04 et
+VAL-05 reportées) · **Tests :** 1200 → **1648** verts à la 3.3.0, **1707** à la 3.4.0, 0 échec, 0 warning Debug et Release.
+**Git :** 239 commits (`937e980` → `aec36fc`), 297 fichiers, +49 235 / −1 715 lignes (dont `src/` et `tests/` : 207 fichiers,
++27 135 / −604), du 2026-09-27 01:34 au 2026-09-27 22:11.
+
+**Livré :** Chronos garde la trace de l'usage du forfait et la montre — semaine de forfait (samedi → samedi) en trois styles,
+jour au grain de 5 min, quatre semaines — sur deux séries jamais fusionnées (relevés exacts du compte, tokens Claude Code), sans
+un seul chiffre inventé : un trou reste un trou, aucune projection.
+
+**Accomplissements :**
+
+1. **Compter juste, puis journaliser** (phase 32, exe 3.2.2) — dédup des `usage` par `message.id` (max par champ, dictionnaire
+   global, repli `requestId`) : fin du comptage ×2 à ×2,75 ; le « gel » de `last-exact.json` établi comme un artefact de la vue
+   AppData virtualisée par MSIX, magasins observables (âge de dernière écriture, « Vue AppData » au diagnostic) ; verrou
+   mono-instance ; journal des relevés exacts (1 / 5 min, événements de couverture, append sûr et idempotent), alerte « journal
+   muet », lecture par plage pure (169 h / 167 h aux changements d'heure).
+2. **Agrégats de tokens** (phase 33) — tranches 15 min UTC × modèle × sous-agent, quatre compteurs séparés, reconstruction de
+   fond depuis 2,2 Go (3,2 s à chaud, 47 ms en incrémental) puis curseurs ; rendu local juste au changement d'heure (25 barres le
+   25/10/2026, 23 le 28/03/2027) ; garde structurelle « aucun pourcentage dérivé de tokens ».
+3. **Fenêtre Historique : Semaine et Jour** (phase 34) — fenêtre de consultation opaque, vue Semaine en Pistes / Simplifié /
+   Tuiles aux hauteurs du plan de design (vérifiées par Measure/Arrange), vue Jour, pistes `OnRender` + `StreamGeometry` gelée
+   jamais redessinées au tick, palette promue dans `DesignTokens.xaml` sans changer une valeur, honnêteté testée mot pour mot,
+   bandeau F2, galerie `--historique`.
+4. **4 semaines, accès, release 3.3.0** (phase 35) — vue 4 semaines (semaines antérieures au journal dites telles, semaine
+   épuisée annotée), deux gestes d'ouverture (carte des réglages, double-clic au centre sans double bascule), section
+   `[Journal d'historique]` du diagnostic, README et `docs/data-sources.md` §9 sous garde de vocabulaire, `Chronos-v3.3.0.exe`.
+5. **Hors phases** — quick 260927 : interblocage Host/Dispatcher à l'arrêt corrigé (arrêt borné hors thread UI, 6 tests Host
+   réel), release 3.3.1 ; quick 260927-reglages-v2 : fenêtre de réglages classique redimensionnable (rail six sections, aperçu
+   vivant, diagnostic intégré, singleton, géométrie persistée), release 3.4.0.
+
+### Known Gaps
+
+- **VAL-04 — constat en production de la 3.2.2 (plan 32-08) NON JOUÉ.** Il reprenait la dette VAL-03 de v1.7 : point (a) une
+  seule instance (anciens exécutables quittés, lancement par l'Explorateur, second lancement refusé), tableau des gestes L1…Q,
+  vérifications V01…V12. Seul le critère « le journal s'écrit » a été relevé (`32-CONSTAT.md` §0 : 12 relevés / h, 0 doublon) ;
+  l'écart E1-ter (plusieurs exécutables en marche) reste ouvert. Plan `autonomous: false` : il exige les gestes de l'utilisateur.
+- **VAL-05 — constat de la 3.3.0 avec l'utilisateur (plan 35-07) NON JOUÉ.** Protocole et temps 0 écrits dans `35-CONSTAT.md`
+  (deux gestes, vraies données, trois styles, 4 semaines, trou réel après une nuit, libellés relus, verdict) ; verdict « à
+  rendre ». Plan `autonomous: false`.
+- **Les deux constats sont REPORTÉS dans la phase de constat du milestone v1.9** (phase 43 « Release Chronos-v3.5.0.exe +
+  constat utilisateur »), sur l'exe 3.5.0.
+- **Étapes ZEUS non jouées sur v1.8** : le cycle ZEUS n°1 a été absorbé par le cycle n°2 — la DESIGN-REVIEW DAEDALUS de la
+  galerie Historique, le DEV-COUNCIL et le DEV-SENIOR seront joués sur le cycle 2, qui couvre aussi ce code.
+- **Décision utilisateur consignée** : les styles Simplifié et Tuiles de la vue Semaine seront supprimés en v1.9 (seul Pistes
+  reste).
+
+**Détail :** [roadmap](.planning/milestones/v1.8-ROADMAP.md) · [exigences](.planning/milestones/v1.8-REQUIREMENTS.md) ·
+rétrospective dans `.planning/RETROSPECTIVE.md`.
+
+---
+
 ## v1.7 — Lue ou non lue (widget de sessions) — SHIPPED 2026-09-26 (clos le 2026-09-27)
 
 **Exe :** Chronos-v3.2.1 (release `b981e41`), après 3.2.0 (`f321180`) ; réconciliation des hooks et de la statusLine constatée

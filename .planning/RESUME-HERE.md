@@ -1,18 +1,16 @@
-# Point de reprise — 2026-09-27 (soir)
+# Point de reprise — 2026-10-03
 
-**Milestone v1.8 « Historique d'utilisation »** — cycle ZEUS n°1 (`.zeus/state.json`).
+**Milestone v1.8 « Historique d'utilisation » — CLOS le 2026-10-03 avec écarts connus.**
 
-- Phases 32, 33, 34 : exécutées et vérifiées (32 : 7/8 plans, le constat 32-08 est absorbé par 35-07).
-- Phase 35 : 6/7 plans exécutés. `Chronos-v3.3.0.exe` publié à la racine (78 104 918 o, md5 `7ec9fbcf…`, commit `9b74ed5`, ni tag
-  ni push). Suite : 1648 tests verts, 0 warning Debug et Release.
-- Reste :
-  1. **35-07 — constat humain** (VAL-05) : protocole et temps 0 dans `.planning/phases/35-4-semaines-acc-s-release-3-3-0/35-CONSTAT.md`.
-     Reprend l'écart E1-ter (quitter 3.1.0, 3.2.0, 3.2.1 ET 3.2.2, lancer la 3.3.0 par l'Explorateur, second lancement refusé)
-     et le tableau L1…Q / V01…V12 de 32-08. Continuation de 35-07 à partir de la tâche qui suit le checkpoint rendu.
-  2. **Revue DAEDALUS** de la galerie (`dotnet run --project src/Chronos -- --historique`) → `.zeus/reports/design-review-1.md` ;
-     écarts bloquants → itération DESIGN-REVIEW → GSD (max 3).
-  3. ZEUS : DEV-COUNCIL (audit multi-rôles) → triage humain → DEV-SENIOR → go publication (checkpoint humain 3) → PUBLICATION
-     (tag v1.8, release GitHub, CHANGELOG) → RETOUR ROADMAP (checkpoint 4) → `/gsd:complete-milestone`.
+- Phases 32 (7/8), 33 (5/5), 34 (8/8), 35 (6/7) ; exes publiés localement : 3.2.2, 3.3.0, 3.3.1, 3.4.0 (aucun tag de release, aucun
+  push). Suite : 1707 tests verts, 0 warning (release 3.4.0).
+- Archives : `.planning/milestones/v1.8-ROADMAP.md`, `.planning/milestones/v1.8-REQUIREMENTS.md` ; entrée et Known Gaps dans
+  `.planning/MILESTONES.md` ; rétrospective dans `.planning/RETROSPECTIVE.md` ; tag git local `v1.8`.
+- Écarts reportés dans la phase de constat du milestone suivant (phase 43 « Release Chronos-v3.5.0.exe + constat utilisateur ») :
+  1. **32-08 — VAL-04** : constat en production (une seule instance, tableau L1…Q, V01…V12) — protocole `32-CONSTAT.md`.
+  2. **35-07 — VAL-05** : constat de la fenêtre Historique — protocole et temps 0 dans `35-CONSTAT.md`.
+- Étapes ZEUS du cycle n°1 (DESIGN-REVIEW de la galerie, DEV-COUNCIL, DEV-SENIOR) absorbées par le cycle n°2 (`.zeus/state.json`).
+- Prochaine étape : définir le milestone suivant (`/gsd:new-milestone`, piloté par l'orchestrateur ZEUS, cycle n°2).
 
 ## Sécurité — contrainte qui prime sur tout
 

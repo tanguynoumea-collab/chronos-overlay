@@ -8,6 +8,8 @@ qui affiche en temps réel — d'un coup d'œil — l'état des limites d'usage 
 Le cadran encode deux variables par anneau : longueur d'arc = temps restant avant reset,
 couleur = pourcentage de quota consommé. Pour un utilisateur intensif de Claude qui veut
 savoir sans y penser combien de marge il lui reste avant d'être bloqué.
+Un widget dit quelle session Claude Code attend l'utilisateur, et depuis v1.8 une fenêtre « Historique » séparée montre
+comment le forfait a été consommé au fil du temps (semaine de forfait, jour, quatre semaines), sans un chiffre inventé.
 
 ## Core Value
 
@@ -54,26 +56,23 @@ chiffre exact.
 - ✓ Un sous-agent qui écrit est un travail de sa session : battements et transcripts des sous-agents ⇒ « Réflexion » du parent, sans jamais effacer une attente d'intervention ; contrat sous garde ; exe 3.2.1 (SUB-01, SUB-02) — Phase 30.1 (insérée, écart E2 du constat)
 - ✓ Relevé in vivo AVANT la règle : le retour alt-tab met `lastFocusedAt` à jour, le tour fini sous les yeux non (VAL-01) — Phase 27
 - ✓ Contrat de la source app-bureau sous garde croisée (14 champs) ; exe 3.2.0 puis 3.2.1 publiés, version embarquée, réconciliation constatée dans le fichier (VAL-02 ; VAL-03 partielle : constat en production reporté en phase 32) — Phase 31 — v1.7
-- ✓ Compter juste et journaliser : dédup des usages par `message.id` (max par champ, dictionnaire global), magasins observables + vue AppData au diagnostic, mutex mono-instance, journal des relevés exacts (1 / 5 min, événements de couverture, append sûr), alerte « journal muet », lecture par plage (169 h / 167 h aux changements d'heure), exe 3.2.2 publié (CPT-01..03, JRN-01..06 ; VAL-04 en cours : constat avec l'utilisateur) — Phase 32 — v1.8
+- ✓ Compter juste et journaliser : dédup des usages par `message.id` (max par champ, dictionnaire global), magasins observables + vue AppData au diagnostic, mutex mono-instance, journal des relevés exacts (1 / 5 min, événements de couverture, append sûr), alerte « journal muet », lecture par plage (169 h / 167 h aux changements d'heure), exe 3.2.2 publié (CPT-01..03, JRN-01..06 ; VAL-04 NON jouée : constat reporté au milestone suivant) — Phase 32 — v1.8
 - ✓ Agrégats de tokens : tranches 15 min UTC × modèle × sous-agent, quatre compteurs, index d'ids append-only + projection mensuelle réécrite atomiquement, reconstruction de fond (thread BelowNormal, 3,2 s à chaud, 47 ms en incrémental), curseurs, rendu local DST (25 barres le 25/10/2026, 23 le 28/03/2027), couverture « hors couverture / transcripts absents / couverte », garde « aucun pourcentage dérivé de tokens » (TOK-01..05) — Phase 33 — v1.8
 - ✓ Fenêtre Historique : fenêtre de consultation opaque (WindowChrome, géométrie persistée), vue Semaine de forfait en trois styles sélectionnables (Pistes / Simplifié / Tuiles, hauteurs du plan de design vérifiées par Measure/Arrange), vue Jour au grain 5 min, pistes à OnRender + StreamGeometry gelée jamais redessinées au tick, palette promue dans DesignTokens.xaml sans changer une valeur, honnêteté testée mot pour mot (trous, « répartition inconnue », « consommé ailleurs »), bandeau F2, galerie `--historique` (HIS-01..04, HIS-06..08) — Phase 34 — v1.8
+- ✓ 4 semaines, accès, release : vue 4 semaines (semaines antérieures au journal dites telles, semaine épuisée annotée), carte « Historique d'utilisation » des réglages + double-clic au centre du cadran sans double bascule, section `[Journal d'historique]` du diagnostic, README et `docs/data-sources.md` §9 sous garde de vocabulaire, exe 3.3.0 (HIS-05, ACC-01..04 ; VAL-05 NON jouée : constat reporté au milestone suivant) — Phase 35 — v1.8
+- ✓ « Quitter Chronos » sans processus zombie (arrêt du Host borné hors thread UI), exe 3.3.1 ; fenêtre de réglages classique redimensionnable (six sections, aperçu vivant, diagnostic intégré), exe 3.4.0 — quick 260927 et 260927-reglages-v2 — v1.8 (hors phases)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-Milestone v1.8 — « Historique d'utilisation » (cycle ZEUS n°1, exe cible 3.3.0) : comprendre sa façon d'utiliser Claude au
-cours du temps, sans jamais présenter une estimation comme un chiffre exact.
-- **Compter juste (CPT)** : dédupliquer les lignes `assistant` par `message.id` (une ligne par bloc de contenu, même `usage`
-  recopié : le parser compte 2 à 2,75× trop) ; comprendre pourquoi `last-exact.json` n'est plus écrit depuis le 13/09 ;
-  une seule instance de Chronos à la fois.
-- **Journal des relevés exacts (JRN)** : un relevé exact toutes les 5 min (5 h, hebdo, resets, statut serveur), dédupliqué,
-  idempotent, avec événements de couverture ; âge de la dernière écriture exposé partout ; publié seul en **3.2.2**.
-- **Agrégats de tokens (TOK)** : tranches de 15 min UTC × modèle × sous-agent, quatre compteurs séparés, reconstruction de
-  fond depuis les transcripts existants puis incrémental par curseurs ; jamais convertis en pourcentage.
-- **Fenêtre Historique (HIS)** : vue « Semaine de forfait » en trois styles sélectionnables (Pistes, Simplifié, Tuiles), vues
-  « Jour » et « 4 semaines », pistes Niveau / Rythme / Tokens / Couverture, trous jamais interpolés, aucune projection.
-- **Accès (ACC)** : carte dans les réglages + double-clic au centre du cadran ; section du diagnostic ; release 3.3.0.
+Aucun milestone en cours : v1.8 est clos (2026-10-03) ; le prochain milestone est à définir (`/gsd:new-milestone`).
+Reliquat porté de v1.8, à reprendre dans la phase de constat du prochain milestone :
+- [ ] **VAL-04** — constat en production avec l'utilisateur (une seule instance, tableau des gestes L1…Q, vérifications V01…V12 ;
+  protocole `32-CONSTAT.md`), dette héritée de VAL-03 (v1.7).
+- [ ] **VAL-05** — constat de la fenêtre Historique avec l'utilisateur (deux gestes, vraies données, 4 semaines, trou réel après
+  une nuit, libellés relus, verdict ; protocole `35-CONSTAT.md`).
+- [ ] Suppression des styles Simplifié et Tuiles de la vue Semaine (décision utilisateur) — seul Pistes reste.
 
 ### Out of Scope
 
@@ -90,19 +89,33 @@ cours du temps, sans jamais présenter une estimation comme un chiffre exact.
 - **Calibration des plafonds (manuelle ou automatique)** — supprimée avec l'estimation absolue ; c'était la cause racine des pourcentages faux après un changement de forfait
 - **Détection ou saisie du forfait (Max x5 / x20)** — inutile dès lors que les chiffres viennent du serveur, qui connaît déjà le forfait
 - **Source app-bureau via UI Automation pour le widget de sessions** — retirée en v1.6 : le widget ne couvre que Claude Code. Ses entrées `desktop:foreground:*` ne vieillissaient jamais et ne pouvaient donc jamais expirer ; l'utilisateur a dû les archiver à la main.
+- **SQLite pour l'historique** — `e_sqlite3.dll` est une dépendance native (casse le mono-fichier) ; JSONL mensuel tolérant retenu en v1.8.
+- **Pourcentage dérivé de tokens, double axe Y, reconstitution des pourcentages avant l'ouverture du journal** — v1.8 : deux séries de nature différente ne se fusionnent jamais ; une garde structurelle l'interdit.
 - **Hystérésis « traité » par focus de fenêtre** — supprimée avec l'UIA : elle exigeait `Origin == Desktop` et n'atteignait donc JAMAIS une session Claude Code. Remplacée par une transition observée et un geste explicite.
 
-## Current State (v1.8 en cours — 2026-09-27)
+## Current State (v1.8 clos — 2026-10-03)
 
-**Phases 32, 33 et 34 exécutées** (1200 → 1565 tests verts, zéro warning ; fenêtre Historique livrée, revue visuelle DAEDALUS en attente sur la galerie `--historique`) : `Chronos-v3.2.2.exe` publié et lancé par l'utilisateur (journal des relevés vérifié : 12 relevés / h, 0 doublon, réconciliation conforme) ; agrégats de tokens câblés. Reste pour la 32 : le constat humain (quitter les trois anciens overlays, second lancement, tableau des gestes). Phase 34 (fenêtre Historique) en préparation.
+**v1.8 « Historique d'utilisation » est livré (exe 3.3.0, puis 3.3.1 et 3.4.0 hors phases) et clos avec écarts connus.**
+Phases 32 à 35, 26 plans sur 28 ; **1707 tests verts, 0 warning** (Debug et Release) à la 3.4.0 ; ≈ 60 800 lignes C#/XAML
+sous `src/`, ≈ 40 700 lignes de tests ; toujours zéro dépendance native. Chronos compte juste (dédup `message.id`), ne se tait
+plus (âge de dernière écriture de chaque magasin au diagnostic, vue AppData réelle ou virtualisée affichée), refuse de tourner en
+double, journalise un relevé exact toutes les 5 min et agrège les tokens des transcripts ; la fenêtre Historique (Semaine en
+trois styles, Jour, 4 semaines) s'ouvre par la carte des réglages ou par un double-clic au centre du cadran.
+
+**Écarts connus** (voir `.planning/MILESTONES.md` › v1.8 › Known Gaps) : les constats avec l'utilisateur VAL-04 (32-08) et
+VAL-05 (35-07) ne sont pas joués et passent dans la phase de constat du milestone suivant ; la DESIGN-REVIEW de la galerie, le
+DEV-COUNCIL et le DEV-SENIOR du cycle ZEUS n°1 sont absorbés par le cycle n°2. Les exécutables 3.2.2, 3.3.0, 3.3.1 et 3.4.0 sont
+publiés localement, sans tag de release ni push.
+
+<details><summary>État pendant v1.8 (2026-09-27)</summary>
 
 **v1.7 clos le 2026-09-27** (exe 3.2.1, 1200 tests) avec un écart connu : le constat en production est PARTIEL (trois exécutables
-en marche, tableau des gestes non joué) et se rejoue en tête de la phase 32 sur la 3.2.2. **Deux défauts découverts à la clôture**
-par le conseil LLM du 26/09 (cinq relecteurs les ont vérifiés sur la machine) : le parser de tokens compte 2 à 2,75× trop (lignes
-`assistant` dupliquées par bloc de contenu, même `usage`) — la correction par delta v1.5 est fausse en production ; et
-`last-exact.json` n'est plus écrit depuis le 2026-09-13 12:44 malgré des relevés exacts frais (Save dans un try/catch muet).
-Sonde d'en-têtes : fonctionnelle, 1 relevé / 5 min (12 % 5 h et 33 % hebdo le 26/09 22:34). Transcripts : 1 565 fichiers, 2,2 Go,
-depuis juin (juillet purgé), 1 480 de sous-agents. Reset hebdo : samedi 00:00 heure locale (confirmé par `resets_at`).
+en marche, tableau des gestes non joué). **Deux défauts découverts à la clôture** par le conseil LLM du 26/09 : le parser de
+tokens compte 2 à 2,75× trop (corrigé en phase 32) ; le « gel » de `last-exact.json` (établi en phase 32 comme un artefact de la
+vue AppData virtualisée par MSIX, pas une panne d'écriture). Sonde d'en-têtes : 1 relevé / 5 min. Transcripts : 1 565 fichiers,
+2,2 Go, depuis juin (juillet purgé). Reset hebdo : samedi 00:00 heure locale (confirmé par `resets_at`).
+
+</details>
 
 <details><summary>État à l'entrée en v1.7 (2026-09-25)</summary>
 
@@ -136,26 +149,9 @@ Format interne NON documenté : lecture tolérante, dégradation, jamais d'inven
 
 </details>
 
-## Current Milestone: v1.8 — Historique d'utilisation
-
-**Goal :** garder la trace de l'usage du forfait au fil du temps et la montrer — semaine de forfait (samedi → samedi), jour,
-quatre semaines — pour que l'utilisateur comprenne quand et comment il consomme, sans qu'un seul chiffre soit inventé.
-
-**Target features :**
-- **Compter juste d'abord** — dédup `message.id` du parser, cause du gel de `last-exact.json`, une seule instance.
-- **Journal des relevés exacts** (JSONL mensuel, dédup `CapturedAt`, événements de couverture, âge de dernière écriture) —
-  publié seul en 3.2.2 : chaque jour sans journal est perdu à jamais.
-- **Agrégats de tokens** (15 min UTC × modèle × sous-agent, quatre compteurs, reconstruction de fond, curseurs).
-- **Fenêtre Historique** — Semaine (styles Pistes / Simplifié / Tuiles), Jour, 4 semaines ; pistes Niveau, Rythme, Tokens,
-  Couverture ; trous hachurés et annotés, saut « répartition inconnue », divergence « consommé ailleurs ».
-- **Accès** — carte des réglages + double-clic au centre du cadran ; section du diagnostic.
-
-**Cadre :** conseil LLM du 2026-09-26 (`.zeus/reports/llm-council-2026-09-26.md`), plan de design validé le 2026-09-27
-(`.zeus/DESIGN_PLAN.md`, maquettes Figma https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k). Doctrine inchangée : exact
-ou rien ; deux séries de nature différente ne se fusionnent jamais ; XAML pur ; lecture seule stricte de `~/.claude`.
-
 ## Next Milestone Goals (après v1.8)
 
+À reprendre en priorité : les constats VAL-04 et VAL-05 (gestes de l'utilisateur) ; suppression des styles Simplifié et Tuiles.
 Heatmap jour × heure des rythmes ; export CSV de la plage affichée ; compaction du journal au-delà de 8 semaines ; dimension
 projet dans les agrégats ; projection conditionnelle « à ce rythme » (seulement si visuellement distincte d'un relevé) ;
 `DayTimeline` sur les resets observés plutôt qu'une grille théorique de 5 h ; dérive d'une heure de `WeeklyWindow` au
@@ -213,10 +209,14 @@ préavis avant saturation, notification au reset ; économie de la sonde si `/ap
 | La fusion des sources arbitre par FRAÎCHEUR (v1.6) | L'ordre d'insertion laissait un signal de 7 h écraser un signal de 10 s — mesuré contre les classes réelles | ✓ Good — v1.6 |
 | « Traité » = transition observée sur la MÊME source + geste explicite (v1.6) | Une expiration de source n'est pas une réponse ; le focus n'existe pas en terminal | ⚠️ Revisit — insuffisant seul : rien ne dit si l'utilisateur a LU (v1.7) |
 | « Lue » lu dans les métadonnées par session de l'app bureau (v1.7) | `lastFocusedAt` est le seul signal de lecture qui existe ; format interne non documenté → tolérance + dégradation | ✓ Good — v1.7, 1200 tests ; constat geste par geste reporté en phase 32 |
-| Deux journaux de nature différente, jamais fusionnés : relevés exacts (magnitude, compte entier) et agrégats de tokens (attribution, Claude Code seul) (v1.8) | Les tokens ne sont pas convertibles en % (plafonds pondérés, non publiés, périmètre partiel) ; le Δ entre deux relevés exacts est la seule mesure de consommation vraie | — Pending (conseil LLM 2026-09-26, 5/5 unanimes) |
-| JSONL mensuel tolérant, pas SQLite (v1.8) | `e_sqlite3.dll` est une dépendance native, exclue ; 25 Mo/an tiennent en mémoire | — Pending |
-| Fenêtre Historique séparée, opaque, non topmost (v1.8) | Le cadran est un mode coup d'œil (layered, coûteux) ; l'historique un mode consultation | — Pending (plan de design validé 2026-09-27) |
-| Dédup des tokens par `message.id` avant toute somme (v1.8) | Une ligne `assistant` par bloc de contenu, même `usage` recopié : facteur 2 à 2,75 mesuré | — Pending (correctif à publier en 3.2.2) |
+| Deux journaux de nature différente, jamais fusionnés : relevés exacts (magnitude, compte entier) et agrégats de tokens (attribution, Claude Code seul) (v1.8) | Les tokens ne sont pas convertibles en % (plafonds pondérés, non publiés, périmètre partiel) ; le Δ entre deux relevés exacts est la seule mesure de consommation vraie | ✓ Good — v1.8 : deux axes, deux palettes, garde structurelle TOK-05 |
+| JSONL mensuel tolérant, pas SQLite (v1.8) | `e_sqlite3.dll` est une dépendance native, exclue ; 25 Mo/an tiennent en mémoire | ✓ Good — v1.8 : journal et agrégats en JSONL, append exclusif idempotent, réécriture atomique |
+| Fenêtre Historique séparée, opaque, non topmost (v1.8) | Le cadran est un mode coup d'œil (layered, coûteux) ; l'historique un mode consultation | ✓ Good — v1.8 livré ; constat utilisateur (VAL-05) reporté |
+| Trois styles sélectionnables pour la vue Semaine (Pistes, Simplifié, Tuiles) (v1.8) | L'utilisateur voulait comparer avant de choisir | ⚠️ Revisit — décision utilisateur : Simplifié et Tuiles supprimés au milestone suivant, seul Pistes reste |
+| Verrou mono-instance (mutex `Local\Chronos-overlay`), hooks et CLI exemptés (v1.8) | Trois exécutables tournaient ensemble au constat v1.7 ; un journal à plusieurs écrivains doit être idempotent | ✓ Good — v1.8 (constat en vrai reporté avec VAL-04) |
+| Ne jamais juger les fichiers de l'overlay depuis une session Claude Code (v1.8) | AppData est virtualisé par MSIX sous l'app bureau : la « panne » de `last-exact.json` était la copie du paquet | ✓ Good — vue AppData affichée au diagnostic, sondes WMI hors arbre |
+| Arrêt du Host hors thread UI, borné (quick 260927, 3.3.1) | `await` + `GetResult` dans `OnExit` interbloquait Host et Dispatcher : processus zombie, mutex tenu | ✓ Good — 6 tests Host réel sous Dispatcher |
+| Dédup des tokens par `message.id` avant toute somme (v1.8) | Une ligne `assistant` par bloc de contenu, même `usage` recopié : facteur 2 à 2,75 mesuré | ✓ Good — v1.8, publié en 3.2.2 (max par champ, dictionnaire global, garde « aucun lecteur hors du helper ») |
 
 ## Evolution
 
@@ -236,4 +236,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-27 — phases 32 à 34 de v1.8 exécutées (1565 tests) ; revue visuelle et constat 32-08 en attente ; phase 35 en recherche*
+*Last updated: 2026-10-03 after v1.8 milestone (clos avec écarts connus : VAL-04 et VAL-05 reportés)*
