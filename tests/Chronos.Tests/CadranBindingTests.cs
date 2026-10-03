@@ -318,7 +318,7 @@ public class CadranBindingTests
 
         Assert.Same(vm.ReconnecterCommand, pastille.Command);
         Assert.NotSame(vm.LoginClaudeCommand, pastille.Command);
-        Assert.NotNull(pastille.Background);                  // hit-testable (Transparent suffit)
+        Assert.NotNull(pastille.Background);                  // pinceau non nul (alpha 1 = ZoneSilhouette : un pixel alpha 0 laisse passer le clic)
         Assert.Equal(Visibility.Visible, pastille.Visibility);
 
         // L'ALIGNEMENT a changé de porteur, et lui SEUL : dans une rangée, c'est le panneau qui est
@@ -389,7 +389,7 @@ public class CadranBindingTests
         Assert.True(vm.AfficherInvitationConnexion);
         Assert.Same(vm.ReconnecterCommand, invitation.Command);
         Assert.NotSame(vm.LoginClaudeCommand, invitation.Command);
-        Assert.NotNull(invitation.Background);                 // hit-testable (Transparent suffit)
+        Assert.NotNull(invitation.Background);                 // pinceau non nul (alpha 1 = ZoneSilhouette : un pixel alpha 0 laisse passer le clic)
         Assert.Equal(Visibility.Visible, invitation.Visibility);
 
         // Idem : l'alignement appartient à la rangée, tout le reste de ce test est inchangé.
@@ -699,7 +699,7 @@ public class CadranBindingTests
         Assert.Equal(vm.InfobulleReleve, pastille.ToolTip);
 
         Assert.Null(typeof(System.Windows.Shapes.Ellipse).GetProperty("Command"));
-        Assert.NotNull(pastille.Fill);            // hit-testable (Transparent suffit, {x:Null} non)
+        Assert.NotNull(pastille.Fill);            // pinceau non nul (alpha 1 = ZoneSilhouette : un pixel alpha 0 laisse passer le clic)
         Assert.True(pastille.IsHitTestVisible);
     }
 

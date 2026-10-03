@@ -451,7 +451,7 @@ galerie `--historique`, sans aucun fichier).
 - Pas de réticule ni d'infobulle en vue 4 semaines (le §2.4 du plan de design n'en prévoit pas).
 - La semaine épuisée de la vue 4 semaines n'existe qu'en fixture de test : la galerie `--historique` ne la montre pas.
 - Rangées de la couverture par semaine au pas de 16 px (lecture de « espacées de 16 px » de la frame E).
-- Simple clic au centre du cadran retardé du délai de double-clic de Windows (≈ 0,5 s) pour que le double-clic ouvre
+- Simple clic sur le cadran retardé du délai de double-clic de Windows (≈ 0,5 s) pour que le double-clic ouvre
   l'Historique sans déclencher de bascule.
 
 ---
