@@ -775,4 +775,123 @@ public class CadranBindingTests
         Assert.False(mot.IsHitTestVisible);
         Assert.Equal(170d, fenetre.Width);
     }
+
+    // ============ Phase 40 (CAD-01 / CAD-03 / CAD-04) : cadrans à l'échelle 1, fenêtre à l'empreinte ============
+
+    /// <summary>Les huit variantes (style, orientation) du contrat d'empreinte.</summary>
+    private static readonly (CadranStyle Style, OrientationCadran Orientation)[] Variantes =
+    {
+        (CadranStyle.Arcs, OrientationCadran.Horizontal),
+        (CadranStyle.Braises, OrientationCadran.Horizontal),
+        (CadranStyle.Fusible, OrientationCadran.Horizontal),
+        (CadranStyle.Fusible, OrientationCadran.Vertical),
+        (CadranStyle.Maree, OrientationCadran.Vertical),
+        (CadranStyle.Maree, OrientationCadran.Horizontal),
+        (CadranStyle.Volets, OrientationCadran.Horizontal),
+        (CadranStyle.Volets, OrientationCadran.Vertical),
+    };
+
+    private static void PoserVariante(MainViewModel vm, CadranStyle style, OrientationCadran orientation)
+    {
+        vm.CadranStyle = style;
+        vm.ChoisirOrientationCommand.Execute(orientation);   // sans effet pour Arcs / Braises
+    }
+
+    private static void Purger(FrameworkElement e)
+        => e.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+    /// <summary>Plus de Viewbox : la fenêtre prend l'empreinte réelle du style ET de l'orientation courants, pour les 8 variantes.</summary>
+    [WpfFact]
+    public void La_fenetre_prend_l_empreinte_de_chaque_variante()
+    {
+        var fenetre = BuildWindow(UsageSnapshot.Empty, out var vm);
+
+        foreach (var (style, orientation) in Variantes)
+        {
+            PoserVariante(vm, style, orientation);
+            Purger(fenetre);
+            var attendu = Chronos.Rendering.EmpreinteCadran.Pour(style, orientation);
+            Assert.True(attendu.Width == fenetre.Width, $"{style}/{orientation} : Width {fenetre.Width} ≠ {attendu.Width}");
+            Assert.True(attendu.Height == fenetre.Height, $"{style}/{orientation} : Height {fenetre.Height} ≠ {attendu.Height}");
+        }
+    }
+
+    /// <summary>
+    /// Le mot « indisponible » et la rangée de pastilles (cas réel « jamais d'exact » : mot ET invitation allumés) tiennent dans
+    /// l'empreinte de chaque variante sans se recouvrir. Le mot est centré dans l'empreinte des cadrans rectangulaires (décision
+    /// de l'orchestrateur, phase 40) et reste au bas-gauche pour Arcs et Braises (EXA-03, hors des anneaux).
+    /// </summary>
+    [WpfFact]
+    public void Le_mot_et_les_pastilles_restent_dans_l_empreinte_de_chaque_variante()
+    {
+        var (fenetre, racine) = MonterPastille(EtatAuthentification.Connecte, JamaisDExact(), out var vm);
+        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
+        Assert.True(vm.DataUnavailable);
+        Assert.True(vm.AfficherInvitationConnexion);
+
+        foreach (var (style, orientation) in Variantes)
+        {
+            PoserVariante(vm, style, orientation);
+            var empreinte = Chronos.Rendering.EmpreinteCadran.Pour(style, orientation);
+            Purger(racine);
+            racine.Measure(empreinte);
+            racine.Arrange(new Rect(empreinte));
+            racine.UpdateLayout();
+
+            Assert.Equal(Visibility.Visible, mot.Visibility);
+            var boite = new Rect(empreinte);
+            var rMot = RectangleMisEnPage(mot, racine);
+            var rRangee = RectangleMisEnPage(rangee, racine);
+            var nom = $"{style}/{orientation}";
+
+            Assert.False(rMot.IsEmpty || rMot.Width == 0, $"{nom} : mot non mis en page");
+            Assert.False(rRangee.IsEmpty || rRangee.Width == 0, $"{nom} : rangée non mise en page");
+            Assert.True(boite.Contains(rMot), $"{nom} : le mot {rMot} sort de l'empreinte {boite}");
+            Assert.True(boite.Contains(rRangee), $"{nom} : la rangée {rRangee} sort de l'empreinte {boite}");
+            Assert.True(Rect.Intersect(rMot, rRangee).IsEmpty, $"{nom} : le mot recouvre la rangée : {rMot} ∩ {rRangee}");
+
+            var centreMot = new Point(rMot.X + rMot.Width / 2, rMot.Y + rMot.Height / 2);
+            if (style is CadranStyle.Fusible or CadranStyle.Maree or CadranStyle.Volets)
+            {
+                var centreEmpreinte = new Point(empreinte.Width / 2, empreinte.Height / 2);
+                Assert.True((centreMot - centreEmpreinte).Length < 1,
+                    $"{nom} : mot centré en {centreMot}, attendu {centreEmpreinte}");
+            }
+            else
+            {
+                Assert.True(rMot.X < 20, $"{nom} : le mot devait rester au bas-gauche (X = {rMot.X})");
+            }
+        }
+    }
+
+    /// <summary>Les vues Fusible / Marée / Volets sont des enfants DIRECTS du Grid racine (plus de Viewbox) et portent
+    /// l'orientation du VM via leur DP Orientation.</summary>
+    [WpfFact]
+    public void Chaque_vue_de_cadran_est_enfant_direct_et_porte_l_orientation_du_vm()
+    {
+        var (fenetre, racine) = MonterPastille(EtatAuthentification.Connecte, UsageSnapshot.Empty, out var vm);
+        var grille = Assert.IsAssignableFrom<Panel>(racine);
+
+        var fusible = grille.Children.OfType<Chronos.Views.Cadrans.CadranFusibleView>().Single();
+        var maree = grille.Children.OfType<Chronos.Views.Cadrans.CadranMareeView>().Single();
+        var volets = grille.Children.OfType<Chronos.Views.Cadrans.CadranVoletsView>().Single();
+        Assert.Single(grille.Children.OfType<Chronos.Views.Cadrans.CadranBraisesView>());
+        Assert.Empty(grille.Children.OfType<Viewbox>());
+        foreach (var vue in new FrameworkElement[] { fusible, maree, volets })
+            Assert.Same(racine, LogicalTreeHelper.GetParent(vue));
+
+        Assert.Equal(Orientation.Horizontal, fusible.Orientation);
+        Assert.Equal(Orientation.Vertical, maree.Orientation);
+        Assert.Equal(Orientation.Horizontal, volets.Orientation);
+
+        vm.OrientationFusible = Orientation.Vertical;
+        vm.OrientationMaree = Orientation.Horizontal;
+        vm.OrientationVolets = Orientation.Vertical;
+        Purger(racine);
+
+        Assert.Equal(Orientation.Vertical, fusible.Orientation);
+        Assert.Equal(Orientation.Horizontal, maree.Orientation);
+        Assert.Equal(Orientation.Vertical, volets.Orientation);
+    }
 }

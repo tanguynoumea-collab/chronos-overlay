@@ -114,4 +114,21 @@ public class EmpreinteCadranTests
                 $"CadranHauteur{nom} ≠ EmpreinteCadran.Pour({style}, {orientation}).Height ({empreinte.Height}).");
         }
     }
+
+    /// <summary>Phase 40 (CAD-01) : MainWindow n'enveloppe plus aucun cadran dans un Viewbox, et sa taille est liée à l'empreinte
+    /// courante du VM (plus de 170 × 170 figé).</summary>
+    [Fact]
+    public void MainWindow_n_a_plus_de_Viewbox_et_lie_sa_taille()
+    {
+        var racine = GardesPerimetreTests.CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racine), "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : cette garde ne lirait rien.");
+        var chemin = Path.Combine(racine, "Views", "MainWindow.xaml");
+        Assert.True(File.Exists(chemin), $"Fichier introuvable : {chemin}");
+        var xaml = File.ReadAllText(chemin);
+
+        Assert.DoesNotContain("<Viewbox", xaml);
+        Assert.Contains("Width=\"{Binding LargeurCadran, Mode=OneWay}\"", xaml);
+        Assert.Contains("Height=\"{Binding HauteurCadran, Mode=OneWay}\"", xaml);
+        Assert.DoesNotContain("Width=\"170\" Height=\"170\"", xaml);
+    }
 }
