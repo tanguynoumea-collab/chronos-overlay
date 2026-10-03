@@ -1,3 +1,4 @@
+using System.IO;
 using Chronos.ViewModels;
 using Xunit;
 
