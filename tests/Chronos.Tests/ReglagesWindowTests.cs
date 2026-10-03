@@ -230,12 +230,17 @@ public class ReglagesWindowTests
         var defilement = Nomme<ScrollViewer>(f, "DefilementContenu");
         var grille = Nomme<ItemsControl>(f, "GrilleThemes");
 
-        var vignettes = Enumerable.Range(0, vm.Themes.Count)
-            .Select(i => Descendants(grille.ItemContainerGenerator.ContainerFromIndex(i)).OfType<Button>().First())
+        // Les vignettes vivent dans les ItemsControl internes des groupes : collecte par l'arbre, ordre visuel (haut, gauche).
+        var vignetteStyle = (Style)f.FindResource("VignetteTheme");
+        var placees = Descendants(grille).OfType<Button>().Where(b => b.Style == vignetteStyle)
+            .Select(v => (v, r: v.TransformToAncestor(defilement).TransformBounds(new Rect(v.RenderSize))))
+            .OrderBy(x => Math.Round(x.r.Top)).ThenBy(x => x.r.Left)
             .ToList();
+        var vignettes = placees.Select(x => x.v).ToList();
+        var rects = placees.Select(x => x.r).ToList();
         Assert.Equal(ThemeCatalog.All.Count, vignettes.Count);
+        Assert.Equal(15, vignettes.Count);
 
-        var rects = vignettes.Select(v => v.TransformToAncestor(defilement).TransformBounds(new Rect(v.RenderSize))).ToList();
         foreach (var (v, r) in vignettes.Zip(rects))
         {
             Assert.Equal(Token(f, "ReglagesVignetteLargeur"), v.ActualWidth, 1);
@@ -245,6 +250,49 @@ public class ReglagesWindowTests
 
         var premiereLigne = rects.Count(r => Math.Abs(r.Top - rects[0].Top) < 1);
         Assert.Equal(parLigneAttendu, premiereLigne);
+    }
+
+    [WpfFact]
+    public void Les_themes_sont_ranges_en_trois_groupes_titres()
+    {
+        var vm = NouveauVm();
+        var f = Monter(vm, SectionReglages.Apparence, ParDefaut);
+        var defilement = Nomme<ScrollViewer>(f, "DefilementContenu");
+        var grille = Nomme<ItemsControl>(f, "GrilleThemes");
+        var etiquette = (Style)f.FindResource("Etiquette");
+
+        var titres = Descendants(grille).OfType<TextBlock>().Where(t => t.DataContext is GroupeThemes && t.Style == etiquette)
+            .OrderBy(t => t.TransformToAncestor(defilement).Transform(new Point(0, 0)).Y)
+            .ToList();
+
+        Assert.Equal(new[] { "PÂLE", "CLASSIQUE", "VIVE" }, titres.Select(t => t.Text).ToArray());
+        foreach (var t in titres)
+        {
+            Assert.Equal(Token(f, "ReglagesCorpsEtiquette"), t.FontSize, 3);
+            Assert.Equal(FontWeights.SemiBold, t.FontWeight);
+        }
+    }
+
+    [WpfFact]
+    public void Une_vignette_de_chaque_groupe_selectionne_son_theme()
+    {
+        var vm = NouveauVm();
+        var f = Monter(vm, SectionReglages.Apparence, ParDefaut);
+        var grille = Nomme<ItemsControl>(f, "GrilleThemes");
+        var vignetteStyle = (Style)f.FindResource("VignetteTheme");
+        var vignettes = Descendants(grille).OfType<Button>().Where(b => b.Style == vignetteStyle).ToList();
+
+        // Une par groupe : la liaison doit atteindre SelectThemeCommand depuis l'ItemsControl imbriqué (Pitfall 3).
+        foreach (var nom in new[] { "Moka", "Graphite", "Synthwave" })
+        {
+            var bouton = Assert.Single(vignettes, b => b.DataContext is ThemeChoice c && c.Name == nom);
+            var choix = (ThemeChoice)bouton.DataContext;
+            Assert.NotNull(bouton.Command);
+            bouton.Command.Execute(bouton.CommandParameter);
+            Assert.Equal(choix.Theme.Key, vm.SelectedThemeKey);
+            Assert.True(choix.IsSelected);
+            Assert.Single(vm.Themes, t => t.IsSelected);
+        }
     }
 
     // ================================================================== Rail, raccourcis, Quitter

@@ -700,31 +700,42 @@
                             </Border>
 
                             <TextBlock Text="THÈME" Style="{StaticResource Etiquette}"/>
-                            <ItemsControl x:Name="GrilleThemes" ItemsSource="{Binding Themes}" Focusable="False">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
+                            <!-- Section Thème en trois groupes titrés PÂLE · CLASSIQUE · VIVE (THM-01, §5.1). La commande de vignette
+                                 remonte à la Window : l'ItemsControl ancêtre le plus proche porte désormais un GroupeThemes. -->
+                            <ItemsControl x:Name="GrilleThemes" ItemsSource="{Binding GroupesThemes}" Focusable="False">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Button Style="{StaticResource VignetteTheme}" ToolTip="{Binding Name}"
-                                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                                            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
-                                                <Ellipse Width="{StaticResource ReglagesVignetteDisque}" Height="{StaticResource ReglagesVignetteDisque}"
-                                                         Fill="{Binding Theme.PreviewDisc}" Stroke="{StaticResource Line}"
-                                                         StrokeThickness="{StaticResource HistoEpaisseurFin}" HorizontalAlignment="Center"/>
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
-                                                             Margin="2,0" Fill="{Binding Theme.PreviewGreen}"/>
-                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
-                                                             Margin="2,0" Fill="{Binding Theme.PreviewAmber}"/>
-                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
-                                                             Margin="2,0" Fill="{Binding Theme.PreviewRed}"/>
-                                                </StackPanel>
-                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="{StaticResource ReglagesCorpsEtiquette}"
-                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                            </StackPanel>
-                                        </Button>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Titre}" Style="{StaticResource Etiquette}"/>
+                                            <ItemsControl ItemsSource="{Binding Themes}" Focusable="False">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Style="{StaticResource VignetteTheme}" ToolTip="{Binding Name}"
+                                                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
+                                                            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
+                                                                <Ellipse Width="{StaticResource ReglagesVignetteDisque}" Height="{StaticResource ReglagesVignetteDisque}"
+                                                                         Fill="{Binding Theme.PreviewDisc}" Stroke="{StaticResource Line}"
+                                                                         StrokeThickness="{StaticResource HistoEpaisseurFin}" HorizontalAlignment="Center"/>
+                                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                                             Margin="2,0" Fill="{Binding Theme.PreviewGreen}"/>
+                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                                             Margin="2,0" Fill="{Binding Theme.PreviewAmber}"/>
+                                                                    <Ellipse Width="{StaticResource ReglagesVignettePastille}" Height="{StaticResource ReglagesVignettePastille}"
+                                                                             Margin="2,0" Fill="{Binding Theme.PreviewRed}"/>
+                                                                </StackPanel>
+                                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource Ink}" FontSize="{StaticResource ReglagesCorpsEtiquette}"
+                                                                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
