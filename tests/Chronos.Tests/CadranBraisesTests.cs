@@ -160,6 +160,20 @@ public class CadranBraisesTests
         Assert.DoesNotContain("Animation", xaml);
     }
 
+    [Fact]
+    public void L_heure_du_reset_passe_par_le_token_de_corps()
+    {
+        // §11 B4 : « ↻ HH:MM » au même pinceau que la ligne hebdo, corps par token, plus aucun 10,5 littéral.
+        var xaml = File.ReadAllText(System.IO.Path.Combine(GardesPerimetreTests.CheminSources(), "Views", "Cadrans", "CadranBraisesView.xaml"));
+        var debut = xaml.IndexOf("x:Name=\"HeureResetBraises\"", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "bloc HeureResetBraises introuvable");
+        var fin = xaml.IndexOf("/>", debut, StringComparison.Ordinal);
+        var bloc = xaml.Substring(debut, fin - debut);
+        Assert.Contains("FontSize=\"{DynamicResource CadranCorpsLibelle}\"", bloc);
+        Assert.Contains("TexteSecondaireClair", bloc);
+        Assert.DoesNotContain("FontSize=\"10.5\"", xaml);
+    }
+
     // --- BRA-02 (plan 41-02) : heure exacte du reset dans le centre temps ---
 
     /// <summary>Monte la vue Braises dans un hôte Border portant les pinceaux du thème par défaut ; renvoie (vue, hôte).</summary>
@@ -182,8 +196,8 @@ public class CadranBraisesTests
 
         var heure = Assert.IsType<TextBlock>(vue.FindName("HeureResetBraises"));
         Assert.Equal(Visibility.Visible, heure.Visibility);
-        Assert.Equal(10.5, heure.FontSize, 6);
-        Assert.Same(hote.Resources["TexteSecondaire"], heure.Foreground);
+        Assert.Equal(11, heure.FontSize, 6);   // §11 B4 : corps 11 (token CadranCorpsLibelle)
+        Assert.Same(hote.Resources["TexteSecondaireClair"], heure.Foreground);   // même pinceau que la ligne hebdo
 
         var attendu = "↻ " + TextesHistorique.HeureMinute(
             new DateTimeOffset(2026, 10, 3, 14, 0, 0, TimeSpan.Zero) + TimeSpan.FromHours(5) * 0.62, TimeZoneInfo.Local);

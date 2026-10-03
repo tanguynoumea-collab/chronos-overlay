@@ -74,7 +74,7 @@ public class CadransThemeBindingTests
                         Assert.Equal(2, anneaux.Count);
                         foreach (var a in anneaux)
                         {
-                            Assert.Same(T("TickMajeur"), a.AshBrush);
+                            Assert.Same(T("Piste5h"), a.AshBrush);   // §11 B3 : braises éteintes = piste
                             Assert.Same(T("CadranAttente"), a.WaitBrush);
                         }
 
