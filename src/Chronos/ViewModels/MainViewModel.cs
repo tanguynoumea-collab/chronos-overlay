@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using Chronos.Models;
 using Chronos.Models.Historique.Tokens;
+using Chronos.Rendering;
 using Chronos.Services;
 using Chronos.Services.Historique;
 using Chronos.Services.Historique.Tokens;
@@ -10,6 +11,7 @@ using Chronos.Theming;
 using Chronos.ViewModels.Historique;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Orientation = System.Windows.Controls.Orientation;
 
 namespace Chronos.ViewModels;
 
@@ -252,6 +254,68 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStyleFusible));
         OnPropertyChanged(nameof(IsStyleMaree));
         OnPropertyChanged(nameof(IsStyleVolets));
+        NotifierEmpreinte();
+    }
+
+    // Orientation PAR CADRAN (phase 40, CAD-04) : type WPF côté VM (lié aux DP Orientation des vues), neutre (OrientationCadran)
+    // côté réglages. Sans aucun lien avec VerticalLayout (widget de sessions).
+    [ObservableProperty] private Orientation _orientationFusible = Orientation.Horizontal;
+    [ObservableProperty] private Orientation _orientationMaree = Orientation.Vertical;
+    [ObservableProperty] private Orientation _orientationVolets = Orientation.Horizontal;
+    partial void OnOrientationFusibleChanged(Orientation value) => NotifierEmpreinte();
+    partial void OnOrientationMareeChanged(Orientation value) => NotifierEmpreinte();
+    partial void OnOrientationVoletsChanged(Orientation value) => NotifierEmpreinte();
+
+    /// <summary>Vrai pour les trois cadrans rectangulaires (Fusible, Marée, Volets) : seuls à avoir une orientation.</summary>
+    public bool EstStyleOrientable => CadranStyle is CadranStyle.Fusible or CadranStyle.Maree or CadranStyle.Volets;
+
+    /// <summary>Orientation du cadran COURANT (Horizontal, sans objet, pour Arcs et Braises).</summary>
+    public OrientationCadran OrientationCourante => CadranStyle switch
+    {
+        CadranStyle.Fusible => Neutre(OrientationFusible),
+        CadranStyle.Maree   => Neutre(OrientationMaree),
+        CadranStyle.Volets  => Neutre(OrientationVolets),
+        _ => OrientationCadran.Horizontal,
+    };
+    public bool EstOrientationHorizontale => EstStyleOrientable && OrientationCourante == OrientationCadran.Horizontal;
+    public bool EstOrientationVerticale   => EstStyleOrientable && OrientationCourante == OrientationCadran.Vertical;
+
+    /// <summary>Empreinte DIP du cadran courant à l'échelle 1 : la fenêtre y lie sa taille (plus de Viewbox, phase 40).</summary>
+    public double LargeurCadran => EmpreinteCadran.Pour(CadranStyle, OrientationCourante).Width;
+    public double HauteurCadran => EmpreinteCadran.Pour(CadranStyle, OrientationCourante).Height;
+
+    /// <summary>Mot « indisponible » centré dans l'empreinte des cadrans rectangulaires (décision orchestrateur, phase 40) ;
+    /// bas-gauche, inchangé, pour Arcs et Braises.</summary>
+    public bool MotIndisponibleAuCentre => EstStyleOrientable;
+
+    private void NotifierEmpreinte()
+    {
+        OnPropertyChanged(nameof(EstStyleOrientable));
+        OnPropertyChanged(nameof(OrientationCourante));
+        OnPropertyChanged(nameof(EstOrientationHorizontale));
+        OnPropertyChanged(nameof(EstOrientationVerticale));
+        OnPropertyChanged(nameof(LargeurCadran));
+        OnPropertyChanged(nameof(HauteurCadran));
+        OnPropertyChanged(nameof(MotIndisponibleAuCentre));
+    }
+
+    private static OrientationCadran Neutre(Orientation o) => o == Orientation.Vertical ? OrientationCadran.Vertical : OrientationCadran.Horizontal;
+    private static Orientation VersWpf(OrientationCadran o) => o == OrientationCadran.Vertical ? Orientation.Vertical : Orientation.Horizontal;
+
+    /// <summary>Choisit l'orientation du cadran COURANT (carte « Orientation » des réglages) : ne change que la sienne,
+    /// persiste avec relecture disque fraîche (GAP-1). Sans effet pour Arcs et Braises.</summary>
+    [RelayCommand]
+    private void ChoisirOrientation(OrientationCadran orientation)
+    {
+        if (!EstStyleOrientable) return;
+        var fraiche = _settingsService.Load();
+        switch (CadranStyle)
+        {
+            case CadranStyle.Fusible: OrientationFusible = VersWpf(orientation); _settings = fraiche with { OrientationFusible = orientation }; break;
+            case CadranStyle.Maree:   OrientationMaree   = VersWpf(orientation); _settings = fraiche with { OrientationMaree = orientation }; break;
+            case CadranStyle.Volets:  OrientationVolets  = VersWpf(orientation); _settings = fraiche with { OrientationVolets = orientation }; break;
+        }
+        _settingsService.Save(_settings);
     }
 
     /// <summary>Catalogue des styles de cadran affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
@@ -404,6 +468,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         // Style de cadran : refléter le persisté (défaut Arcs) et peupler le catalogue du sélecteur (settings).
         CadranStyle = _settings.CadranStyle;
+        OrientationFusible = VersWpf(_settings.OrientationFusible);   // phase 40 : orientation mémorisée par cadran
+        OrientationMaree = VersWpf(_settings.OrientationMaree);
+        OrientationVolets = VersWpf(_settings.OrientationVolets);
         foreach (var (style, name) in new[]
                  {
                      (CadranStyle.Arcs, "Anneaux"), (CadranStyle.Braises, "Braises"),

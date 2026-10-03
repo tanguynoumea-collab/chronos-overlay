@@ -204,7 +204,8 @@ public class OrientationCadranTests
         var notifiees = new List<string?>();
         PropertyChangedEventHandler h = (_, e) => notifiees.Add(e.PropertyName);
         vm.PropertyChanged += h;
-        vm.ChoisirOrientationCommand.Execute(OrientationCadran.Vertical);
+        Assert.Equal(Orientation.Vertical, vm.OrientationFusible);   // laissée verticale par la boucle
+        vm.ChoisirOrientationCommand.Execute(OrientationCadran.Horizontal);
         Assert.Contains(nameof(MainViewModel.LargeurCadran), notifiees);
         Assert.Contains(nameof(MainViewModel.HauteurCadran), notifiees);
 
