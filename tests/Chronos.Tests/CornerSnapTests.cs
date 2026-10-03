@@ -107,4 +107,72 @@ public class CornerSnapTests
         Assert.Equal(Work.Right - Margin, x + Window, 9);
         Assert.Equal(Work.Bottom - Margin, y + Window, 9);
     }
+
+    // --- RecalerSurCoin : recalage après changement d'empreinte (CAD-02) ---
+
+    // Zones de travail : principal, secondaire à gauche (origine négative), secondaire décalé en haut.
+    private static readonly RectD[] Zones =
+    {
+        new(0, 0, 1920, 1040),
+        new(-1920, 0, 1920, 1040),
+        new(1920, -200, 2560, 1400),
+    };
+
+    // Les 7 empreintes de cadran à l'échelle 1 (plan 40-01).
+    private static readonly (double W, double H)[] Empreintes =
+    {
+        (170, 170), (190, 92), (110, 190), (132, 160), (190, 96), (190, 66), (128, 190),
+    };
+
+    [Theory]
+    [InlineData(OverlayCorner.TopLeft, 1.0)]
+    [InlineData(OverlayCorner.TopLeft, 1.5)]
+    [InlineData(OverlayCorner.TopRight, 1.0)]
+    [InlineData(OverlayCorner.TopRight, 1.5)]
+    [InlineData(OverlayCorner.BottomLeft, 1.0)]
+    [InlineData(OverlayCorner.BottomLeft, 1.5)]
+    [InlineData(OverlayCorner.BottomRight, 1.0)]
+    [InlineData(OverlayCorner.BottomRight, 1.5)]
+    public void Le_recalage_garde_le_coin_et_reste_dans_la_zone(OverlayCorner coin, double echelle)
+    {
+        double marge = 12 * echelle;
+        bool gauche = coin is OverlayCorner.TopLeft or OverlayCorner.BottomLeft;
+        bool haut = coin is OverlayCorner.TopLeft or OverlayCorner.TopRight;
+        foreach (var travail in Zones)
+        {
+            foreach (var (w, h) in Empreintes)
+            {
+                var fen = new RectD(0, 0, w * echelle, h * echelle);
+                var (x, y) = CornerSnap.RecalerSurCoin(coin, fen, travail, marge);
+
+                Assert.Equal(coin, CornerSnap.ClassifyCorner(fen with { X = x, Y = y }, travail));
+                Assert.InRange(x, travail.X, travail.Right - fen.Width);
+                Assert.InRange(y, travail.Y, travail.Bottom - fen.Height);
+
+                // Marge respectée sur les deux bords du coin imposé.
+                if (gauche) Assert.Equal(travail.X + marge, x, 9);
+                else Assert.Equal(travail.Right - marge, x + fen.Width, 9);
+                if (haut) Assert.Equal(travail.Y + marge, y, 9);
+                else Assert.Equal(travail.Bottom - marge, y + fen.Height, 9);
+            }
+        }
+    }
+
+    [Fact]
+    public void Le_recalage_ignore_la_position_courante()
+    {
+        var travail = new RectD(-1920, 0, 1920, 1040);
+        var a = CornerSnap.RecalerSurCoin(OverlayCorner.BottomRight, new RectD(0, 0, 190, 96), travail, 12);
+        var b = CornerSnap.RecalerSurCoin(OverlayCorner.BottomRight, new RectD(5000, 0, 190, 96), travail, 12);
+        Assert.Equal(a, b);
+    }
+
+    [Fact]
+    public void Une_fenetre_plus_grande_que_la_zone_est_bornee_en_haut_a_gauche()
+    {
+        var travail = new RectD(0, 0, 200, 200);
+        var (x, y) = CornerSnap.RecalerSurCoin(OverlayCorner.BottomRight, new RectD(0, 0, 300, 300), travail, 12);
+        Assert.Equal(0, x, 9);
+        Assert.Equal(0, y, 9);
+    }
 }
