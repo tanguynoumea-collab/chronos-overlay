@@ -106,7 +106,7 @@ public class CadransThemeBindingTests
                     case CadranVoletsView:
                     {
                         var rangees = Descendants<FlapRow>(hote).ToList();
-                        Assert.Equal(2, rangees.Count);
+                        Assert.Equal(4, rangees.Count);   // deux par gabarit, phase 40
                         foreach (var r in rangees)
                         {
                             Assert.Same(T("TextePrincipal"), r.OnBrush);
@@ -115,16 +115,16 @@ public class CadransThemeBindingTests
                         }
 
                         var bordures = Descendants<Border>(hote).ToList();
-                        var tuiles = bordures.Where(b => b.Width == 30).ToList();
-                        Assert.Equal(2, tuiles.Count);
+                        var tuiles = bordures.Where(b => b.Width == 26).ToList();
+                        Assert.Equal(4, tuiles.Count);   // deux par gabarit, phase 40
                         foreach (var t in tuiles) Assert.Same(T("CadranTuile"), t.Background);
 
                         var filets = bordures.Where(b => b.Height == 1).ToList();
-                        Assert.Equal(2, filets.Count);
+                        Assert.Equal(4, filets.Count);   // deux par gabarit, phase 40
                         foreach (var f in filets) Assert.Same(T("PlaqueFilet"), f.Background);
 
                         var hachures = Descendants<Rectangle>(hote).ToList();
-                        Assert.Equal(2, hachures.Count);
+                        Assert.Equal(4, hachures.Count);   // deux par gabarit, phase 40
                         foreach (var h in hachures) Assert.Same(T("PlaqueHachure"), h.Fill);
                         break;
                     }

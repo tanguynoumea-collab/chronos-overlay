@@ -36,6 +36,19 @@ public class CadransOrientationBindingTests
         (() => new CadranMareeView(),   CadranStyle.Maree,   OrientationCadran.Horizontal),
     };
 
+    /// <summary>Variantes Volets (plan 05) : structure propre (tuile, plaque chiffrée, rangée de volets), d'où des tests dédiés
+    /// pour les corps, les textes au pire cas et l'empilement ; les tests génériques (gabarit, empreinte, orientation des
+    /// contrôles) couvrent <see cref="ToutesVariantes"/>.</summary>
+    public static readonly (Func<FrameworkElement> Creer, CadranStyle Style, OrientationCadran O)[] VariantesVolets =
+    {
+        (() => new CadranVoletsView(), CadranStyle.Volets, OrientationCadran.Horizontal),
+        (() => new CadranVoletsView(), CadranStyle.Volets, OrientationCadran.Vertical),
+    };
+
+    /// <summary>Toutes les variantes à deux gabarits.</summary>
+    public static readonly (Func<FrameworkElement> Creer, CadranStyle Style, OrientationCadran O)[] ToutesVariantes =
+        Variantes.Concat(VariantesVolets).ToArray();
+
     /// <summary>Textes de valeur les plus larges attendus (pire cas).</summary>
     private static readonly string[] TextesPireCas = { "≥ 100 %", "6 j 23 h" };
 
@@ -51,6 +64,7 @@ public class CadransOrientationBindingTests
         {
             case CadranFusibleView f: f.Orientation = VersWpf(o); break;
             case CadranMareeView m: m.Orientation = VersWpf(o); break;
+            case CadranVoletsView v: v.Orientation = VersWpf(o); break;
             default: throw new InvalidOperationException($"vue sans orientation : {vue.GetType().Name}");
         }
     }
@@ -128,7 +142,7 @@ public class CadransOrientationBindingTests
     [WpfFact]
     public void Le_gabarit_visible_suit_l_orientation_de_la_vue()
     {
-        foreach (var (creer, style, o) in Variantes)
+        foreach (var (creer, style, o) in ToutesVariantes)
         {
             var vue = creer();
             Orienter(vue, o);
@@ -151,12 +165,13 @@ public class CadransOrientationBindingTests
     {
         Assert.Equal(Orientation.Horizontal, new CadranFusibleView().Orientation);
         Assert.Equal(Orientation.Vertical, new CadranMareeView().Orientation);
+        Assert.Equal(Orientation.Horizontal, new CadranVoletsView().Orientation);
     }
 
     [WpfFact]
     public void Chaque_variante_fait_son_empreinte_exacte()
     {
-        foreach (var (creer, style, o) in Variantes)
+        foreach (var (creer, style, o) in ToutesVariantes)
         {
             var vue = creer();
             Orienter(vue, o);
@@ -257,7 +272,7 @@ public class CadransOrientationBindingTests
     [WpfFact]
     public void Les_controles_portent_l_orientation_du_gabarit()
     {
-        foreach (var (creer, _, _) in Variantes.DistinctBy(v => v.Style))
+        foreach (var (creer, _, _) in ToutesVariantes.DistinctBy(v => v.Style))
         {
             var vue = creer();
             var h = (FrameworkElement)vue.FindName("GabaritHorizontal");
@@ -267,15 +282,124 @@ public class CadransOrientationBindingTests
             {
                 FuseBar f => f.Orientation,
                 TideColumn t => t.Orientation,
+                FlapRow r => r.Orientation,
                 _ => throw new InvalidOperationException(),
             };
 
-            var dansH = Descendants<FrameworkElement>(h).Where(e => e is FuseBar or TideColumn).ToList();
-            var dansV = Descendants<FrameworkElement>(v).Where(e => e is FuseBar or TideColumn).ToList();
+            var dansH = Descendants<FrameworkElement>(h).Where(e => e is FuseBar or TideColumn or FlapRow).ToList();
+            var dansV = Descendants<FrameworkElement>(v).Where(e => e is FuseBar or TideColumn or FlapRow).ToList();
             Assert.Equal(2, dansH.Count);
             Assert.Equal(2, dansV.Count);
             foreach (var c in dansH) Assert.Equal(Orientation.Horizontal, OrientationDe(c));
             foreach (var c in dansV) Assert.Equal(Orientation.Vertical, OrientationDe(c));
         }
+    }
+
+    // ------------------------------------------------------------------ Volets (plan 05)
+
+    private static bool EstTuileVolets(TextBlock tb) => tb.Text is "5H" or "7J";
+
+    /// <summary>Plaque chiffrée : la Border parente du Grid qui superpose hachure, filet et chiffres.</summary>
+    private static Border Plaque(TextBlock tb)
+    {
+        var grille = Assert.IsType<Grid>(tb.Parent);
+        return Assert.IsType<Border>(grille.Parent);
+    }
+
+    [WpfFact]
+    public void Volets_les_corps_de_texte_ne_sont_pas_reduits()
+    {
+        foreach (var (creer, style, o) in VariantesVolets)
+        {
+            var vue = creer();
+            Orienter(vue, o);
+            Monter(vue, EmpreinteCadran.Pour(style, o));
+            var nom = Nom(vue, o);
+            var corpsPlaque = o == OrientationCadran.Horizontal ? 13d : 14d;
+
+            var textes = DescendantsVisuels<TextBlock>(vue);
+            var tuiles = textes.Where(EstTuileVolets).ToList();
+            var chiffres = textes.Where(EstValeur).ToList();
+            Assert.Equal(2, tuiles.Count);
+            Assert.Equal(4, chiffres.Count);   // % et décompte superposés, par fenêtre
+            foreach (var tb in tuiles) Assert.True(tb.FontSize == 11, $"{nom} : tuile « {tb.Text} » en corps {tb.FontSize}.");
+            foreach (var tb in chiffres) Assert.True(tb.FontSize == corpsPlaque, $"{nom} : chiffre de plaque en corps {tb.FontSize} ≠ {corpsPlaque}.");
+        }
+    }
+
+    [WpfFact]
+    public void Volets_les_textes_au_pire_cas_tiennent_dans_la_plaque()
+    {
+        foreach (var (creer, style, o) in VariantesVolets)
+        foreach (var decompte in new[] { false, true })
+        {
+            var vue = creer();
+            Orienter(vue, o);
+            var empreinte = EmpreinteCadran.Pour(style, o);
+            Monter(vue, empreinte, decompte);
+            var nom = $"{Nom(vue, o)} (décompte = {decompte})";
+            var largeurAttendue = o == OrientationCadran.Horizontal ? 90d : 56d;
+            var cadre = new Rect(empreinte);
+
+            var chiffres = DescendantsVisuels<TextBlock>(vue).Where(EstValeur).Where(tb => tb.Visibility == Visibility.Visible).ToList();
+            Assert.Equal(2, chiffres.Count);
+            foreach (var tb in chiffres)
+            {
+                var plaque = Plaque(tb);
+                Assert.Equal(largeurAttendue, plaque.ActualWidth);
+                foreach (var texte in TextesPireCas)
+                {
+                    var w = LargeurTexte(tb, texte);
+                    Assert.True(w <= plaque.ActualWidth, $"{nom} : « {texte} » ({w:F1}) dépasse la plaque ({plaque.ActualWidth:F1}).");
+                }
+                var r = Rendu(plaque, vue);
+                Assert.True(cadre.Contains(r), $"{nom} : plaque {r} hors de l'empreinte {cadre}.");
+            }
+        }
+    }
+
+    [WpfFact]
+    public void Volets_la_hachure_et_le_filet_restent_dans_les_deux_sens()
+    {
+        foreach (var (creer, style, o) in VariantesVolets)
+        {
+            var vue = creer();
+            Orienter(vue, o);
+            Monter(vue, EmpreinteCadran.Pour(style, o));
+            var nom = Nom(vue, o);
+
+            Assert.True(DescendantsVisuels<System.Windows.Shapes.Rectangle>(vue).Count == 2, $"{nom} : hachures « plancher » attendues : 2.");
+            Assert.True(DescendantsVisuels<Border>(vue).Count(b => b.Height == 1) == 2, $"{nom} : filets attendus : 2.");
+        }
+    }
+
+    [WpfFact]
+    public void Les_volets_verticaux_sont_empiles()
+    {
+        foreach (var (creer, style, o) in VariantesVolets)
+        {
+            var vue = creer();
+            Orienter(vue, o);
+            Monter(vue, EmpreinteCadran.Pour(style, o));
+            var nom = Nom(vue, o);
+            var (w, h) = o == OrientationCadran.Horizontal ? (62d, 14d) : (16d, 104d);
+
+            var rangees = DescendantsVisuels<FlapRow>(vue);
+            Assert.Equal(2, rangees.Count);
+            foreach (var r in rangees)
+                Assert.True(r.ActualWidth == w && r.ActualHeight == h, $"{nom} : rangée {r.ActualWidth} × {r.ActualHeight} ≠ {w} × {h}.");
+        }
+    }
+
+    // ------------------------------------------------------------------ Braises (plan 05)
+
+    [WpfFact]
+    public void Braises_fait_son_empreinte_exacte()
+    {
+        var vue = new CadranBraisesView();
+        var empreinte = EmpreinteCadran.Pour(CadranStyle.Braises, OrientationCadran.Horizontal);
+        Monter(vue, empreinte);
+        Assert.Equal(new Size(170, 170), empreinte);
+        Assert.True(vue.DesiredSize == empreinte, $"Braises : DesiredSize {vue.DesiredSize} ≠ {empreinte}.");
     }
 }
