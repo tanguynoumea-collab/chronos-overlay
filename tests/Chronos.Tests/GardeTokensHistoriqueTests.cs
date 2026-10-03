@@ -222,7 +222,8 @@ public class GardeTokensHistoriqueTests
 
         // Réglages v2 (quick 260927) : les tokens de la fenêtre de réglages sont comptés avec ceux de l'historique — la table
         // contractuelle des réglages vit dans GardeTokensReglagesTests (même règle : aucun token non contractuel).
-        var attendus = TaillesHisto.Length + GardeTokensReglagesTests.TaillesReglages.Length;
+        // Phase 40 : les tokens de cadran sont comptés aussi ; table contractuelle dans EmpreinteCadranTests.
+        var attendus = TaillesHisto.Length + GardeTokensReglagesTests.TaillesReglages.Length + EmpreinteCadranTests.TaillesCadran.Length;
         Assert.True(doubles.Count == attendus,
             $"DesignTokens.xaml : {doubles.Count} sys:Double au lieu de {attendus} — un token de taille non contractuel a été ajouté ou retiré.");
 

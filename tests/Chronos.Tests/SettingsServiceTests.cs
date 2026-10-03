@@ -416,6 +416,59 @@ public sealed class SettingsServiceTests : IDisposable
         Assert.Equal(new[] { "Corner" }, _service.DernieresRetombees);
     }
 
+    /// <summary>Phase 40 (CAD-04) : chaque cadran rectangulaire garde son orientation historique par défaut — Fusible
+    /// horizontal, Marée verticale, Volets horizontal. Le test générique des enums compare au défaut de la propriété et ne
+    /// détecterait PAS un mauvais défaut : celui-ci le fige.</summary>
+    [Fact]
+    public void Les_orientations_par_defaut_sont_H_V_H()
+    {
+        var s = new ChronosSettings();
+
+        Assert.Equal(OrientationCadran.Horizontal, s.OrientationFusible);
+        Assert.Equal(OrientationCadran.Vertical, s.OrientationMaree);
+        Assert.Equal(OrientationCadran.Horizontal, s.OrientationVolets);
+    }
+
+    /// <summary>Piège (Pitfall 11) : default(OrientationCadran) = Horizontal retournerait la Marée. Une valeur fautive
+    /// retombe sur l'initialiseur de SA propriété : Vertical.</summary>
+    [Theory]
+    [InlineData("\"Fantome\"")]
+    [InlineData("99")]
+    [InlineData("null")]
+    public void Une_orientation_de_maree_invalide_retombe_sur_Vertical_et_non_sur_l_index_0(string valeur)
+    {
+        EcrireSettings("{\"ThemeKey\":\"nord\",\"OrientationMaree\":" + valeur + "}");
+
+        var s = _service.Load();
+
+        Assert.Equal(OrientationCadran.Vertical, s.OrientationMaree);
+        Assert.Equal("nord", s.ThemeKey);
+        Assert.Equal(new[] { "OrientationMaree" }, _service.DernieresRetombees);
+    }
+
+    /// <summary>Les trois orientations non par défaut sont relues telles quelles, réécrites en TEXTE et relues intactes.</summary>
+    [Fact]
+    public void Les_trois_orientations_sont_relues_et_reecrites_intactes()
+    {
+        EcrireSettings("{\"OrientationFusible\":\"Vertical\",\"OrientationMaree\":\"Horizontal\",\"OrientationVolets\":\"Vertical\"}");
+
+        var lu = _service.Load();
+
+        Assert.Equal(OrientationCadran.Vertical, lu.OrientationFusible);
+        Assert.Equal(OrientationCadran.Horizontal, lu.OrientationMaree);
+        Assert.Equal(OrientationCadran.Vertical, lu.OrientationVolets);
+
+        _service.Save(lu);
+        var texte = File.ReadAllText(_paths.SettingsFile);
+        Assert.Contains("\"OrientationMaree\": \"Horizontal\"", texte, StringComparison.Ordinal);
+
+        var relu = _service.Load();
+        Assert.Equal(OrientationCadran.Vertical, relu.OrientationFusible);
+        Assert.Equal(OrientationCadran.Horizontal, relu.OrientationMaree);
+        Assert.Equal(OrientationCadran.Vertical, relu.OrientationVolets);
+        Assert.Equal(lu, relu);
+    }
+
     /// <summary>Mécanisme GÉNÉRIQUE : chaque propriété enum de ChronosSettings (énumérée par réflexion, y compris un enum
     /// futur) retombe sur SA valeur par défaut sans toucher aux autres.</summary>
     [Fact]
