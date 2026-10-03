@@ -19,6 +19,9 @@
     <SolidColorBrush x:Key="Epuise"              Color="#63626C"/>    <!-- gris « épuisé » lisible (≥ 3:1 contre le disque) ; repli = minuit -->
     <SolidColorBrush x:Key="CadranTuile"         Color="#201F26"/>    <!-- tuiles Volets / sillon Fusible (mi-chemin disque → piste) ; repli = minuit -->
     <SolidColorBrush x:Key="CadranAttente"       Color="#6EC9C8D2"/>  <!-- remplissage « en attente » des contrôles de cadran ; repli = minuit -->
+    <!-- Silhouette de geste (R7, phase 42) : alpha 1, le plus petit qui capte la souris sur une fenêtre layered ;
+         Transparent rend alpha 0 et laisse passer le clic au bureau. Invisible à l'œil. -->
+    <SolidColorBrush x:Key="ZoneSilhouette"      Color="#01000000"/>
     <SolidColorBrush x:Key="PlaqueTexte"         Color="#0B0A0D"/>    <!-- chiffres sur la plaque Volets (disque × 0,5) ; repli = minuit -->
     <SolidColorBrush x:Key="PlaqueFilet"         Color="#330B0A0D"/>  <!-- filet horizontal de la plaque Volets ; repli = minuit -->
     <DrawingBrush x:Key="PlaqueHachure" TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute">  <!-- grain du plancher estimé (Volets) ; repli = minuit -->

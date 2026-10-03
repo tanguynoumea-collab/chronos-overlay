@@ -134,7 +134,8 @@ public class CadransThemeBindingTests
                         Assert.Equal(4, filets.Count);   // deux par gabarit, phase 40
                         foreach (var f in filets) Assert.Same(T("PlaqueFilet"), f.Background);
 
-                        var hachures = Descendants<Rectangle>(hote).ToList();
+                        // La silhouette de geste (phase 42) n'est pas une hachure.
+                        var hachures = Descendants<Rectangle>(hote).Where(r => !Chronos.Views.ZoneGeste.GetSilhouette(r)).ToList();
                         Assert.Equal(4, hachures.Count);   // deux par gabarit, phase 40
                         foreach (var h in hachures) Assert.Same(T("PlaqueHachure"), h.Fill);
                         break;

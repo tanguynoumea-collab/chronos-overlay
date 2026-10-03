@@ -368,7 +368,8 @@ public class CadransOrientationBindingTests
             Monter(vue, EmpreinteCadran.Pour(style, o));
             var nom = Nom(vue, o);
 
-            Assert.True(DescendantsVisuels<System.Windows.Shapes.Rectangle>(vue).Count == 2, $"{nom} : hachures « plancher » attendues : 2.");
+            // La silhouette de geste (phase 42) n'est pas une hachure.
+            Assert.True(DescendantsVisuels<System.Windows.Shapes.Rectangle>(vue).Count(r => !Chronos.Views.ZoneGeste.GetSilhouette(r)) == 2, $"{nom} : hachures « plancher » attendues : 2.");
             Assert.True(DescendantsVisuels<Border>(vue).Count(b => b.Height == 1) == 2, $"{nom} : filets attendus : 2.");
         }
     }
