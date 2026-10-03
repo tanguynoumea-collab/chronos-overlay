@@ -894,4 +894,73 @@ public class CadranBindingTests
         Assert.Equal(Orientation.Horizontal, maree.Orientation);
         Assert.Equal(Orientation.Vertical, volets.Orientation);
     }
+
+    /// <summary>
+    /// CAD-02 (phase 40) : au démarrage, RestorePlacement (levé par SourceInitialized) pose la fenêtre avec
+    /// l'EMPREINTE du style PERSISTÉ — ici Fusible horizontal 190 × 92 au coin bas-droite — et non avec une
+    /// largeur nulle ni avec les 170 historiques. Le VM est construit SANS forcer Arcs (pas de BuildWindow).
+    /// </summary>
+    [WpfFact]
+    public void Au_demarrage_la_restauration_utilise_l_empreinte_du_style_persiste()
+    {
+        var paths = TempPaths();
+        var settings = new SettingsService(paths);
+        settings.Save(settings.Load() with
+        {
+            CadranStyle = CadranStyle.Fusible,
+            OrientationFusible = OrientationCadran.Horizontal,
+            Corner = Chronos.Placement.OverlayCorner.BottomRight,
+            MonitorDeviceName = null,
+        });
+
+        var prov = new FakeUsageProvider();
+        var vm = new MainViewModel(new RefreshOrchestrator(prov, RefreshOptions.Default), new FakeUiDispatcher { OnUiThread = true },
+            new FakeClock(Now), new FakeWindowController(), new FakeAutostartService(), settings,
+            new DiagnosticService(paths, settings, prov, new FakeClock(Now)),
+            new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
+
+        var poses = new System.Collections.Generic.List<(IntPtr Apres, int X, int Y, uint Flags)>();
+        var guard = new TopmostGuard((_, _, _, _, _, _, _) => true);
+        var controller = new OverlayController(guard, new SettingsService(paths),
+            (_, after, x, y, _, _, flags) => { poses.Add((after, x, y, flags)); return true; });
+        var fenetre = new MainWindow(vm, guard, controller);
+        try
+        {
+            fenetre.ApplyRestoredState(settings.Load());
+            new System.Windows.Interop.WindowInteropHelper(fenetre).EnsureHandle();   // SourceInitialized → Attach + RestorePlacement, sans Show
+
+            Assert.Equal((190d, 92d), controller.DerniereEmpreinteRestauree);
+            Assert.Equal(Chronos.Placement.OverlayCorner.BottomRight, controller.CoinCourant);
+            Assert.False(controller.RestaurationSansTaille);
+
+            // La pose : premier appel sans z-order imposé, ni activation.
+            var pose = poses.First(p => p.Apres == IntPtr.Zero);
+            Assert.Equal(Chronos.Interop.NativeMethods.SWP_NOSIZE | Chronos.Interop.NativeMethods.SWP_NOACTIVATE, pose.Flags);
+
+            // Zone de travail et échelle du moniteur PRIMAIRE (aucun device persisté → repli primaire).
+            Chronos.Interop.NativeMethods.RECT? travail = null;
+            double echelle = 1;
+            Chronos.Interop.NativeMethods.MonitorEnumProc cb = (IntPtr hMon, IntPtr hdc, ref Chronos.Interop.NativeMethods.RECT rc, IntPtr data) =>
+            {
+                var mi = new Chronos.Interop.NativeMethods.MONITORINFOEX { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<Chronos.Interop.NativeMethods.MONITORINFOEX>() };
+                if (Chronos.Interop.NativeMethods.GetMonitorInfo(hMon, ref mi) && (mi.dwFlags & Chronos.Interop.NativeMethods.MONITORINFOF_PRIMARY) != 0)
+                {
+                    travail = mi.rcWork;
+                    if (Chronos.Interop.NativeMethods.GetDpiForMonitor(hMon, 0, out uint dpiX, out _) == 0) echelle = dpiX / 96.0;
+                }
+                return true;
+            };
+            Chronos.Interop.NativeMethods.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, cb, IntPtr.Zero);
+            Assert.NotNull(travail);
+            var w = travail!.Value;
+            var zone = new Chronos.Placement.RectD(w.Left, w.Top, w.Right - w.Left, w.Bottom - w.Top);
+            var rect = new Chronos.Placement.RectD(pose.X, pose.Y, 190 * echelle, 92 * echelle);
+            Assert.Equal(Chronos.Placement.OverlayCorner.BottomRight, Chronos.Placement.CornerSnap.ClassifyCorner(rect, zone));
+        }
+        finally
+        {
+            guard.Dispose();
+            fenetre.Close();
+        }
+    }
 }

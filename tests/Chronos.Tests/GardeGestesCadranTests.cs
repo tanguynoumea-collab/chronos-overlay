@@ -64,4 +64,46 @@ public class GardeGestesCadranTests
 
         Assert.DoesNotContain("Thread.Sleep", Lire("ViewModels", "MainViewModel.cs"), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Une_restauration_sans_taille_est_recalee_a_la_premiere_mise_en_page()
+    {
+        // Filet CAD-02 : si RestorePlacement a posé la fenêtre sans taille connue, la première mise en page recale une fois.
+        var code = Lire("Views", "MainWindow.xaml.cs");
+        Assert.Contains("RestaurationSansTaille", code, StringComparison.Ordinal);
+    }
+
+    /// <summary>CAD-02 : le changement d'empreinte recale sur le coin COURANT (jamais le plus proche), sans persistance,
+    /// sans toucher au z-order ni passer par Window.Left/Top ; ignoré pendant un glisser.</summary>
+    [Fact]
+    public void Le_changement_d_empreinte_recale_sur_le_coin_courant()
+    {
+        var vue = Lire("Views", "MainWindow.xaml.cs");
+        Assert.Contains("SizeChanged +=", vue, StringComparison.Ordinal);
+        Assert.Contains("RecalerSurCoinCourant()", vue, StringComparison.Ordinal);
+        Assert.Contains("PreviousSize", vue, StringComparison.Ordinal);
+        Assert.Contains("_enDeplacement = true", vue, StringComparison.Ordinal);
+        Assert.Contains("finally", vue, StringComparison.Ordinal);
+        Assert.Contains("DragMove();", vue, StringComparison.Ordinal);
+
+        var ctrl = Lire("Services", "OverlayController.cs").Replace("\r\n", "\n");
+        const string signature = "public void RecalerSurCoinCourant()";
+        var debut = ctrl.IndexOf(signature, StringComparison.Ordinal);
+        Assert.True(debut >= 0, "RecalerSurCoinCourant introuvable dans OverlayController.cs");
+        var apres = debut + signature.Length;
+        var fin = new[]
+        {
+            ctrl.IndexOf("\n    public ", apres, StringComparison.Ordinal),
+            ctrl.IndexOf("\n    private ", apres, StringComparison.Ordinal),
+        }.Where(i => i > 0).DefaultIfEmpty(ctrl.Length).Min();
+        var corps = ctrl[debut..fin];
+
+        Assert.Contains("CornerSnap.RecalerSurCoin(", corps, StringComparison.Ordinal);
+        Assert.Contains("SWP_NOZORDER", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain("NearestCorner", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ClassifyCorner", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain("_settings.Save", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Left =", corps, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Top =", corps, StringComparison.Ordinal);
+    }
 }
