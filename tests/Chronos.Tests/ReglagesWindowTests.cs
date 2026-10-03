@@ -452,9 +452,10 @@ public class ReglagesWindowTests
     public void L_apercu_montre_le_vrai_cadran_et_sa_legende_suit_theme_et_style()
     {
         var vm = NouveauVm();
-        var cadran = new Grid();   // tient lieu du contenu de MainWindow, déjà mis en page à 170 × 170
-        cadran.Measure(new Size(170, 170));
-        cadran.Arrange(new Rect(0, 0, 170, 170));
+        var cadran = new Grid();   // tient lieu du contenu de MainWindow, déjà mis en page à l'empreinte de Fusible H (190 × 66)
+        cadran.UseLayoutRounding = false;   // dimensions exactes en DIP, indépendantes du DPI de la machine de test (125 % : 110 → 110,4)
+        cadran.Measure(new Size(190, 66));
+        cadran.Arrange(new Rect(0, 0, 190, 66));
         var f = Monter(vm, SectionReglages.Apparence, ParDefaut, cadran);
 
         var apercu = Nomme<Shape>(f, "ApercuCadran");
@@ -463,7 +464,12 @@ public class ReglagesWindowTests
         Assert.True(EstAffiche(apercu, Racine(f)));
         // Cadré sur l'empreinte du cadran, pas sur la boîte englobante de son dessin (qui bouge avec les pastilles).
         Assert.Equal(BrushMappingMode.Absolute, pinceau.ViewboxUnits);
-        Assert.Equal(new Rect(0, 0, 170, 170), pinceau.Viewbox);
+        Assert.Equal(new Rect(0, 0, 190, 66), pinceau.Viewbox);
+        // Phase 40 : l'empreinte change (style ou orientation) → le pinceau recadre sur la nouvelle empreinte réelle.
+        cadran.Measure(new Size(110, 190));
+        cadran.Arrange(new Rect(0, 0, 110, 190));
+        cadran.UpdateLayout();
+        Assert.Equal(new Rect(0, 0, 110, 190), pinceau.Viewbox);
         Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "ApercuCadranAbsent").Visibility);
 
         Assert.Equal("Thème : Minuit", Nomme<TextBlock>(f, "LegendeTheme").Text);
@@ -477,6 +483,65 @@ public class ReglagesWindowTests
         Assert.Equal("Thème : Aurore", Nomme<TextBlock>(f, "LegendeTheme").Text);
         Assert.Equal("Style : Braises", Nomme<TextBlock>(f, "LegendeStyle").Text);
         Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "CarteModeEtendu").Visibility);   // Anneaux seulement
+    }
+
+    // ================================================================== Orientation (phase 40, CAD-04)
+
+    private static Border BordurePuce(Button b)
+    {
+        b.ApplyTemplate();
+        return Assert.IsType<Border>(b.Template.FindName("puce", b));
+    }
+
+    [WpfFact]
+    public void La_carte_orientation_est_visible_pour_les_cadrans_rectangulaires()
+    {
+        var vm = NouveauVm(s => s with { CadranStyle = CadranStyle.Fusible });
+        var f = Monter(vm, SectionReglages.Apparence);
+
+        Assert.True(EstAffiche(Nomme<FrameworkElement>(f, "CarteOrientation"), Racine(f)));
+        Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "CarteModeEtendu").Visibility);
+
+        var h = Nomme<Button>(f, "BoutonOrientationHorizontale");
+        var v = Nomme<Button>(f, "BoutonOrientationVerticale");
+        Assert.Same(vm.ChoisirOrientationCommand, h.Command);
+        Assert.Same(vm.ChoisirOrientationCommand, v.Command);
+        Assert.Equal(OrientationCadran.Horizontal, h.CommandParameter);
+        Assert.Equal(OrientationCadran.Vertical, v.CommandParameter);
+        Assert.Equal(true, h.Tag);
+        Assert.Equal(false, v.Tag);
+    }
+
+    [WpfFact]
+    public void Cliquer_vertical_change_l_orientation_du_cadran_courant()
+    {
+        var vm = NouveauVm(s => s with { CadranStyle = CadranStyle.Fusible });
+        var f = Monter(vm, SectionReglages.Apparence);
+        var v = Nomme<Button>(f, "BoutonOrientationVerticale");
+
+        v.Command.Execute(v.CommandParameter);
+        MettreEnPage(f, ParDefaut);
+
+        Assert.Equal(Orientation.Vertical, vm.OrientationFusible);
+        Assert.Equal(true, v.Tag);
+        Assert.Equal(false, Nomme<Button>(f, "BoutonOrientationHorizontale").Tag);
+        Assert.Same(f.FindResource("Accent"), BordurePuce(v).BorderBrush);
+    }
+
+    [WpfFact]
+    public void La_carte_orientation_est_masquee_pour_Arcs_et_Braises()
+    {
+        var vm = NouveauVm();
+        var f = Monter(vm, SectionReglages.Apparence);
+        Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "CarteOrientation").Visibility);
+
+        vm.SelectCadranStyleCommand.Execute(vm.CadranStyles.Single(c => c.Style == CadranStyle.Braises));
+        MettreEnPage(f, ParDefaut);
+        Assert.Equal(Visibility.Collapsed, Nomme<FrameworkElement>(f, "CarteOrientation").Visibility);
+
+        vm.SelectCadranStyleCommand.Execute(vm.CadranStyles.Single(c => c.Style == CadranStyle.Maree));
+        MettreEnPage(f, ParDefaut);
+        Assert.True(EstAffiche(Nomme<FrameworkElement>(f, "CarteOrientation"), Racine(f)));
     }
 
     // ================================================================== Sessions
