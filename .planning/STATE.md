@@ -1,8 +1,8 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8
-milestone_name: — Historique d'utilisation
-status: v1.8 milestone complete
+milestone: v1.9
+milestone_name: — Lisible partout
+status: defining requirements
 last_updated: "2026-10-03T12:00:00.000Z"
 last_activity: 2026-10-03 -- v1.8 milestone completed and archived (avec écarts connus)
 progress:
@@ -25,18 +25,14 @@ d'utiliser Claude au cours du temps, avec la même honnêteté.
 
 ## Current Position
 
-Milestone: v1.8 — Historique d'utilisation — CLOS le 2026-10-03 (avec écarts connus)
-Phase: aucune en cours (phases 32 à 35 closes ; 26 / 28 plans)
+Milestone: v1.9 — Lisible partout (exe 3.5.0)
+Phase: Not started (defining requirements)
 Plan: —
-Status: v1.8 milestone complete
-Last activity: 2026-10-03 -- v1.8 milestone completed and archived
+Status: Defining requirements
+Last activity: 2026-10-03 — Milestone v1.9 started
 
-Progress: [██████████] v1.8 clos — prochain milestone à définir
-
-> Clos avec écarts connus : les plans 32-08 (constat VAL-04) et 35-07 (constat VAL-05), `autonomous: false`, ne sont pas joués
-> et sont reportés dans la phase de constat du milestone suivant. Exes publiés localement : 3.2.2, 3.3.0, 3.3.1, 3.4.0 (aucun tag
-> de release, aucun push). Archive : `.planning/milestones/v1.8-ROADMAP.md`, `v1.8-REQUIREMENTS.md` ; détail des écarts :
-> `.planning/MILESTONES.md` › v1.8 › Known Gaps.
+> v1.8 clos le 2026-10-03 avec écarts connus (VAL-04, VAL-05 reportés en VAL-07). Liste de purge R5 validée par
+> l'utilisateur le 2026-10-03 (DAT-01). Plan de design du cycle 2 validé (`.zeus/DESIGN_PLAN_CYCLE2.md`).
 
 ## Accumulated Context
 

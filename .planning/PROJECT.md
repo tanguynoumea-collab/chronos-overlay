@@ -66,13 +66,9 @@ chiffre exact.
 
 <!-- Current scope. Building toward these. -->
 
-Aucun milestone en cours : v1.8 est clos (2026-10-03) ; le prochain milestone est à définir (`/gsd:new-milestone`).
-Reliquat porté de v1.8, à reprendre dans la phase de constat du prochain milestone :
-- [ ] **VAL-04** — constat en production avec l'utilisateur (une seule instance, tableau des gestes L1…Q, vérifications V01…V12 ;
-  protocole `32-CONSTAT.md`), dette héritée de VAL-03 (v1.7).
-- [ ] **VAL-05** — constat de la fenêtre Historique avec l'utilisateur (deux gestes, vraies données, 4 semaines, trou réel après
-  une nuit, libellés relus, verdict ; protocole `35-CONSTAT.md`).
-- [ ] Suppression des styles Simplifié et Tuiles de la vue Semaine (décision utilisateur) — seul Pistes reste.
+Milestone v1.9 « Lisible partout » (exe 3.5.0) — 25 exigences dans `.planning/REQUIREMENTS.md` : SOC-01..02, DAT-01..05,
+HIS-09..11, THM-01..04, CAD-01..04, BRA-01..02, GST-01..03, VAL-06..07. VAL-07 reprend les constats reportés de v1.8
+(VAL-04, VAL-05) ; HIS-09 absorbe la suppression des styles Simplifié et Tuiles.
 
 ### Out of Scope
 
@@ -148,6 +144,24 @@ Le titre `ai-title` des transcripts CLI n'existe pas dans ceux de l'app bureau (
 Format interne NON documenté : lecture tolérante, dégradation, jamais d'invention.
 
 </details>
+
+## Current Milestone: v1.9 — Lisible partout
+
+**Goal:** Chaque cadran lisible et saisissable dans toutes ses formes, sur une chaîne de données réduite à ce qui marche
+(roadmap utilisateur R1-R7 du 2026-10-01, cycle ZEUS n°2).
+
+**Target features:**
+- Socle : réglages tolérants valeur par valeur, garde d'arguments inconnus
+- Purge de la récupération des données + méthodologie unique ; retrait de la barre statusLine (décision utilisateur)
+- Historique : Pistes seul + plein écran général
+- Thèmes Pâle / Classique / Vive, 6 palettes nouvelles, contrastes garantis, cadrans alternatifs thémés
+- Cadrans à l'échelle 1 (+20 % Fusible/Volets), orientations horizontale et verticale pour Fusible / Marée / Volets
+- Braises : 5 groupes d'une heure, flèche de reset, heure du reset
+- Geste unique sur la silhouette de chaque cadran (clic, double-clic, glisser, clic droit)
+- Release Chronos-v3.5.0.exe + constat utilisateur (reprend VAL-04 / VAL-05 de v1.8)
+
+**Cadre :** plan de design validé `.zeus/DESIGN_PLAN_CYCLE2.md` ; approche `.zeus/reports/llm-council-2026-10-03.md` ;
+liste de purge validée `.zeus/reports/cycle2/liste-purge.md` (2026-10-03).
 
 ## Next Milestone Goals (après v1.8)
 
@@ -236,4 +250,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 after v1.8 milestone (clos avec écarts connus : VAL-04 et VAL-05 reportés)*
+*Last updated: 2026-10-03 — milestone v1.9 « Lisible partout » démarré*
