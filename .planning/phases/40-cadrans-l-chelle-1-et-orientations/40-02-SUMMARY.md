@@ -41,7 +41,7 @@ d'amplitude 3, grain perpendiculaire à l'axe) et Volets (6 volets séparés de 
 
 | # | Tâche | Commit |
 |---|-------|--------|
-| 1 | RED : 21 méthodes de test GeometrieCadrans + 3 de recalage (8 InlineData × 3 zones × 7 empreintes) | 9e29cbb |
+| 1 | RED : 17 méthodes de test GeometrieCadrans + 3 de recalage (8 InlineData × 3 zones × 7 empreintes) | 9e29cbb |
 | 2 | GREEN : `Rendering/GeometrieCadrans.cs` + `CornerSnap.RecalerSurCoin` | e9d08ca |
 
 ## Vérification
