@@ -193,6 +193,28 @@
     <sys:Double x:Key="ReglagesBarreDefilement">8</sys:Double>
     <sys:Double x:Key="ReglagesOpaciteInactif">0.45</sys:Double>
 
+    <!-- ===== Cadrans à l'échelle 1 (phase 40, DESIGN_PLAN_CYCLE2 §1.1) : empreintes DIP contractuelles + corps de texte. Miroir C# : Rendering/EmpreinteCadran.cs (prouvé par EmpreinteCadranTests). ===== -->
+    <sys:Double x:Key="CadranLargeurArcs">170</sys:Double>
+    <sys:Double x:Key="CadranHauteurArcs">170</sys:Double>
+    <sys:Double x:Key="CadranLargeurBraises">170</sys:Double>
+    <sys:Double x:Key="CadranHauteurBraises">170</sys:Double>
+    <sys:Double x:Key="CadranLargeurFusibleH">190</sys:Double>
+    <sys:Double x:Key="CadranHauteurFusibleH">92</sys:Double>
+    <sys:Double x:Key="CadranLargeurFusibleV">110</sys:Double>
+    <sys:Double x:Key="CadranHauteurFusibleV">190</sys:Double>
+    <sys:Double x:Key="CadranLargeurMareeV">132</sys:Double>
+    <sys:Double x:Key="CadranHauteurMareeV">160</sys:Double>
+    <sys:Double x:Key="CadranLargeurMareeH">190</sys:Double>
+    <sys:Double x:Key="CadranHauteurMareeH">96</sys:Double>
+    <sys:Double x:Key="CadranLargeurVoletsH">190</sys:Double>
+    <sys:Double x:Key="CadranHauteurVoletsH">66</sys:Double>
+    <sys:Double x:Key="CadranLargeurVoletsV">128</sys:Double>
+    <sys:Double x:Key="CadranHauteurVoletsV">190</sys:Double>
+    <sys:Double x:Key="CadranCorpsLibelle">11</sys:Double>
+    <sys:Double x:Key="CadranCorpsValeur">12</sys:Double>
+    <sys:Double x:Key="CadranCorpsPlaqueH">13</sys:Double>
+    <sys:Double x:Key="CadranCorpsPlaqueV">14</sys:Double>
+
     <!-- Seul token non-double : bord de redimensionnement (WindowChrome.ResizeBorderThickness, 34-05). -->
     <Thickness x:Key="HistoBordRedimensionnement">6</Thickness>
 

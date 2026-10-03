@@ -13,6 +13,9 @@ public enum CadranDisplayMode { Normal, Etendu }
 /// Encodage commun : temps = géométrie, quota = luminance ; estimé = grain.</summary>
 public enum CadranStyle { Arcs, Braises, Fusible, Maree, Volets }
 
+/// <summary>Orientation d'un cadran rectangulaire (Fusible, Marée, Volets). Type NEUTRE (pas l'Orientation des contrôles WPF : garde de pureté de Services). Sans lien avec VerticalLayout (widget de sessions).</summary>
+public enum OrientationCadran { Horizontal, Vertical }
+
 /// <summary>Style visuel du widget de sessions (refonte visuelle). <see cref="Pastilles"/> (défaut) =
 /// la liste historique. Les autres sont les pistes issues de l'idéation llm-council :
 /// <see cref="Marge"/> (liste à liseré), <see cref="Jetons"/> (jetons qui lèvent la main),
@@ -87,6 +90,18 @@ public sealed record ChronosSettings
     /// <summary>Style visuel du cadran (défaut <see cref="CadranStyle.Arcs"/> = comportement historique).
     /// Sérialisé en TEXTE ; absent d'un ancien settings.json → défaut Arcs (aucune régression).</summary>
     public CadranStyle CadranStyle { get; init; } = CadranStyle.Arcs;
+
+    /// <summary>Orientation du Fusible (phase 40, CAD-04). Défaut = orientation historique du cadran (horizontale) ;
+    /// mémorisée par cadran ; valeur inconnue → ce défaut (SOC-01). Initialiseur EXPLICITE.</summary>
+    public OrientationCadran OrientationFusible { get; init; } = OrientationCadran.Horizontal;
+
+    /// <summary>Orientation de la Marée (phase 40, CAD-04). Défaut = orientation historique du cadran (verticale) ;
+    /// mémorisée par cadran ; valeur inconnue → ce défaut (SOC-01). Initialiseur EXPLICITE : default(T) = Horizontal serait faux.</summary>
+    public OrientationCadran OrientationMaree { get; init; } = OrientationCadran.Vertical;
+
+    /// <summary>Orientation des Volets (phase 40, CAD-04). Défaut = orientation historique du cadran (horizontale) ;
+    /// mémorisée par cadran ; valeur inconnue → ce défaut (SOC-01). Initialiseur EXPLICITE.</summary>
+    public OrientationCadran OrientationVolets { get; init; } = OrientationCadran.Horizontal;
 
     /// <summary>Style visuel du widget de sessions (défaut <see cref="SessionStyle.Pastilles"/> = historique).
     /// Sérialisé en TEXTE ; absent d'un ancien settings.json → défaut Pastilles (aucune régression).</summary>
