@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows.Media;
 using Chronos.Converters;
 using Chronos.Rendering;
+using Chronos.Theming;
 using Xunit;
 
 namespace Chronos.Tests;
@@ -14,7 +15,7 @@ namespace Chronos.Tests;
 public class UtilizationToBrushConverterTests
 {
     private static readonly Color Vert    = Color.FromRgb(0x7B, 0xB1, 0x3C); // borne rampe 0
-    private static readonly Color Epuise  = Color.FromRgb(0x5A, 0x59, 0x60); // gris épuisé (CAD-05)
+    private static readonly Color Epuise  = ThemeCatalog.Default.Epuise; // gris épuisé lisible (≥ 3:1) du thème par défaut — phase 39
     private static readonly Color Neutre  = Color.FromRgb(0x6E, 0x6D, 0x7A); // gris ardoise visible (donnée absente : longueur affichée, couleur non inventée)
 
     private static SolidColorBrush Convert(object? value)
