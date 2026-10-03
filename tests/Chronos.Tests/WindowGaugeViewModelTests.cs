@@ -1,4 +1,5 @@
 using Chronos.Models;
+using Chronos.Services.Historique;
 using Chronos.Text;
 using Chronos.ViewModels;
 using Xunit;
@@ -391,5 +392,87 @@ public class WindowGaugeViewModelTests
 
         Assert.Equal("", vm.TexteStatutServeur);
         Assert.False(vm.HasStatutServeur);   // le statut précédent ne SURVIT pas à une fenêtre muette
+    }
+
+    // --- BRA-02 (phase 41) : heure du reset, exact ou rien ---
+
+    private static readonly DateTimeOffset NowBra = new(2026, 10, 3, 10, 0, 0, TimeSpan.Zero);
+
+    private static WindowGaugeViewModel VmParis(WindowState s, DateTimeOffset now)
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5), BornesPlage.FuseauParisPourTests());
+        vm.Apply(s);
+        vm.Interpolate(now);
+        return vm;
+    }
+
+    private static WindowState Cinq(DateTimeOffset? resetsAt, SourceReliability r = SourceReliability.Exact) => new()
+    {
+        Kind = WindowKind.FiveHour, Reliability = r, Utilization = 0.4, ResetsAt = resetsAt,
+    };
+
+    [Fact]
+    public void Heure_du_reset_connue_est_affichee_en_heure_locale()
+    {
+        var vm = VmParis(Cinq(NowBra + TimeSpan.FromMinutes(140)), NowBra);
+        Assert.True(vm.HasHeureReset);
+        Assert.Equal("↻ 14:20", vm.HeureResetTexte);   // 12:20Z = 14:20 à Paris (heure d'été)
+    }
+
+    [Fact]
+    public void Heure_du_reset_inconnue_n_affiche_rien()
+    {
+        var vm = VmParis(Cinq(null), NowBra);
+        Assert.False(vm.HasHeureReset);
+        Assert.Equal("", vm.HeureResetTexte);
+    }
+
+    [Fact]
+    public void Heure_du_reset_deja_atteinte_n_affiche_rien()
+    {
+        var pile = VmParis(Cinq(NowBra), NowBra);
+        Assert.False(pile.HasHeureReset);
+        Assert.Equal("", pile.HeureResetTexte);
+
+        var passe = VmParis(Cinq(NowBra - TimeSpan.FromMinutes(1)), NowBra);
+        Assert.False(passe.HasHeureReset);
+        Assert.Equal("", passe.HeureResetTexte);
+    }
+
+    [Fact]
+    public void Un_plancher_garde_l_heure_du_reset_donnee_par_le_serveur()
+    {
+        var vm = VmParis(Cinq(NowBra + TimeSpan.FromMinutes(140), SourceReliability.Estimated), NowBra);
+        Assert.True(vm.HasHeureReset);
+        Assert.Equal("↻ 14:20", vm.HeureResetTexte);
+    }
+
+    [Fact]
+    public void Heure_du_reset_suit_le_changement_d_heure_du_25_octobre()
+    {
+        var now = new DateTimeOffset(2026, 10, 25, 0, 0, 0, TimeSpan.Zero);
+        var vm = VmParis(Cinq(new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero)), now);
+        Assert.Equal("↻ 02:30", vm.HeureResetTexte);   // UTC+1 après le passage à l'heure d'hiver
+    }
+
+    [Fact]
+    public void Heure_du_reset_disparait_quand_la_fenetre_devient_indisponible()
+    {
+        var vm = VmParis(Cinq(NowBra + TimeSpan.FromMinutes(140)), NowBra);
+        Assert.True(vm.HasHeureReset);
+
+        vm.Apply(WindowState.Unavailable(WindowKind.FiveHour));
+        vm.Interpolate(NowBra);
+
+        Assert.False(vm.HasHeureReset);
+        Assert.Equal("", vm.HeureResetTexte);
+    }
+
+    [Fact]
+    public void Sans_fuseau_ni_donnee_aucune_heure_de_reset()
+    {
+        var vm = new WindowGaugeViewModel(TimeSpan.FromHours(5));
+        Assert.False(vm.HasHeureReset);
+        Assert.Equal("", vm.HeureResetTexte);
     }
 }
