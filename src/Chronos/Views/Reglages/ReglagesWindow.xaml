@@ -205,6 +205,14 @@
                                     <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                 </DataTrigger>
+                                <!-- Sélection portée par Tag quand le DataContext n'est pas un choix de catalogue (carte Orientation, phase 40)
+                                     — inoffensif pour les puces existantes (Tag nul). Dans ControlTemplate.Triggers, « Self » désigne le
+                                     bouton templaté (TemplatedParent n'y résout rien : le déclencheur ne s'allumait jamais). -->
+                                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
@@ -770,6 +778,24 @@
                                                   IsChecked="{Binding IsModeEtendu, Mode=OneWay}" Command="{Binding ToggleCadranModeCommand}"
                                                   AutomationProperties.Name="Mode étendu"/>
                                 </Grid>
+                            </Border>
+
+                            <!-- « Orientation » (phase 40, DESIGN_PLAN_CYCLE2 §1.3) : Fusible, Marée et Volets seulement (comme « Mode étendu » pour Anneaux).
+                                 Mémorisée PAR CADRAN ; sans lien avec « Disposition verticale » du widget de sessions. -->
+                            <Border x:Name="CarteOrientation" Style="{StaticResource Carte}" Margin="0,4,0,8"
+                                    Visibility="{Binding EstStyleOrientable, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Text="Orientation" Style="{StaticResource TitreCarte}"/>
+                                    <TextBlock Text="propre à chaque cadran — la fenêtre reste collée à son coin" Style="{StaticResource Aide}" Margin="0,0,0,8"/>
+                                    <WrapPanel>
+                                        <Button x:Name="BoutonOrientationHorizontale" Style="{StaticResource Puce}" Content="Horizontal"
+                                                Tag="{Binding EstOrientationHorizontale}" Command="{Binding ChoisirOrientationCommand}"
+                                                CommandParameter="{x:Static svc:OrientationCadran.Horizontal}" AutomationProperties.Name="Orientation horizontale"/>
+                                        <Button x:Name="BoutonOrientationVerticale" Style="{StaticResource Puce}" Content="Vertical"
+                                                Tag="{Binding EstOrientationVerticale}" Command="{Binding ChoisirOrientationCommand}"
+                                                CommandParameter="{x:Static svc:OrientationCadran.Vertical}" AutomationProperties.Name="Orientation verticale"/>
+                                    </WrapPanel>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
 
