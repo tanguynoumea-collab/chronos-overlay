@@ -116,7 +116,7 @@ observés).
 - [x] **Phase 39: Thèmes Pâle / Classique / Vive** - Quinze thèmes rangés en trois groupes, un gris épuisé et un rouge lisibles partout (≥ 3:1), et les quatre cadrans alternatifs qui suivent le thème (completed 2026-10-03)
 - [x] **Phase 40: Cadrans à l'échelle 1 et orientations** - Chaque cadran a son empreinte réelle (+20 % pour Fusible et Volets), la fenêtre reste collée à son coin, et Fusible vertical, Marée horizontale, Volets vertical existent (completed 2026-10-03)
 - [x] **Phase 41: Braises** - L'anneau 5 h montre 20 braises en 5 heures séparées par un vide, une flèche fixe à midi, et l'heure du reset en mode temps (completed 2026-10-03)
-- [ ] **Phase 42: Un geste sur toute la silhouette** - Bascule, double-clic, glisser et clic droit marchent sur toute la silhouette des huit variantes, le clic traverse en dehors, et c'est prouvé par rendu
+- [x] **Phase 42: Un geste sur toute la silhouette** - Bascule, double-clic, glisser et clic droit marchent sur toute la silhouette des huit variantes, le clic traverse en dehors, et c'est prouvé par rendu (completed 2026-10-03)
 - [ ] **Phase 43: Release 3.5.0 et constat** - `Chronos-v3.5.0.exe` publié, la barre retirée constatée, et le constat avec l'utilisateur qui reprend VAL-04 et VAL-05 de v1.8
 
 ### Phase Details
@@ -376,7 +376,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 39. Thèmes Pâle / Classique / Vive | v1.9 | 4/4 | Complete    | 2026-10-03 |
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 8/8 | Complete    | 2026-10-03 |
 | 41. Braises | v1.9 | 2/2 | Complete    | 2026-10-03 |
-| 42. Un geste sur toute la silhouette | v1.9 | 3/4 | In Progress|  |
+| 42. Un geste sur toute la silhouette | v1.9 | 4/4 | Complete   | 2026-10-03 |
 | 43. Release 3.5.0 et constat | v1.9 | 0/? | Not started | - |
 
 ### Couverture des exigences
