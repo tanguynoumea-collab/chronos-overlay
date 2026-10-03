@@ -668,7 +668,7 @@
                                         <TextBlock x:Name="LigneEtatJournal" Style="{StaticResource Aide}" Text="{Binding TexteEtatJournal}"/>
                                     </DockPanel>
                                     <StackPanel Visibility="{Binding AfficherOuvrirHistorique, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="Aussi : double-clic au centre du cadran" Style="{StaticResource Aide}" Margin="0,8,0,0"/>
+                                        <TextBlock Text="Aussi : double-clic sur le cadran" Style="{StaticResource Aide}" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

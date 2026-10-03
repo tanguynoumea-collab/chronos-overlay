@@ -16,7 +16,8 @@ Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau
 - **Anneau interne — fenêtre hebdomadaire** : se remplit à l'approche du reset ; couleur = % de quota consommé.
 - **Anneau du milieu — fenêtre 5 h glissante** : idem pour la fenêtre de 5 heures.
 - **Anneau externe — timeline 24 h** : où tu en es dans la journée, avec des marques à chaque reset 5 h.
-- **Au centre** : les deux pourcentages d'utilisation. Un **clic** au centre bascule entre les pourcentages et le **temps avant reset** (après le délai de double-clic de Windows, ≈ 0,5 s) ; un **double-clic** ouvre l'**Historique** (voir [plus bas](#historique-dutilisation)).
+- **Au centre** : les deux pourcentages d'utilisation.
+- **Gestes, sur tout le cadran** : un **clic** bascule entre les pourcentages et le **temps avant reset** (après le délai de double-clic de Windows, ≈ 0,5 s) ; un **double-clic** ouvre l'**Historique** (voir [plus bas](#historique-dutilisation)) ; **appuyer puis glisser** déplace le cadran, qui s'accroche ensuite au coin le plus proche ; **clic droit** ouvre les **Réglages**. À côté du cadran, le clic va au bureau.
 - **Couleurs** : vert → ambre → rouge selon l'utilisation, **gris** quand le quota est épuisé, **neutre** quand la donnée est inconnue (jamais de valeur inventée). Un `≥` devant un pourcentage signale un **plancher** : le dernier relevé exact a vieilli pendant que Claude Code travaillait — le vrai chiffre est au moins celui-là.
 
 ## Installation (portable, sans droits admin)
@@ -113,11 +114,11 @@ tâches, redimensionnable, qui retient sa position et sa taille.
 
 ### Ouvrir
 
-- Deux gestes : **double-clic au centre du cadran**, ou **Réglages** (clic droit sur le cadran) → section **Historique**
+- Deux gestes : **double-clic sur le cadran**, ou **Réglages** (clic droit sur le cadran) → section **Historique**
   → carte **« Historique d'utilisation »** → **« Ouvrir »**.
 - Si la fenêtre est déjà ouverte, elle revient au premier plan (et se rouvre si elle était réduite). **Échap** ou
   **✕** la ferment.
-- Le prix du double-clic : au centre, le simple clic attend le délai de double-clic de Windows (≈ 0,5 s) avant de
+- Le prix du double-clic : sur le cadran, le simple clic attend le délai de double-clic de Windows (≈ 0,5 s) avant de
   basculer entre % et temps avant reset, pour savoir si un second clic arrive.
 
 ### Trois vues

@@ -183,3 +183,4 @@ l'exe qui l'a créé.
   garder l'ancien exe sur le disque tant qu'elles tournent (s'il a été supprimé, leur barre reste vide, sans gravité). Un
   appel `--statusline` qui atteint l'exe 3.5 sort en silence (argument inconnu, code 0, aucune fenêtre).
 - **Carte retirée** : la carte « Barre de statut de Claude Code » disparaît de la section Données.
+- **Un geste sur tout le cadran** : le petit disque cliquable du centre disparaît. Sur toute la silhouette du cadran (le disque pour Anneaux et Braises, le rectangle arrondi pour Fusible, Marée et Volets) : clic = bascule % ↔ temps, double-clic = Historique (sans bascule), appuyer puis glisser au-delà du seuil de Windows = déplacer puis accrocher au coin le plus proche, clic droit = Réglages. À côté du cadran, le clic traverse vers le bureau. Le simple clic bascule ≈ 0,5 s après le relâchement (délai de double-clic de Windows).
