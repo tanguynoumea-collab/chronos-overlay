@@ -21,7 +21,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 ### Socle (SOC) — prérequis
 
-- [ ] **SOC-01**: Un `settings.json` contenant une valeur d'énumération inconnue (style, orientation, section…) ou un membre
+- [x] **SOC-01**: Un `settings.json` contenant une valeur d'énumération inconnue (style, orientation, section…) ou un membre
   supprimé ne remet plus **tous** les réglages à zéro : seule la valeur fautive retombe sur son défaut, le reste (thème, coin,
   géométries…) est conservé et réécrit intact ; épinglé par tests (`"Tuiles"`, style de cadran inconnu, clé de thème inconnue).
 - [x] **SOC-02**: Tout argument `--xxx` inconnu ou retiré fait **sortir l'exe silencieusement (code 0) avant le verrou
@@ -131,7 +131,7 @@ seule de `~/.claude` hors réconciliation contrôlée de `~/.claude/settings.jso
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SOC-01 | Phase 36 | Pending |
+| SOC-01 | Phase 36 | Complete |
 | SOC-02 | Phase 36 | Complete |
 | DAT-01 | Phase 37 | Complete |
 | DAT-02 | Phase 37 | Pending |
