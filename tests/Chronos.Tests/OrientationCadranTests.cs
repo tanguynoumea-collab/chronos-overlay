@@ -218,23 +218,38 @@ public class OrientationCadranTests
         vm.PropertyChanged -= h;
     }
 
+    /// <summary>§11 B1 : la hauteur de fenêtre ajoute la bande de 14 px des pastilles aux trois cadrans rectangulaires
+    /// (Arcs et Braises : 0), et la notifie au changement de style comme d'orientation.</summary>
     [Fact]
-    public void Le_mot_indisponible_est_au_centre_pour_les_cadrans_rectangulaires()
+    public void La_hauteur_de_fenetre_ajoute_la_bande_pour_les_cadrans_rectangulaires()
     {
         var vm = NouveauVm(TempPaths());
         var notifiees = new List<string?>();
         vm.PropertyChanged += (_, e) => notifiees.Add(e.PropertyName);
 
-        foreach (var (style, auCentre) in new[]
+        foreach (var (style, bande) in new[]
                  {
-                     (CadranStyle.Fusible, true), (CadranStyle.Arcs, false), (CadranStyle.Maree, true),
-                     (CadranStyle.Braises, false), (CadranStyle.Volets, true),
+                     (CadranStyle.Fusible, 14.0), (CadranStyle.Arcs, 0.0), (CadranStyle.Maree, 14.0),
+                     (CadranStyle.Braises, 0.0), (CadranStyle.Volets, 14.0),
                  })
         {
             notifiees.Clear();
             vm.CadranStyle = style;
-            Assert.Equal(auCentre, vm.MotIndisponibleAuCentre);
-            Assert.Contains(nameof(MainViewModel.MotIndisponibleAuCentre), notifiees);
+            Assert.Equal(bande, vm.HauteurBandePastilles);
+            Assert.Equal(vm.HauteurCadran + vm.HauteurBandePastilles, vm.HauteurFenetre);
+            Assert.Contains(nameof(MainViewModel.HauteurFenetre), notifiees);
+            Assert.Contains(nameof(MainViewModel.HauteurBandePastilles), notifiees);
+        }
+
+        vm.CadranStyle = CadranStyle.Fusible;
+        foreach (var orientation in new[] { OrientationCadran.Vertical, OrientationCadran.Horizontal })
+        {
+            notifiees.Clear();
+            vm.ChoisirOrientationCommand.Execute(orientation);
+            Assert.Equal(14, vm.HauteurBandePastilles);
+            Assert.Equal(EmpreinteCadran.Pour(CadranStyle.Fusible, orientation).Height + 14, vm.HauteurFenetre);
+            Assert.Contains(nameof(MainViewModel.HauteurFenetre), notifiees);
+            Assert.Contains(nameof(MainViewModel.HauteurBandePastilles), notifiees);
         }
     }
 }

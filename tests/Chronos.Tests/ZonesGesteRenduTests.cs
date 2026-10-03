@@ -190,11 +190,13 @@ public class ZonesGesteRenduTests
         racine.DataContext = vm;
         racine.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
-        var taille = EmpreinteCadran.Pour(style, o);
-        racine.Measure(taille);
-        racine.Arrange(new Rect(taille));
+        // §11 B1 : la grille est mise en page à la taille de la FENÊTRE (empreinte + bande des pastilles pour les cadrans
+        // rectangulaires) ; la taille renvoyée reste l'EMPREINTE, contrat de la silhouette (inchangé).
+        var cadre = EmpreinteCadran.Fenetre(style, o);
+        racine.Measure(cadre);
+        racine.Arrange(new Rect(cadre));
         racine.UpdateLayout();
-        return (fenetre, racine, vm, taille);
+        return (fenetre, racine, vm, EmpreinteCadran.Pour(style, o));
     }
 
     private static byte[] Rendre(FrameworkElement racine, int w, int h)
@@ -293,12 +295,14 @@ public class ZonesGesteRenduTests
 
     private static void VerifierRendu(string nom, CadranStyle style, FrameworkElement racine, Size taille, bool retirerCoinBasDroit)
     {
-        // Non-vacuité : la grille a bien l'empreinte, sinon le rendu serait vide et les « dehors » verts par accident.
+        // Non-vacuité : la grille a bien la taille de la fenêtre (empreinte + bande, §11 B1), sinon le rendu serait vide et
+        // les « dehors » verts par accident.
+        var hauteurFenetre = taille.Height + EmpreinteCadran.Bande(style);
         Assert.Equal(taille.Width, racine.ActualWidth, 2);
-        Assert.Equal(taille.Height, racine.ActualHeight, 2);
+        Assert.Equal(hauteurFenetre, racine.ActualHeight, 2);
 
         int w = (int)taille.Width, h = (int)taille.Height;
-        var pixels = Rendre(racine, w, h);
+        var pixels = Rendre(racine, w, (int)hauteurFenetre);
         var (dedans, dehors) = Temoins(style, taille);
 
         var echecs = new List<string>();
@@ -424,6 +428,49 @@ public class ZonesGesteRenduTests
             }
             finally { fenetre.Close(); }
         }
+    }
+
+    /// <summary>§11 B1 : la bande de 14 px sous l'empreinte des cadrans rectangulaires est HORS silhouette. Sans pastille,
+    /// ses pixels laissent traverser le clic (HitTest de la racine nul) ; une pastille bouton allumée y garde sa commande.</summary>
+    [WpfFact]
+    public void La_bande_des_pastilles_laisse_traverser_le_clic()
+    {
+        foreach (var (style, o) in Variantes.Where(v => v.Style is CadranStyle.Fusible or CadranStyle.Maree or CadranStyle.Volets))
+        {
+            var (fenetre, racine, vm, taille) = Monter(style, o, SnapshotNominal());
+            try
+            {
+                var nom = $"{style}/{o}";
+                Assert.False(vm.AfficherReleveDate || vm.AfficherPastilleHorsLigne
+                             || vm.AfficherInvitationConnexion || vm.AfficherPastilleDeconnexion, $"{nom} : aucune pastille attendue.");
+                Assert.Equal(taille.Height + 14, racine.ActualHeight, 2);
+                var silhouette = Assert.IsAssignableFrom<Shape>(ZoneGeste.Trouver(racine));
+
+                foreach (var p in new[] { new Point(6, taille.Height + 7), new Point(taille.Width / 2, taille.Height + 7),
+                                          new Point(taille.Width - 3, taille.Height + 7) })
+                {
+                    Assert.True(VisualTreeHelper.HitTest(racine, p) is null, $"{nom} : la bande capte le clic en {p}.");
+                    Assert.False(ZoneGeste.Contient(silhouette, racine.TranslatePoint(p, silhouette)),
+                        $"{nom} : la silhouette déborde dans la bande en {p}.");
+                }
+            }
+            finally { fenetre.Close(); }
+        }
+
+        var (f2, r2, vm2, t2) = Monter(CadranStyle.Volets, OrientationCadran.Horizontal, SnapshotNominal(),
+                                       etat: EtatAuthentification.Deconnecte);
+        try
+        {
+            Assert.True(vm2.AfficherPastilleDeconnexion);
+            var pastille = Assert.IsType<Button>(f2.FindName("PastilleDeconnexion"));
+            var c = CentreRendu(pastille, r2);
+            Assert.True(c.Y > t2.Height, $"la pastille de déconnexion doit vivre dans la bande (Y = {c.Y}, empreinte {t2.Height}).");
+
+            var touche = VisualTreeHelper.HitTest(r2, c)?.VisualHit;
+            Assert.NotNull(touche);
+            Assert.Contains(CheminVers(touche!, r2), d => d is System.Windows.Controls.Primitives.ButtonBase);
+        }
+        finally { f2.Close(); }
     }
 
     [WpfFact]

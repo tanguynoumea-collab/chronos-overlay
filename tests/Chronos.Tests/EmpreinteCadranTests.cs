@@ -15,13 +15,14 @@ namespace Chronos.Tests;
 /// purs). Le décompte global des <c>sys:Double</c> est tenu par <see cref="GardeTokensHistoriqueTests"/>, qui additionne
 /// <see cref="TaillesCadran"/> : un token de cadran non déclaré ici fait rougir les deux gardes.
 /// </summary>
+[Collection("XAML WPF")]
 public class EmpreinteCadranTests
 {
     private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
     private static readonly XNamespace Sys = "clr-namespace:System;assembly=mscorlib";
 
-    /// <summary>Table contractuelle des 20 tokens de cadran (DESIGN_PLAN_CYCLE2 §1.1) : 16 empreintes (Arcs ET Braises ont
-    /// leurs clés, carrées ; Fusible, Marée, Volets en H et V) + 4 corps de texte.</summary>
+    /// <summary>Table contractuelle des 21 tokens de cadran (DESIGN_PLAN_CYCLE2 §1.1 et §11 B1) : 16 empreintes (Arcs ET Braises
+    /// ont leurs clés, carrées ; Fusible, Marée, Volets en H et V) + 4 corps de texte + la bande des pastilles (14).</summary>
     public static readonly (string Cle, double Valeur)[] TaillesCadran =
     {
         ("CadranLargeurArcs", 170),
@@ -44,6 +45,7 @@ public class EmpreinteCadranTests
         ("CadranCorpsValeur", 12),
         ("CadranCorpsPlaqueH", 13),
         ("CadranCorpsPlaqueV", 14),
+        ("CadranBandePastilles", 14),
     };
 
     /// <summary>Les 10 cas (style, orientation) et le suffixe de token correspondant.</summary>
@@ -115,6 +117,34 @@ public class EmpreinteCadranTests
         }
     }
 
+    /// <summary>§11 B1 : la fenêtre des trois cadrans rectangulaires vaut l'empreinte + la bande de 14 px des pastilles, en
+    /// permanence ; Arcs et Braises gardent 170 × 170. La largeur ne change jamais et l'empreinte reste contractuelle.</summary>
+    [Theory]
+    [MemberData(nameof(CasFenetre))]
+    public void Fenetre_ajoute_la_bande_aux_seuls_cadrans_rectangulaires(CadranStyle style, OrientationCadran o)
+    {
+        var rectangulaire = style is CadranStyle.Fusible or CadranStyle.Maree or CadranStyle.Volets;
+        var empreinte = EmpreinteCadran.Pour(style, o);
+        var fenetre = EmpreinteCadran.Fenetre(style, o);
+
+        Assert.Equal(14, EmpreinteCadran.BandePastilles);
+        Assert.Equal(rectangulaire ? 14 : 0, EmpreinteCadran.Bande(style));
+        Assert.Equal(empreinte.Width, fenetre.Width);
+        Assert.Equal(empreinte.Height + (rectangulaire ? 14 : 0), fenetre.Height);
+    }
+
+    public static IEnumerable<object[]> CasFenetre() => Cas.Select(c => new object[] { c.Style, c.Orientation });
+
+    /// <summary>§11 B2 : la plaque « indisponible » passe par deux tokens typés (coins 6, marge 6 × 2).</summary>
+    [WpfFact]
+    public void Les_tokens_de_plaque_sont_types()
+    {
+        var dico = PleinEcranVuesTests.Tokens();
+
+        Assert.Equal(new CornerRadius(6), Assert.IsType<CornerRadius>(dico["CadranPlaqueRayon"]));
+        Assert.Equal(new Thickness(6, 2, 6, 2), Assert.IsType<Thickness>(dico["CadranPlaqueMarge"]));
+    }
+
     /// <summary>Phase 40 (CAD-01) : MainWindow n'enveloppe plus aucun cadran dans un Viewbox, et sa taille est liée à l'empreinte
     /// courante du VM (plus de 170 × 170 figé).</summary>
     [Fact]
@@ -128,7 +158,7 @@ public class EmpreinteCadranTests
 
         Assert.DoesNotContain("<Viewbox", xaml);
         Assert.Contains("Width=\"{Binding LargeurCadran, Mode=OneWay}\"", xaml);
-        Assert.Contains("Height=\"{Binding HauteurCadran, Mode=OneWay}\"", xaml);
+        Assert.Contains("Height=\"{Binding HauteurFenetre, Mode=OneWay}\"", xaml);
         Assert.DoesNotContain("Width=\"170\" Height=\"170\"", xaml);
     }
 }

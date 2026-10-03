@@ -130,10 +130,12 @@ public class CadranBindingTests
         // vérifie dans les tests MONTÉS ci-dessous — ce test-ci n'utilise que BuildWindow, la fenêtre n'a
         // donc aucun parent visuel, sa Visibility resterait à son défaut Visible et l'assertion serait
         // vraie pour une mauvaise raison (Piège 4). Ce qui se prouve ici, c'est le CÂBLAGE.
+        // §11 B2 : la Visibility est portée par le CADRE du mot (CadreMotIndisponible), plus par le TextBlock.
         var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        var cadre = Assert.IsType<Grid>(fenetre.FindName("CadreMotIndisponible"));
         Assert.Equal("indisponible", mot.Text);
         Assert.Equal(nameof(vm.DataUnavailable),
-            System.Windows.Data.BindingOperations.GetBinding(mot, UIElement.VisibilityProperty)!.Path.Path);
+            System.Windows.Data.BindingOperations.GetBinding(cadre, UIElement.VisibilityProperty)!.Path.Path);
     }
 
     /// <summary>
@@ -717,10 +719,11 @@ public class CadranBindingTests
     {
         var (fenetre, _) = MonterCadran(UsageSnapshot.Empty, out var vm);
         var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        var cadre = Assert.IsType<Grid>(fenetre.FindName("CadreMotIndisponible"));
 
         Assert.True(vm.DataUnavailable);
         Assert.Equal("indisponible", mot.Text);
-        Assert.Equal(Visibility.Visible, mot.Visibility);
+        Assert.Equal(Visibility.Visible, cadre.Visibility);
     }
 
     /// <summary>EXA-03 — contre-épreuve : dès qu'UN chiffre est exploitable, le mot s'éteint. Un overlay
@@ -736,43 +739,42 @@ public class CadranBindingTests
         };
 
         var (fenetre, _) = MonterCadran(snap, out var vm);
-        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        var cadre = Assert.IsType<Grid>(fenetre.FindName("CadreMotIndisponible"));
 
         Assert.False(vm.DataUnavailable);
-        Assert.Equal(Visibility.Collapsed, mot.Visibility);
+        Assert.Equal(Visibility.Collapsed, cadre.Visibility);
     }
 
     /// <summary>
-    /// EXA-03 — géométrie du mot, dans le cas RÉEL où il cohabite avec une pastille : « jamais d'exact »
-    /// allume à la fois le mot ET l'invitation à se connecter. Le mot est au BAS-GAUCHE précisément pour
-    /// cela — un mot centré en bas entrerait en collision avec la rangée dès trois pastilles, et le
-    /// bas-droite lui est interdit par construction.
+    /// EXA-03 / §11 B2 — géométrie du mot, dans le cas RÉEL où il cohabite avec une pastille : « jamais d'exact » allume à la
+    /// fois le mot ET l'invitation à se connecter. Depuis la DESIGN-REVIEW 1, le mot est CENTRÉ dans l'empreinte, y compris
+    /// pour Anneaux (en état indisponible, le centre est vide : l'ancien argument « hors des anneaux » tombe) ; il ne
+    /// recouvre pas la rangée et ne vole aucun clic.
     /// </summary>
     [WpfFact]
-    public void Le_mot_indisponible_n_empiete_ni_sur_les_anneaux_ni_sur_la_rangee_de_pastilles()
+    public void Le_mot_indisponible_est_centre_et_n_empiete_pas_sur_la_rangee_de_pastilles()
     {
         var (fenetre, racine) = MonterCadran(JamaisDExact(), out var vm);
-        var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
+        var plaque = Assert.IsType<Border>(fenetre.FindName("PlaqueIndisponible"));
+        var cadre = Assert.IsType<Grid>(fenetre.FindName("CadreMotIndisponible"));
         var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
 
         Assert.True(vm.DataUnavailable);
         Assert.True(vm.AfficherInvitationConnexion);          // les deux sont bien allumés ENSEMBLE
-        Assert.Equal(Visibility.Visible, mot.Visibility);
+        Assert.Equal(Visibility.Visible, cadre.Visibility);
 
-        var rMot = RectangleMisEnPage(mot, racine);
+        var rPlaque = RectangleMisEnPage(plaque, racine);
         var rRangee = RectangleMisEnPage(rangee, racine);
-        Assert.False(rMot.IsEmpty);
+        Assert.False(rPlaque.IsEmpty);
         Assert.False(rRangee.IsEmpty);
-        Assert.True(Rect.Intersect(rMot, rRangee).IsEmpty,
-            $"le mot recouvre la rangée de pastilles : {rMot} ∩ {rRangee}");
+        Assert.True(Rect.Intersect(rPlaque, rRangee).IsEmpty,
+            $"la plaque recouvre la rangée de pastilles : {rPlaque} ∩ {rRangee}");
 
-        var centre = new Point(rMot.X + rMot.Width / 2, rMot.Y + rMot.Height / 2);
-        var distanceAuCentre = (centre - new Point(85, 85)).Length;
-        Assert.True(distanceAuCentre > 71.5,
-            $"le mot empiète sur la géométrie des anneaux (distance {distanceAuCentre:F1} px)");
+        var centre = new Point(rPlaque.X + rPlaque.Width / 2, rPlaque.Y + rPlaque.Height / 2);
+        Assert.True((centre - new Point(85, 85)).Length < 1, $"le mot devait être centré (centre {centre})");
 
         // Il ne vole aucun clic : la zone centrale continue de basculer % / temps.
-        Assert.False(mot.IsHitTestVisible);
+        Assert.False(cadre.IsHitTestVisible);
         Assert.Equal(170d, fenetre.Width);
     }
 
@@ -800,7 +802,8 @@ public class CadranBindingTests
     private static void Purger(FrameworkElement e)
         => e.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
-    /// <summary>Plus de Viewbox : la fenêtre prend l'empreinte réelle du style ET de l'orientation courants, pour les 8 variantes.</summary>
+    /// <summary>Plus de Viewbox : la fenêtre prend l'empreinte réelle du style ET de l'orientation courants, pour les 8 variantes,
+    /// + la bande de 14 px des pastilles sous les trois cadrans rectangulaires (§11 B1).</summary>
     [WpfFact]
     public void La_fenetre_prend_l_empreinte_de_chaque_variante()
     {
@@ -810,58 +813,153 @@ public class CadranBindingTests
         {
             PoserVariante(vm, style, orientation);
             Purger(fenetre);
-            var attendu = Chronos.Rendering.EmpreinteCadran.Pour(style, orientation);
+            var attendu = Chronos.Rendering.EmpreinteCadran.Fenetre(style, orientation);   // §11 B1 : empreinte + bande
             Assert.True(attendu.Width == fenetre.Width, $"{style}/{orientation} : Width {fenetre.Width} ≠ {attendu.Width}");
             Assert.True(attendu.Height == fenetre.Height, $"{style}/{orientation} : Height {fenetre.Height} ≠ {attendu.Height}");
         }
     }
 
+    /// <summary>Pose la variante, purge la file, puis met la grille en page à la taille de la FENÊTRE (§11 B1).</summary>
+    private static (Size Empreinte, Size Fenetre) MettreEnPageVariante(MainViewModel vm, FrameworkElement racine,
+                                                                       CadranStyle style, OrientationCadran orientation)
+    {
+        PoserVariante(vm, style, orientation);
+        var empreinte = Chronos.Rendering.EmpreinteCadran.Pour(style, orientation);
+        var cadreFenetre = Chronos.Rendering.EmpreinteCadran.Fenetre(style, orientation);
+        Purger(racine);
+        racine.Measure(cadreFenetre);
+        racine.Arrange(new Rect(cadreFenetre));
+        racine.UpdateLayout();
+        return (empreinte, cadreFenetre);
+    }
+
+    /// <summary>Intersection d'aire nulle (deux rectangles qui se touchent par un bord ne se recouvrent pas).</summary>
+    private static bool SansRecouvrement(Rect a, Rect b)
+    {
+        var i = Rect.Intersect(a, b);
+        return i.IsEmpty || i.Width * i.Height < 0.01;
+    }
+
     /// <summary>
-    /// Le mot « indisponible » et la rangée de pastilles (cas réel « jamais d'exact » : mot ET invitation allumés) tiennent dans
-    /// l'empreinte de chaque variante sans se recouvrir. Le mot est centré dans l'empreinte des cadrans rectangulaires (décision
-    /// de l'orchestrateur, phase 40) et reste au bas-gauche pour Arcs et Braises (EXA-03, hors des anneaux).
+    /// §11 B2 — « indisponible » (cas réel « jamais d'exact » : mot ET invitation allumés) est CENTRÉ dans l'EMPREINTE des huit
+    /// variantes, sur une plaque FondCadran (coins 6, marge 6 × 2) en TextePrincipal corps 11, sans recouvrir la rangée de
+    /// pastilles, et ne capte aucun clic. La grille est mise en page à la taille de la fenêtre : le centrage porte sur
+    /// l'empreinte, pas sur la fenêtre (bande exclue).
     /// </summary>
     [WpfFact]
-    public void Le_mot_et_les_pastilles_restent_dans_l_empreinte_de_chaque_variante()
+    public void Le_mot_est_centre_sur_sa_plaque_dans_l_empreinte_des_huit_variantes()
     {
         var (fenetre, racine) = MonterPastille(EtatAuthentification.Connecte, JamaisDExact(), out var vm);
+        var cadre = Assert.IsType<Grid>(fenetre.FindName("CadreMotIndisponible"));
+        var plaque = Assert.IsType<Border>(fenetre.FindName("PlaqueIndisponible"));
         var mot = Assert.IsType<TextBlock>(fenetre.FindName("MotIndisponible"));
         var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
         Assert.True(vm.DataUnavailable);
         Assert.True(vm.AfficherInvitationConnexion);
 
+        // Plaque et texte : tokens et pinceaux du thème, une fois pour toutes.
+        Assert.Same(fenetre.FindResource("FondCadran"), plaque.Background);
+        Assert.Equal(new CornerRadius(6), plaque.CornerRadius);
+        Assert.Equal(new Thickness(6, 2, 6, 2), plaque.Padding);
+        Assert.Same(fenetre.FindResource("TextePrincipal"), mot.Foreground);
+        Assert.Equal(11d, mot.FontSize);
+        Assert.False(cadre.IsHitTestVisible);
+
         foreach (var (style, orientation) in Variantes)
         {
-            PoserVariante(vm, style, orientation);
-            var empreinte = Chronos.Rendering.EmpreinteCadran.Pour(style, orientation);
-            Purger(racine);
-            racine.Measure(empreinte);
-            racine.Arrange(new Rect(empreinte));
-            racine.UpdateLayout();
-
-            Assert.Equal(Visibility.Visible, mot.Visibility);
-            var boite = new Rect(empreinte);
-            var rMot = RectangleMisEnPage(mot, racine);
-            var rRangee = RectangleMisEnPage(rangee, racine);
+            var (empreinte, _) = MettreEnPageVariante(vm, racine, style, orientation);
             var nom = $"{style}/{orientation}";
 
-            Assert.False(rMot.IsEmpty || rMot.Width == 0, $"{nom} : mot non mis en page");
-            Assert.False(rRangee.IsEmpty || rRangee.Width == 0, $"{nom} : rangée non mise en page");
-            Assert.True(boite.Contains(rMot), $"{nom} : le mot {rMot} sort de l'empreinte {boite}");
-            Assert.True(boite.Contains(rRangee), $"{nom} : la rangée {rRangee} sort de l'empreinte {boite}");
-            Assert.True(Rect.Intersect(rMot, rRangee).IsEmpty, $"{nom} : le mot recouvre la rangée : {rMot} ∩ {rRangee}");
+            Assert.Equal(Visibility.Visible, cadre.Visibility);
+            var boite = new Rect(empreinte);
+            var rPlaque = RectangleMisEnPage(plaque, racine);
+            var rRangee = RectangleMisEnPage(rangee, racine);
 
-            var centreMot = new Point(rMot.X + rMot.Width / 2, rMot.Y + rMot.Height / 2);
-            if (style is CadranStyle.Fusible or CadranStyle.Maree or CadranStyle.Volets)
+            Assert.False(rPlaque.IsEmpty || rPlaque.Width == 0, $"{nom} : plaque non mise en page");
+            Assert.False(rRangee.IsEmpty || rRangee.Width == 0, $"{nom} : rangée non mise en page");
+            Assert.True(boite.Contains(rPlaque), $"{nom} : la plaque {rPlaque} sort de l'empreinte {boite}");
+            Assert.True(SansRecouvrement(rPlaque, rRangee), $"{nom} : la plaque recouvre la rangée : {rPlaque} ∩ {rRangee}");
+
+            var centrePlaque = new Point(rPlaque.X + rPlaque.Width / 2, rPlaque.Y + rPlaque.Height / 2);
+            var centreEmpreinte = new Point(empreinte.Width / 2, empreinte.Height / 2);
+            Assert.True((centrePlaque - centreEmpreinte).Length < 1,
+                $"{nom} : plaque centrée en {centrePlaque}, attendu {centreEmpreinte} (centre de l'EMPREINTE)");
+        }
+    }
+
+    /// <summary>Visible au rendu : l'élément et tous ses ancêtres jusqu'à la racine sont Visible, avec une surface non nulle.
+    /// (<c>IsVisible</c> exige une PresentationSource : inutilisable hors écran.)</summary>
+    private static bool VisibleJusqua(FrameworkElement e, DependencyObject racine)
+    {
+        if (e.ActualWidth <= 0 || e.ActualHeight <= 0) return false;
+        for (DependencyObject? d = e; d is not null && !ReferenceEquals(d, racine); d = System.Windows.Media.VisualTreeHelper.GetParent(d))
+            if (d is UIElement u && u.Visibility != Visibility.Visible) return false;
+        return true;
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject d)
+    {
+        for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(d); i++)
+        {
+            var enfant = System.Windows.Media.VisualTreeHelper.GetChild(d, i);
+            yield return enfant;
+            foreach (var petit in Descendants(enfant)) yield return petit;
+        }
+    }
+
+    /// <summary>
+    /// §11 B1 — la rangée de pastilles (âge ET invitation allumées) vit dans la bande [H, H + 14] des six variantes
+    /// rectangulaires, alignée à droite à 6 px du bord : son rectangle rendu ne coupe ni l'empreinte, ni aucune valeur, barre
+    /// ou volet de la vue de cadran courante. Pour Anneaux et Braises, la fenêtre reste l'empreinte et la rangée y tient, à
+    /// droite de la borne dure x ≥ 96.
+    /// </summary>
+    [WpfFact]
+    public void Les_pastilles_des_cadrans_rectangulaires_vivent_dans_la_bande()
+    {
+        var (fenetre, racine) = MonterPastille(EtatAuthentification.Connecte, JamaisDExact(), out var vm);
+        var rangee = Assert.IsType<StackPanel>(fenetre.FindName("RangeePastilles"));
+        var grille = Assert.IsAssignableFrom<Panel>(racine);
+        vm.AfficherReleveDate = true;   // pastille d'âge, en plus de l'invitation allumée par « jamais d'exact »
+        Purger(racine);
+
+        foreach (var (style, orientation) in Variantes)
+        {
+            var (empreinte, cadreFenetre) = MettreEnPageVariante(vm, racine, style, orientation);
+            var nom = $"{style}/{orientation}";
+            Assert.True(vm.AfficherReleveDate, $"{nom} : pastille d'âge attendue");
+            Assert.True(vm.AfficherInvitationConnexion, $"{nom} : invitation attendue");
+
+            var rRangee = RectangleMisEnPage(rangee, racine);
+            Assert.False(rRangee.IsEmpty || rRangee.Width == 0, $"{nom} : rangée non mise en page");
+            var boite = new Rect(empreinte);
+
+            if (style is CadranStyle.Arcs or CadranStyle.Braises)
             {
-                var centreEmpreinte = new Point(empreinte.Width / 2, empreinte.Height / 2);
-                Assert.True((centreMot - centreEmpreinte).Length < 1,
-                    $"{nom} : mot centré en {centreMot}, attendu {centreEmpreinte}");
+                Assert.Equal(empreinte, cadreFenetre);
+                Assert.True(boite.Contains(rRangee), $"{nom} : la rangée {rRangee} sort de l'empreinte {boite}");
+                Assert.True(rRangee.X >= 96 - 0.5, $"{nom} : la rangée franchit la borne dure x ≥ 96 ({rRangee.X})");
+                continue;
             }
-            else
+
+            var bande = new Rect(0, empreinte.Height, empreinte.Width, 14);
+            Assert.True(bande.Contains(rRangee), $"{nom} : la rangée {rRangee} sort de la bande {bande}");
+            Assert.True(SansRecouvrement(rRangee, boite), $"{nom} : la rangée {rRangee} coupe l'empreinte {boite}");
+            Assert.InRange(rRangee.Right, empreinte.Width - 6 - 0.5, empreinte.Width - 6 + 0.5);
+
+            var vue = grille.Children.OfType<FrameworkElement>()
+                .Single(e => e.GetType().Namespace == "Chronos.Views.Cadrans" && e.Visibility == Visibility.Visible);
+            var verifies = 0;
+            foreach (var e in Descendants(vue).OfType<FrameworkElement>())
             {
-                Assert.True(rMot.X < 20, $"{nom} : le mot devait rester au bas-gauche (X = {rMot.X})");
+                if (e is not (TextBlock or Chronos.Controls.FuseBar or Chronos.Controls.TideColumn or Chronos.Controls.FlapRow or Border))
+                    continue;
+                if (!VisibleJusqua(e, racine)) continue;
+                verifies++;
+                var r = RectangleMisEnPage(e, racine);
+                Assert.True(SansRecouvrement(r, rRangee),
+                    $"{nom} : {e.GetType().Name} « {e.Name} » {r} est recouvert par la rangée {rRangee}");
             }
+            Assert.True(verifies > 0, $"{nom} : aucun élément de cadran vérifié (montage vide ?)");
         }
     }
 
@@ -897,7 +995,8 @@ public class CadranBindingTests
 
     /// <summary>
     /// CAD-02 (phase 40) : au démarrage, RestorePlacement (levé par SourceInitialized) pose la fenêtre avec
-    /// l'EMPREINTE du style PERSISTÉ — ici Fusible horizontal 190 × 92 au coin bas-droite — et non avec une
+    /// l'EMPREINTE du style PERSISTÉ — ici Fusible horizontal 190 × 92, fenêtre 190 × 106 avec la bande des pastilles (§11 B1),
+    /// au coin bas-droite — et non avec une
     /// largeur nulle ni avec les 170 historiques. Le VM est construit SANS forcer Arcs (pas de BuildWindow).
     /// </summary>
     [WpfFact]
@@ -933,7 +1032,7 @@ public class CadranBindingTests
             // sur la taille entière du HWND : 190 DIP à 125 % = 237,5 px → 238 px → 190,4 DIP). Ni 0 ni 170.
             var empreinte = Assert.NotNull(controller.DerniereEmpreinteRestauree);
             Assert.InRange(empreinte.Largeur, 189.0, 191.0);
-            Assert.InRange(empreinte.Hauteur, 91.0, 93.0);
+            Assert.InRange(empreinte.Hauteur, 105.0, 107.0);   // §11 B1 : 92 + bande de 14 px des pastilles
             Assert.Equal(Chronos.Placement.OverlayCorner.BottomRight, controller.CoinCourant);
             Assert.False(controller.RestaurationSansTaille);
 
@@ -958,7 +1057,7 @@ public class CadranBindingTests
             Assert.NotNull(travail);
             var w = travail!.Value;
             var zone = new Chronos.Placement.RectD(w.Left, w.Top, w.Right - w.Left, w.Bottom - w.Top);
-            var rect = new Chronos.Placement.RectD(pose.X, pose.Y, 190 * echelle, 92 * echelle);
+            var rect = new Chronos.Placement.RectD(pose.X, pose.Y, 190 * echelle, 106 * echelle);
             Assert.Equal(Chronos.Placement.OverlayCorner.BottomRight, Chronos.Placement.CornerSnap.ClassifyCorner(rect, zone));
         }
         finally
