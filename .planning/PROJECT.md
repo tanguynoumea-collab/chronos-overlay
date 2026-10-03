@@ -70,6 +70,8 @@ Milestone v1.9 « Lisible partout » (exe 3.5.0) — 25 exigences dans `.plannin
 HIS-09..11, THM-01..04, CAD-01..04, BRA-01..02, GST-01..03, VAL-06..07. VAL-07 reprend les constats reportés de v1.8
 (VAL-04, VAL-05) ; HIS-09 absorbe la suppression des styles Simplifié et Tuiles.
 
+Validées en cours de milestone : SOC-01, SOC-02 (phase 36 Socle, 2026-10-03 — lecture des réglages valeur par valeur, garde d'arguments inconnus).
+
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
@@ -250,4 +252,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 — milestone v1.9 « Lisible partout » démarré*
+*Last updated: 2026-10-03 — phase 36 (Socle) terminée*
