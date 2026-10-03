@@ -1,6 +1,6 @@
 namespace Chronos.ViewModels;
 
-/// <summary>Ce que le cadran doit faire d'un clic au centre, décidé par <see cref="ArbitreClicCentre"/>.</summary>
+/// <summary>Ce que le cadran doit faire d'un clic sur sa silhouette, décidé par <see cref="ArbitreClicCentre"/>.</summary>
 public enum ActionClicCentre
 {
     /// <summary>Rien pour l'instant : un simple clic est ARMÉ, sa bascule attend l'échéance du délai de double-clic.</summary>
@@ -14,7 +14,7 @@ public enum ActionClicCentre
 }
 
 /// <summary>
-/// ACC-02 / D-35-06 — arbitre PUR du clic au centre du cadran : TEMPORISATION, pas annulation.
+/// ACC-02 / D-35-06 — arbitre PUR du clic sur le cadran (toute la silhouette depuis la phase 42) : TEMPORISATION, pas annulation.
 ///
 /// <para>Annuler après coup ferait basculer puis re-basculer (% → temps → %) : deux bascules réelles et un
 /// clignotement. Ici le premier clic ARME une bascule qui n'a lieu qu'à l'échéance du délai de double-clic du
@@ -44,7 +44,7 @@ public sealed class ArbitreClicCentre
     /// <summary>Vrai tant qu'une bascule est armée et pas encore décidée.</summary>
     public bool EnAttente => _enAttenteDepuis is not null;
 
-    /// <summary>Un clic au centre à l'instant <paramref name="t"/>, avec le compte de clics de WPF.</summary>
+    /// <summary>Un clic sur le cadran à l'instant <paramref name="t"/>, avec le compte de clics de WPF.</summary>
     public ActionClicCentre Clic(int clickCount, DateTimeOffset t)
     {
         if (clickCount >= 2)

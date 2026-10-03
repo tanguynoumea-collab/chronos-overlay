@@ -160,12 +160,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isSessionsWidgetEnabled;
 
     // Mode d'affichage du centre : false = pourcentages (défaut), true = temps avant reset.
-    // Un clic au centre bascule via ToggleCenterMode(). ShowPercent est l'inverse (pour le binding XAML).
+    // Un clic sur le cadran bascule via ToggleCenterMode(). ShowPercent est l'inverse (pour le binding XAML).
     [ObservableProperty] private bool _showCountdown;
     public bool ShowPercent => !ShowCountdown;
     partial void OnShowCountdownChanged(bool value) => OnPropertyChanged(nameof(ShowPercent));
 
-    /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic au centre du cadran, à l'échéance
+    /// <summary>Bascule le centre entre pourcentages et temps avant reset (clic sur le cadran, à l'échéance
     /// de l'arbitre — <see cref="ClicCentre"/>).</summary>
     public void ToggleCenterMode() => ShowCountdown = !ShowCountdown;
 
@@ -181,7 +181,7 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// ACC-02 — clic au centre du cadran, avec le <c>ClickCount</c> de WPF (délai ET rectangle système déjà appliqués).
+    /// ACC-02 — clic sur le cadran (toute la silhouette, phase 42), avec le <c>ClickCount</c> de WPF (délai ET rectangle système déjà appliqués).
     /// Un simple clic ARME la bascule, qui n'a lieu qu'à l'échéance du délai de double-clic (≈ 0,5 s, coût assumé) ;
     /// un double-clic la désarme et ouvre l'Historique : jamais deux bascules, jamais une bascule avant l'ouverture
     /// (sauf le cas limite de l'échéance traitée avant le second clic — une bascule au plus, Pitfall 7).
