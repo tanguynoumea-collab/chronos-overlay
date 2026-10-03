@@ -67,11 +67,15 @@ public class GardeDocumentationHistoriqueTests
         // Noms de vues, de pistes et de gestes : la casse peut suivre la phrase (« Niveau » en titre, « niveau » dans le texte).
         string[] sansCasse =
         {
-            "Semaine de forfait", "4 semaines", "Niveau", "Rythme", "Tokens Claude Code", "Couverture", "Fenêtres 5 h",
-            "Pistes", "Simplifié", "Tuiles", "double-clic au centre du cadran", "Historique d'utilisation", "Ouvrir",
+            "Semaine de forfait", "4 semaines", "Niveau", "Rythme", "Tokens Claude Code", "Couverture",
+            "double-clic au centre du cadran", "Historique d'utilisation", "Ouvrir",
         };
         foreach (var mot in sansCasse)
             Assert.True(section.Contains(mot, StringComparison.OrdinalIgnoreCase), $"Mot du plan absent de la section du README : « {mot} ».");
+
+        // Phase 38 (HIS-09) : un seul style — le README ne parle plus des styles retirés.
+        foreach (var retire in new[] { "Trois styles", "Simplifié", "Tuiles", "Fenêtres 5 h" })
+            Assert.False(section.Contains(retire, StringComparison.OrdinalIgnoreCase), $"Style retiré encore cité dans le README : « {retire} ».");
 
         // Mots de l'honnêteté : mot pour mot (DESIGN_PLAN §4).
         string[] exacts =

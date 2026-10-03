@@ -136,21 +136,12 @@ N relevés · N interruptions · journal ouvert le … »).
   (avant le journal) »). Une semaine épuisée devient un plateau gris « épuisée <jour> HH:MM → bloquée jusqu'au
   reset ». Une bande de couverture par semaine ; pas de piste de tokens dans cette vue.
 
-### Trois styles pour la Semaine
+### Les pistes de la Semaine
 
-Le style se choisit dans la fenêtre (« Style : Pistes · Simplifié · Tuiles ») ou dans la carte des réglages : c'est
-le même réglage.
+Une seule forme, en pistes superposées : Niveau · Rythme · Tokens Claude Code · Couverture.
 
-| Style | Pistes affichées |
-|---|---|
-| **Pistes** (par défaut) | Niveau · Rythme · Tokens Claude Code · Couverture |
-| **Simplifié** | Niveau · Tokens Claude Code · Couverture |
-| **Tuiles** | Niveau · Fenêtres 5 h · Rythme · Tokens Claude Code · Couverture |
-
-- **Niveau** — le % hebdo en escalier (couleur = niveau), la semaine précédente en gris pointillé ; en Pistes et
-  Simplifié, le % 5 h en dents de scie et un tiret à chaque reset 5 h.
-- **Fenêtres 5 h** — une tuile par fenêtre, du premier relevé au reset 5 h annoncé ; hauteur = % 5 h le plus haut,
-  grise quand la fenêtre est « épuisée ».
+- **Niveau** — le % hebdo en escalier (couleur = niveau), la semaine précédente en gris pointillé ; le % 5 h en
+  dents de scie et un tiret à chaque reset 5 h.
 - **Rythme** — par heure, de combien le compteur 5 h a monté entre deux relevés (jamais à travers un reset).
 - **Tokens Claude Code** — par heure, principal et sous-agents empilés, sur leur propre axe.
 - **Couverture** — une bande toujours visible : relevé présent, « Chronos arrêté », « jeton invalide » ou « sonde
