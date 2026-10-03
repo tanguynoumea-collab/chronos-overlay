@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9 (a creer)",
   "route": "full",
-  "phase": "LLM-COUNCIL",
-  "phase_status": "inventaires_en_cours",
+  "phase": "UX-DESIGN",
+  "phase_status": "decisions_utilisateur_avant_plan",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -58,12 +58,14 @@
   "artefacts": {
     "design_plan": ".zeus/DESIGN_PLAN.md (maquettes : https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k)",
     "rapports": [
-      ".zeus/reports/llm-council-2026-09-26.md"
+      ".zeus/reports/llm-council-2026-09-26.md",
+      ".zeus/reports/llm-council-2026-10-03.md"
     ],
     "dod": ".zeus/DOD.md",
     "audit_points": "AUDIT_POINTS.md",
     "brief_council": ".zeus/reports/llm-council-2026-09-26-brief.md",
-    "design_plan_reglages": ".zeus/DESIGN_PLAN_REGLAGES.md (maquettes .zeus/maquettes/reglages-v2.html)"
+    "design_plan_reglages": ".zeus/DESIGN_PLAN_REGLAGES.md (maquettes .zeus/maquettes/reglages-v2.html)",
+    "inventaires_cycle2": ".zeus/reports/cycle2/"
   },
   "phases_sautees": [],
   "historique": [
@@ -87,7 +89,8 @@
     "2026-09-27 — Quick 260927 livre : interblocage d'arret corrige (Task.Run, ConfigureAwait(false), ArretHote borne a 5 s, 6 tests Host reel sous Dispatcher), release Chronos-v3.3.1.exe (78 111 106 o, md5 c9d4c0bb, commit 8723e2a). 1654 tests, 0 warning. Le constat 35-07 se jouera sur la 3.3.1.",
     "2026-09-27 — CHECKPOINT design reglages franchi sur accord implicite de l'utilisateur (« J'ai toujours le vieux menu sur la 3.3.1 » apres envoi des maquettes R1-R4) : consigne comme decision utilisateur. -> implementation (quick 260927-reglages, release 3.4.0).",
     "2026-09-27 — Quick 260927-reglages-v2 livre : fenetre de reglages classique redimensionnable (rail 6 sections, apercu vivant, diagnostic integre, singleton, geometrie persistee), 1707 tests, 0 warning, release Chronos-v3.4.0.exe (commit 8bec859, md5 ddbe7995). Revue des rendus hors ecran par ZEUS : conforme aux maquettes, 1 mineur (libelle du diagnostic).",
-    "2026-10-03 — Cycle 2 ouvert (route FULL, impact UI) : ROADMAP en mode degrade — R1-R7 fournis et confirmes par l'utilisateur dans la session (.zeus/ROADMAP-PROCHAINE-VERSION.md). Cycle 1 absorbe (voir cycles_precedents). Trois inventaires lecture seule lances (purge R5, cadrans/gestes R1-R3-R7, themes/historique R4-R6) avant LLM-COUNCIL."
+    "2026-10-03 — Cycle 2 ouvert (route FULL, impact UI) : ROADMAP en mode degrade — R1-R7 fournis et confirmes par l'utilisateur dans la session (.zeus/ROADMAP-PROCHAINE-VERSION.md). Cycle 1 absorbe (voir cycles_precedents). Trois inventaires lecture seule lances (purge R5, cadrans/gestes R1-R3-R7, themes/historique R4-R6) avant LLM-COUNCIL.",
+    "2026-10-03 — LLM-COUNCIL termine (cycle 2) : classement A Rigoriste 1,4 / D Red-teamer 2,6 / C Generaliste 3,6 / E Pragmatique 3,6 / B Premiers principes 3,8. Approche arretee (rapport). Decouverte : le pont statusLine affiche la barre visible de Claude Code (InnerStatusLineCommand = null) -> decision utilisateur. -> UX-DESIGN (DAEDALUS EVOLUTION), apres 4 decisions utilisateur."
   ],
   "cycles_precedents": [
     {
