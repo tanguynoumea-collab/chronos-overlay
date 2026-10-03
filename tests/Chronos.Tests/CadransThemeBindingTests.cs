@@ -1,0 +1,163 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using Chronos.Controls;
+using Chronos.Theming;
+using Chronos.ViewModels;
+using Chronos.Views.Cadrans;
+using Xunit;
+
+namespace Chronos.Tests;
+
+/// <summary>
+/// Liaison au thème des quatre cadrans alternatifs (THM-04, plan 39-03) : chaque vue montée sous un hôte qui porte les
+/// tokens d'un thème (comme <c>MainWindow.ApplyThemeBrushes</c>) prend EXACTEMENT les pinceaux de ce thème — textes,
+/// sillons, canaux, volets, tuiles, plaque, hachure et état « en attente ». <c>Assert.Same</c> : l'instance même du
+/// dictionnaire de tokens, donc aucune couleur recopiée ni pinceau par défaut ne passe.
+/// </summary>
+[Collection("XAML WPF")]   // charge du BAML : sérialisé avec les autres classes XAML (voir XamlWpfCollection)
+public class CadransThemeBindingTests
+{
+    private static readonly string[] ClesTexte = { "TextePrincipal", "TexteSecondaire", "TexteSecondaireClair", "PlaqueTexte" };
+
+    /// <summary>Monte une vue dans un hôte portant les tokens du thème, puis la met en page (résolution des ressources).</summary>
+    private static Border Monter(FrameworkElement vue, ChronosTheme theme, IReadOnlyDictionary<string, Brush> tokens)
+    {
+        var hote = new Border { DataContext = new CadranPreviewViewModel { SelectedTheme = theme }, Child = vue };
+        foreach (var kv in tokens) hote.Resources[kv.Key] = kv.Value;
+        hote.Measure(new Size(400, 400));
+        hote.Arrange(new Rect(0, 0, 400, 400));
+        return hote;
+    }
+
+    /// <summary>Descendants logiques (les TextBlock masqués par Visibility y figurent aussi).</summary>
+    private static IEnumerable<T> Descendants<T>(DependencyObject racine) where T : DependencyObject
+    {
+        foreach (var enfant in LogicalTreeHelper.GetChildren(racine).OfType<DependencyObject>())
+        {
+            if (enfant is T t) yield return t;
+            foreach (var d in Descendants<T>(enfant)) yield return d;
+        }
+    }
+
+    [WpfFact]
+    public void Les_quatre_cadrans_suivent_chaque_theme()
+    {
+        int vuesTestees = 0;
+        foreach (var theme in ThemeCatalog.All)
+        {
+            var tokens = theme.BrushTokens();
+            Brush T(string cle) => tokens[cle];
+
+            var vues = new FrameworkElement[]
+            {
+                new CadranBraisesView(), new CadranFusibleView(), new CadranMareeView(), new CadranVoletsView(),
+            };
+
+            foreach (var vue in vues)
+            {
+                var hote = Monter(vue, theme, tokens);
+                var nom = $"{vue.GetType().Name} / {theme.Key}";
+
+                var textes = Descendants<TextBlock>(hote).ToList();
+                Assert.True(textes.Count >= 1, $"{nom} : aucun TextBlock vérifié (garde anti-mutisme).");
+                foreach (var tb in textes)
+                    Assert.True(ClesTexte.Any(c => ReferenceEquals(tb.Foreground, T(c))),
+                        $"{nom} : le TextBlock « {tb.Text} » n'a pas un pinceau de texte du thème.");
+
+                switch (vue)
+                {
+                    case CadranBraisesView:
+                    {
+                        var anneaux = Descendants<EmberRingControl>(hote).ToList();
+                        Assert.Equal(2, anneaux.Count);
+                        foreach (var a in anneaux)
+                        {
+                            Assert.Same(T("TickMajeur"), a.AshBrush);
+                            Assert.Same(T("CadranAttente"), a.WaitBrush);
+                        }
+                        break;
+                    }
+                    case CadranFusibleView:
+                    {
+                        var meches = Descendants<FuseBar>(hote).ToList();
+                        Assert.Equal(2, meches.Count);
+                        foreach (var f in meches)
+                        {
+                            Assert.Same(T("CadranTuile"), f.TrackBrush);
+                            Assert.Same(T("TextePrincipal"), f.NotchBrush);
+                            Assert.Same(T("CadranAttente"), f.WaitBrush);
+                        }
+                        break;
+                    }
+                    case CadranMareeView:
+                    {
+                        var colonnes = Descendants<TideColumn>(hote).ToList();
+                        Assert.Equal(2, colonnes.Count);
+                        foreach (var c in colonnes)
+                        {
+                            Assert.Same(T("FondCadran"), c.TrackBrush);
+                            Assert.Same(T("TextePrincipal"), c.WaterlineBrush);
+                            Assert.Same(T("CadranAttente"), c.WaitBrush);
+                        }
+                        break;
+                    }
+                    case CadranVoletsView:
+                    {
+                        var rangees = Descendants<FlapRow>(hote).ToList();
+                        Assert.Equal(2, rangees.Count);
+                        foreach (var r in rangees)
+                        {
+                            Assert.Same(T("TextePrincipal"), r.OnBrush);
+                            Assert.Same(T("Piste5h"), r.OffBrush);
+                            Assert.Same(T("CadranAttente"), r.WaitBrush);
+                        }
+
+                        var bordures = Descendants<Border>(hote).ToList();
+                        var tuiles = bordures.Where(b => b.Width == 30).ToList();
+                        Assert.Equal(2, tuiles.Count);
+                        foreach (var t in tuiles) Assert.Same(T("CadranTuile"), t.Background);
+
+                        var filets = bordures.Where(b => b.Height == 1).ToList();
+                        Assert.Equal(2, filets.Count);
+                        foreach (var f in filets) Assert.Same(T("PlaqueFilet"), f.Background);
+
+                        var hachures = Descendants<Rectangle>(hote).ToList();
+                        Assert.Equal(2, hachures.Count);
+                        foreach (var h in hachures) Assert.Same(T("PlaqueHachure"), h.Fill);
+                        break;
+                    }
+                    default:
+                        Assert.Fail($"vue inattendue : {nom}");
+                        break;
+                }
+
+                vuesTestees++;
+            }
+        }
+
+        // Anti-mutisme : quatre vues pour chacun des thèmes du catalogue.
+        Assert.Equal(4 * ThemeCatalog.All.Count, vuesTestees);
+    }
+
+    /// <summary>Preuve du <c>DynamicResource</c> (et non <c>StaticResource</c>) : recopier les tokens d'un autre thème dans
+    /// le MÊME hôte rafraîchit les pinceaux déjà résolus, comme le fait l'overlay au changement de thème.</summary>
+    [WpfFact]
+    public void Changer_de_theme_rafraichit_les_pinceaux()
+    {
+        var minuit = ThemeCatalog.Default;
+        var lave = ThemeCatalog.All.Single(t => t.Key == "lave");
+
+        var vue = new CadranVoletsView();
+        var hote = Monter(vue, minuit, minuit.BrushTokens());
+        var rangee = Descendants<FlapRow>(hote).First();
+        Assert.Same(hote.Resources["TextePrincipal"], rangee.OnBrush);
+
+        var tokensLave = lave.BrushTokens();
+        foreach (var kv in tokensLave) hote.Resources[kv.Key] = kv.Value;
+
+        Assert.Same(tokensLave["TextePrincipal"], rangee.OnBrush);
+        Assert.Same(tokensLave["CadranAttente"], rangee.WaitBrush);
+    }
+}
