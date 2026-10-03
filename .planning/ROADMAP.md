@@ -371,7 +371,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 34. Fenêtre Historique : Semaine et Jour | v1.8 | 8/8 | Complete | 2026-09-27 |
 | 35. 4 semaines, accès, release 3.3.0 | v1.8 | 6/7 | Clos avec écart (35-07 reporté en v1.9) | 2026-09-27 |
 | 36. Socle | v1.9 | 2/2 | Complete    | 2026-10-03 |
-| 37. Une chaîne de données claire | v1.9 | 0/? | Not started | - |
+| 37. Une chaîne de données claire | v1.9 | 1/6 | In Progress|  |
 | 38. Historique : Pistes seul et plein écran | v1.9 | 0/? | Not started | - |
 | 39. Thèmes Pâle / Classique / Vive | v1.9 | 0/? | Not started | - |
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 0/? | Not started | - |

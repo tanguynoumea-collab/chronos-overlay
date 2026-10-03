@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: — Lisible partout
 status: executing
-last_updated: "2026-10-03T12:03:59.651Z"
-last_activity: 2026-10-03
+last_updated: "2026-10-03T12:21:34.527Z"
+last_activity: 2026-10-03 -- Phase 37 execution started
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 7
+  total_plans: 18
   completed_plans: 2
 ---
 
@@ -21,15 +21,15 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 **Core value:** Voir instantanément, sans terminal ni /usage, combien de quota et de temps il reste — sans
 jamais présenter une estimation comme un chiffre exact. Et savoir quelle session m'attend ; et comprendre sa façon
 d'utiliser Claude au cours du temps, avec la même honnêteté.
-**Current focus:** Phase 36 — Socle
+**Current focus:** Phase 37 — Une chaîne de données claire
 
 ## Current Position
 
 Milestone: v1.9 — Lisible partout (exe 3.5.0)
-Phase: 37
-Plan: Not started
-Status: Executing Phase 36
-Last activity: 2026-10-03
+Phase: 37 (Une chaîne de données claire) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 37
+Last activity: 2026-10-03 -- Phase 37 execution started
 orientations → 41 Braises → 42 Zones de geste → 43 Release 3.5.0 et constat)
 
 Progress: [░░░░░░░░░░] 0 %
