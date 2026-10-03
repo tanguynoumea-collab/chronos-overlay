@@ -10,8 +10,10 @@ created: 2026-10-03
 # Phase 37 — Validation Strategy
 
 > Contrat de validation de la phase. Détail des critères → tests : `37-RESEARCH.md` § « Validation Architecture ».
-> Cinq plans SÉQUENTIELS (vagues 1 → 5), un par étape de la liste de purge validée ; **un commit de code par étape**, et la
-> suite complète verte après CHACUN (critère 1 du ROADMAP : gardes de doctrine vertes après chacun des cinq commits).
+> Six plans SÉQUENTIELS (vagues 1 → 6) pour les cinq étapes de la liste de purge validée : l'étape 5 est scindée en 37-05
+> (réconciliateur + production, AUCUN commit de code) et 37-06 (tests, gardes, docs, UNIQUE commit de l'étape 5), exécutés à la
+> suite sans rien d'intercalé. **Un commit de code par étape** (cinq au total), suite complète verte après CHACUN (critère 1 du
+> ROADMAP). Entre 37-05 et 37-06, seule la production est garantie compilable : la suite complète n'est exigée qu'au commit.
 
 ---
 
@@ -30,7 +32,8 @@ created: 2026-10-03
 ## Sampling Rate
 
 - **After every task :** commande rapide + le filtre du fichier touché (cf. `<verify>` de chaque tâche).
-- **After every plan (= commit d'étape) :** build 0 avertissement + suite complète — OBLIGATOIRE avant le commit.
+- **After every commit d'étape (plans 01, 02, 03, 04, 06) :** build 0 avertissement + suite complète — OBLIGATOIRE avant le commit.
+- **After plan 05 (pas de commit) :** `dotnet build src/Chronos/Chronos.csproj -warnaserror` + filtre `ClaudeSettingsReconcilerTests` (tâche 1, avant la casse des sites de test).
 - **Before `/gsd:verify-work` :** suite complète verte ; réversibilité optionnelle à blanc d'une étape :
   `git revert --no-commit <commit d'étape> && dotnet build Chronos.sln && git revert --abort`.
 - **Max feedback latency :** 20 s (filtre), 3 min (suite).
@@ -52,8 +55,9 @@ created: 2026-10-03
 | 37-04-01 | 04 | 4 | DAT-02 | build prod | `dotnet build src/Chronos/Chronos.csproj -warnaserror` | ✅ | ⬜ pending |
 | 37-04-02 | 04 | 4 | DAT-02 | unit + WPF | `--filter "FullyQualifiedName~MainViewModelTests\|FullyQualifiedName~ReglagesWindowTests\|FullyQualifiedName~HistoriqueViewModelTests\|FullyQualifiedName~BornesPlageTests"` puis suite | ❌ W0 (reset hebdo jamais synthétique) | ⬜ pending |
 | 37-05-01 | 05 | 5 | DAT-03 | unit + E/S témoins (temp) | `--filter "FullyQualifiedName~ClaudeSettingsReconcilerTests"` | ✅ à étendre + ❌ W0 (retrait, restauration, bilan, `CommandeInterneHeritee`) | ⬜ pending |
-| 37-05-02 | 05 | 5 | DAT-02, DAT-03 | build prod | `dotnet build src/Chronos/Chronos.csproj -warnaserror` | ✅ | ⬜ pending |
-| 37-05-03 | 05 | 5 | DAT-02, DAT-03 | garde + unit + WPF + doc | `--filter "FullyQualifiedName~ArgumentsDemarrageTests\|FullyQualifiedName~GardesPerimetreTests\|FullyQualifiedName~DiagnosticServiceTests\|FullyQualifiedName~ReglagesWindowTests\|FullyQualifiedName~GardeDocumentation"` puis suite | ❌ W0 (ordre du démarrage, réconciliateur sans barre, ligne `PontStatusLine` ignorée, garde composite 2 → 1) | ⬜ pending |
+| 37-05-02 | 05 | 5 | DAT-02, DAT-03 | build prod (tests réparés en 37-06) | `dotnet build src/Chronos/Chronos.csproj -warnaserror` | ✅ | ⬜ pending |
+| 37-06-01 | 06 | 6 | DAT-02, DAT-03 | unit + WPF + E/S témoins (temp, 3 arguments) | `--filter "FullyQualifiedName~ArgumentsDemarrageTests\|FullyQualifiedName~DiagnosticServiceTests\|FullyQualifiedName~CompositionRootTests\|FullyQualifiedName~ReglagesWindowTests\|FullyQualifiedName~RefreshOrchestratorTests\|FullyQualifiedName~SettingsServiceTests\|FullyQualifiedName~LigneJournalTests"` | ✅ à adapter + ❌ W0 (bilan journalisé, ligne `PontStatusLine` ignorée) | ⬜ pending |
+| 37-06-02 | 06 | 6 | DAT-02, DAT-03 | garde + doc | `--filter "FullyQualifiedName~GardesPerimetreTests\|FullyQualifiedName~GardeDocumentation\|FullyQualifiedName~Contrat"` puis suite complète + commit unique de l'étape 5 | ❌ W0 (ordre du démarrage, réconciliateur sans barre, garde composite 2 → 1) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -71,13 +75,14 @@ created: 2026-10-03
 
 ## Wave 0 Requirements
 
-- [ ] `tests/Chronos.Tests/GardeDocumentationChaineTests.cs` (plan 01 ; enrichie plans 03 et 05)
+- [ ] `tests/Chronos.Tests/GardeDocumentationChaineTests.cs` (plan 01 ; enrichie plans 03 et 06)
 - [ ] Garde structurelle « diagnostic sans coffres ni HTTP » dans `DiagnosticServiceTests.cs` (plan 01)
-- [ ] `GardesPerimetreTests.Aucun_maillon_retire_de_la_chaine_ne_subsiste` (plan 02 ; enrichie plans 03, 04, 05)
-- [ ] `LigneJournalTests` : sources retirées ignorées (`EndpointOAuthClaude` plan 03, `PontStatusLine` plan 05)
+- [ ] `GardesPerimetreTests.Aucun_maillon_retire_de_la_chaine_ne_subsiste` (plan 02 ; enrichie plans 03, 04, 06)
+- [ ] `LigneJournalTests` : sources retirées ignorées (`EndpointOAuthClaude` plan 03, `PontStatusLine` plan 06)
 - [ ] `MainViewModelTests.Une_fenetre_hebdo_sans_reset_reste_sans_reset_malgre_une_ancre` (plan 04)
-- [ ] Cas témoins du retrait + `CommandeInterneHeritee` dans `ClaudeSettingsReconcilerTests` (plan 05, tâche 1, écrits RED d'abord)
-- [ ] Gardes textuelles « lecture héritée avant Show, réconciliation avant LogStartupAsync » et « réconciliateur sans barre » (plan 05)
+- [ ] Cas témoins du retrait + `CommandeInterneHeritee` dans `ClaudeSettingsReconcilerTests` (plan 05, tâche 1, écrits RED d'abord ; réconciliateur TOUJOURS à trois arguments temporaires + `Assert.StartsWith(Path.GetTempPath(), …BackupDir)`)
+- [ ] Gardes textuelles « lecture héritée avant Show, réconciliation avant LogStartupAsync » et « réconciliateur sans barre » (plan 06)
+- [ ] `DiagnosticServiceTests.Le_rapport_journalise_le_bilan_du_retrait_de_la_barre` (plan 06, réconciliateur à trois arguments temporaires)
 
 Chaque élément Wave 0 est créé DANS la tâche qui en a besoin (tests écrits avant le code de la tâche) : pas de plan Wave 0 séparé,
 la phase étant strictement séquentielle.
