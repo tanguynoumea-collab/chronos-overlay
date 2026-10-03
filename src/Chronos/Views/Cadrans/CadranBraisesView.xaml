@@ -9,7 +9,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </UserControl.Resources>
-    <Grid Width="170" Height="170">
+    <Grid Width="{DynamicResource CadranLargeurBraises}" Height="{DynamicResource CadranHauteurBraises}">
         <cad:EmberRingControl Radius="66" Count="16" PipRadius="4.4"
                               Fraction="{Binding FiveHour.FractionRemaining}"
                               QuotaBrush="{Binding FiveHour.ValueBrush}"
