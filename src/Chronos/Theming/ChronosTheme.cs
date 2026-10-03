@@ -39,13 +39,14 @@ public sealed class ChronosTheme
     public Color RampGreen { get; init; }
     public Color RampAmber { get; init; }
     public Color RampRed { get; init; }
-    public Color Neutre { get; init; }   // utilization inconnue → arc visible mais neutre
-    public Color Epuise { get; init; }   // utilization ≥ 100 % → gris « épuisé » (≥ 3:1 contre le disque, voir EpuiseLisible)
+    public Color Neutre { get; init; }   // utilization inconnue → plus sombre que la piste (Lerp disque → piste 0,5, §11 B3)
+    public Color Epuise { get; init; }   // utilization ≥ 100 % → gris PUR « épuisé » (≥ 3:1 disque, ≥ 2:1 neutre, voir EpuiseLisible)
 
     // Nuances dérivées pour les cadrans alternatifs (Braises, Fusible, Marée, Volets).
     public Color CadranTuile { get; init; }     // tuile / sillon : mi-chemin disque → piste
     public Color CadranAttente { get; init; }   // remplissage « en attente » : graduation à alpha 0x6E
     public Color PlaqueTexte { get; init; }     // chiffres sur la plaque Volets : disque × 0,5 (contraste ≥ 3,18 sur tout le catalogue)
+    public Color PlaqueTexteEpuise { get; init; }   // chiffres de la plaque Volets quand le quota est épuisé : ≥ 4,5:1 contre Epuise (§11 B3)
 
     /// <summary>Couleur de l'arc valeur pour une utilization donnée (null → neutre, ≥1 → épuisé, sinon rampe).</summary>
     public Color ArcColor(double? utilization) => utilization switch
@@ -84,6 +85,7 @@ public sealed class ChronosTheme
         ["CadranTuile"] = Frozen(CadranTuile),    // tuiles 5H/7J de Volets, sillon du Fusible
         ["CadranAttente"] = Frozen(CadranAttente),   // remplissage « en attente » des quatre contrôles de cadran
         ["PlaqueTexte"] = Frozen(PlaqueTexte),    // chiffres posés sur la plaque colorée de Volets
+        ["PlaqueTexteEpuise"] = Frozen(PlaqueTexteEpuise),   // chiffres de la plaque Volets sur un quota épuisé (§11 B3)
         ["PlaqueFilet"] = Frozen(WithAlpha(PlaqueTexte, 0x33)),   // filet horizontal de la plaque Volets
         ["PlaqueHachure"] = Hachure(WithAlpha(PlaqueTexte, 0x55)), // grain du plancher estimé (remplace la ressource locale GrainHatch)
     };
@@ -132,6 +134,10 @@ public sealed class ChronosTheme
                                     string ink, string green, string amber, string red)
     {
         Color d = Hex(disc), tr = Hex(track), tk = Hex(tick), nk = Hex(ink);   // d : disque OPAQUE
+        // L'initialiseur ne peut pas lire ses propres membres : neutre, épuisé et plaque sont calculés avant.
+        var neutre = Lerp(d, tr, 0.5);                   // utilisation inconnue : plus sombre que la piste, « rien » se lit comme du vide — §11 B3
+        var epuise = EpuiseLisible(d, tr, tk, neutre);
+        var plaqueTexte = Scale(d, 0.5);                 // d opaque → plaque opaque
         return new ChronosTheme
         {
             Key = key,
@@ -151,28 +157,52 @@ public sealed class ChronosTheme
             RampGreen = Hex(green),
             RampAmber = Hex(amber),
             RampRed = Hex(red),
-            Neutre = Scale(tk, 0.5),
-            Epuise = EpuiseLisible(d, tr, tk),
+            Neutre = neutre,
+            Epuise = epuise,
             CadranTuile = Lerp(d, tr, 0.5),
             CadranAttente = Color.FromArgb(0x6E, tk.R, tk.G, tk.B),
-            PlaqueTexte = Scale(d, 0.5),                     // d opaque → plaque opaque
+            PlaqueTexte = plaqueTexte,
+            PlaqueTexteEpuise = TexteSurEpuise(epuise, plaqueTexte, nk),
         };
     }
 
     /// <summary>
-    /// Gris « épuisé » (règle §5.3) : le PLUS PETIT mélange piste → graduation (t ≥ 0,18, pas de 0,01) qui atteint un
-    /// contraste WCAG ≥ 3:1, mesuré contre le disque OPAQUE (jamais FondCadran, translucide). Compteur entier pour
-    /// éviter la dérive d'un <c>t += 0.01</c> ; comparaison sans arrondi (Lave vaut 3,0027). Un thème futur qui n'y
-    /// parvient pas retombe sur la graduation elle-même — et fait rougir ThemingTests.
+    /// Gris « épuisé » (règle §5.3, renforcée §11 B3) : le gris DÉSATURÉ de même luminance du PLUS PETIT mélange
+    /// piste → graduation (t ≥ 0,18, pas de 0,01) qui satisfait la DOUBLE contrainte WCAG : ≥ 3:1 contre le disque
+    /// OPAQUE (jamais FondCadran, translucide) ET ≥ 2:1 contre le neutre (« épuisé » ≠ « aucune donnée »). Gris pur :
+    /// plus de teinte bleue sur Synthwave / Marine / Néon, l'épuisé ne passe plus pour une couleur de la rampe.
+    /// Compteur entier pour éviter la dérive d'un <c>t += 0.01</c> ; comparaisons sans arrondi. Un thème futur qui n'y
+    /// parvient pas retombe sur le gris de la graduation — et fait rougir ThemingTests.
     /// </summary>
-    private static Color EpuiseLisible(Color disque, Color piste, Color graduation)
+    private static Color EpuiseLisible(Color disque, Color piste, Color graduation, Color neutre)
     {
         for (int pas = 18; pas <= 100; pas++)
         {
-            var c = Lerp(piste, graduation, pas / 100.0);
-            if (ContrasteWcag.Ratio(c, disque) >= 3.0) return c;
+            var g = GrisDeMemeLuminance(Lerp(piste, graduation, pas / 100.0));
+            if (ContrasteWcag.Ratio(g, disque) >= 3.0 && ContrasteWcag.Ratio(g, neutre) >= 2.0) return g;
         }
-        return graduation;
+        return GrisDeMemeLuminance(graduation);
+    }
+
+    /// <summary>Gris pur de luminance WCAG au moins égale : le plus petit v (0..255) tel que lum(v, v, v) ≥ lum(c).</summary>
+    private static Color GrisDeMemeLuminance(Color c)
+    {
+        var cible = ContrasteWcag.Luminance(c);
+        for (int v = 0; v <= 255; v++)
+        {
+            var g = Color.FromRgb((byte)v, (byte)v, (byte)v);
+            if (ContrasteWcag.Luminance(g) >= cible) return g;
+        }
+        return Color.FromRgb(255, 255, 255);
+    }
+
+    /// <summary>Texte de la plaque Volets sur l'épuisé (§11 B3) : le meilleur contraste entre le texte de plaque et le texte
+    /// principal s'il atteint 4,5:1, sinon le meilleur entre noir et blanc (qui dépasse toujours 4,58:1).</summary>
+    private static Color TexteSurEpuise(Color epuise, Color plaqueTexte, Color texte)
+    {
+        double rp = ContrasteWcag.Ratio(plaqueTexte, epuise), rt = ContrasteWcag.Ratio(texte, epuise);
+        if (Math.Max(rp, rt) >= 4.5) return rp >= rt ? plaqueTexte : texte;
+        return ContrasteWcag.Ratio(Colors.Black, epuise) >= ContrasteWcag.Ratio(Colors.White, epuise) ? Colors.Black : Colors.White;
     }
 
     // --- helpers couleur ---

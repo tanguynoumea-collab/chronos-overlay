@@ -170,8 +170,8 @@ public class VueQuatreSemainesBindingTests
         BancQuatreSemaines.MettreEnPage(vue, 920, 900);
 
         var piste = BancQuatreSemaines.Piste(vue);
-        Assert.Equal(lave.Epuise, BancQuatreSemaines.CouleurDe(piste.Gris));   // #7C5844 : le gris épuisé de Lave, pas HistoGris
-        Assert.Equal(Color.FromRgb(0x7C, 0x58, 0x44), lave.Epuise);
+        Assert.Equal(lave.Epuise, BancQuatreSemaines.CouleurDe(piste.Gris));   // le gris épuisé du thème Lave (token), pas HistoGris
+        Assert.NotEqual(Color.FromRgb(0x5A, 0x59, 0x60), lave.Epuise);           // HistoGris : le gris de l'Historique ne se substitue pas au token
     }
 
     [WpfFact]

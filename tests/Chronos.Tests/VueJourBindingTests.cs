@@ -124,8 +124,8 @@ public class VueJourBindingTests
         MettreEnPage(vue, 920, 900);
 
         var niveau = Assert.Single(PistesVisibles(vue).OfType<PisteNiveau>());
-        Assert.Equal(lave.Epuise, CouleurDe(niveau.Gris));   // #7C5844 : le gris épuisé de Lave, pas HistoGris
-        Assert.Equal(Hex("7C5844"), lave.Epuise);
+        Assert.Equal(lave.Epuise, CouleurDe(niveau.Gris));   // le gris épuisé du thème Lave (token), pas HistoGris
+        Assert.NotEqual(Hex("5A5960"), lave.Epuise);           // HistoGris : le gris de l'Historique ne se substitue pas au token
     }
 
     [WpfFact]

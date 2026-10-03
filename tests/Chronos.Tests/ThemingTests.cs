@@ -248,15 +248,19 @@ public class ThemingTests
         }
     }
 
-    /// <summary>Ancrages de l'épuisé : minuit, Lave, Forêt. Gris purs (B3, §11) ; valeurs exactes épinglées en tâche 2.</summary>
+    /// <summary>Ancrages de l'épuisé : minuit, Lave, Forêt. Gris purs (B3, §11), valeurs relevées après le GREEN de 42.1-01.</summary>
     [Fact]
     public void Ancrage_minuit()
     {
         foreach (var cle in new[] { "minuit", "lave", "foret" })
         {
             var e = ThemeCatalog.ByKey(cle).Epuise;
-            Assert.True(e.R == e.G && e.G == e.B, $"{cle} : épuisé {e} n'est pas un gris pur");   // épinglé en tâche 2
+            Assert.True(e.R == e.G && e.G == e.B, $"{cle} : épuisé {e} n'est pas un gris pur");
         }
+        Assert.Equal(H("#FF636363"), ThemeCatalog.Default.Epuise);
+        Assert.Equal(H("#FF606060"), ThemeCatalog.ByKey("lave").Epuise);
+        Assert.Equal(H("#FF7D7D7D"), ThemeCatalog.ByKey("foret").Epuise);
+        Assert.Equal(H("#FFF4F2EC"), ThemeCatalog.Default.PlaqueTexteEpuise);   // minuit : le texte principal suffit
     }
 
     /// <summary>THM-03 : le rouge de fin de rampe est bien ROUGE (teinte 335°–20°) et lisible (≥ 3:1) sur tout le catalogue.</summary>
