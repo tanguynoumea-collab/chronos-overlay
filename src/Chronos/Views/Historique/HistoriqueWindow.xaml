@@ -5,7 +5,6 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:hv="clr-namespace:Chronos.Views.Historique"
         xmlns:mh="clr-namespace:Chronos.Models.Historique"
-        xmlns:svc="clr-namespace:Chronos.Services"
         xmlns:txt="clr-namespace:Chronos.Text"
         WindowStyle="None" AllowsTransparency="False" Topmost="False" ShowInTaskbar="True" ResizeMode="CanResize"
         UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Segoe UI"
@@ -115,58 +114,6 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
-
-            <!-- Puce du sélecteur de style (§2.2) : Ink2, sélection = Ink + bordure Accent. -->
-            <Style x:Key="Puce" TargetType="Button">
-                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="BorderBrush" Value="Transparent"/>
-                <Setter Property="BorderThickness" Value="{StaticResource HistoBordureActive}"/>
-                <Setter Property="FontSize" Value="{StaticResource HistoCorpsPetit}"/>
-                <Setter Property="Padding" Value="8,2"/>
-                <Setter Property="Margin" Value="4,0,0,0"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{StaticResource Panel2}"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
-            <Style x:Key="PucePistes" TargetType="Button" BasedOn="{StaticResource Puce}">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsStylePistes}" Value="True">
-                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-            <Style x:Key="PuceSimplifie" TargetType="Button" BasedOn="{StaticResource Puce}">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsStyleSimplifie}" Value="True">
-                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-            <Style x:Key="PuceTuiles" TargetType="Button" BasedOn="{StaticResource Puce}">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsStyleTuiles}" Value="True">
-                        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-                        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -240,7 +187,7 @@
                             HorizontalAlignment="Right" FontSize="{StaticResource HistoCorpsMoyen}" Background="{StaticResource Panel2}"/>
                 </Grid>
 
-                <!-- Ligne 3 : fraîcheur · pastille « journal muet »                                     Style : Pistes · Simplifié · Tuiles -->
+                <!-- Ligne 3 : fraîcheur · pastille « journal muet » (le bouton plein écran prendra la place du sélecteur, plan 06) -->
                 <Grid Grid.Row="2">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="{Binding TexteFraicheur}" Foreground="{StaticResource Ink2}" FontSize="{StaticResource HistoCorpsPetit}"
@@ -253,17 +200,6 @@
                             <TextBlock Text="{Binding TexteAlerteJournal}" Foreground="{DynamicResource Alerte}"
                                        FontSize="{StaticResource HistoCorpsPetit}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                         </StackPanel>
-                    </StackPanel>
-                    <StackPanel x:Name="SelecteurStyle" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                Visibility="{Binding IsVueSemaine, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="{x:Static txt:TextesHistorique.StylePrefixe}" Foreground="{StaticResource Ink2}"
-                                   FontSize="{StaticResource HistoCorpsPetit}" VerticalAlignment="Center"/>
-                        <Button Style="{StaticResource PucePistes}" Content="{x:Static txt:TextesHistorique.StylePistes}"
-                                Command="{Binding ChoisirStyleCommand}" CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Pistes}"/>
-                        <Button Style="{StaticResource PuceSimplifie}" Content="{x:Static txt:TextesHistorique.StyleSimplifie}"
-                                Command="{Binding ChoisirStyleCommand}" CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Simplifie}"/>
-                        <Button Style="{StaticResource PuceTuiles}" Content="{x:Static txt:TextesHistorique.StyleTuiles}"
-                                Command="{Binding ChoisirStyleCommand}" CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Tuiles}"/>
                     </StackPanel>
                 </Grid>
             </Grid>

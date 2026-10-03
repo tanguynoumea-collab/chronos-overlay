@@ -32,11 +32,6 @@ public static class TextesHistorique
     public const string PisteTokens = "TOKENS CLAUDE CODE";
     public const string PisteCouverture = "COUVERTURE";
 
-    public const string StylePrefixe = "Style :";
-    public const string StylePistes = "Pistes";
-    public const string StyleSimplifie = "Simplifié";
-    public const string StyleTuiles = "Tuiles";
-
     public const string ResetHebdo = "reset hebdo →";
     /// <summary>Repères de l'axe NIVEAU (grille 0 / 50 / 100 %, DESIGN_PLAN §2.2 ; D-34-29) : haut et bas de la piste.</summary>
     public const string RepereCent = "100 %";
@@ -65,14 +60,6 @@ public static class TextesHistorique
 
     /// <summary>« par heure, … » en Semaine, « par quart d'heure, … » en Jour (D-34-14) : le libellé porte le GRAIN de la piste.</summary>
     public static string LibellePermanentTokens(string grain) => "par " + grain + SuffixePermanentTokens;
-
-    /// <summary>Le nom visible d'un style de la vue Semaine.</summary>
-    public static string LibelleStyle(HistoriqueStyleSemaine style) => style switch
-    {
-        HistoriqueStyleSemaine.Simplifie => StyleSimplifie,
-        HistoriqueStyleSemaine.Tuiles => StyleTuiles,
-        _ => StylePistes,
-    };
 
     // --- Périodes et calendrier (fr-FR explicite) ---
 

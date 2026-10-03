@@ -21,11 +21,6 @@ public enum CadranStyle { Arcs, Braises, Fusible, Maree, Volets }
 /// Loi commune : mouvement réservé à l'attente ; « à toi » (respire) vs « tour fini » (fixe) ; déduit = fantôme.</summary>
 public enum SessionStyle { Pastilles, Marge, Jetons, Sonar, Facade, Etagere, Annonciateur, Veilleurs }
 
-/// <summary>Style de la vue Semaine de forfait de la fenêtre Historique (DESIGN_PLAN §2.2) : <see cref="Pistes"/> (A, défaut :
-/// NIVEAU / RYTHME / TOKENS / COUVERTURE), <see cref="Simplifie"/> (B : NIVEAU / TOKENS / COUVERTURE), <see cref="Tuiles"/>
-/// (C : NIVEAU / FENÊTRES 5 H / RYTHME / TOKENS / COUVERTURE). Sérialisé en TEXTE ; absent d'un ancien settings.json → Pistes.</summary>
-public enum HistoriqueStyleSemaine { Pistes, Simplifie, Tuiles }
-
 /// <summary>Section de la fenêtre de réglages (quick 260927-reglages-v2, DESIGN_PLAN_REGLAGES §4), dans l'ORDRE du rail :
 /// Ctrl+1 … Ctrl+6 suivent cet ordre. Sérialisée en TEXTE ; absente d'un ancien settings.json → <see cref="Donnees"/>.</summary>
 public enum SectionReglages { Donnees, Historique, Apparence, Sessions, Comportement, Diagnostic }
@@ -101,9 +96,8 @@ public sealed record ChronosSettings
     /// horizontale (défaut false = horizontal). N'a d'effet que sur ces trois styles.</summary>
     public bool VerticalLayout { get; init; }
 
-    /// <summary>Style de la vue Semaine de forfait de la fenêtre Historique (phase 34, HIS-08). Défaut
-    /// <see cref="HistoriqueStyleSemaine.Pistes"/> (A) ; sérialisé en TEXTE ; absent d'un ancien settings.json → Pistes.</summary>
-    public HistoriqueStyleSemaine HistoriqueStyleSemaine { get; init; } = HistoriqueStyleSemaine.Pistes;
+    // Phase 38 (HIS-09) : HistoriqueStyleSemaine supprimée — un ancien settings.json qui la contient se lit sans perte
+    // (membre inconnu ignoré, JsonUnmappedMemberHandling.Skip) et la clé disparaît au prochain Save.
 
     /// <summary>Position / taille de la fenêtre Historique en DIU (DESIGN_PLAN §2). null = défaut 920 × 610 centré.
     /// Ne persister qu'en <c>WindowState.Normal</c> (jamais la géométrie d'une fenêtre agrandie ou réduite).</summary>

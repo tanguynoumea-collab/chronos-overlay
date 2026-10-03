@@ -70,7 +70,6 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
         var lus = reglages.Lire();
         _ancre = lus.WeeklyAnchor;
-        _style = lus.HistoriqueStyleSemaine;
         Theme = ThemeCatalog.ByKey(lus.ThemeKey);   // relu par ActualiserTheme() à chaque construction de fenêtre (D-35-05)
 
         if (_reconstruction is not null)
@@ -174,27 +173,6 @@ public sealed partial class HistoriqueViewModel : ObservableObject
 
     [RelayCommand]
     private void Fermer() => FermetureDemandee?.Invoke(this, EventArgs.Empty);
-
-    // ------------------------------------------------------------------ Style (persisté)
-
-    [ObservableProperty] private HistoriqueStyleSemaine _style;
-    public bool IsStylePistes => Style == HistoriqueStyleSemaine.Pistes;
-    public bool IsStyleSimplifie => Style == HistoriqueStyleSemaine.Simplifie;
-    public bool IsStyleTuiles => Style == HistoriqueStyleSemaine.Tuiles;
-    partial void OnStyleChanged(HistoriqueStyleSemaine value)
-    {
-        OnPropertyChanged(nameof(IsStylePistes));
-        OnPropertyChanged(nameof(IsStyleSimplifie));
-        OnPropertyChanged(nameof(IsStyleTuiles));
-    }
-
-    /// <summary>Sélecteur « Style : Pistes · Simplifié · Tuiles » — persisté par <c>Save(mutation(Load()))</c> (D-34-15).</summary>
-    [RelayCommand]
-    private void ChoisirStyle(HistoriqueStyleSemaine style)
-    {
-        Style = style;
-        _reglages.Modifier(x => x with { HistoriqueStyleSemaine = style });
-    }
 
     // ------------------------------------------------------------------ Données (références immuables)
 

@@ -4,7 +4,6 @@
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:svc="clr-namespace:Chronos.Services"
-        xmlns:txt="clr-namespace:Chronos.Text"
         xmlns:vm="clr-namespace:Chronos.ViewModels"
         WindowStyle="None" AllowsTransparency="False" Topmost="False" ShowInTaskbar="True" ResizeMode="CanResizeWithGrip"
         UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Segoe UI"
@@ -205,36 +204,6 @@
                                     <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Accent}"/>
                                     <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
-                                </DataTrigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- ACC-01 (35-02) : puce du style de la vue Semaine — gabarit de la carte F1 INCHANGÉ, sur tokens. La sélection se lit sur
-                 le Tag du bouton (bindé au booléen IsStyle* du HistoriqueViewModel partagé) : le DataContext des puces est le
-                 MainViewModel, un DataTrigger IsSelected y serait muet. -->
-            <Style x:Key="PuceStyleHistorique" TargetType="Button">
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Margin" Value="2"/>
-                <Setter Property="FontSize" Value="{StaticResource ReglagesCorpsRail}"/>
-                <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
-                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusAccent}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="puce" CornerRadius="{StaticResource ReglagesRayonPuce}" Background="{StaticResource Panel}"
-                                    BorderThickness="{StaticResource ReglagesBordureActive}" BorderBrush="{StaticResource Line}" Padding="4,5">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Ink2}"/>
-                                </Trigger>
-                                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-                                    <Setter TargetName="puce" Property="BorderBrush" Value="{StaticResource Accent}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
                                 </DataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -691,24 +660,6 @@
                                         <TextBlock x:Name="LigneEtatJournal" Style="{StaticResource Aide}" Text="{Binding TexteEtatJournal}"/>
                                     </DockPanel>
                                     <StackPanel Visibility="{Binding AfficherOuvrirHistorique, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="Style de la vue Semaine :" Style="{StaticResource Aide}" Margin="0,8,0,4"/>
-                                        <UniformGrid Columns="3">
-                                            <Button x:Name="PuceStylePistes" Style="{StaticResource PuceStyleHistorique}"
-                                                    Content="{x:Static txt:TextesHistorique.StylePistes}"
-                                                    Command="{Binding Historique.ChoisirStyleCommand}"
-                                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Pistes}"
-                                                    Tag="{Binding Historique.IsStylePistes}"/>
-                                            <Button x:Name="PuceStyleSimplifie" Style="{StaticResource PuceStyleHistorique}"
-                                                    Content="{x:Static txt:TextesHistorique.StyleSimplifie}"
-                                                    Command="{Binding Historique.ChoisirStyleCommand}"
-                                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Simplifie}"
-                                                    Tag="{Binding Historique.IsStyleSimplifie}"/>
-                                            <Button x:Name="PuceStyleTuiles" Style="{StaticResource PuceStyleHistorique}"
-                                                    Content="{x:Static txt:TextesHistorique.StyleTuiles}"
-                                                    Command="{Binding Historique.ChoisirStyleCommand}"
-                                                    CommandParameter="{x:Static svc:HistoriqueStyleSemaine.Tuiles}"
-                                                    Tag="{Binding Historique.IsStyleTuiles}"/>
-                                        </UniformGrid>
                                         <TextBlock Text="Aussi : double-clic au centre du cadran" Style="{StaticResource Aide}" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
