@@ -77,6 +77,17 @@ public class CadransThemeBindingTests
                             Assert.Same(T("TickMajeur"), a.AshBrush);
                             Assert.Same(T("CadranAttente"), a.WaitBrush);
                         }
+
+                        // BRA-01 (plan 41-01) : 5 h = 20 braises en 5 groupes de 4 ; hebdo inchangé (12, sans groupe).
+                        var (cinq, hebdo) = (anneaux[0], anneaux[1]);
+                        Assert.Equal((66.0, 20, 4.0, 4, 13.2), (cinq.Radius, cinq.Count, cinq.PipRadius, cinq.GroupSize, cinq.GroupPitch));
+                        Assert.Equal((44.0, 12, 3.6, 1, 0.0), (hebdo.Radius, hebdo.Count, hebdo.PipRadius, hebdo.GroupSize, hebdo.GroupPitch));
+
+                        // Flèche de reset : couleur TickReset du thème (triangle et filet).
+                        var triangle = Assert.Single(Descendants<Polygon>(hote));
+                        Assert.Same(T("TickReset"), triangle.Fill);
+                        var filet = Assert.Single(Descendants<Line>(hote));
+                        Assert.Same(T("TickReset"), filet.Stroke);
                         break;
                     }
                     case CadranFusibleView:

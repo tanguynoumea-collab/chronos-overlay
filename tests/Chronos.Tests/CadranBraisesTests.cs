@@ -1,8 +1,14 @@
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using Chronos.Controls;
 using Chronos.Rendering;
+using Chronos.Theming;
+using Chronos.ViewModels;
+using Chronos.Views.Cadrans;
 using Xunit;
 
 namespace Chronos.Tests;
@@ -107,5 +113,47 @@ public class CadranBraisesTests
 
         var px = Rendre(hebdo);
         Assert.True(Pixel(px, PointSur(30, 44)).A > 0, "braise hebdo absente à 30°");
+    }
+
+    [WpfFact]
+    public void La_fleche_de_reset_est_fixe_a_midi_hors_anneau_et_non_cliquable()
+    {
+        var theme = ThemeCatalog.Default;
+        var vm = new CadranPreviewViewModel { SelectedTheme = theme };
+        var vue = new CadranBraisesView();
+        var hote = new Border { DataContext = vm, Child = vue };
+        foreach (var kv in theme.BrushTokens()) hote.Resources[kv.Key] = kv.Value;
+        hote.Measure(new Size(Cote, Cote));
+        hote.Arrange(new Rect(0, 0, Cote, Cote));
+        hote.UpdateLayout();
+
+        // Les noms vivent dans le namescope du UserControl (Pitfall 3).
+        var fleche = Assert.IsType<Canvas>(vue.FindName("FlecheReset"));
+        Assert.False(fleche.IsHitTestVisible);
+        Assert.Equal(Visibility.Visible, fleche.Visibility);
+
+        var triangle = Assert.Single(fleche.Children.OfType<Polygon>());
+        Assert.Equal(new[] { new Point(80, 5), new Point(90, 5), new Point(85, 12) }, triangle.Points.ToArray());   // base 10, hauteur 7
+
+        var filet = Assert.Single(fleche.Children.OfType<Line>());
+        Assert.Equal((85.0, 13.0, 85.0, 25.0), (filet.X1, filet.Y1, filet.X2, filet.Y2));                           // 12 px
+        Assert.Equal(1.2, filet.StrokeThickness, 6);
+
+        foreach (var p in triangle.Points.Append(new Point(filet.X1, filet.Y1)).Append(new Point(filet.X2, filet.Y2)))
+            Assert.True(p.X is >= 0 and <= Cote && p.Y is >= 0 and <= Cote, $"point hors empreinte : {p}");
+
+        // Structure, pas donnée : la flèche reste quand le reset 5 h est inconnu.
+        vm.FiveHour.HasTime = false;
+        hote.UpdateLayout();
+        Assert.Equal(Visibility.Visible, fleche.Visibility);
+        Assert.True(fleche.IsVisible);
+    }
+
+    [Fact]
+    public void La_vue_Braises_n_a_aucune_animation()
+    {
+        var xaml = File.ReadAllText(System.IO.Path.Combine(GardesPerimetreTests.CheminSources(), "Views", "Cadrans", "CadranBraisesView.xaml"));
+        Assert.DoesNotContain("Storyboard", xaml);
+        Assert.DoesNotContain("Animation", xaml);
     }
 }
