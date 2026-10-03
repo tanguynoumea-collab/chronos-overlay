@@ -18,12 +18,17 @@ public partial class MainWindow : Window
 
     private readonly IOuvreurReglages? _ouvreurReglages;
 
+    // Vrai pendant DragMove : un changement de DPI en glissant ne doit pas déclencher de recalage.
+    private bool _enDeplacement;
+
     public MainWindow(MainViewModel viewModel, TopmostGuard topmostGuard, OverlayController controller,
                       IOuvreurReglages? ouvreurReglages = null)
     {
         _ouvreurReglages = ouvreurReglages;
+        // MVVM : la vue reçoit son VM par injection. Posé AVANT InitializeComponent (phase 40, CAD-02) : la liaison Width/Height
+        // de la fenêtre à l'empreinte se résout dès le chargement du XAML, donc avant SourceInitialized → RestorePlacement.
+        DataContext = viewModel;
         InitializeComponent();
-        DataContext = viewModel;          // MVVM : la vue reçoit son VM par injection
         _vm = viewModel;
 
         // ACC-02 : le délai de double-clic de l'UTILISATEUR (réglage Windows) arbitre le clic au centre ; 500 ms si illisible.
@@ -52,6 +57,20 @@ public partial class MainWindow : Window
         // Pattern 3 : re-caler le coin après un franchissement de moniteur DPI mixte (taille physique change).
         DpiChanged += (_, _) => _controller.SnapToNearestCorner();
 
+        // CAD-02 (phase 40) : l'empreinte a changé (style, orientation) → WPF a redimensionné le HWND en gardant le coin haut-gauche ;
+        // on le repose sur le coin d'accroche COURANT. Ignoré à la première mise en page (RestorePlacement l'a fait) et pendant un glisser.
+        SizeChanged += (_, e) =>
+        {
+            if (e.PreviousSize.Width <= 0 || e.PreviousSize.Height <= 0)
+            {
+                // Première mise en page : RestorePlacement a déjà posé la fenêtre… sauf s'il l'a fait sans taille connue → un seul recalage.
+                if (_controller.RestaurationSansTaille) _controller.RecalerSurCoinCourant();
+                return;
+            }
+            if (_enDeplacement) return;
+            _controller.RecalerSurCoinCourant();
+        };
+
         // Démarre l'horloge UI 1 s côté vue (RAF-03) : le DispatcherTimer est créé sur le thread UI,
         // jamais dans le ctor du VM (Pitfall 4).
         Loaded += (_, _) => viewModel.StartClock();
@@ -66,7 +85,9 @@ public partial class MainWindow : Window
     private void Cadran_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState != MouseButtonState.Pressed) return;
-        DragMove();                          // BLOQUE jusqu'au relâchement (consomme le MouseUp)
+        _enDeplacement = true;
+        try { DragMove(); }                  // BLOQUE jusqu'au relâchement (consomme le MouseUp)
+        finally { _enDeplacement = false; }
         _controller.SnapToNearestCorner();   // snap AU RETOUR de DragMove (pas de handler MouseUp — Pitfall 3)
     }
 

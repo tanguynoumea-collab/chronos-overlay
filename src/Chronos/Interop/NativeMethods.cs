@@ -13,6 +13,7 @@ internal static class NativeMethods
 
     public const uint SWP_NOSIZE     = 0x0001;  // ne pas redimensionner
     public const uint SWP_NOMOVE     = 0x0002;  // ne pas déplacer
+    public const uint SWP_NOZORDER   = 0x0004;  // conserver le z-order (ne pas remonter une fenêtre en arrière-plan)
     public const uint SWP_NOACTIVATE = 0x0010;  // NE PAS activer → aucun vol de focus
 
     // Repli au moniteur le plus proche quand la fenêtre n'intersecte aucun moniteur.

@@ -36,6 +36,17 @@ public sealed class OverlayController : IWindowController
 
     private Window? _window;
     private IntPtr _hwnd;
+    private OverlayCorner? _coinCourant;
+
+    /// <summary>Coin d'accroche courant (posé par RestorePlacement et SnapToNearestCorner) ; null avant toute pose.</summary>
+    public OverlayCorner? CoinCourant => _coinCourant;
+
+    /// <summary>Taille DIP réellement utilisée par la dernière restauration (tests + filet de sécurité) ; null avant.</summary>
+    public (double Largeur, double Hauteur)? DerniereEmpreinteRestauree { get; private set; }
+
+    /// <summary>Vrai si la dernière restauration a posé la fenêtre sans taille connue (liaison Width/Height pas encore
+    /// évaluée et ActualWidth à 0) : la vue recale alors une fois à la première mise en page.</summary>
+    public bool RestaurationSansTaille { get; private set; }
 
     public OverlayController(TopmostGuard guard, SettingsService settings, TopmostGuard.SetWindowPosFn? setWindowPos = null)
     {
@@ -83,6 +94,7 @@ public sealed class OverlayController : IWindowController
         // e. Coin le plus proche + classification pour la persistance.
         var (px, py) = CornerSnap.NearestCorner(winPhys, workPhys, marginPx);
         var corner = CornerSnap.ClassifyCorner(winPhys, workPhys);
+        _coinCourant = corner;
 
         // f. Pose physique (jamais Window.Left/Top). Pas de HWND_TOPMOST ici (le guard réaffirme à part).
         _setWindowPos(_hwnd, IntPtr.Zero, (int)px, (int)py, 0, 0,
@@ -145,8 +157,13 @@ public sealed class OverlayController : IWindowController
             scale = VisualTreeHelper.GetDpi(_window).DpiScaleX;
 
         // c. Dimensions physiques de la fenêtre + marge.
-        double physW = _window.ActualWidth * scale;
-        double physH = _window.ActualHeight * scale;
+        // Largeur LIÉE à l'empreinte (phase 40) : ne dépend plus de l'ordre mise en page / SourceInitialized.
+        double largeur = double.IsNaN(_window.Width) ? _window.ActualWidth : _window.Width;
+        double hauteur = double.IsNaN(_window.Height) ? _window.ActualHeight : _window.Height;
+        DerniereEmpreinteRestauree = (largeur, hauteur);
+        RestaurationSansTaille = largeur <= 0 || hauteur <= 0;
+        double physW = largeur * scale;
+        double physH = hauteur * scale;
         double marginPx = Margin * scale;
 
         // d. Top-left physique du coin persisté (offset workArea inclus dans le RectD).
@@ -154,12 +171,31 @@ public sealed class OverlayController : IWindowController
         var (px, py) = CornerSnap.CornerToTopLeft(s.Corner, new RectD(0, 0, physW, physH), workPhys, marginPx);
 
         // e. Pose physique avant le premier rendu.
+        _coinCourant = s.Corner;
         _setWindowPos(_hwnd, IntPtr.Zero, (int)px, (int)py, 0, 0,
             NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
 
         // f. Applique le mode arrière-plan persisté.
         if (s.Background) SendToBackground();
         else BringToForeground();
+    }
+
+    /// <summary>
+    /// Recalage après changement d'empreinte (CAD-02) : coin COURANT, jamais le plus proche ; pixels physiques ;
+    /// SWP_NOZORDER pour ne pas casser le mode arrière-plan ; AUCUNE persistance — ni le coin ni le moniteur n'ont changé.
+    /// </summary>
+    public void RecalerSurCoinCourant()
+    {
+        if (_window is null || _hwnd == IntPtr.Zero) return;
+        if (!NativeMethods.GetWindowRect(_hwnd, out var wr)) return;              // taille PHYSIQUE déjà appliquée par WPF
+        var hMon = NativeMethods.MonitorFromWindow(_hwnd, NativeMethods.MONITOR_DEFAULTTONEAREST);
+        var mi = new NativeMethods.MONITORINFOEX { cbSize = Marshal.SizeOf<NativeMethods.MONITORINFOEX>() };
+        if (!NativeMethods.GetMonitorInfo(hMon, ref mi)) return;
+        double marge = Margin * VisualTreeHelper.GetDpi(_window).DpiScaleX;
+        var coin = _coinCourant ?? _settings.Load().Corner;
+        var (px, py) = CornerSnap.RecalerSurCoin(coin, new RectD(wr.Left, wr.Top, wr.Right - wr.Left, wr.Bottom - wr.Top), ToRectD(mi.rcWork), marge);
+        _setWindowPos(_hwnd, IntPtr.Zero, (int)Math.Round(px), (int)Math.Round(py), 0, 0,
+            NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER);
     }
 
     // Re-snap sur le moniteur courant (WM_DISPLAYCHANGE) pour éviter un widget hors-écran (Pitfall 4).

@@ -929,7 +929,11 @@ public class CadranBindingTests
             fenetre.ApplyRestoredState(settings.Load());
             new System.Windows.Interop.WindowInteropHelper(fenetre).EnsureHandle();   // SourceInitialized → Attach + RestorePlacement, sans Show
 
-            Assert.Equal((190d, 92d), controller.DerniereEmpreinteRestauree);
+            // Taille DIP réellement utilisée : l'empreinte Fusible H, à l'arrondi au pixel physique près (WPF recale Width
+            // sur la taille entière du HWND : 190 DIP à 125 % = 237,5 px → 238 px → 190,4 DIP). Ni 0 ni 170.
+            var empreinte = Assert.NotNull(controller.DerniereEmpreinteRestauree);
+            Assert.InRange(empreinte.Largeur, 189.0, 191.0);
+            Assert.InRange(empreinte.Hauteur, 91.0, 93.0);
             Assert.Equal(Chronos.Placement.OverlayCorner.BottomRight, controller.CoinCourant);
             Assert.False(controller.RestaurationSansTaille);
 
