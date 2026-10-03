@@ -10,8 +10,7 @@
         (Pas de UseLayoutRounding ici : hérité de la fenêtre hôte. Posé sur la vue, il arrondirait 150 DIP au pixel physique à 125 %
         d'échelle → ActualHeight 150,4 ; le test de la table §2.2 mesure la vue seule, en DIP.)
         HIS-02 / HIS-03 — vue « Semaine de forfait » (DESIGN_PLAN §2.2) en XAML PUR : aucune logique, aucun chiffre, aucun mot.
-        D-34-27 : trois Grid nommées (StylePistes / StyleSimplifie / StyleTuiles), une seule visible (DataTrigger sur IsStyleX),
-                  chacune avec SES pistes — la table des hauteurs §2.2 n'est écrite qu'une fois, dans les tokens HistoHauteur*.
+        HIS-09 (phase 38) : une seule grille, GrillePistes ; la table des hauteurs §2.2 n'est écrite qu'une fois, dans les tokens HistoHauteur*.
         D-34-28 : le corps défile verticalement ; l'axe des jours et les pieds restent hors du défilement.
         D-34-29 : une piste = une rangée de trois colonnes (libellé HistoLargeurLibelles / piste * / légende HistoLargeurLegendeDroite) ;
                   les annotations (trous, journal ouvert, sauts) sont des TextBlock posés par instant (InstantVersXConverter) dans des
@@ -94,11 +93,6 @@
                 <Setter Property="Foreground" Value="{StaticResource Ink2}"/>
                 <Setter Property="FontSize" Value="{StaticResource HistoCorpsMini}"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
-            </Style>
-
-            <!-- Une grille de style est cachée par défaut ; chaque grille pose SON DataTrigger IsStyleX → Visible. -->
-            <Style x:Key="GrilleStyle" TargetType="Grid">
-                <Setter Property="Visibility" Value="Collapsed"/>
             </Style>
 
             <!-- Éléments posés à leur instant sur un Canvas qui remplit la colonne des pistes : Canvas.Left = InstantVersX(instant, plage,
@@ -238,10 +232,10 @@
             </StackPanel>
         </Grid>
 
-        <!-- ================= [1] Corps : les trois grilles de style superposées, une seule visible (D-34-27), défilement vertical (D-34-28) ================= -->
+        <!-- ================= [1] Corps : la grille des pistes, défilement vertical (D-34-28) ================= -->
         <ScrollViewer Grid.Row="1" x:Name="Defilement" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
             <Grid x:Name="Corps">
-                <!-- Témoin de largeur : mêmes colonnes que les grilles de style, hauteur nulle ; l'axe des jours s'aligne dessus. -->
+                <!-- Témoin de largeur : mêmes colonnes que la grille des pistes, hauteur nulle ; l'axe des jours s'aligne dessus. -->
                 <Grid VerticalAlignment="Top">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -253,17 +247,8 @@
                     <StackPanel Grid.Column="2" Style="{StaticResource CelluleDroite}"/>
                 </Grid>
 
-                <!-- ============ Style A « Pistes » : NIVEAU 150 / RYTHME 72 / TOKENS 72 / COUVERTURE 12 ============ -->
-                <Grid x:Name="StylePistes">
-                    <Grid.Style>
-                        <Style TargetType="Grid" BasedOn="{StaticResource GrilleStyle}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsStylePistes}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
+                <!-- ============ Pistes (seul style, HIS-09) : NIVEAU 150 / RYTHME 72 / TOKENS 72 / COUVERTURE 12 ============ -->
+                <Grid x:Name="GrillePistes">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -365,238 +350,6 @@
                                 </MultiBinding>
                             </Canvas.Left>
                             <TextBlock Style="{StaticResource TexteInfobulle}" Text="{Binding TexteInfobulle, ElementName=SurcouchePistes}"/>
-                        </Border>
-                    </Canvas>
-                </Grid>
-
-                <!-- ============ Style B « Simplifié » : NIVEAU 200 / TOKENS 90 / COUVERTURE 12 ============ -->
-                <Grid x:Name="StyleSimplifie">
-                    <Grid.Style>
-                        <Style TargetType="Grid" BasedOn="{StaticResource GrilleStyle}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsStyleSimplifie}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>  <!-- 0 annotations : trous, journal ouvert -->
-                        <RowDefinition Height="Auto"/>  <!-- 1 NIVEAU -->
-                        <RowDefinition Height="Auto"/>  <!-- 2 annotations : sauts -->
-                        <RowDefinition Height="Auto"/>  <!-- 3 TOKENS -->
-                        <RowDefinition Height="Auto"/>  <!-- 4 libellé permanent des tokens -->
-                        <RowDefinition Height="Auto"/>  <!-- 5 COUVERTURE -->
-                    </Grid.RowDefinitions>
-
-                    <ItemsControl Grid.Column="1" Grid.Row="1" Grid.RowSpan="5" IsHitTestVisible="False" ItemsSource="{Binding LibellesJours}"
-                                  ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseParInstant}" ItemTemplate="{StaticResource TplLigneJour}"/>
-
-                    <!-- Annotations d'honnêteté : trous (+ journal ouvert) au-dessus de NIVEAU, sauts au-dessous (D-34-29). -->
-                    <Grid Grid.Row="0" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}">
-                        <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding AnnotationsTrous}" ItemsPanel="{StaticResource PanneauCanvas}"
-                                      ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplTrou}"/>
-                        <Canvas IsHitTestVisible="False">
-                            <ContentControl Style="{StaticResource MarqueurJournal}" Content="{Binding AnnotationJournalOuvert}"/>
-                        </Canvas>
-                    </Grid>
-                    <ItemsControl Grid.Row="2" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False"
-                                  ItemsSource="{Binding AnnotationsSauts}" ItemsPanel="{StaticResource PanneauCanvas}"
-                                  ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplAnnotation}"/>
-
-                    <!-- NIVEAU -->
-                    <Grid Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleNiveau}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
-                        <TextBlock Style="{StaticResource RepereHaut}" Text="{x:Static txt:TextesHistorique.RepereCent}"/>
-                        <TextBlock Style="{StaticResource RepereBas}" Text="{x:Static txt:TextesHistorique.RepereZero}"/>
-                    </Grid>
-                    <Grid Grid.Row="1" Grid.Column="1" Margin="{StaticResource HistoMargePiste}">
-                        <Rectangle x:Name="ZoneAvantJournalSimplifie" Style="{StaticResource ZoneAvantJournal}" Fill="{StaticResource HistoHachure}"/>
-                        <hc:PisteNiveau Height="{StaticResource HistoHauteurNiveauSimplifie}" Variante="SemaineComplete"
-                                        Plage="{Binding DonneesSemaine.Plage}" Analyse="{Binding DonneesSemaine.Analyse}"
-                                        Precedente="{Binding DonneesSemaine.Precedente}" PlagePrecedente="{Binding DonneesSemaine.PlagePrecedente}"
-                                        Divergences="{Binding DonneesSemaine.Divergences}" InstantLecture="{Binding DonneesSemaine.LueA}"
-                                        Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}"
-                                        Gris="{StaticResource HistoGris}" FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}"
-                                        BordTrouJeton="{DynamicResource Alerte}" CadreDivergence="{StaticResource Accent}" Grille="{StaticResource Line}"
-                                        EpaisseurEscalier="{StaticResource HistoEpaisseurEscalier}" EpaisseurPremierPlan="{StaticResource HistoEpaisseurPremierPlan}"
-                                        EpaisseurFine="{StaticResource HistoEpaisseurFin}" LongueurTiretReset="{StaticResource HistoLongueurTiretReset}"
-                                        OpaciteTrou="{StaticResource HistoOpaciteTrou}"/>
-                    </Grid>
-
-                    <!-- TOKENS CLAUDE CODE -->
-                    <StackPanel Grid.Row="3" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteTokens}"/>
-                        <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleTokens}"/>
-                    </StackPanel>
-                    <hc:PisteTokens Grid.Row="3" Grid.Column="1" Height="{StaticResource HistoHauteurTokensSimplifie}" Margin="{StaticResource HistoMargePiste}"
-                                    Plage="{Binding DonneesSemaine.Plage}" Barres="{Binding DonneesSemaine.Barres}" Plafond="{Binding PlafondTokens}"
-                                    InstantLecture="{Binding DonneesSemaine.LueA}" Principal="{StaticResource HistoTokens}" SousAgents="{StaticResource HistoSousAgent}"
-                                    Hachure="{StaticResource HistoHachure}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-                    <StackPanel Grid.Row="3" Grid.Column="2" Style="{StaticResource CelluleDroite}">
-                        <TextBlock Style="{StaticResource Repere}" Text="{Binding LegendeTokens}"/>
-                    </StackPanel>
-
-                    <!-- COUVERTURE -->
-                    <StackPanel Grid.Row="5" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteCouverture}"/>
-                    </StackPanel>
-                    <hc:PisteCouverture Grid.Row="5" Grid.Column="1" Height="{StaticResource HistoHauteurCouverture}"
-                                        Plage="{Binding DonneesSemaine.Plage}" Serie="{Binding DonneesSemaine.Analyse.Serie}" Trous="{Binding DonneesSemaine.Analyse.Trous}"
-                                        InstantLecture="{Binding DonneesSemaine.LueA}" Present="{StaticResource Ok}" OpacitePresent="{StaticResource HistoOpaciteCouverture}"
-                                        Arrete="{StaticResource Line}" Jeton="{DynamicResource Alerte}"/>
-
-                    <!-- Libellé permanent des tokens (grain « par heure », D-34-14). -->
-                    <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource Pied}" Text="{Binding LibellePermanentTokens}"
-                               Margin="{StaticResource HistoMargeLibellePermanent}"/>
-
-                    <!-- Surcouche réticule (la seule à bouger au survol) + infobulle, sur toutes les rangées de pistes. -->
-                    <hc:SurcoucheReticule x:Name="SurcoucheSimplifie" Grid.Column="1" Grid.Row="1" Grid.RowSpan="5"
-                                          Plage="{Binding DonneesSemaine.Plage}" Serie="{Binding DonneesSemaine.Analyse.Serie}" Maintenant="{Binding Maintenant}"
-                                          AfficherMaintenant="False" InstantLecture="{Binding DonneesSemaine.LueA}" Fuseau="{Binding Fuseau}"
-                                          TraitReticule="{StaticResource Ink2}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-                    <Canvas Grid.Column="1" Grid.Row="1" Grid.RowSpan="5" IsHitTestVisible="False">
-                        <Border x:Name="InfobulleSimplifie" Style="{StaticResource Infobulle}"
-                                Visibility="{Binding InfobulleVisible, ElementName=SurcoucheSimplifie, Converter={StaticResource BoolToVis}}">
-                            <Canvas.Left>
-                                <MultiBinding Converter="{StaticResource BorneInfobulle}">
-                                    <Binding Path="XReticule" ElementName="SurcoucheSimplifie"/>
-                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
-                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
-                                </MultiBinding>
-                            </Canvas.Left>
-                            <TextBlock Style="{StaticResource TexteInfobulle}" Text="{Binding TexteInfobulle, ElementName=SurcoucheSimplifie}"/>
-                        </Border>
-                    </Canvas>
-                </Grid>
-
-                <!-- ============ Style C « Tuiles » : NIVEAU 120 (hebdo seul) / FENÊTRES 5 H 62 / RYTHME 58 / TOKENS 58 / COUVERTURE 12 ============ -->
-                <Grid x:Name="StyleTuiles">
-                    <Grid.Style>
-                        <Style TargetType="Grid" BasedOn="{StaticResource GrilleStyle}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsStyleTuiles}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>  <!-- 0 annotations : trous, journal ouvert -->
-                        <RowDefinition Height="Auto"/>  <!-- 1 NIVEAU (hebdo seul) -->
-                        <RowDefinition Height="Auto"/>  <!-- 2 annotations : sauts -->
-                        <RowDefinition Height="Auto"/>  <!-- 3 FENÊTRES 5 H -->
-                        <RowDefinition Height="Auto"/>  <!-- 4 RYTHME -->
-                        <RowDefinition Height="Auto"/>  <!-- 5 TOKENS -->
-                        <RowDefinition Height="Auto"/>  <!-- 6 libellé permanent des tokens -->
-                        <RowDefinition Height="Auto"/>  <!-- 7 COUVERTURE -->
-                    </Grid.RowDefinitions>
-
-                    <ItemsControl Grid.Column="1" Grid.Row="1" Grid.RowSpan="7" IsHitTestVisible="False" ItemsSource="{Binding LibellesJours}"
-                                  ItemsPanel="{StaticResource PanneauCanvas}" ItemContainerStyle="{StaticResource PoseParInstant}" ItemTemplate="{StaticResource TplLigneJour}"/>
-
-                    <!-- Annotations d'honnêteté : trous (+ journal ouvert) au-dessus de NIVEAU, sauts au-dessous (D-34-29). -->
-                    <Grid Grid.Row="0" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}">
-                        <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding AnnotationsTrous}" ItemsPanel="{StaticResource PanneauCanvas}"
-                                      ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplTrou}"/>
-                        <Canvas IsHitTestVisible="False">
-                            <ContentControl Style="{StaticResource MarqueurJournal}" Content="{Binding AnnotationJournalOuvert}"/>
-                        </Canvas>
-                    </Grid>
-                    <ItemsControl Grid.Row="2" Grid.Column="1" Height="{StaticResource HistoHauteurAnnotations}" IsHitTestVisible="False"
-                                  ItemsSource="{Binding AnnotationsSauts}" ItemsPanel="{StaticResource PanneauCanvas}"
-                                  ItemContainerStyle="{StaticResource PoseParDebut}" ItemTemplate="{StaticResource TplAnnotation}"/>
-
-                    <!-- NIVEAU : hebdo seul (les fenêtres 5 h ont leur propre piste en C) -->
-                    <Grid Grid.Row="1" Grid.Column="0" Style="{StaticResource CelluleNiveau}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteNiveau}"/>
-                        <TextBlock Style="{StaticResource RepereHaut}" Text="{x:Static txt:TextesHistorique.RepereCent}"/>
-                        <TextBlock Style="{StaticResource RepereBas}" Text="{x:Static txt:TextesHistorique.RepereZero}"/>
-                    </Grid>
-                    <Grid Grid.Row="1" Grid.Column="1" Margin="{StaticResource HistoMargePiste}">
-                        <Rectangle x:Name="ZoneAvantJournalTuiles" Style="{StaticResource ZoneAvantJournal}" Fill="{StaticResource HistoHachure}"/>
-                        <hc:PisteNiveau Height="{StaticResource HistoHauteurNiveauTuiles}" Variante="SemaineHebdoSeul"
-                                        Plage="{Binding DonneesSemaine.Plage}" Analyse="{Binding DonneesSemaine.Analyse}"
-                                        Precedente="{Binding DonneesSemaine.Precedente}" PlagePrecedente="{Binding DonneesSemaine.PlagePrecedente}"
-                                        Divergences="{Binding DonneesSemaine.Divergences}" InstantLecture="{Binding DonneesSemaine.LueA}"
-                                        Rampe="{Binding Theme}" TraitReset="{DynamicResource TickReset}" TraitFin="{StaticResource Ink2}"
-                                        Gris="{StaticResource HistoGris}" FondTrou="{StaticResource Line}" BordTrouArrete="{StaticResource HistoGris}"
-                                        BordTrouJeton="{DynamicResource Alerte}" CadreDivergence="{StaticResource Accent}" Grille="{StaticResource Line}"
-                                        EpaisseurEscalier="{StaticResource HistoEpaisseurEscalier}" EpaisseurPremierPlan="{StaticResource HistoEpaisseurPremierPlan}"
-                                        EpaisseurFine="{StaticResource HistoEpaisseurFin}" LongueurTiretReset="{StaticResource HistoLongueurTiretReset}"
-                                        OpaciteTrou="{StaticResource HistoOpaciteTrou}"/>
-                    </Grid>
-
-                    <!-- FENÊTRES 5 H -->
-                    <StackPanel Grid.Row="3" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteFenetres5h}"/>
-                    </StackPanel>
-                    <hc:PisteFenetres5h Grid.Row="3" Grid.Column="1" Height="{StaticResource HistoHauteurFenetres5hTuiles}" Margin="{StaticResource HistoMargePiste}"
-                                        Plage="{Binding DonneesSemaine.Plage}" Serie="{Binding DonneesSemaine.Analyse.Serie}" Rampe="{Binding Theme}"
-                                        Gris="{StaticResource HistoGris}" TraitReset="{DynamicResource TickReset}" Grille="{StaticResource Line}"
-                                        EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-
-                    <!-- RYTHME -->
-                    <StackPanel Grid.Row="4" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteRythme}"/>
-                        <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleRythme}"/>
-                    </StackPanel>
-                    <hc:PisteRythme Grid.Row="4" Grid.Column="1" Height="{StaticResource HistoHauteurRythmeTuiles}" Margin="{StaticResource HistoMargePiste}"
-                                    Plage="{Binding DonneesSemaine.Plage}" Deltas="{Binding DonneesSemaine.Analyse.Deltas5h}" Serie="{Binding DonneesSemaine.Analyse.Serie}"
-                                    Rampe="{Binding Theme}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-
-                    <!-- TOKENS CLAUDE CODE -->
-                    <StackPanel Grid.Row="5" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteTokens}"/>
-                        <TextBlock Style="{StaticResource Repere}" Text="{Binding EchelleTokens}"/>
-                    </StackPanel>
-                    <hc:PisteTokens Grid.Row="5" Grid.Column="1" Height="{StaticResource HistoHauteurTokensTuiles}" Margin="{StaticResource HistoMargePiste}"
-                                    Plage="{Binding DonneesSemaine.Plage}" Barres="{Binding DonneesSemaine.Barres}" Plafond="{Binding PlafondTokens}"
-                                    InstantLecture="{Binding DonneesSemaine.LueA}" Principal="{StaticResource HistoTokens}" SousAgents="{StaticResource HistoSousAgent}"
-                                    Hachure="{StaticResource HistoHachure}" Grille="{StaticResource Line}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-                    <StackPanel Grid.Row="5" Grid.Column="2" Style="{StaticResource CelluleDroite}">
-                        <TextBlock Style="{StaticResource Repere}" Text="{Binding LegendeTokens}"/>
-                    </StackPanel>
-
-                    <!-- COUVERTURE -->
-                    <StackPanel Grid.Row="7" Grid.Column="0" Style="{StaticResource CelluleLibelles}">
-                        <TextBlock Style="{StaticResource LibellePiste}" Text="{x:Static txt:TextesHistorique.PisteCouverture}"/>
-                    </StackPanel>
-                    <hc:PisteCouverture Grid.Row="7" Grid.Column="1" Height="{StaticResource HistoHauteurCouverture}"
-                                        Plage="{Binding DonneesSemaine.Plage}" Serie="{Binding DonneesSemaine.Analyse.Serie}" Trous="{Binding DonneesSemaine.Analyse.Trous}"
-                                        InstantLecture="{Binding DonneesSemaine.LueA}" Present="{StaticResource Ok}" OpacitePresent="{StaticResource HistoOpaciteCouverture}"
-                                        Arrete="{StaticResource Line}" Jeton="{DynamicResource Alerte}"/>
-
-                    <!-- Libellé permanent des tokens (grain « par heure », D-34-14). -->
-                    <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource Pied}" Text="{Binding LibellePermanentTokens}"
-                               Margin="{StaticResource HistoMargeLibellePermanent}"/>
-
-                    <!-- Surcouche réticule (la seule à bouger au survol) + infobulle, sur toutes les rangées de pistes. -->
-                    <hc:SurcoucheReticule x:Name="SurcoucheTuiles" Grid.Column="1" Grid.Row="1" Grid.RowSpan="7"
-                                          Plage="{Binding DonneesSemaine.Plage}" Serie="{Binding DonneesSemaine.Analyse.Serie}" Maintenant="{Binding Maintenant}"
-                                          AfficherMaintenant="False" InstantLecture="{Binding DonneesSemaine.LueA}" Fuseau="{Binding Fuseau}"
-                                          TraitReticule="{StaticResource Ink2}" EpaisseurFine="{StaticResource HistoEpaisseurFin}"/>
-                    <Canvas Grid.Column="1" Grid.Row="1" Grid.RowSpan="7" IsHitTestVisible="False">
-                        <Border x:Name="InfobulleTuiles" Style="{StaticResource Infobulle}"
-                                Visibility="{Binding InfobulleVisible, ElementName=SurcoucheTuiles, Converter={StaticResource BoolToVis}}">
-                            <Canvas.Left>
-                                <MultiBinding Converter="{StaticResource BorneInfobulle}">
-                                    <Binding Path="XReticule" ElementName="SurcoucheTuiles"/>
-                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
-                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Canvas}"/>
-                                </MultiBinding>
-                            </Canvas.Left>
-                            <TextBlock Style="{StaticResource TexteInfobulle}" Text="{Binding TexteInfobulle, ElementName=SurcoucheTuiles}"/>
                         </Border>
                     </Canvas>
                 </Grid>

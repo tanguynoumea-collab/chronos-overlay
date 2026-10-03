@@ -7,14 +7,11 @@ using Chronos.Theming;
 
 namespace Chronos.Controls.Historique;
 
-/// <summary>Ce que la piste Niveau montre selon la vue et le style (DESIGN_PLAN §2.2 / §2.3).</summary>
+/// <summary>Ce que la piste Niveau montre selon la vue (DESIGN_PLAN §2.2 / §2.3).</summary>
 public enum VariantePisteNiveau
 {
-    /// <summary>Semaine, styles Pistes et Simplifié : escalier hebdo par bandes, dents de scie 5 h, tirets de reset, fantôme S-1.</summary>
+    /// <summary>Semaine : escalier hebdo par bandes, dents de scie 5 h, tirets de reset, fantôme S-1.</summary>
     SemaineComplete,
-
-    /// <summary>Semaine, style Tuiles : escalier hebdo et fantôme seulement (les fenêtres 5 h ont leur propre piste).</summary>
-    SemaineHebdoSeul,
 
     /// <summary>Jour : le % 5 h au premier plan (gris quand épuisée ou refusée), l'hebdo en trait fin, un trait par reset observé.</summary>
     Jour,
@@ -96,11 +93,6 @@ public sealed class PisteNiveau : PisteBase
                 DessinerSauts(dc, analyse, plage, WindowKind.SevenDay, w, h);
                 DessinerDents(dc, analyse, plage, w, h);
                 DessinerTirets(dc, analyse, plage, w, h);
-                DessinerEscalierHebdo(dc, analyse, plage, w, h);
-                DessinerDivergences(dc, analyse, plage, w, h);
-                break;
-            case VariantePisteNiveau.SemaineHebdoSeul:
-                DessinerSauts(dc, analyse, plage, WindowKind.SevenDay, w, h);
                 DessinerEscalierHebdo(dc, analyse, plage, w, h);
                 DessinerDivergences(dc, analyse, plage, w, h);
                 break;

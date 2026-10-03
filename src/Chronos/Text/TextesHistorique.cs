@@ -31,7 +31,6 @@ public static class TextesHistorique
     public const string PisteRythme = "RYTHME";
     public const string PisteTokens = "TOKENS CLAUDE CODE";
     public const string PisteCouverture = "COUVERTURE";
-    public const string PisteFenetres5h = "FENÊTRES 5 H";
 
     public const string StylePrefixe = "Style :";
     public const string StylePistes = "Pistes";

@@ -81,19 +81,11 @@
     <sys:Double x:Key="HistoRayonCoins">16</sys:Double>
     <sys:Double x:Key="HistoLargeurLibelles">96</sys:Double>
     <sys:Double x:Key="HistoLargeurLegendeDroite">72</sys:Double>
-    <!-- Hauteurs de pistes — Semaine, style Pistes (§2.2) -->
+    <!-- Hauteurs de pistes — Semaine (§2.2) -->
     <sys:Double x:Key="HistoHauteurNiveauPistes">150</sys:Double>
     <sys:Double x:Key="HistoHauteurRythmePistes">72</sys:Double>
     <sys:Double x:Key="HistoHauteurTokensPistes">72</sys:Double>
     <sys:Double x:Key="HistoHauteurCouverture">12</sys:Double>
-    <!-- Semaine, style Simplifié (§2.2) -->
-    <sys:Double x:Key="HistoHauteurNiveauSimplifie">200</sys:Double>
-    <sys:Double x:Key="HistoHauteurTokensSimplifie">90</sys:Double>
-    <!-- Semaine, style Tuiles (§2.2) -->
-    <sys:Double x:Key="HistoHauteurNiveauTuiles">120</sys:Double>
-    <sys:Double x:Key="HistoHauteurFenetres5hTuiles">62</sys:Double>
-    <sys:Double x:Key="HistoHauteurRythmeTuiles">58</sys:Double>
-    <sys:Double x:Key="HistoHauteurTokensTuiles">58</sys:Double>
     <!-- Jour (§2.3) -->
     <sys:Double x:Key="HistoHauteurNiveauJour">190</sys:Double>
     <sys:Double x:Key="HistoHauteurRythmeJour">64</sys:Double>
