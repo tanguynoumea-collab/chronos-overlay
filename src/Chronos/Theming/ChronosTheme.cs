@@ -80,7 +80,7 @@ public sealed class ChronosTheme
         ["TexteSecondaire"] = Frozen(TexteSecondaire),
         ["Alerte"] = Frozen(RampAmber),   // TOK-02 : la pastille de déconnexion suit tous les thèmes.
                                           // Précédent exact : SessionBrushTokens()["SessAttention"].
-        ["TickReset"] = Frozen(TextePrincipal),   // §5.3 : tirets de reset (et flèche de Braises) suivent le thème ; minuit = #F4F2EC, inchangé
+        ["TickReset"] = Frozen(TextePrincipal),   // §5.3 : tirets de reset suivent le thème ; minuit = #F4F2EC, inchangé
         ["Epuise"] = Frozen(Epuise),              // gris « épuisé » lisible du thème (Historique, cadrans)
         ["CadranTuile"] = Frozen(CadranTuile),    // tuiles 5H/7J de Volets, sillon du Fusible
         ["CadranAttente"] = Frozen(CadranAttente),   // remplissage « en attente » des quatre contrôles de cadran

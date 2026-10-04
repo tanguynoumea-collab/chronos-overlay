@@ -17,6 +17,9 @@ est inconnu. Le remplissage suit le sens de lecture : gauche → droite, bas →
 s'allument depuis midi ; Fusible et Marée horizontaux partent de la gauche, verticaux du bas ; Volets idem. Couleur =
 quota, inchangée.* L'orange reste réservé aux sessions qui attendent l'utilisateur. Toutes les tailles et
 couleurs passent par `Resources/DesignTokens.xaml` ou par les pinceaux du thème.
+*Amendé au constat du 2026-10-04 (décision utilisateur, plan 43-07) : la flèche de reset fixe à midi de Braises est
+retirée (« elle ne sert à rien »). Les braises et le « ↻ HH:MM » du centre sont inchangés ; les mentions de la flèche
+plus bas restent comme historique.*
 
 ---
 

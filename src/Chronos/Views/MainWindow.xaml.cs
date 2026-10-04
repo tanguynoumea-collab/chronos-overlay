@@ -89,7 +89,7 @@ public partial class MainWindow : Window
     // ===================== GST-01 : répartiteur UNIQUE des gestes (grille Racine) =====================
     // Un seul répartiteur pour toute la silhouette : clic, double-clic et glisser partagent la même surface, la décision vit
     // dans AutomateGeste (pur) puis ArbitreClicCentre (inchangé). Filtre GÉOMÉTRIQUE avant d'armer : des pixels peints
-    // existent hors silhouette (pastilles inertes, flèche de reset de Braises, mot « indisponible »), ils ne doivent pas
+    // existent hors silhouette (pastilles inertes, mot « indisponible »), ils ne doivent pas
     // déclencher de geste. Pas d'abonnement « handled inclus » : les pastilles boutons marquent leur appui Handled et doivent le garder
     // (le geste ne se réveille pas sous elles).
 

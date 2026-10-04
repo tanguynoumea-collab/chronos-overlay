@@ -4,11 +4,12 @@
              xmlns:cad="clr-namespace:Chronos.Controls"
              xmlns:vues="clr-namespace:Chronos.Views">
     <!-- Piste 1 — Anneau de braises. Deux couronnes discrètes : 5 h (externe) + hebdo (interne).
-         5 h = 20 braises de 15 min en 5 groupes d'une heure (le vide entre groupes délimite les heures) ;
-         flèche de reset fixe à midi, là où la fenêtre se termine. Hebdo = 14 braises en 7 groupes d'un jour, une braise par
-         demi-journée (pas de 15,6° ≈ 12 px à R44 ; le vide entre groupes délimite les jours — constat du 2026-10-04).
+         5 h = 20 braises de 15 min en 5 groupes d'une heure (le vide entre groupes délimite les heures).
+         Hebdo = 14 braises en 7 groupes d'un jour, une braise par demi-journée (pas de 15,6° ≈ 12 px à R44 ; le vide
+         entre groupes délimite les jours — constat du 2026-10-04).
          Rempli = temps consommé (FractionElapsed, plan 43-06) : les braises s'allument depuis midi, sens horaire ;
-         l'anneau est plein au reset, retour sur la flèche. Couleur = quota ; estimé = braises en pointillé.
+         l'anneau est plein au reset. Pas de flèche de reset (retirée au constat du 2026-10-04, plan 43-07 : décision
+         utilisateur, « elle ne sert à rien »). Couleur = quota ; estimé = braises en pointillé.
          Centre : bascule % (défaut, 2 lignes) ↔ temps (3 lignes : compte à rebours 5 h, hebdo, puis « ↻ HH:MM » du
          reset 5 h) — ShowPercent/ShowCountdown, clic sur le cadran.
          Braises éteintes = piste (Piste5h), plus sombres : le gris épuisé s'en détache — §11 B3. -->
@@ -30,14 +31,6 @@
                               Estimated="{Binding SevenDay.EstPlancher}"
                               HasData="{Binding SevenDay.HasTime}"
                               AshBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
-        <!-- Flèche de reset : ligne d'arrivée du reset 5 h, fixe à midi, hors anneau (triangle 10 × 7 + filet 12 px).
-             Structure, pas donnée : visible dans tous les états. Aucune animation : le mouvement est réservé aux sessions.
-             Non cliquable : la phase 42 décide des zones de geste. -->
-        <Canvas x:Name="FlecheReset" Width="170" Height="170" IsHitTestVisible="False">
-            <Polygon Points="80,5 90,5 85,12" Fill="{DynamicResource TickReset}"/>
-            <Line X1="85" Y1="13" X2="85" Y2="25" StrokeThickness="1.2" Opacity="0.55"
-                  Stroke="{DynamicResource TickReset}"/>
-        </Canvas>
         <!-- Centre en mode POURCENTAGES (défaut) -->
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{Binding ShowPercent, Converter={StaticResource BoolToVis}}">
