@@ -17,6 +17,8 @@ namespace Chronos.Tests;
 ///   <item>Plus aucun commentaire ne décrit « trois » ou « deux » composites : la chaîne de production n'en a qu'UN.</item>
 ///   <item>L'hypothèse « encore valide » (Claude Code supposé seul consommateur) est écrite dans AUDIT_POINTS.md et
 ///     dans docs/data-sources.md §4 (décision utilisateur du 2026-10-04 : affichage inchangé, hypothèse documentée).</item>
+///   <item>Les limites DS3-01 (reconnexion avec un autre compte) et DS3-02 (transcripts hors de ~/.claude/projects,
+///     CLAUDE_CONFIG_DIR non lu, racine inaccessible → « Indisponible ») sont écrites au §4 de docs/data-sources.md (D-02).</item>
 /// </list>
 ///
 /// ANTI-MUET : chaque garde de source vérifie d'abord qu'elle a réellement lu l'arbre des sources.
@@ -146,6 +148,32 @@ public class GardesReliquatsTests
         var debut5 = texte.IndexOf("\n## 5.", StringComparison.Ordinal);
         Assert.True(debut4 >= 0 && debut5 > debut4, "Sections « ## 4. » / « ## 5. » introuvables dans data-sources.md");
         Assert.Contains("La déconnexion efface le dernier relevé exact", texte[debut4..debut5], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// DS3-01 / DS3-02 — phase 43, décision D-02 : les deux limites restantes de la 3.5 sont ÉCRITES au §4 de data-sources.md
+    /// (reconnexion avec un autre compte : ancien relevé « exact » au plus ~5 min ; transcripts hors de ~/.claude/projects :
+    /// CLAUDE_CONFIG_DIR non suivi, racine absente → activité invisible, racine inaccessible → « Indisponible »).
+    /// </summary>
+    [Fact]
+    public void Les_limites_DS3_01_et_DS3_02_sont_ecrites()
+    {
+        var docs = CheminDocs();
+        Assert.False(string.IsNullOrWhiteSpace(docs), "L'attribut AssemblyMetadata(\"CheminDocsChronos\") manque.");
+        var sources = Path.Combine(docs, "data-sources.md");
+        Assert.True(File.Exists(sources), $"data-sources.md introuvable : {sources}");
+        var texte = File.ReadAllText(sources);
+        var debut4 = texte.IndexOf("\n## 4.", StringComparison.Ordinal);
+        var debut5 = texte.IndexOf("\n## 5.", StringComparison.Ordinal);
+        Assert.True(debut4 >= 0 && debut5 > debut4, "Sections « ## 4. » / « ## 5. » introuvables dans data-sources.md");
+        var section4 = texte[debut4..debut5];
+
+        Assert.Contains("**Reconnexion avec un autre compte.**", section4, StringComparison.Ordinal);
+        Assert.Contains("5 min", section4, StringComparison.Ordinal);
+        Assert.Contains("**Transcripts hors de `~/.claude/projects`.**", section4, StringComparison.Ordinal);
+        Assert.Contains("CLAUDE_CONFIG_DIR", section4, StringComparison.Ordinal);
+        Assert.Contains("inaccessible", section4, StringComparison.Ordinal);
+        Assert.Contains("Indisponible", section4, StringComparison.Ordinal);
     }
 
     /// <summary>

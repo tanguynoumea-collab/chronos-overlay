@@ -62,6 +62,10 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     private readonly ChronosPaths _paths;
     private readonly IClock _clock;
 
+    // DS3-02 : énumérateur des *.jsonl sous la racine, injectable pour prouver qu'une racine présente mais
+    // inaccessible fait échouer la passe, que le refus survienne tout de suite ou pendant l'itération.
+    private readonly Func<string, IEnumerable<string>> _enumererJsonl;
+
     // P-07 étape 1 / DS-PERF-01 : cache par fichier (chemin) -> (taille, mtime, lignes assistant brutes).
     // LIMITE assumée : une réécriture du fichier à taille ET mtime identiques passerait inaperçue — c'est
     // impossible pour un JSONL append-only (toute écriture change la taille) ; filet supplémentaire, un
@@ -82,9 +86,16 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     internal int FichiersEnCache => _cache.Count;
 
     public TranscriptActivityProvider(ChronosPaths paths, IClock clock)
+        : this(paths, clock, EnumererJsonlDisque)
+    {
+    }
+
+    /// <summary>Ctor de test (DS3-02) : énumérateur des *.jsonl injecté à la place du parcours disque réel.</summary>
+    internal TranscriptActivityProvider(ChronosPaths paths, IClock clock, Func<string, IEnumerable<string>> enumererJsonl)
     {
         _paths = paths;
         _clock = clock;
+        _enumererJsonl = enumererJsonl;
     }
 
     /// <summary>
@@ -225,26 +236,27 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     }
 
     // Enumere les *.jsonl sous root. Dossier absent / inaccessible -> sequence vide (jamais d'exception).
-    private static IEnumerable<string> EnumerateJsonl(string root, DateTimeOffset now)
+    private IEnumerable<string> EnumerateJsonl(string root, DateTimeOffset now)
     {
         if (!Directory.Exists(root)) return Array.Empty<string>();
         try
         {
-            // Recursif total : inclut INTENTIONNELLEMENT le sous-dossier subagents/ — les sous-agents
-            // consomment le MEME pool de quota de compte, donc leurs tokens comptent dans la somme
-            // (arbitrage phase 3). Exploitation STRUCTUREE des sous-agents = differee V2-01. AUCUN
-            // filtre d'exclusion n'est pose ici.
-            //
             // Perf : un JSONL est append-only -> son message le plus recent >= LastWriteTime. Un fichier
             // non ecrit depuis plus que l'horizon ne peut contenir de message plus recent, donc ne
             // contribue a aucune requete : on l'ignore pour eviter de scanner tout l'historique.
             var cutoff = now - HorizonSpan;
-            return Directory.EnumerateFiles(root, "*.jsonl", SearchOption.AllDirectories)
-                .Where(f => RecentEnough(f, cutoff));
+            return _enumererJsonl(root).Where(f => RecentEnough(f, cutoff));
         }
         catch (IOException) { return Array.Empty<string>(); }
         catch (UnauthorizedAccessException) { return Array.Empty<string>(); }
     }
+
+    // Recursif total : inclut INTENTIONNELLEMENT le sous-dossier subagents/ — les sous-agents
+    // consomment le MEME pool de quota de compte, donc leurs tokens comptent dans la somme
+    // (arbitrage phase 3). Exploitation STRUCTUREE des sous-agents = differee V2-01. AUCUN
+    // filtre d'exclusion n'est pose ici.
+    private static IEnumerable<string> EnumererJsonlDisque(string root)
+        => Directory.EnumerateFiles(root, "*.jsonl", SearchOption.AllDirectories);
 
     // mtime tolerant : un fichier illisible/disparu est conserve (on le tentera puis on l'ignorera en lecture).
     private static bool RecentEnough(string file, DateTimeOffset cutoff)
