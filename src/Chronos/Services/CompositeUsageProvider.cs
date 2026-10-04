@@ -13,9 +13,9 @@ namespace Chronos.Services;
 /// <para><b>Phase 19 — où vit la doctrine, et pourquoi pas ici.</b> Ce composite ne juge PAS la
 /// fraîcheur : il classe par fiabilité et rien d'autre, délibérément. La doctrine (DoctrineFraicheur)
 /// vit dans la couche de tête, LastExactUsageProvider, pour trois raisons mécaniques : Best() ne reçoit
-/// que deux WindowState nus (ni horloge, ni magasin, ni journal d'activité) ; la chaîne réelle est faite
-/// de TROIS composites imbriqués, donc une doctrine placée ici s'exécuterait trois fois par tick et
-/// statuerait sur une information partielle ; et une source à ancienneté non bornée, placée en repli,
+/// que deux WindowState nus (ni horloge, ni magasin, ni journal d'activité) ; une doctrine placée ici
+/// s'exécuterait à chaque niveau si des composites étaient imbriqués, et statuerait sur une information
+/// partielle (la production n'a qu'UN composite : sonde → secours OAuth, mais rien ne l'y oblige) ; et une source à ancienneté non bornée, placée en repli,
 /// ne peut gagner que lorsque tout ce qui est au-dessus est indisponible — appliquer la porte d'âge
 /// AU-DESSUS du composite y est donc strictement équivalent.</para>
 /// <para><b>Corollaire à ne jamais enfreindre :</b> Best() ne doit JAMAIS arbitrer par récence entre deux

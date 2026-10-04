@@ -243,8 +243,13 @@ public sealed class SettingsService
     /// <summary>
     /// Écrit <paramref name="settings"/> si l'état courant du disque le permet (même règle que <see cref="Modifier"/>) ; rend
     /// true si le fichier reflète <paramref name="settings"/> après l'appel. NE LÈVE JAMAIS (FIAB-2).
+    ///
+    /// <para><b>Réservé aux tests</b> (amorçage d'un fichier entier) — d'où <c>internal</c>, visible de Chronos.Tests par
+    /// InternalsVisibleTo. La production écrit UNIQUEMENT par <see cref="Modifier"/> (fusion sous verrou : relecture, mutation,
+    /// écriture dans le même passage) ; un Save de production écraserait une modification concurrente. Garde :
+    /// <c>GardesReliquatsTests</c> (phase 42.3, DS-MAINT-04).</para>
     /// </summary>
-    public bool Save(ChronosSettings settings)
+    internal bool Save(ChronosSettings settings)
     {
         lock (_verrou)
         {

@@ -5,30 +5,16 @@ namespace Chronos.Text;
 /// aucune CultureInfo). Honnêteté des chiffres (VIS-05) : une utilisation absente (null) ne produit
 /// AUCUN texte — on ne présente jamais un plafond inventé.
 ///
-/// DEUX surcharges, et c'est délibéré :
-/// - <see cref="Format(double?, bool)"/> — historique, préfixe « ~ » à une estimation. Conservée pour
-///   la galerie de styles de cadran (<c>CadranPreviewViewModel</c>), qui pilote un booléen d'aperçu et
-///   n'a aucune provenance à exhiber.
-/// - <see cref="Format(double?, Chronos.Models.ProvenanceReleve?)"/> — phase 19, préfixe « ≥ » à un
-///   PLANCHER. C'est celle que le cadran de production emploie désormais.
+/// UNE seule surcharge, à provenance (<see cref="Format(double?, Chronos.Models.ProvenanceReleve?)"/>) :
+/// le seul préfixe possible est « ≥ », réservé au PLANCHER, seul chiffre non exact. Le cadran de production
+/// et la galerie de styles de cadran (<c>CadranPreviewViewModel</c>) l'emploient tous deux. L'ancienne
+/// surcharge à booléen « estimé » (préfixe « ~ ») a été retirée en phase 42.3 (DS-MAINT-03) : plus aucun
+/// chemin ne sait produire une estimation symétrique.
 ///
 /// Arrondi à l'entier le plus proche, espace normal avant le %. Type neutre, hautement testable.
 /// </summary>
 public static class PercentFormatter
 {
-    /// <summary>
-    /// Rend « 80 % » (exact), « ~80 % » (estimé) ou «» (utilisation null). L'arrondi est à l'entier
-    /// le plus proche (0.5 → sup). Le préfixe « ~ » signale une estimation, jamais une valeur exacte.
-    /// </summary>
-    public static string Format(double? utilization, bool isEstimated)
-    {
-        if (utilization is null) return ""; // honnêteté : pas de plafond fiable → pas de %
-
-        int pct = (int)System.Math.Round(utilization.Value * 100, System.MidpointRounding.AwayFromZero);
-        string prefixe = isEstimated ? "~" : "";
-        return $"{prefixe}{pct} %"; // espace normal avant %
-    }
-
     /// <summary>
     /// Phase 19 — « 80 % » (exact), « ≥ 80 % » (plancher : borne inférieure), «» (utilisation null).
     /// « ≥ » et non « ~ », et ce n'est pas un choix de style : l'incertitude d'un plancher est

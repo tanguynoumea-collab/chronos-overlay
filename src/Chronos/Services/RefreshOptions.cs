@@ -1,7 +1,8 @@
 namespace Chronos.Services;
 
 /// <summary>Réglages des horloges données. Injecté en Singleton (pattern ChronosPaths).
-/// La persistance settings.json arrive en Phase 6 ; ici, valeurs par défaut pré-câblées.</summary>
+/// Valeurs par défaut ; en production l'intervalle vient de settings.json (RefreshIntervalSeconds),
+/// câblé dans App.xaml.cs.</summary>
 public sealed record RefreshOptions(TimeSpan PeriodicInterval, TimeSpan Debounce)
 {
     public static RefreshOptions Default => new(

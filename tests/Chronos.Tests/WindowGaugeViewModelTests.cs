@@ -126,38 +126,33 @@ public class WindowGaugeViewModelTests
         Assert.Null(vm.InstantDuReleve);
     }
 
-    // --- VIS-05 : PercentFormatter pur (honnêteté : null → rien, « ~ » si estimé, arrondi entier) ---
+    // --- VIS-05 : PercentFormatter pur (honnêteté : null → rien, arrondi entier ; exact = provenance null, sans marque) ---
+    // 42.3-05 (DS-MAINT-03) : la surcharge à booléen « estimé » (« ~80 % ») est retirée ; les cas utiles passent par la
+    // surcharge à provenance, qui ne connaît d'autre préfixe que « ≥ » (plancher).
 
     [Fact]
     public void UtilizationText_null_rend_vide()
     {
-        Assert.Equal("", PercentFormatter.Format(null, false));
-        Assert.Equal("", PercentFormatter.Format(null, true));   // null → rien, MÊME estimé
+        Assert.Equal("", PercentFormatter.Format(null, (ProvenanceReleve?)null));
     }
 
     [Fact]
     public void UtilizationText_exact_rend_80pourcent()
     {
-        Assert.Equal("80 %", PercentFormatter.Format(0.80, false)); // espace normal avant %
-    }
-
-    [Fact]
-    public void UtilizationText_estime_prefixe_tilde()
-    {
-        Assert.Equal("~80 %", PercentFormatter.Format(0.80, true)); // « ~ » = estimation, pas exact
+        Assert.Equal("80 %", PercentFormatter.Format(0.80, (ProvenanceReleve?)null)); // espace normal avant %
     }
 
     [Fact]
     public void UtilizationText_arrondi_entier()
     {
-        Assert.Equal("80 %", PercentFormatter.Format(0.804, false)); // arrondi vers le bas
-        Assert.Equal("81 %", PercentFormatter.Format(0.806, false)); // arrondi vers le haut
+        Assert.Equal("80 %", PercentFormatter.Format(0.804, (ProvenanceReleve?)null)); // arrondi vers le bas
+        Assert.Equal("81 %", PercentFormatter.Format(0.806, (ProvenanceReleve?)null)); // arrondi vers le haut
     }
 
     [Fact]
     public void UtilizationText_plein_100()
     {
-        Assert.Equal("100 %", PercentFormatter.Format(1.0, false));
+        Assert.Equal("100 %", PercentFormatter.Format(1.0, (ProvenanceReleve?)null));
     }
 
     // --- DEL-04 : le plancher se marque « ≥ », l'exact ne porte AUCUNE marque ---

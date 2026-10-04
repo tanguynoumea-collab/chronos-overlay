@@ -12,8 +12,8 @@ namespace Chronos.Services;
 ///     d'activité. Le composite n'en connaît aucun des trois, et lui en injecter reviendrait à faire
 ///     descendre la persistance dans chaque maillon de la chaîne.</item>
 ///   <item>Elle est en tête : elle voit exactement le snapshot fusionné qui sera affiché, donc elle statue
-///     UNE fois, sur le résultat final — là où le composite statuerait à chaque niveau imbriqué (trois en
-///     production), avec autant de passes disque potentielles.</item>
+///     UNE fois, sur le résultat final — là où un composite statuerait à chaque niveau s'ils étaient
+///     imbriqués (la production n'en a qu'UN : sonde → secours OAuth), avec autant de passes disque potentielles.</item>
 ///   <item>Elle est au-dessus de tout composite : il n'y a donc plus aucune ambiguïté de provenance à
 ///     trancher, ce qui rend la recomposition triviale (voir le « with » ci-dessous).</item>
 /// </list>

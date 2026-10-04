@@ -30,14 +30,14 @@ public sealed record WindowState
 
     /// <summary>Phase 19 — provenance fine décidée par la doctrine. null = non statué. Porté par
     /// WindowState et NON par UsageSnapshot, pour la raison mécanique déjà établie pour StatutServeur :
-    /// Best() rend l'INSTANCE gagnante PAR RÉFÉRENCE, donc ce champ traverse gratuitement les trois
-    /// composites imbriqués, là où un champ de snapshot serait détruit par la recomposition.</summary>
+    /// Best() rend l'INSTANCE gagnante PAR RÉFÉRENCE, donc ce champ traverse gratuitement le composite
+    /// de production (sonde → secours OAuth), là où un champ de snapshot serait détruit par la recomposition.</summary>
     public ProvenanceReleve? Provenance { get; init; }
 
     /// <summary>Phase 20 (EXA-06) — QUI a produit ce chiffre. Porté par WindowState et NON par
     /// UsageSnapshot, pour la raison mécanique déjà établie deux fois (StatutServeur, Provenance) :
-    /// Best() rend l'INSTANCE gagnante PAR RÉFÉRENCE, donc ce champ traverse gratuitement les trois
-    /// composites imbriqués, là où un champ de snapshot serait détruit par le « new » de la
+    /// Best() rend l'INSTANCE gagnante PAR RÉFÉRENCE, donc ce champ traverse gratuitement le composite
+    /// de production (sonde → secours OAuth), là où un champ de snapshot serait détruit par le « new » de la
     /// recomposition. La garde Toute_propriete_de_UsageSnapshot_… ne surveille que UsageSnapshot :
     /// elle n'est pas concernée.
     ///
