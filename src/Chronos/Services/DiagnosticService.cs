@@ -14,11 +14,12 @@ namespace Chronos.Services;
 /// Diagnostic auto-explicatif (observabilité pour un outil distribué) : dit POURQUOI l'affichage
 /// n'a pas de couleurs sur une machine donnée. Rassemble l'état réel — la chaîne de données (sonde
 /// d'en-têtes, secours OAuth du login Chronos, dernier exact persisté, journal), les magasins, la
-/// source active par fenêtre — et écrit un rapport lisible dans %APPDATA%/Chronos/diagnostic.txt,
-/// qu'il ouvre ensuite. Phase 37 : aucun appel réseau, aucune recherche de coffres ni de dossiers.
+/// source active par fenêtre — et produit un rapport lisible : consigné au démarrage dans chronos.log,
+/// affiché à la demande dans la fenêtre de réglages. Phase 37 : aucun appel réseau, aucune recherche de
+/// coffres ni de dossiers.
 ///
 /// SÉCURITÉ : le token n'est JAMAIS écrit dans le rapport (seulement « trouvé : oui/non »). Neutre
-/// (aucun type WPF) : ouvre le fichier via l'application par défaut du système (Process.Start).
+/// (aucun type WPF).
 /// </summary>
 public sealed class DiagnosticService
 {
@@ -123,25 +124,6 @@ public sealed class DiagnosticService
             File.WriteAllText(chemin, JournalIncidents.ComposerJournalDemarrage(ancien, report));
         }
         catch { /* le log ne doit jamais casser le démarrage */ }
-    }
-
-    /// <summary>Construit le rapport, l'écrit sur disque et l'ouvre. Toute erreur est absorbée
-    /// (un diagnostic ne doit jamais planter l'app).</summary>
-    public async Task RunAsync(CancellationToken ct = default)
-    {
-        string report;
-        try { report = await BuildReportAsync(ct); }
-        catch (Exception ex) { report = "Le diagnostic a rencontré une erreur : " + ex.Message; }
-
-        try
-        {
-            var dir = Path.GetDirectoryName(_paths.SettingsFile)!;
-            Directory.CreateDirectory(dir);
-            var file = Path.Combine(dir, "diagnostic.txt");
-            File.WriteAllText(file, report);
-            Process.Start(new ProcessStartInfo(file) { UseShellExecute = true }); // ouvre avec l'éditeur par défaut
-        }
-        catch { /* si l'ouverture échoue, tant pis : le fichier est écrit */ }
     }
 
     /// <summary>Rapport textuel (testable). N'expose JAMAIS le token.</summary>
@@ -352,7 +334,10 @@ public sealed class DiagnosticService
         sb.AppendLine("  Exe courant : " + (Environment.ProcessPath ?? "?"));
 
         // Hooks --hook présents dans ~/.claude/settings.json ? (+ chemin exe référencé)
-        var claudeSettings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
+        // MAINT-5 (42.2) : le fichier lu est celui que Chronos RÉCONCILIE (réconciliateur injecté) ; repli sur le chemin par défaut
+        // seulement quand il n'est pas câblé. Les tests ne lisent ainsi jamais le vrai ~/.claude.
+        var claudeSettings = _reglagesClaude?.SettingsPath
+                             ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
         try
         {
             if (File.Exists(claudeSettings))
@@ -362,7 +347,9 @@ public sealed class DiagnosticService
                 string? hookExe = null;
                 if (sd.RootElement.TryGetProperty("hooks", out var hks) && hks.ValueKind == JsonValueKind.Object)
                 {
-                    foreach (var ev in new[] { "Notification", "Stop", "UserPromptSubmit", "SessionStart", "SessionEnd" })
+                    // MAINT-5 (42.2) : la liste des événements est celle du CÂBLAGE (source unique, 8 hooks), jamais une liste tenue ici.
+                    // Le commentaire de SessionHookInstaller.Events (« le diagnostic le lit ») est désormais vrai.
+                    foreach (var ev in SessionHookInstaller.Events)
                     {
                         if (!hks.TryGetProperty(ev, out var arr) || arr.ValueKind != JsonValueKind.Array) continue;
                         foreach (var grp in arr.EnumerateArray())

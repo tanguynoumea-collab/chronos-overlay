@@ -869,10 +869,6 @@ public sealed partial class MainViewModel : ObservableObject
         _orchestrator.RequestRefresh();
     }
 
-    /// <summary>Construit le rapport de diagnostic (token, appel OAuth, sources, résultat)
-    /// pour affichage à l'écran (pop-up, screenshot-able). Le token n'y figure jamais.</summary>
-    public Task<string> BuildDiagnosticReportAsync() => _diagnostic.BuildReportAsync();
-
     /// <summary>FEN-06 : ferme l'application (seul point de sortie d'une fenêtre sans barre de titre ni des tâches).</summary>
     [RelayCommand]
     private void Quit() => _controller.Quit();
