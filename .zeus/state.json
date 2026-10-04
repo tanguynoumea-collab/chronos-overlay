@@ -30,7 +30,8 @@
       "2026-10-03 : CHECKPOINT 1 — plan de design cycle 2 valide tel quel (« Je valide »)",
       "2026-10-03 : exigences v1.9 validees (25), liste de purge R5 VALIDEE (checkpoint DAT-01), recherche GSD passee, roadmap phases 36-43 approuvee",
       "2026-10-04 : CHECKPOINT 2 (triage) — lots A (lecture ratee), B (settings.json Claude), C+D (tokens, autostart), E (petits defauts) CRITIQUES avant 3.5.0 ; le reste en roadmap",
-      "2026-10-04 : Chronos est DISTRIBUE — reprendre les releases GitHub a partir de la 3.5.0 avec empreinte SHA-256 et tags propres ; signature de code en roadmap"
+      "2026-10-04 : Chronos est DISTRIBUE — reprendre les releases GitHub a partir de la 3.5.0 avec empreinte SHA-256 et tags propres ; signature de code en roadmap",
+      "2026-10-04 : AUDIT_POINTS.md valide (5 points : honnetete des chiffres, integrite des donnees, robustesse de l'overlay, reprenabilite, pret a distribuer)"
     ]
   },
   "iterations": {
@@ -133,7 +134,8 @@
     "2026-10-03 — DESIGN-REVIEW 2/3 CONFORME : B1-B4 corriges (verifie par ZEUS sur rendus), aucune regression bloquante, 3 nouveaux mineurs (roadmap). Clics reels / 4 coins / F11-Echap -> constat humain phase 43. -> DEV-COUNCIL.",
     "2026-10-03 — DEV-COUNCIL iteration 1 : 8 roles + sceptique + matrice ; 0 bloquant, 8 majeurs distincts (MAT-3 cause racine lecture ratee => reecriture, DATA-1, DATA-5, FIAB-1, FIAB-2, ARCH-3, MAINT-2, PKG-1). Rapport .zeus/reports/dev-council-2026-10-03.md. CHECKPOINT 2 (triage) en attente.",
     "2026-10-04 — CHECKPOINT 2 VALIDE : lots A-E critiques ; Chronos distribue (releases GitHub + SHA-256). -> GSD phase 42.2 (corrections du dev-council), compteur dev_council 1/3.",
-    "2026-10-04 — Phase 42.2 (corrections dev-council, 10 plans) executee : quarantaine des fichiers Chronos, passerelle unique ~/.claude/settings.json, filet global, mois geles proteges, session_id valide, autostart repointe, diagnostic 8 hooks, Alt+F4, pont Node retire, code mort. Porte : 2113/2113, 0 avertissement. -> re-verification ciblee DEV-COUNCIL."
+    "2026-10-04 — Phase 42.2 (corrections dev-council, 10 plans) executee : quarantaine des fichiers Chronos, passerelle unique ~/.claude/settings.json, filet global, mois geles proteges, session_id valide, autostart repointe, diagnostic 8 hooks, Alt+F4, pont Node retire, code mort. Porte : 2113/2113, 0 avertissement. -> re-verification ciblee DEV-COUNCIL.",
+    "2026-10-04 — Re-verification ciblee DEV-COUNCIL : 24 findings fermes, DATA-2 partiel (FIAB-R4), PKG-7 partiel (doc phase 43), 0 nouveau bloquant/majeur ; 7 mineurs nouveaux corriges dans 42.2-11 (decision ZEUS, release distribuee). AUDIT_POINTS.md cree avec l'utilisateur."
   ],
   "cycles_precedents": [
     {
