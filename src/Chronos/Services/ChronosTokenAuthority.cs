@@ -57,6 +57,11 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
     // un autre écrivain (le login) a pu y déposer de nouveaux jetons, qu'il ne faut jamais écraser.
     private string? _refreshAttenduAuCoffre;
 
+    /// <summary>Seam de test (InternalsVisibleTo) ; null en production. Appelé à des points nommés de la
+    /// séquence (« apres-chargement », « avant-ecriture », « apres-ecriture ») pour y glisser une
+    /// réinitialisation concurrente de façon déterministe (DS2-01, 42.4).</summary>
+    internal Action<string>? PointDeControle { get; set; }
+
     /// <summary>État courant. Lisible à tout instant, y compris avant la première transition.</summary>
     public EtatAuthentification Etat { get; private set; } = EtatAuthentification.NonConnecte;
 
@@ -92,6 +97,7 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
             // Coffre vide : l'utilisateur ne s'est jamais connecté. Rien à rafraîchir — ce n'est PAS
             // une panne, et cela ne doit allumer aucune pastille de déconnexion.
             if (_jetons is null) { Publier(EtatAuthentification.NonConnecte); return null; }
+            PointDeControle?.Invoke("apres-chargement");
 
             // VERROU DÉFINITIF : le serveur a refusé les identifiants. Seul un login répare ; réessayer
             // ne ferait que consommer du rate-limit sur le point de terminaison de jeton.
@@ -144,6 +150,7 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
                     }
 
                     _jetons = res.Jetons!;
+                    PointDeControle?.Invoke("avant-ecriture");
                     // ROTATION : persister AVANT de rendre le jeton. Un Save en échec ne doit PAS faire
                     // croire à un échec de refresh : les jetons neufs restent en mémoire, la session
                     // courante continue — l'ancien refresh token est de toute façon déjà mort côté serveur.
@@ -153,6 +160,7 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
                         _refreshAttenduAuCoffre = _jetons.RefreshToken;
                     }
                     catch { /* dégradation : session courante préservée */ }
+                    PointDeControle?.Invoke("apres-ecriture");
                     _forcerRafraichissement = false;
                     _recul = ReculInitial;
                     _prochainEssai = default;

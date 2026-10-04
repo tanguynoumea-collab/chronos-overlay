@@ -512,7 +512,7 @@ public class ChronosTokenAuthorityTests
     /// libération, puis rend la rotation nominale (REF-1 → REF-2). Le handler factice étant SYNCHRONE,
     /// l'appel reste bloqué dans RefreshAsync, sous le sémaphore de l'autorité.</summary>
     private static (FakeHttpMessageHandler handler, ManualResetEventSlim entre, ManualResetEventSlim liberer)
-        RepondeurBloquant()
+        RepondeurBloquant(HttpStatusCode statut = HttpStatusCode.OK, string corps = CorpsRefresh200)
     {
         var entre = new ManualResetEventSlim(false);
         var liberer = new ManualResetEventSlim(false);
@@ -520,7 +520,7 @@ public class ChronosTokenAuthorityTests
         {
             entre.Set();
             if (!liberer.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException("répondeur jamais libéré");
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(CorpsRefresh200) };
+            return new HttpResponseMessage(statut) { Content = new StringContent(corps) };
         });
         return (handler, entre, liberer);
     }
@@ -619,6 +619,130 @@ public class ChronosTokenAuthorityTests
         Assert.Equal("REF-N", new ChronosOAuthStore(chemin).Load()!.RefreshToken);   // jamais REF-2
 
         Assert.Equal("ACC-N", await autorite.GetAccessTokenAsync());
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // DS2-01 (42.4) : réinitialisation concurrente. ReinitialiserApresLogin est appelée HORS verrou par
+    // le VM ; elle peut tomber AU MILIEU de GetAccessTokenAsync. Le seam PointDeControle l'y glisse de
+    // façon déterministe. Coffre TOUJOURS temporaire (Autorite / CheminCoffreTemp), timeouts bornés :
+    // un interblocage fait échouer le test au lieu de le faire pendre.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>A — réinitialisation juste après le chargement : avant correction, la relecture du champ
+    /// des jetons (remis à null) levait une NullReferenceException qui tuait la boucle de rafraîchissement.</summary>
+    [Fact]
+    public async Task Une_reinitialisation_au_milieu_de_la_sequence_ne_leve_jamais()
+    {
+        var (autorite, handler, _, chemin) = Autorite(Maintenant.AddMinutes(1));   // rafraîchissement nécessaire
+        autorite.PointDeControle = p => { if (p == "apres-chargement") autorite.ReinitialiserApresLogin(); };
+
+        var rendu = await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Null(rendu);
+        Assert.Equal(0, handler.SendCount);                                          // aucune rotation sous génération périmée
+        Assert.Equal("REF-1", new ChronosOAuthStore(chemin).Load()!.RefreshToken);   // rien écrit
+    }
+
+    /// <summary>Amendement — une séquence commencée avant une réinitialisation ne sert pas le jeton
+    /// mémorisé de l'ancien compte, même encore valide ; l'appel suivant sert le jeton du nouveau login.</summary>
+    [Fact]
+    public async Task Une_sequence_commencee_avant_une_reinitialisation_ne_sert_pas_le_jeton_memorise()
+    {
+        var (autorite, handler, _, chemin) = Autorite(Maintenant.AddHours(1));
+        Assert.Equal("ACC-1", await autorite.GetAccessTokenAsync());
+
+        autorite.PointDeControle = p =>
+        {
+            if (p != "apres-chargement") return;
+            new ChronosOAuthStore(chemin).Save(new OAuthTokens("ACC-N", "REF-N", Maintenant.AddHours(1)));
+            autorite.ReinitialiserApresLogin();
+        };
+        Assert.Null(await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+
+        autorite.PointDeControle = null;
+        Assert.Equal("ACC-N", await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, handler.SendCount);
+    }
+
+    /// <summary>B — déconnexion entre la vérification de génération et l'écriture : le coffre n'est pas recréé.</summary>
+    [Fact]
+    public async Task Une_deconnexion_juste_avant_l_ecriture_ne_recree_pas_le_coffre()
+    {
+        var (autorite, _, _, chemin) = Autorite(Maintenant.AddMinutes(-1));
+        autorite.PointDeControle = p =>
+        {
+            if (p != "avant-ecriture") return;
+            new ChronosOAuthStore(chemin).Clear();
+            autorite.ReinitialiserApresLogin();
+        };
+
+        string? rendu = null;
+        var ex = await Record.ExceptionAsync(async () =>
+            rendu = await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+
+        Assert.Null(ex);
+        Assert.Null(rendu);
+        Assert.False(File.Exists(chemin));
+    }
+
+    /// <summary>C — coffre effacé juste avant l'écriture (génération encore inchangée : l'écriture a lieu),
+    /// puis réinitialisation juste après : ce que nous venons d'écrire est retiré.</summary>
+    [Fact]
+    public async Task Un_coffre_ecrit_apres_effacement_est_retire_si_la_generation_a_change()
+    {
+        var (autorite, _, _, chemin) = Autorite(Maintenant.AddMinutes(-1));
+        autorite.PointDeControle = p =>
+        {
+            if (p == "avant-ecriture") new ChronosOAuthStore(chemin).Clear();
+            else if (p == "apres-ecriture") autorite.ReinitialiserApresLogin();
+        };
+
+        var rendu = await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Null(rendu);
+        Assert.False(File.Exists(chemin));
+    }
+
+    /// <summary>D — non-régression : un login écrit APRÈS notre écriture n'est jamais effacé, et son jeton
+    /// est servi à l'appel suivant sans nouvelle requête.</summary>
+    [Fact]
+    public async Task Un_login_ecrit_apres_nous_n_est_jamais_efface()
+    {
+        var (autorite, handler, _, chemin) = Autorite(Maintenant.AddMinutes(-1));
+        autorite.PointDeControle = p =>
+        {
+            if (p != "apres-ecriture") return;
+            new ChronosOAuthStore(chemin).Save(new OAuthTokens("ACC-N", "REF-N", Maintenant.AddHours(1)));
+            autorite.ReinitialiserApresLogin();
+        };
+
+        Assert.Null(await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal("REF-N", new ChronosOAuthStore(chemin).Load()!.RefreshToken);
+        var envois = handler.SendCount;
+
+        autorite.PointDeControle = null;
+        Assert.Equal("ACC-N", await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(envois, handler.SendCount);
+    }
+
+    /// <summary>E — non-régression : un refus (invalid_grant) obtenu pour l'ANCIEN compte n'est jamais
+    /// hérité par le nouveau : pas de verrou « Deconnecte » après le login.</summary>
+    [Fact]
+    public async Task Une_ecriture_d_etat_sous_generation_perimee_est_oubliee()
+    {
+        var (h, entre, liberer) = RepondeurBloquant(HttpStatusCode.BadRequest, CorpsInvalidGrant);
+        var (autorite, _, _, chemin) = Autorite(Maintenant.AddMinutes(-1), h);
+
+        var enVol = Task.Run(() => autorite.GetAccessTokenAsync());
+        Assert.True(entre.Wait(TimeSpan.FromSeconds(5)), "le rafraîchissement n'a pas démarré");
+
+        new ChronosOAuthStore(chemin).Save(new OAuthTokens("ACC-N", "REF-N", Maintenant.AddHours(1)));
+        autorite.ReinitialiserApresLogin();
+        liberer.Set();
+
+        Assert.Null(await enVol.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal("ACC-N", await autorite.GetAccessTokenAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(EtatAuthentification.Connecte, autorite.Etat);
     }
 
     /// <summary>Critère de succès 3 de la phase : la pastille disparaît dès qu'un chiffre exact est de
