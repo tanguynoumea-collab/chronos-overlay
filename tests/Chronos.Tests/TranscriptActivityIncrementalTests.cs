@@ -268,4 +268,48 @@ public sealed class TranscriptActivityIncrementalTests : IDisposable
         Assert.Equal(0, chaud.FichiersRelusDernierePasse);
         Assert.Equal(5, chaud.FichiersReutilisesDernierePasse);
     }
+
+    // ------------------------------------------------------------------ G-I. transcript illisible (DS2-02)
+    // D-02 : un journal qui ne peut pas tout lire ne peut rien certifier. Un transcript PRÉSENT mais
+    // illisible (partage refusé) fait échouer la passe au lieu d'en effacer silencieusement l'activité —
+    // sinon le journal amputé affirmerait « aucune activité » et la doctrine certifierait « encore valide ».
+
+    [Fact]
+    public async Task G_un_transcript_present_mais_illisible_fait_echouer_la_passe()
+    {
+        var chaud = Neuf();
+        await chaud.ReadAsync();
+
+        Ajouter(_s2, Assistant("msg-9", "req-9", Now.AddMinutes(-1), input: 5, output: 5));
+        Vieillir(_s2);
+
+        using var verrou = new FileStream(_s2, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        await Assert.ThrowsAnyAsync<IOException>(() => chaud.ReadAsync());
+    }
+
+    [Fact]
+    public async Task H_un_transcript_illisible_des_la_premiere_passe_fait_echouer_la_passe()
+    {
+        using var verrou = new FileStream(_s4, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        await Assert.ThrowsAnyAsync<IOException>(() => Neuf().ReadAsync());
+    }
+
+    [Fact]
+    public async Task I_apres_liberation_la_passe_retrouve_toutes_les_lignes()
+    {
+        var chaud = Neuf();
+        await chaud.ReadAsync();
+
+        Ajouter(_s2, Assistant("msg-9", "req-9", Now.AddMinutes(-1), input: 5, output: 5));
+        Vieillir(_s2);
+
+        using (new FileStream(_s2, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            await Assert.ThrowsAnyAsync<IOException>(() => chaud.ReadAsync());
+
+        var jChaud = await chaud.ReadAsync();                    // verrou libéré
+        var jNeuf = await Neuf().ReadAsync();
+
+        AssertJournauxEgaux(jNeuf, jChaud);
+        Assert.Contains(jChaud.Entrees, e => e.Ts == Now.AddMinutes(-1) && e.Tokens == 10);
+    }
 }
