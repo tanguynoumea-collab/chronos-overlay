@@ -44,6 +44,9 @@ internal sealed class MagasinMapSessions
     private DateTimeOffset? _derniereEcriture;
     private string? _derniereSignalee;
 
+    // FIAB-R5 (42.2-11) : le dernier ensemble lu (ou écrit) avec succès par ce processus — socle après une quarantaine.
+    private Dictionary<string, long>? _dernierConnu;
+
     public MagasinMapSessions(string chemin, string nom)
     {
         Chemin = chemin;
@@ -118,6 +121,7 @@ internal sealed class MagasinMapSessions
             foreach (var p in doc.RootElement.EnumerateObject())
                 if (p.Value.TryGetInt64(out var ts))   // valeur non numérique = entrée illisible, donc ignorée
                     map[p.Name] = ts;
+            _dernierConnu = new Dictionary<string, long>(map);
             return new(IssueLectureMap.Lu, map, null);
         }
         catch (JsonException ex)
@@ -136,7 +140,8 @@ internal sealed class MagasinMapSessions
 
     /// <summary>
     /// Décide si l'on peut écrire après la lecture <paramref name="lu"/>, et sur quelle base :
-    /// fiable → la map lue ; illisible → quarantaine puis base VIDE (l'original reste intact sous son nouveau nom) ;
+    /// fiable → la map lue ; illisible → quarantaine puis base = DERNIER ensemble lu ou écrit avec succès par ce processus
+    /// (FIAB-R5 : les sessions déjà archivées ne réapparaissent pas), vide s'il n'y en a pas (l'original reste intact sous son nouveau nom) ;
     /// quarantaine impossible ou inaccessible → false, rien ne doit être écrit.
     /// </summary>
     public bool PreparerEcriture(LectureMap lu, out Dictionary<string, long> socle)
@@ -153,7 +158,7 @@ internal sealed class MagasinMapSessions
                     DerniereQuarantaine = cible;
                     JournalIncidents.Signaler(Dossier, Nom + " : " + Path.GetFileName(Chemin) + " illisible (" + lu.Cause
                                                        + ") mis en quarantaine sous " + Path.GetFileName(cible));
-                    socle = new Dictionary<string, long>();
+                    socle = _dernierConnu is null ? new Dictionary<string, long>() : new Dictionary<string, long>(_dernierConnu);
                     return true;
                 }
                 Refuser("quarantaine impossible — " + cause + " — " + Path.GetFileName(Chemin) + " n'est pas réécrit");
@@ -186,6 +191,7 @@ internal sealed class MagasinMapSessions
                 }
             }
             tmp = null;
+            _dernierConnu = new Dictionary<string, long>(map);
             try { _derniereEcriture = new DateTimeOffset(File.GetLastWriteTimeUtc(Chemin), TimeSpan.Zero); }
             catch (Exception) { _derniereEcriture = DateTimeOffset.UtcNow; }
             DerniereErreur = null;

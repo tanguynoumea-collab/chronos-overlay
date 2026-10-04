@@ -55,12 +55,26 @@ public static class JournalIncidents
     /// (dossier null, chemin invalide, fichier tenu, disque plein…). Trois essais rapprochés sur IOException : le journal de
     /// démarrage ou un antivirus peut tenir le fichier un instant.
     /// </summary>
-    public static bool Signaler(string? dossier, string message, DateTimeOffset? quand = null)
+    /// <para>FIAB-R3 (42.2-11) : chaque signalement passe par le <see cref="LimiteurIncidents"/> du dossier (un par journal et par
+    /// processus) — <paramref name="cle"/> (par défaut : le message) dédoublonne ; au-delà de 3 occurrences, une ligne « répété
+    /// N fois » toutes les 10 minutes au plus ; 200 lignes au plus par processus. Une occurrence tue rend false.</para>
+    public static bool Signaler(string? dossier, string message, DateTimeOffset? quand = null, string? cle = null)
     {
         if (string.IsNullOrWhiteSpace(dossier)) return false;
         try
         {
-            var ligne = Ligne(quand ?? DateTimeOffset.Now, message);
+            var instant = quand ?? DateTimeOffset.Now;
+            var (decision, repetitions) = LimiteurDe(dossier).Evaluer(cle ?? message ?? "", instant);
+            var texte = decision switch
+            {
+                DecisionIncident.Ecrire => message,
+                DecisionIncident.Resume => "(répété " + repetitions.ToString(CultureInfo.InvariantCulture) + " fois depuis le dernier relevé) " + message,
+                DecisionIncident.Plafond => "plafond de " + LimiteurIncidents.PlafondLignes.ToString(CultureInfo.InvariantCulture)
+                                            + " incidents atteint pour ce processus : les suivants ne sont plus écrits",
+                _ => null,
+            };
+            if (texte is null) return false;
+            var ligne = Ligne(instant, texte);
             for (var essai = 1; ; essai++)
             {
                 try
@@ -122,6 +136,46 @@ public static class JournalIncidents
         }
         sb.Append(rapport);
         return sb.ToString();
+    }
+
+    /// <summary>FIAB-R3 : taille maximale relue à la fin de chronos.log au démarrage (1 Mo).</summary>
+    public const int LectureMaxOctets = 1024 * 1024;
+
+    /// <summary>
+    /// FIAB-R3 (42.2-11) — la FIN de <paramref name="chemin"/> : au plus <see cref="LectureMaxOctets"/> octets, la première ligne
+    /// (coupée) écartée quand le fichier est plus long. Fichier absent → null. Partage lecture/écriture : un incident peut être
+    /// ajouté pendant la lecture. Lève sur une E/S en échec (l'appelant décide : best-effort au démarrage).
+    /// </summary>
+    public static string? LireFin(string chemin, int maxOctets = LectureMaxOctets)
+    {
+        if (!File.Exists(chemin)) return null;
+        using var flux = new FileStream(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        var tronque = flux.Length > maxOctets;
+        if (tronque) flux.Seek(-maxOctets, SeekOrigin.End);
+        var octets = new byte[tronque ? maxOctets : flux.Length];
+        var lus = 0;
+        while (lus < octets.Length)
+        {
+            var n = flux.Read(octets, lus, octets.Length - lus);
+            if (n == 0) break;
+            lus += n;
+        }
+        var texte = Utf8SansBom.GetString(octets, 0, lus);
+        if (!tronque) return texte;
+        var saut = texte.IndexOf('\n');
+        return saut >= 0 ? texte[(saut + 1)..] : "";
+    }
+
+    // FIAB-R3 : un limiteur par journal (dossier normalisé) et par processus.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, LimiteurIncidents> Limiteurs =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static LimiteurIncidents LimiteurDe(string dossier)
+    {
+        string cle;
+        try { cle = Path.GetFullPath(dossier); }
+        catch { cle = dossier; }
+        return Limiteurs.GetOrAdd(cle, _ => new LimiteurIncidents());
     }
 
     /// <summary>Vrai si le fichier existe, n'est pas vide et ne finit pas par '\n'. Faux si absent ou illisible.</summary>

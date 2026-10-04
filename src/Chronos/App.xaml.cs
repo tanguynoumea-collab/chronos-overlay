@@ -218,7 +218,8 @@ public partial class App : Application
     {
         DispatcherUnhandledException += (_, a) =>
         {
-            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("UI", a.Exception));
+            // FIAB-R3 (42.2-11) : clé (origine, type, message, premier cadre) — une exception récurrente du tick n'inonde plus le journal.
+            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("UI", a.Exception), cle: FiletExceptions.Cle("UI", a.Exception));
             a.Handled = !FiletExceptions.EstFatale(a.Exception);
         };
         AppDomain.CurrentDomain.UnhandledException += (_, a) =>
@@ -226,7 +227,8 @@ public partial class App : Application
                 a.ExceptionObject as Exception ?? new Exception(a.ExceptionObject?.ToString())));
         TaskScheduler.UnobservedTaskException += (_, a) =>
         {
-            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("tâche non observée", a.Exception));
+            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("tâche non observée", a.Exception),
+                                      cle: FiletExceptions.Cle("tâche non observée", a.Exception));
             a.SetObserved();
         };
     }

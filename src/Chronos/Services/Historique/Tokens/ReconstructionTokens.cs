@@ -419,9 +419,17 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
     // nom de la brique, ARRÊTE la chaîne (DATA-2) : un curseur ne dépasse jamais ce que l'index a persisté, des agrégats jamais
     // ce que l'index sait reprojeter. Les données restent sales en mémoire : le flush suivant les retente. Un flush réussi de
     // bout en bout efface l'erreur. Une exception levée par un hook de test se propage : c'est la « panne simulée » entre deux étapes.
+    //
+    // FIAB-R4 (42.2-11) — exception pour les mois GELÉS (hors des mois ouverts) : leurs ids ne s'écrivent qu'APRÈS leurs agrégats.
+    // Un mois ouvert guérit par reprojection depuis l'index ; un mois gelé non — si ses ids étaient persistés et ses agrégats en
+    // échec, un arrêt (ou un rejeu, qui abandonne l'état mémoire) perdait le delta pour toujours : à la relecture, l'index
+    // connaissait déjà l'id. Désormais un mois gelé dont les agrégats ne sont pas écrits garde ses ids NON persistés ; ils
+    // s'écrivent dès que ses agrégats le sont (même si un autre mois a échoué), puis les curseurs.
     private bool Flush()
     {
-        if (!_index.Flush())
+        var ouverts = _index.MoisOuverts().ToHashSet();
+
+        if (!_index.Flush(mois => ouverts.Contains(mois)))
         {
             Volatile.Write(ref _derniereErreur, Prefixer("index", _index.DerniereErreur));
             _apresEtapeFlush?.Invoke("ids");
@@ -429,13 +437,22 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
         }
         _apresEtapeFlush?.Invoke("ids");
 
-        if (!_magasin.EcrireMoisSales())   // le mois reste sale : le lot suivant rattrape
+        var agregatsEcrits = _magasin.EcrireMoisSales();   // un mois en échec reste sale : le lot suivant rattrape
+        var sales = _magasin.MoisSales.ToHashSet();
+        var idsGelesEcrits = _index.Flush(mois => !ouverts.Contains(mois) && !sales.Contains(mois));
+        if (!agregatsEcrits)
         {
             Volatile.Write(ref _derniereErreur, Prefixer("agrégats", _magasin.DerniereErreur));
             _apresEtapeFlush?.Invoke("agregats");
             return false;
         }
         _apresEtapeFlush?.Invoke("agregats");
+
+        if (!idsGelesEcrits)
+        {
+            Volatile.Write(ref _derniereErreur, Prefixer("index", _index.DerniereErreur));
+            return false;
+        }
 
         if (!_curseurs!.Sauvegarder())
         {

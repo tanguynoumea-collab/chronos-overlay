@@ -179,9 +179,12 @@ public sealed class OverlayController : IWindowController
         _setWindowPos(_hwnd, IntPtr.Zero, (int)px, (int)py, 0, 0,
             NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
 
-        // f. Applique le mode arrière-plan persisté.
-        if (s.Background) SendToBackground();
-        else BringToForeground();
+        // f. Applique le mode arrière-plan persisté. FIAB-R2 (42.2-11) : ne le PERSISTE que si la lecture de démarrage est fiable
+        //    (absent, lu, lu avec retombées). Réglages inaccessibles au lancement → défauts (Background=false) : les réécrire une
+        //    fois le fichier redevenu lisible effaçait la préférence « arrière-plan » de l'utilisateur.
+        var persister = _settings.LectureDuDemarrage?.EstFiable == true;
+        if (s.Background) PasserArrierePlan(persister);
+        else PasserPremierPlan(persister);
     }
 
     /// <summary>
@@ -213,22 +216,26 @@ public sealed class OverlayController : IWindowController
 
     // ---- IWindowController (Pattern 5 : arrière-plan + Suspend/Resume du guard) ----
 
-    public void SendToBackground()
+    public void SendToBackground() => PasserArrierePlan(persister: true);
+
+    public void BringToForeground() => PasserPremierPlan(persister: true);
+
+    private void PasserArrierePlan(bool persister)
     {
         if (_window is null) return;
         _window.Topmost = false;
         _guard.Suspend();                            // sinon le guard re-force le topmost toutes les 2 s
         _setWindowPos(_hwnd, NativeMethods.HWND_BOTTOM, 0, 0, 0, 0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
-        _settings.Modifier(s => s with { Background = true });
+        if (persister) _settings.Modifier(s => s with { Background = true });
     }
 
-    public void BringToForeground()
+    private void PasserPremierPlan(bool persister)
     {
         if (_window is null) return;
         _window.Topmost = true;
         _guard.Resume();                             // repose HWND_TOPMOST immédiatement, sans vol de focus
-        _settings.Modifier(s => s with { Background = false });
+        if (persister) _settings.Modifier(s => s with { Background = false });
     }
 
     public void Quit() => System.Windows.Application.Current.Shutdown();

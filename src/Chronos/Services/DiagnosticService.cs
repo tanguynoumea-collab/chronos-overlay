@@ -119,7 +119,8 @@ public sealed class DiagnosticService
             // Relu JUSTE AVANT la réécriture (et non avant le rapport, qui prend du temps) : réduit la fenêtre où un incident
             // signalé entre-temps serait perdu. Best-effort : un ancien journal illisible = aucun report, jamais un échec.
             string? ancien;
-            try { ancien = File.Exists(chemin) ? File.ReadAllText(chemin) : null; }
+            // FIAB-R3 (42.2-11) : seule la FIN du journal (<= 1 Mo) est relue — un journal gonflé par une rafale n'est plus lu en entier.
+            try { ancien = JournalIncidents.LireFin(chemin); }
             catch { ancien = null; }
             File.WriteAllText(chemin, JournalIncidents.ComposerJournalDemarrage(ancien, report));
         }

@@ -243,19 +243,23 @@ public sealed class IndexMessages
     }
 
     /// <summary>Écrit les lignes en attente, un shard par mois, en ajout exclusif avec reprises. Rien en attente → true sans toucher
-    /// le disque. Échec → false + <see cref="DerniereErreur"/>, les lignes RESTENT en attente (retentées au prochain flush).</summary>
-    public bool Flush()
+    /// le disque. Échec → false + <see cref="DerniereErreur"/>, les lignes RESTENT en attente (retentées au prochain flush).
+    /// FIAB-R4 (42.2-11) : <paramref name="moisRetenu"/> (1er du mois UTC) restreint l'écriture à certains mois — les lignes des
+    /// autres mois restent en attente. La reconstruction écrit ainsi les ids d'un mois GELÉ seulement APRÈS ses agrégats.</summary>
+    public bool Flush(Func<DateTimeOffset, bool>? moisRetenu = null)
     {
         lock (_verrou)
         {
             if (_aEcrire.Count == 0) return true;
+            if (moisRetenu is not null && !_aEcrire.Any(x => moisRetenu(TrancheMoisDe(x.E.Ts)))) return true;
 
             // Le dossier se crée HORS de la boucle de reprises : un dossier qu'on ne peut pas créer n'est pas un verrou transitoire.
             try { Directory.CreateDirectory(Dossier); }
             catch (Exception ex) { DerniereErreur = Decrire(ex); return false; }
 
             var tout = true;
-            foreach (var groupe in _aEcrire.GroupBy(x => NomFichier(x.E.Ts)).ToList())
+            foreach (var groupe in _aEcrire.Where(x => moisRetenu is null || moisRetenu(TrancheMoisDe(x.E.Ts)))
+                                            .GroupBy(x => NomFichier(x.E.Ts)).ToList())
             {
                 var texte = new StringBuilder();
                 foreach (var (id, e) in groupe) texte.Append(Serialiser(id, e)).Append('\n');

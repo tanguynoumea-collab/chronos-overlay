@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Chronos.Services;
@@ -41,6 +44,9 @@ public sealed class PasserelleReglagesClaude
 {
     /// <summary>Nombre de sauvegardes horodatées conservées dans le dossier de sauvegarde.</summary>
     private const int SauvegardesConservees = 5;
+
+    /// <summary>FIAB-R1 (42.2-11) : nom de la sauvegarde ÉPINGLÉE (état d'avant Chronos), jamais évincée ni réécrite.</summary>
+    public const string NomSauvegardeInitiale = "claude-settings-initial.json";
 
     /// <summary>Essais de lecture sur une erreur d'E/S passagère (Claude Code peut tenir le fichier un instant).</summary>
     private const int EssaisLecture = 3;
@@ -184,15 +190,26 @@ public sealed class PasserelleReglagesClaude
         try
         {
             Directory.CreateDirectory(_backupDir);
+            Epingler(texte);
             var cible = CibleDeSauvegarde();
             if (cible is null) return null;   // 100 collisions d'affilée : on renonce plutôt qu'on écrase
             File.WriteAllText(cible, texte);
 
+            // SEC-R4 (42.2-11) : tri sur (horodatage, numéro de collision) — le nom brut faisait passer « -10 » avant « -9 » et
+            // la base avant ses doublons. L'épingle n'a pas d'horodatage : elle n'entre jamais dans le tri. La sauvegarde du
+            // jour n'est jamais évincée (transition des anciens noms en heure locale vers l'UTC).
             foreach (var vieux in new DirectoryInfo(_backupDir)
                          .GetFiles("claude-settings-*.json")
-                         .OrderByDescending(f => f.Name)
-                         .Skip(SauvegardesConservees))
+                         .Select(f => (Fichier: f, Cle: CleDeSauvegarde(f.Name)))
+                         .Where(x => x.Cle is not null)
+                         .OrderByDescending(x => x.Cle!.Value.Horodatage, StringComparer.Ordinal)
+                         .ThenByDescending(x => x.Cle!.Value.Collision)
+                         .Skip(SauvegardesConservees)
+                         .Select(x => x.Fichier))
+            {
+                if (string.Equals(vieux.FullName, Path.GetFullPath(cible), StringComparison.OrdinalIgnoreCase)) continue;
                 try { vieux.Delete(); } catch { }   // rétention best-effort : un échec ici n'est pas bloquant
+            }
 
             return cible;
         }
@@ -202,19 +219,66 @@ public sealed class PasserelleReglagesClaude
     /// <summary>
     /// Nom horodaté à la seconde ; deux écritures dans la même seconde s'écraseraient, d'où le suffixe <c>-1</c>,
     /// <c>-2</c>, … Rend <c>null</c> après 100 tentatives.
+    /// SEC-R4 (42.2-11) : le numéro part TOUJOURS au-delà du plus grand déjà présent pour cette seconde — réutiliser un trou
+    /// laissé par la rétention (la base évincée) rangeait la sauvegarde du jour parmi les plus anciennes.
     /// </summary>
     private string? CibleDeSauvegarde()
     {
-        var racine = Path.Combine(_backupDir, "claude-settings-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-        if (!File.Exists(racine + ".json")) return racine + ".json";
+        // SEC-R4 (42.2-11) : UTC et chiffres invariants — ni le fuseau ni la culture (calendrier non grégorien) ne déplacent le tri.
+        var horodatage = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+        var racine = Path.Combine(_backupDir, "claude-settings-" + horodatage);
 
-        for (int i = 1; i <= 100; i++)
+        var max = -1;   // -1 : aucune sauvegarde de cette seconde ; 0 : la base ; n : « -n »
+        foreach (var f in Directory.GetFiles(_backupDir, "claude-settings-" + horodatage + "*.json"))
+            if (CleDeSauvegarde(Path.GetFileName(f)) is { } c && c.Horodatage == horodatage && c.Collision > max) max = c.Collision;
+
+        if (max < 0 && !File.Exists(racine + ".json")) return racine + ".json";
+        for (int i = Math.Max(max + 1, 1); i <= Math.Max(max + 1, 1) + 100; i++)
         {
-            var candidat = racine + "-" + i + ".json";
+            var candidat = racine + "-" + i.ToString(CultureInfo.InvariantCulture) + ".json";
             if (!File.Exists(candidat)) return candidat;
         }
         return null;
     }
+
+    /// <summary>
+    /// FIAB-R1 (42.2-11) — épingle UNE FOIS POUR TOUTES l'état d'avant Chronos sous <see cref="NomSauvegardeInitiale"/> : chaque
+    /// bascule du widget consomme une des <see cref="SauvegardesConservees"/> sauvegardes, et l'original était évincé en trois
+    /// allers-retours. Contenu : la plus ANCIENNE sauvegarde horodatée déjà présente (versions précédentes), sinon le texte lu.
+    /// Jamais réécrite (création exclusive) ; un échec n'empêche pas la sauvegarde horodatée.
+    /// </summary>
+    private void Epingler(string texte)
+    {
+        var epingle = Path.Combine(_backupDir, NomSauvegardeInitiale);
+        if (File.Exists(epingle)) return;
+        try
+        {
+            var plusAncienne = new DirectoryInfo(_backupDir)
+                .GetFiles("claude-settings-*.json")
+                .Select(f => (Fichier: f, Cle: CleDeSauvegarde(f.Name)))
+                .Where(x => x.Cle is not null)
+                .OrderBy(x => x.Cle!.Value.Horodatage, StringComparer.Ordinal)
+                .ThenBy(x => x.Cle!.Value.Collision)
+                .Select(x => x.Fichier)
+                .FirstOrDefault();
+            var contenu = plusAncienne is not null ? File.ReadAllBytes(plusAncienne.FullName) : Encoding.UTF8.GetBytes(texte);
+            using var flux = new FileStream(epingle, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            flux.Write(contenu, 0, contenu.Length);
+        }
+        catch { /* déjà créée par un autre processus, ou disque : l'épingle est best-effort */ }
+    }
+
+    /// <summary>(horodatage « yyyyMMdd-HHmmss », numéro de collision) d'une sauvegarde horodatée ; null pour tout autre nom.</summary>
+    private static (string Horodatage, int Collision)? CleDeSauvegarde(string nom)
+    {
+        var m = NomHorodate.Match(nom);
+        if (!m.Success) return null;
+        var collision = m.Groups[2].Success && int.TryParse(m.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : 0;
+        return (m.Groups[1].Value, collision);
+    }
+
+    private static readonly Regex NomHorodate =
+        new(@"^claude-settings-(\d{8}-\d{6})(?:-(\d{1,6}))?\.json\z", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     private static void SupprimerSansLever(string chemin)
     {

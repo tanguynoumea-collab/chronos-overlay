@@ -50,6 +50,26 @@ public static class FiletExceptions
         }
     }
 
+    /// <summary>
+    /// FIAB-R3 (42.2-11) — clé de dédoublonnage du journal d'incidents : origine, type, message et PREMIER cadre de pile
+    /// seulement. Deux levées au même endroit se reconnaissent, même si l'appelant (la suite de la pile) diffère. Ne lève jamais.
+    /// </summary>
+    public static string Cle(string origine, Exception e)
+    {
+        try
+        {
+            string? pile;
+            try { pile = e.StackTrace; }
+            catch { pile = null; }
+            var premier = pile?.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
+            return origine + "|" + Resume(e) + "|" + premier;
+        }
+        catch
+        {
+            return origine + "|" + e.GetType().FullName;
+        }
+    }
+
     private static string Resume(Exception e)
     {
         string message;

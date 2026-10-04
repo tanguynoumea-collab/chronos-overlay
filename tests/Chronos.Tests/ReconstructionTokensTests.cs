@@ -704,7 +704,8 @@ public sealed class ReconstructionTokensTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(transcript)!);
         File.WriteAllText(transcript, File.ReadAllText(Fixture("multi-blocs", "session-a.jsonl"), Utf8SansBom)
                                           .Replace("2026-07-08T", jour + "T")
-                                          .Replace("msg_01EXEMPLEMULTIBLOCS", "msg_01AUTREIDMULTIBLOCS"), Utf8SansBom);
+                                          .Replace("msg_01EXEMPLEMULTIBLOCS", "msg_01AUTREIDMULTIBLOCS")
+                                          .Replace("req_01EXEMPLE", "req_01AUTREID"), Utf8SansBom);   // requestId : repli d'id sans message.id
         File.SetLastWriteTimeUtc(transcript, (Now - TimeSpan.FromMinutes(30)).UtcDateTime);
     }
 
