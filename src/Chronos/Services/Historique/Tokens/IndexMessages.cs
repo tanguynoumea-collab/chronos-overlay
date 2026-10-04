@@ -45,6 +45,7 @@ public sealed class IndexMessages
 
     private const string ModeleAbsent = "<absent>";
     private const int EssaisMax = 600;   // motif JournalReleves : deux processus ne se font pas échouer
+    private const int EssaisLecture = 20;  // motif LecteurJournal.LireFichier : un écrivain tient le shard < 1 ms
 
     private static readonly Regex NomShard = new(@"^ids-(\d{4})-(\d{2})\.jsonl$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly UTF8Encoding Utf8SansBom = new(encoderShouldEmitUTF8Identifier: false);
@@ -58,6 +59,7 @@ public sealed class IndexMessages
 
     private readonly Dictionary<string, Entree> _parId = new(StringComparer.Ordinal);
     private readonly List<(string Id, Entree E)> _aEcrire = new();
+    private readonly HashSet<DateTimeOffset> _moisIllisibles = new();
     private readonly object _verrou = new();
     private readonly IClock _clock;
 
@@ -81,6 +83,17 @@ public sealed class IndexMessages
 
     /// <summary>« Type : message » de la dernière écriture ratée ; effacée au premier succès.</summary>
     public string? DerniereErreur { get; private set; }
+
+    /// <summary>MAT-4 — « shard AAAA-MM : cause » de la dernière lecture non aboutie au <see cref="Charger"/> ; remise à null par
+    /// un <see cref="Charger"/> où tous les shards ont été lus, jamais par une écriture.</summary>
+    public string? DerniereErreurLecture { get; private set; }
+
+    /// <summary>DATA-3 — mois ouverts dont le shard n'a pas pu être lu au dernier <see cref="Charger"/> (copie) : l'index est alors
+    /// INCOMPLET pour ces mois, il ne doit ni être reprojeté ni servir à dédoublonner.</summary>
+    public IReadOnlyCollection<DateTimeOffset> MoisIllisibles
+    {
+        get { lock (_verrou) return _moisIllisibles.OrderBy(m => m).ToList(); }
+    }
 
     /// <summary>Nom du shard qui porte un message : mois UTC de son premier timestamp.</summary>
     public static string NomFichier(DateTimeOffset ts)
@@ -112,19 +125,23 @@ public sealed class IndexMessages
     }
 
     /// <summary>Relit les shards des mois ouverts (lecture tolérante ; id déjà vu → le max gagne, le timestamp le plus PETIT
-    /// reste). Remplace l'état en mémoire. Rend le nombre d'ids connus.</summary>
+    /// reste). Remplace l'état en mémoire. Rend le nombre d'ids connus. Ne lève jamais : un shard illisible (ouverture refusée
+    /// après reprises, lecture interrompue, fichier non vide sans aucune ligne valide) entre dans <see cref="MoisIllisibles"/>
+    /// et pose <see cref="DerniereErreurLecture"/> — c'est à l'appelant de ne pas s'en servir (DATA-3).</summary>
     public int Charger()
     {
         lock (_verrou)
         {
             _parId.Clear();
+            _moisIllisibles.Clear();
             LignesIgnorees = 0;
             foreach (var mois in MoisOuverts())
             {
                 var chemin = Path.Combine(Dossier, NomFichier(mois));
                 if (!File.Exists(chemin)) continue;
-                ChargerShard(chemin);
+                ChargerShard(chemin, mois);
             }
+            if (_moisIllisibles.Count == 0) DerniereErreurLecture = null;
             return _parId.Count;
         }
     }
@@ -260,17 +277,25 @@ public sealed class IndexMessages
 
     // Lecture tolérante d'un shard : v lu en premier, id chaîne non vide, ts par le point unique HDR-05, compteurs entiers
     // (sinon ligne ignorée et comptée), sub absent → false. Partage large : un autre processus peut être en train d'écrire.
-    private void ChargerShard(string chemin)
+    // DATA-3 (phase 42.2) — TRI-ÉTAT : absent ou 0 octet → vide légitime (OpenOrCreate puis écriture : un arrêt entre les deux
+    // laisse un shard qui n'a jamais rien porté) ; ouverture refusée après reprises, lecture interrompue, ou fichier non vide
+    // sans AUCUNE ligne valide → illisible (false), jamais « vide ». Les ids lus avant une interruption restent en mémoire,
+    // mais le mois est marqué : l'appelant ne doit pas s'en servir.
+    private bool ChargerShard(string chemin, DateTimeOffset mois)
     {
         try
         {
-            using var fs = new FileStream(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var fs = OuvrirEnLecture(chemin);
+            if (fs is null) return true;   // disparu entre File.Exists et l'ouverture : absent
+
+            var valides = 0;
             using var lecteur = new StreamReader(fs, Utf8SansBom);
             string? ligne;
             while ((ligne = lecteur.ReadLine()) is not null)
             {
                 if (ligne.Length == 0) continue;
                 if (!ParserLigne(ligne, out var id, out var e)) { LignesIgnorees++; continue; }
+                valides++;
 
                 if (_parId.TryGetValue(id, out var connu))
                 {
@@ -282,9 +307,37 @@ public sealed class IndexMessages
                     _parId[id] = e;
                 }
             }
+
+            if (valides == 0 && fs.Length > 0)
+                return Illisible(mois, "fichier non vide sans aucune ligne valide (" + fs.Length.ToString(CultureInfo.InvariantCulture) + " octets)");
+            return true;
         }
-        catch (IOException) { /* shard illisible à cet instant : il sera relu au prochain Charger */ }
-        catch (UnauthorizedAccessException) { }
+        catch (IOException ex) { return Illisible(mois, Decrire(ex)); }
+        catch (UnauthorizedAccessException ex) { return Illisible(mois, Decrire(ex)); }
+    }
+
+    // null = disparu entre File.Exists et l'ouverture. IOException au-delà des reprises → levée vers ChargerShard.
+    private static FileStream? OuvrirEnLecture(string chemin)
+    {
+        for (var essai = 1; ; essai++)
+        {
+            try
+            {
+                return new FileStream(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            }
+            catch (FileNotFoundException) { return null; }
+            catch (IOException) when (essai < EssaisLecture)
+            {
+                if (essai <= 12) Thread.Yield(); else Thread.Sleep(1);
+            }
+        }
+    }
+
+    private bool Illisible(DateTimeOffset mois, string cause)
+    {
+        _moisIllisibles.Add(mois);
+        DerniereErreurLecture = "shard " + mois.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture) + " : " + cause;
+        return false;
     }
 
     private static bool ParserLigne(string ligne, out string id, out Entree e)

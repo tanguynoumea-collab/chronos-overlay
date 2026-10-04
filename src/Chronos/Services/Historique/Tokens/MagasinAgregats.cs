@@ -48,6 +48,7 @@ public sealed class MagasinAgregats : IEtatMagasin
     // Clé d'une tranche dans son mois : (modèle, origine, slot). Le slot est TOUJOURS normalisé par SlotDe.
     private readonly Dictionary<DateTimeOffset, Dictionary<(string Model, bool Sub, DateTimeOffset Slot), TrancheTokens>> _parMois = new();
     private readonly HashSet<DateTimeOffset> _sales = new();
+    private readonly HashSet<DateTimeOffset> _moisIllisibles = new();
     private readonly object _verrou = new();
     private readonly IClock _clock;
 
@@ -71,6 +72,16 @@ public sealed class MagasinAgregats : IEtatMagasin
 
     /// <summary>« Type : message » de la dernière écriture ratée ; null après un succès.</summary>
     public string? DerniereErreur { get; private set; }
+
+    /// <summary>MAT-4 b — « mois AAAA-MM : Type : message » de la dernière lecture de mois non aboutie. Ne s'efface QUE quand
+    /// plus aucun mois n'est illisible (lecture réussie), jamais par une écriture d'un autre mois.</summary>
+    public string? DerniereErreurLecture { get; private set; }
+
+    /// <summary>DATA-3 — mois (1er du mois UTC) dont la dernière lecture a échoué : ni connus, ni sales, jamais réécrits — copie.</summary>
+    public IReadOnlyCollection<DateTimeOffset> MoisIllisibles
+    {
+        get { lock (_verrou) return _moisIllisibles.OrderBy(m => m).ToList(); }
+    }
 
     /// <summary>Nombre de fichiers mensuels écrits par ce processus (un mois réécrit deux fois compte deux).</summary>
     public int MoisEcrits { get; private set; }
@@ -114,8 +125,10 @@ public sealed class MagasinAgregats : IEtatMagasin
 
     /// <summary>
     /// Charge un mois depuis son fichier (lecture tolérante ligne par ligne, partage large) et REMPLACE l'état mémoire de
-    /// ce mois SANS le salir : charger ne réécrit jamais. Fichier absent → 0, rien n'est créé. Rend le nombre de tranches
-    /// lues ; les lignes refusées s'ajoutent à <see cref="LignesIgnorees"/>. Ne lève jamais.
+    /// ce mois SANS le salir : charger ne réécrit jamais. Fichier absent ou de 0 octet → 0, rien n'est créé. Rend le nombre
+    /// de tranches lues ; les lignes refusées s'ajoutent à <see cref="LignesIgnorees"/>. <b>-1 = illisible</b> (DATA-3) :
+    /// ouverture refusée après reprises, lecture interrompue, ou fichier non vide dont AUCUNE ligne n'est valide — le mois
+    /// sort alors de la mémoire et entre dans <see cref="MoisIllisibles"/>. Ne lève jamais.
     /// </summary>
     public int ChargerMois(DateTimeOffset mois)
     {
@@ -146,12 +159,13 @@ public sealed class MagasinAgregats : IEtatMagasin
 
     /// <summary>
     /// Ajoute un delta à sa tranche : créée (N = 1 si premier passage, sinon 0) ou augmentée (N += 1 seulement si
-    /// premier passage). Un delta nul ne fait rien et ne salit pas. Un mois PAS ENCORE en mémoire est d'abord chargé
-    /// depuis son fichier : un mois gelé n'est jamais écrasé par une tranche isolée.
+    /// premier passage). Un delta nul ne fait rien, ne salit pas et rend true. Un mois PAS ENCORE en mémoire est d'abord
+    /// chargé depuis son fichier : un mois gelé n'est jamais écrasé par une tranche isolée. <c>false</c> = ce chargement a
+    /// échoué (DATA-3) : rien n'est appliqué, rien n'est sali — l'appelant interrompt sa passe, le delta sera rejoué.
     /// </summary>
-    public void Appliquer(DeltaTranche d)
+    public bool Appliquer(DeltaTranche d)
     {
-        if (d.EstNul) return;
+        if (d.EstNul) return true;
 
         var slot = TrancheTokens.SlotDe(d.Slot);
         var mois = TrancheTokens.MoisDe(slot);
@@ -159,7 +173,7 @@ public sealed class MagasinAgregats : IEtatMagasin
 
         lock (_verrou)
         {
-            if (!_parMois.ContainsKey(mois)) ChargerMoisSousVerrou(mois);
+            if (!_parMois.ContainsKey(mois) && ChargerMoisSousVerrou(mois) < 0) return false;
             var etat = _parMois[mois];
 
             var cle = (d.Model, d.Sub, slot);
@@ -168,6 +182,7 @@ public sealed class MagasinAgregats : IEtatMagasin
                 : new TrancheTokens(slot, d.Model, d.Sub, d.In, d.Out, d.CacheW, d.CacheR, n);
 
             _sales.Add(mois);
+            return true;
         }
     }
 
@@ -271,8 +286,15 @@ public sealed class MagasinAgregats : IEtatMagasin
 
     private static string Decrire(Exception ex) => ex.GetType().Name + " : " + ex.Message;
 
-    // Lecture tolérante d'un mois (partage large : un autre processus peut le tenir). L'état mémoire du mois est
-    // remplacé par ce qui a été lu — même vide, même après une erreur d'E/S (consignée) : le mois est alors « connu ».
+    // Un autre processus tient le fichier le temps d'une écriture (< 1 ms) : céder la main quelques fois suffit (motif
+    // LecteurJournal.LireFichier). Au-delà, le mois est illisible pour cette fois — jamais « vide ».
+    private const int EssaisOuverture = 20;
+
+    // DATA-3 (phase 42.2) — lecture tolérante d'un mois, TRI-ÉTAT. Règle : un mois n'est « connu » (et donc modifiable puis
+    // réécrit en entier par EcrireMoisSales) QUE si sa lecture a abouti. Absent ou 0 octet → connu et vide (le magasin écrit
+    // lui-même un mois sans tranche comme un fichier vide ; réécrire 0 octet ne perd rien). Ouverture refusée après reprises,
+    // lecture interrompue, ou fichier non vide sans AUCUNE ligne valide → illisible : le mois sort de la mémoire (ni connu ni
+    // sale), aucune réécriture possible tant qu'une lecture n'a pas réussi. DerniereErreur (écriture) n'est jamais touchée ici.
     private int ChargerMoisSousVerrou(DateTimeOffset mois)
     {
         var etat = new Dictionary<(string Model, bool Sub, DateTimeOffset Slot), TrancheTokens>();
@@ -282,26 +304,61 @@ public sealed class MagasinAgregats : IEtatMagasin
         {
             try
             {
-                using var fs = new FileStream(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                using var lecteur = new StreamReader(fs, Utf8SansBom, detectEncodingFromByteOrderMarks: true);
-                while (lecteur.ReadLine() is { } brute)
+                using var fs = Ouvrir(chemin);
+                if (fs is not null)
                 {
-                    var ligne = brute.TrimEnd('\r');
-                    if (ligne.Length == 0) continue;   // ligne vide : ni lue ni comptée
-                    if (LigneAgregat.Parser(ligne, out var t) && t is not null)
-                        etat[(t.Model, t.Sub, t.Slot)] = t;
-                    else
-                        LignesIgnorees++;
+                    var refusees = 0;
+                    using var lecteur = new StreamReader(fs, Utf8SansBom, detectEncodingFromByteOrderMarks: true);
+                    while (lecteur.ReadLine() is { } brute)
+                    {
+                        var ligne = brute.TrimEnd('\r');
+                        if (ligne.Length == 0) continue;   // ligne vide : ni lue ni comptée
+                        if (LigneAgregat.Parser(ligne, out var t) && t is not null)
+                            etat[(t.Model, t.Sub, t.Slot)] = t;
+                        else
+                            refusees++;
+                    }
+                    LignesIgnorees += refusees;
+
+                    if (etat.Count == 0 && fs.Length > 0)
+                        return Illisible(mois, "fichier non vide sans aucune ligne valide (" + fs.Length.ToString(CultureInfo.InvariantCulture) + " octets)");
                 }
             }
             catch (Exception ex)
             {
-                DerniereErreur = Decrire(ex);   // une lecture ratée se lit au diagnostic ; le mois reste chargeable plus tard
+                return Illisible(mois, Decrire(ex));
             }
         }
 
         _parMois[mois] = etat;
         _sales.Remove(mois);
+        if (_moisIllisibles.Remove(mois) && _moisIllisibles.Count == 0) DerniereErreurLecture = null;
         return etat.Count;
+    }
+
+    // null = le fichier a disparu entre File.Exists et l'ouverture (absent : connu et vide). IOException après les reprises → levée.
+    private static FileStream? Ouvrir(string chemin)
+    {
+        for (var essai = 1; ; essai++)
+        {
+            try
+            {
+                return new FileStream(chemin, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            }
+            catch (FileNotFoundException) { return null; }
+            catch (IOException) when (essai < EssaisOuverture)
+            {
+                if (essai <= 12) Thread.Yield(); else Thread.Sleep(1);
+            }
+        }
+    }
+
+    private int Illisible(DateTimeOffset mois, string cause)
+    {
+        _parMois.Remove(mois);
+        _sales.Remove(mois);
+        _moisIllisibles.Add(mois);
+        DerniereErreurLecture = "mois " + mois.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture) + " : " + cause;
+        return -1;
     }
 }
