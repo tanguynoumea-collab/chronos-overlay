@@ -19,6 +19,7 @@ public sealed class RefreshOrchestrator : BackgroundService
 {
     private readonly IUsageProvider _provider;
     private readonly RefreshOptions _options;
+    private readonly string? _dossierJournal;   // dossier de chronos.log ; null = filet sans journal (tests)
 
     // Capacité 1 + DropWrite = coalescence naturelle : si un rafraîchissement est déjà en file,
     // les déclencheurs surnuméraires d'une rafale sont abandonnés (un seul rattrapage suffit).
@@ -49,8 +50,8 @@ public sealed class RefreshOrchestrator : BackgroundService
         catch (TimeoutException) { return null; }
     }
 
-    public RefreshOrchestrator(IUsageProvider provider, RefreshOptions options)
-        => (_provider, _options) = (provider, options);
+    public RefreshOrchestrator(IUsageProvider provider, RefreshOptions options, string? dossierJournal = null)
+        => (_provider, _options, _dossierJournal) = (provider, options, dossierJournal);
 
     /// <summary>
     /// La boucle part EXPLICITEMENT sur le pool (<see cref="Task.Run(Func{Task})"/>), jamais sur le contexte de

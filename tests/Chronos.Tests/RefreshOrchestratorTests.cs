@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using Chronos.Services;
 using Xunit;
 
@@ -124,5 +125,96 @@ public class RefreshOrchestratorTests
         var s = await orch.AttendrePremierAsync(TimeSpan.FromMilliseconds(100), CancellationToken.None);
         Assert.Null(s);
         Assert.Equal(0, provider.GetCount);
+    }
+
+    // --- DS2-01 (42.4) : une exception d'un provider ne tue plus la boucle ; elle est consignée dans chronos.log ---
+
+    /// <summary>Dossier de journal TEMPORAIRE (jamais %APPDATA%\Chronos), garde anti-accident.</summary>
+    private static string DossierJournalTemp()
+    {
+        var dossier = Path.Combine(Path.GetTempPath(), "ChronosOrchFilet_" + Guid.NewGuid().ToString("N"));
+        Assert.StartsWith(Path.GetTempPath(), dossier);
+        return dossier;
+    }
+
+    [Fact]
+    public async Task Une_exception_du_provider_ne_tue_pas_la_boucle()
+    {
+        var dossier = DossierJournalTemp();
+        var provider = new FakeUsageProvider { LeverAuProchain = new NullReferenceException("simulée") };
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero), dossierJournal: dossier);
+        int emissions = 0;
+        orch.SnapshotChanged += (_, _) => Interlocked.Increment(ref emissions);
+        try
+        {
+            await orch.StartAsync(CancellationToken.None);
+            Assert.True(await WaitUntilAsync(() => provider.GetCount == 1, 2000), "la charge initiale doit appeler le provider");
+
+            // Le 1er GetAsync a levé : un nouveau déclencheur doit encore être consommé et publié.
+            orch.TryTrigger();
+            Assert.True(await WaitUntilAsync(() => Volatile.Read(ref emissions) >= 1, 2000), "la boucle doit publier au tick suivant");
+            Assert.NotNull(orch.DernierSnapshot);
+
+            var journal = File.ReadAllText(Path.Combine(dossier, JournalIncidents.NomFichier));
+            Assert.Contains(JournalIncidents.Marqueur, journal);
+            Assert.Contains("rafraîchissement", journal);
+            Assert.Contains("NullReferenceException", journal);
+        }
+        finally
+        {
+            await orch.StopAsync(CancellationToken.None);
+            try { Directory.Delete(dossier, true); } catch { /* nettoyage best-effort */ }
+        }
+    }
+
+    [Fact]
+    public async Task Une_annulation_qui_ne_vient_pas_de_l_arret_ne_tue_pas_la_boucle()
+    {
+        var dossier = DossierJournalTemp();
+        var provider = new FakeUsageProvider { LeverAuProchain = new TaskCanceledException("délai HTTP") };
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero), dossierJournal: dossier);
+        int emissions = 0;
+        orch.SnapshotChanged += (_, _) => Interlocked.Increment(ref emissions);
+        try
+        {
+            await orch.StartAsync(CancellationToken.None);
+            Assert.True(await WaitUntilAsync(() => provider.GetCount == 1, 2000));
+
+            orch.TryTrigger();
+            Assert.True(await WaitUntilAsync(() => Volatile.Read(ref emissions) >= 1, 2000), "un délai HTTP ne doit pas arrêter le rafraîchissement");
+        }
+        finally
+        {
+            await orch.StopAsync(CancellationToken.None);
+            try { Directory.Delete(dossier, true); } catch { /* nettoyage best-effort */ }
+        }
+    }
+
+    [Fact]
+    public async Task L_arret_normal_n_est_jamais_journalise_comme_incident()
+    {
+        var dossier = DossierJournalTemp();
+        using var gate = new ManualResetEventSlim(false);   // jamais libéré : seul l'arrêt débloque le provider
+        var provider = new FakeUsageProvider { Gate = gate };
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero), dossierJournal: dossier);
+
+        await orch.StartAsync(CancellationToken.None);
+        Assert.True(await WaitUntilAsync(() => provider.GetCount == 1, 2000), "le provider doit être en vol");
+
+        var sw = Stopwatch.StartNew();
+        await orch.StopAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5));
+
+        Assert.False(File.Exists(Path.Combine(dossier, JournalIncidents.NomFichier)), "l'arrêt normal ne doit rien journaliser");
+    }
+
+    /// <summary>Garde textuelle : la composition racine passe le dossier du journal à l'orchestrateur — sinon le filet
+    /// rattraperait les exceptions sans jamais les consigner.</summary>
+    [Fact]
+    public void App_construit_l_orchestrateur_avec_le_dossier_du_journal()
+    {
+        var app = File.ReadAllText(Path.Combine(GardesPerimetreTests.CheminSources(), "App.xaml.cs"));
+        Assert.Contains("new RefreshOrchestrator(", app, StringComparison.Ordinal);
+        Assert.Contains("dossierJournal:", app, StringComparison.Ordinal);
     }
 }

@@ -16,9 +16,14 @@ internal sealed class FakeUsageProvider : IUsageProvider
     /// <summary>Si posé, chaque GetAsync attend ce gate (test de coalescence).</summary>
     public ManualResetEventSlim? Gate;
 
+    /// <summary>Si posée, le PROCHAIN GetAsync rend une tâche en faute avec cette exception (une seule fois) —
+    /// sert à prouver le filet de la boucle de l'orchestrateur (DS2-01, 42.4).</summary>
+    public Exception? LeverAuProchain;
+
     public Task<UsageSnapshot> GetAsync(CancellationToken ct = default)
     {
         Interlocked.Increment(ref _getCount);
+        if (Interlocked.Exchange(ref LeverAuProchain, null) is { } e) return Task.FromException<UsageSnapshot>(e);
         Gate?.Wait(ct);
         return Task.FromResult(Next);
     }
