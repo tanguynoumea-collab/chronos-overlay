@@ -479,4 +479,127 @@ public sealed class ReconstructionTokensTests : IDisposable
         Assert.NotEqual(PhaseReconstruction.EnEchec, service.Phase);
         Assert.Null(service.DerniereErreur);
     }
+
+    // --- DATA-3 (phase 42.2) : une brique illisible interrompt la passe SANS flush, la passe suivante rejoue ---
+
+    private static readonly TrancheTokens TrancheSemee = new(Utc("2026-09-15T10:00:00Z"), "claude-opus-5", false, 1, 2, 3, 4, 1);
+
+    // Un état disque cohérent d'avant : un id dans le shard de septembre et sa tranche dans tokens-2026-09.jsonl.
+    private static void SemerSeptembre(ChronosPaths paths)
+    {
+        var clock = new FakeClock(Now);
+        var index = new IndexMessages(paths.HistoriqueDir, clock);
+        Assert.NotNull(index.Ajouter(new MessageLu("msg_seme", Utc("2026-09-15T10:02:00Z"), "claude-opus-5", false, 1, 2, 3, 4)));
+        Assert.True(index.Flush());
+        var magasin = new MagasinAgregats(paths.HistoriqueDir, clock);
+        Assert.True(magasin.Appliquer(new DeltaTranche(TrancheSemee.Slot, "claude-opus-5", false, 1, 2, 3, 4, true)));
+        Assert.True(magasin.EcrireMoisSales());
+    }
+
+    private static string CheminShardSeptembre(ChronosPaths paths) => Path.Combine(paths.HistoriqueDir, "ids-2026-09.jsonl");
+
+    private static FileStream Tenir(string chemin) => new(chemin, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+    [Fact]
+    public void Un_shard_d_ids_tenu_au_demarrage_interrompt_la_passe_sans_rien_ecrire_puis_la_passe_suivante_rejoue()
+    {
+        var (paths, _) = Contexte("shard-tenu");
+        SemerSeptembre(paths);
+        var octets = File.ReadAllBytes(CheminTokens(paths));
+        var service = Service(paths);
+
+        BilanPasse bilan;
+        using (Tenir(CheminShardSeptembre(paths)))
+            bilan = service.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.False(bilan.Complete);
+        Assert.Equal(0, bilan.FichiersOuverts);   // aucune lecture de transcript sur un index incomplet
+        Assert.Equal(PhaseReconstruction.EnEchec, service.Phase);
+        Assert.NotNull(service.DerniereErreur);
+        Assert.Contains("index", service.DerniereErreur);
+        Assert.Contains("2026-09", service.DerniereErreur);
+        Assert.Equal(octets, File.ReadAllBytes(CheminTokens(paths)));
+        Assert.False(File.Exists(CheminCurseurs(paths)));
+
+        // Shard libéré : la même instance rejoue l'initialisation, l'id semé est connu, rien n'est perdu.
+        var bilan2 = service.ExecuterUnePasse(CancellationToken.None);
+        Assert.True(bilan2.Complete);
+        Assert.Equal(PhaseReconstruction.Incremental, service.Phase);
+        Assert.Equal(new[] { TrancheSemee }.Concat(Attendues).ToArray(), Tranches(CheminTokens(paths)));
+    }
+
+    [Fact]
+    public void Un_shard_d_ids_non_vide_sans_ligne_valide_interrompt_la_passe_sans_reprojeter()
+    {
+        var (paths, _) = Contexte("shard-texte");
+        SemerSeptembre(paths);
+        File.WriteAllText(CheminShardSeptembre(paths), "ceci n'est pas du JSON\n", Utf8SansBom);
+        var octets = File.ReadAllBytes(CheminTokens(paths));
+        var service = Service(paths);
+
+        var bilan = service.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.False(bilan.Complete);
+        Assert.Equal(PhaseReconstruction.EnEchec, service.Phase);
+        Assert.Contains("index", service.DerniereErreur);
+        Assert.Equal(octets, File.ReadAllBytes(CheminTokens(paths)));
+        Assert.False(File.Exists(CheminCurseurs(paths)));
+    }
+
+    [Fact]
+    public void Un_shard_d_ids_de_zero_octet_ne_fait_pas_perdre_les_agregats_existants_du_mois()
+    {
+        // 0 octet = index vide légitime pour l'index ; mais un mois ouvert dont l'index ne sait RIEN alors que son fichier
+        // d'agrégats porte des tranches n'est pas reprojeté (il serait réécrit vide) : il est relu tel quel.
+        var (paths, _) = Contexte("shard-zero");
+        SemerSeptembre(paths);
+        File.WriteAllBytes(CheminShardSeptembre(paths), Array.Empty<byte>());
+        var service = Service(paths);
+
+        var bilan = service.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.True(bilan.Complete);
+        Assert.Equal(new[] { TrancheSemee }.Concat(Attendues).ToArray(), Tranches(CheminTokens(paths)));
+    }
+
+    [Fact]
+    public void Un_mois_d_agregats_ancien_tenu_interrompt_la_passe_sans_flush_puis_la_passe_suivante_l_applique()
+    {
+        var (paths, racine) = Contexte("agregats-tenus", peupler: false);
+        var juinSeme = new TrancheTokens(Utc("2026-06-10T10:00:00Z"), "claude-opus-5", false, 1, 2, 3, 4, 1);
+        var magasinSeme = new MagasinAgregats(paths.HistoriqueDir, new FakeClock(Now));
+        Assert.True(magasinSeme.Appliquer(new DeltaTranche(juinSeme.Slot, "claude-opus-5", false, 1, 2, 3, 4, true)));
+        Assert.True(magasinSeme.EcrireMoisSales());
+        var cheminJuin = Path.Combine(paths.HistoriqueDir, "tokens-2026-06.jsonl");
+        var octets = File.ReadAllBytes(cheminJuin);
+
+        // Un transcript porte le multi-blocs, décalé en juin (mois gelé : hors des mois ouverts de l'index).
+        var transcript = Path.Combine(racine, "proj", "juin.jsonl");
+        Directory.CreateDirectory(Path.GetDirectoryName(transcript)!);
+        File.WriteAllText(transcript, File.ReadAllText(Fixture("multi-blocs", "session-a.jsonl"), Utf8SansBom).Replace("2026-07-08T", "2026-06-22T"), Utf8SansBom);
+        File.SetLastWriteTimeUtc(transcript, (Now - TimeSpan.FromHours(1)).UtcDateTime);
+        var service = Service(paths);
+
+        BilanPasse bilan;
+        using (Tenir(cheminJuin))
+            bilan = service.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.False(bilan.Complete);
+        Assert.Equal(PhaseReconstruction.EnEchec, service.Phase);
+        Assert.Contains("agrégats", service.DerniereErreur);
+        Assert.Contains("2026-06", service.DerniereErreur);
+        Assert.Equal(octets, File.ReadAllBytes(cheminJuin));
+        Assert.False(File.Exists(CheminCurseurs(paths)));
+
+        // Libéré : la même instance rejoue depuis l'état disque — le delta n'est ni perdu ni compté deux fois.
+        var bilan2 = service.ExecuterUnePasse(CancellationToken.None);
+        Assert.True(bilan2.Complete);
+        Assert.Equal(new[] { juinSeme, new TrancheTokens(Utc("2026-06-22T11:15:00Z"), "claude-opus-4-1", false, 13, 297, 35005, 41741, 3) },
+                     Tranches(cheminJuin));
+
+        // Et une troisième passe ne recompte rien.
+        Assert.True(service.ExecuterUnePasse(CancellationToken.None).Complete);
+        Assert.Equal(2, Tranches(cheminJuin).Count);
+        Assert.Equal(13, Tranches(cheminJuin)[1].In);
+    }
 }
