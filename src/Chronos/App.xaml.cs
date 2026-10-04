@@ -551,7 +551,10 @@ public partial class App : Application
             var secs = s.RefreshIntervalSeconds > 0 ? s.RefreshIntervalSeconds : 60;
             return new RefreshOptions(TimeSpan.FromSeconds(secs), TimeSpan.FromMilliseconds(300));
         });
-        services.AddSingleton<RefreshOrchestrator>();
+        // DS2-01 (42.4) : le filet par tick de l'orchestrateur consigne dans chronos.log — même dossier que DossierJournal,
+        // mais issu du ChronosPaths du conteneur.
+        services.AddSingleton(sp => new RefreshOrchestrator(sp.GetRequiredService<IUsageProvider>(), sp.GetRequiredService<RefreshOptions>(),
+            dossierJournal: System.IO.Path.GetDirectoryName(sp.GetRequiredService<ChronosPaths>().SettingsFile)));
         services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
 
         // Diagnostic auto-explicatif (menu « Diagnostic… ») : lit le snapshot PUBLIÉ par l'orchestrateur (P-03, 42.3),

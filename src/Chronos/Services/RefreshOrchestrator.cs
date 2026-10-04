@@ -14,6 +14,10 @@ namespace Chronos.Services;
 /// P-03 (42.3, audit externe DS-ARCH-03) : le dernier snapshot publié est exposé (<see cref="DernierSnapshot"/>,
 /// <see cref="AttendrePremierAsync"/>). Le diagnostic le LIT via <see cref="DernierSnapshotPublie"/> au lieu de rappeler la
 /// chaîne : le consommateur de la chaîne reste UNIQUE (jamais de seconde sonde, jamais de last-exact.json disputé).
+///
+/// DS2-01 (42.4) : filet PAR TICK. Une exception levée par la chaîne (hors arrêt demandé et hors exception fatale) est
+/// consignée dans chronos.log (JournalIncidents, dossier passé au constructeur) et la boucle continue : avant, une seule
+/// exception d'un provider tuait la boucle en silence et l'overlay ne se rafraîchissait plus jamais.
 /// </summary>
 public sealed class RefreshOrchestrator : BackgroundService
 {
@@ -75,12 +79,27 @@ public sealed class RefreshOrchestrator : BackgroundService
             // ConfigureAwait(false) partout : aucune reprise ne doit jamais attendre un contexte capturé.
             await foreach (var _ in _triggers.Reader.ReadAllAsync(stoppingToken).ConfigureAwait(false))
             {
-                if (_options.Debounce > TimeSpan.Zero)
-                    await Task.Delay(_options.Debounce, stoppingToken).ConfigureAwait(false); // regroupe les déclencheurs rapprochés
-                var snap = await _provider.GetAsync(stoppingToken).ConfigureAwait(false);
-                Volatile.Write(ref _dernier, snap);   // P-03 : publié AVANT l'event — un abonné qui relit DernierSnapshot voit ce snapshot
-                _premier.TrySetResult(snap);
-                SnapshotChanged?.Invoke(this, snap);                    // thread pool → VM marshalle
+                try
+                {
+                    if (_options.Debounce > TimeSpan.Zero)
+                        await Task.Delay(_options.Debounce, stoppingToken).ConfigureAwait(false); // regroupe les déclencheurs rapprochés
+                    var snap = await _provider.GetAsync(stoppingToken).ConfigureAwait(false);
+                    Volatile.Write(ref _dernier, snap);   // P-03 : publié AVANT l'event — un abonné qui relit DernierSnapshot voit ce snapshot
+                    _premier.TrySetResult(snap);
+                    SnapshotChanged?.Invoke(this, snap);                    // thread pool → VM marshalle
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    throw;   // arrêt normal : sort de la boucle par le catch extérieur, jamais journalisé
+                }
+                catch (Exception ex) when (!FiletExceptions.EstFatale(ex))
+                {
+                    // DS2-01 (42.4) : une exception d'un provider ne tue plus jamais le rafraîchissement ; elle est
+                    // consignée et la boucle reprend au déclencheur suivant. Le limiteur de JournalIncidents
+                    // dédoublonne une exception répétée à chaque tick.
+                    JournalIncidents.Signaler(_dossierJournal, FiletExceptions.Decrire("rafraîchissement", ex),
+                                              cle: FiletExceptions.Cle("rafraîchissement", ex));
+                }
             }
         }
         catch (OperationCanceledException) { /* arrêt normal */ }
