@@ -351,7 +351,7 @@ appelant, commentaires « trois composites ») ; hypothèse « encore valide » 
   4. Plus de « ~ » produit par `PercentFormatter`, plus de `Save` sans appelant, plus de « trois composites » ; AUDIT_POINTS.md
      et `docs/data-sources.md` §4 énoncent l'hypothèse « encore valide » ; suite verte, build 0 avertissement.
 **Depends on:** Phase 42
-**Plans:** 0 plans
+**Plans:** 1/5 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 42.3 to break down)
