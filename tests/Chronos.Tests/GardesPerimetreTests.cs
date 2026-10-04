@@ -751,6 +751,42 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
+    /// GARDE DU FILET GLOBAL (FIAB-1, 42.2-01). Sous .NET 8, une exception UI non gérée termine le processus sans boîte ni
+    /// ligne de journal. <c>App</c> doit brancher les trois filets (Dispatcher, domaine, tâches non observées) vers
+    /// <c>JournalIncidents.Signaler</c>, les installer AVANT le verrou d'instance (tout ce qui suit est couvert), et protéger
+    /// la suite d'<c>OnStartup</c> après <c>await _host.StartAsync()</c>. Contrôle de SOURCE : <c>App</c> monte WPF.
+    /// </summary>
+    [Fact]
+    public void Le_filet_global_d_exceptions_est_installe_avant_le_verrou_et_OnStartup_est_protege()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+
+        var texte = File.ReadAllText(fichier);
+
+        Assert.Contains("DispatcherUnhandledException +=", texte, StringComparison.Ordinal);
+        Assert.Contains("AppDomain.CurrentDomain.UnhandledException +=", texte, StringComparison.Ordinal);
+        Assert.Contains("TaskScheduler.UnobservedTaskException +=", texte, StringComparison.Ordinal);
+        Assert.Contains("SetObserved()", texte, StringComparison.Ordinal);
+        Assert.Contains("FiletExceptions.EstFatale(", texte, StringComparison.Ordinal);
+        Assert.Contains("JournalIncidents.Signaler(", texte, StringComparison.Ordinal);
+
+        var iInstall = texte.IndexOf("InstallerFiletGlobal();", StringComparison.Ordinal);
+        var iVerrou  = texte.IndexOf("VerrouInstanceUnique.Acquerir", StringComparison.Ordinal);
+        var iStart   = texte.IndexOf("await _host.StartAsync()", StringComparison.Ordinal);
+        Assert.True(iInstall >= 0, "L'appel InstallerFiletGlobal() a disparu d'App.xaml.cs");
+        Assert.True(iVerrou >= 0, "VerrouInstanceUnique.Acquerir introuvable dans App.xaml.cs");
+        Assert.True(iStart >= 0, "await _host.StartAsync() introuvable dans App.xaml.cs");
+        Assert.True(iInstall < iVerrou, "Le filet global doit être installé AVANT le verrou d'instance unique");
+        // Le catch doit appartenir à OnStartup : borné par la méthode suivante (RunSessionHook a son propre catch (Exception …)).
+        var iFinOnStartup = texte.IndexOf("private static int RunSessionHook", StringComparison.Ordinal);
+        Assert.True(iFinOnStartup > iStart, "RunSessionHook introuvable après OnStartup dans App.xaml.cs");
+        var iCatch = texte.IndexOf("catch (Exception", iStart, StringComparison.Ordinal);
+        Assert.True(iCatch > iStart && iCatch < iFinOnStartup,
+                    "La suite d'OnStartup après await _host.StartAsync() doit être protégée par un catch (Exception …)");
+    }
+
+    /// <summary>
     /// GARDE DE NON-RETOUR (DAT-03, 37-05). Le réconciliateur RETIRE la barre de statut Chronos ; il ne la pose ni ne la repointe
     /// plus jamais vers l'exe courant (c'était le rôle de l'installeur supprimé). Contrôle de SOURCE.
     /// </summary>

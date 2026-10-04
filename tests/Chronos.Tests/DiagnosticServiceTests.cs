@@ -59,6 +59,47 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("relevé de date inconnue", LigneCinqHeures(report));
     }
 
+    // ------------------------------------------------------------------------------------------
+    // FIAB-4 (42.2-01) : le journal de démarrage reporte les incidents des lancements précédents
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Le_journal_de_demarrage_reporte_les_incidents_du_lancement_precedent()
+    {
+        var paths = TempPaths();
+        var dir = System.IO.Path.GetDirectoryName(paths.SettingsFile)!;
+        Assert.StartsWith(System.IO.Path.GetTempPath(), dir);
+        var log = System.IO.Path.Combine(dir, "chronos.log");
+        const string incident = "[incident] 2026-10-01 08:00:00 +11:00 — arrêt dépassé : x — sortie forcée";
+        System.IO.File.WriteAllText(log, "(log automatique au démarrage)\nbruit\n" + incident + "\n");
+        var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+
+        await diag.LogStartupAsync();
+
+        var contenu = System.IO.File.ReadAllText(log);
+        Assert.StartsWith("(log automatique au démarrage)", contenu);
+        Assert.Contains("[Incidents des lancements précédents]", contenu);
+        Assert.Contains(incident, contenu);
+        Assert.DoesNotContain("bruit", contenu);
+        Assert.Contains("[Magasins persistants]", contenu);
+    }
+
+    [Fact]
+    public async Task Le_journal_de_demarrage_sans_journal_prealable_n_a_pas_de_section_d_incidents()
+    {
+        var paths = TempPaths();
+        var dir = System.IO.Path.GetDirectoryName(paths.SettingsFile)!;
+        Assert.StartsWith(System.IO.Path.GetTempPath(), dir);
+        var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+
+        await diag.LogStartupAsync();
+
+        var contenu = System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "chronos.log"));
+        Assert.StartsWith("(log automatique au démarrage)", contenu);
+        Assert.DoesNotContain("[Incidents des lancements précédents]", contenu);
+        Assert.Contains("[Magasins persistants]", contenu);
+    }
+
     [Fact]
     public async Task Le_rapport_ne_contient_plus_les_sections_mortes()
     {
