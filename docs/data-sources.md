@@ -108,7 +108,7 @@ Une fenêtre affichée est dans l'un de ces quatre états, décidés par `Doctri
 | État | Condition | Affichage |
 |------|-----------|-----------|
 | **Exact — frais** | relevé de la sonde ou du secours OAuth, ou dernier exact persisté, âgé d'au plus **360 s** (`DoctrineFraicheur.LimiteAge` = cadence de la sonde + 60 s, non réglable) | le pourcentage, sans signe |
-| **Exact — encore valide** | relevé plus ancien, mais **aucune activité Claude Code** depuis (transcripts) : l'utilisation n'a pas bougé | le pourcentage, sans signe |
+| **Exact — encore valide** | relevé plus ancien, mais **aucune activité Claude Code** depuis (transcripts) : l'utilisation n'a pas bougé (hypothèse : voir §4) | le pourcentage, sans signe |
 | **Plancher (non exact)** | relevé plus ancien **et** Claude Code a travaillé depuis | **« ≥ X % »** : le vrai chiffre est au moins celui-là ; la borne supérieure est inconnue |
 | **Indisponible** | aucun relevé, relevé sans horodatage, ou activité impossible à établir | neutre, « données indisponibles » — jamais une valeur inventée |
 
@@ -124,6 +124,13 @@ Toutes les conversions d'unité (pourcentage ↔ fraction, epoch ↔ instant) pa
 
 ## 4. Hypothèses & points de fragilité
 
+- **« Encore valide » suppose Claude Code seul consommateur.** Hypothèse assumée (décision du 2026-10-04) : pendant une
+  panne des sources vivantes (sonde et secours OAuth), un relevé vieilli sans activité Claude Code depuis sa capture reste
+  affiché comme exact. Chronos suppose alors que Claude Code est le seul consommateur du quota : l'usage de l'app bureau,
+  de Cowork et de claude.ai, qui partagent le même pool, est invisible aux transcripts. Durée maximale : jusqu'au reset de
+  la fenêtre (jusqu'à 7 jours pour l'hebdomadaire), tant que Claude Code n'écrit rien. La pastille « relevé daté » signale
+  l'âge du relevé, mais le nombre lui-même ne porte aucun signe. Dès que la sonde ou le secours répond, le chiffre redevient
+  frais.
 - **Famille d'en-têtes « unified » non documentée.** `anthropic-ratelimit-unified-*` n'apparaît nulle part dans la
   documentation publique d'Anthropic : elle peut être renommée à tout moment. Le diagnostic liste les noms reconnus (jamais
   leurs valeurs) ; un 200 sans aucun en-tête reconnu est dit tel quel (« la famille a peut-être été renommée ») et rien

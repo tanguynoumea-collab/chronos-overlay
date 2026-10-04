@@ -102,4 +102,31 @@ public class GardesReliquatsTests
         Assert.True(fautifs.Count == 0, "Commentaire périmé (un seul composite en production) : " + string.Join(", ", fautifs));
     }
 
+    /// <summary>
+    /// DS-ARCH-02 — décision utilisateur du 2026-10-04 : « encore valide » reste affiché comme exact, sans signe ; l'hypothèse
+    /// qui le fonde (Claude Code seul consommateur pendant une panne des sources vivantes) est ÉCRITE, aux deux endroits.
+    /// </summary>
+    [Fact]
+    public void L_hypothese_encore_valide_est_ecrite()
+    {
+        var docs = CheminDocs();
+        Assert.False(string.IsNullOrWhiteSpace(docs), "L'attribut AssemblyMetadata(\"CheminDocsChronos\") manque.");
+
+        var audit = Path.GetFullPath(Path.Combine(docs, "..", "AUDIT_POINTS.md"));
+        Assert.True(File.Exists(audit), $"AUDIT_POINTS.md introuvable : {audit}");
+        var texteAudit = File.ReadAllText(audit);
+        Assert.Contains("seul consommateur", texteAudit, StringComparison.Ordinal);
+        Assert.Contains("Cowork", texteAudit, StringComparison.Ordinal);
+
+        var sources = Path.Combine(docs, "data-sources.md");
+        Assert.True(File.Exists(sources), $"data-sources.md introuvable : {sources}");
+        var texte = File.ReadAllText(sources);
+        var debut4 = texte.IndexOf("\n## 4.", StringComparison.Ordinal);
+        var debut5 = texte.IndexOf("\n## 5.", StringComparison.Ordinal);
+        Assert.True(debut4 >= 0 && debut5 > debut4, "Sections « ## 4. » / « ## 5. » introuvables dans data-sources.md");
+        var section4 = texte[debut4..debut5];
+        Assert.Contains("seul consommateur", section4, StringComparison.Ordinal);
+        Assert.Contains("Cowork", section4, StringComparison.Ordinal);
+        Assert.Contains("hypothèse : voir §4", texte, StringComparison.Ordinal);
+    }
 }
