@@ -27,7 +27,8 @@ public sealed record BilanPasse(int FichiersTotal, int FichiersOuverts, int Racc
 /// un fichier écrit depuis), puis flush tous les <see cref="FichiersParLot"/> fichiers ou <see cref="DelaiEntreLots"/>, flush
 /// final, couverture garantie SEULEMENT si la passe est complète (annulée ≠ complète, D-33-15).</para>
 ///
-/// <para><b>Ordre de flush ids → agrégats → curseurs, reprojection des mois ouverts au démarrage</b> (D-33-14) : un arrêt à
+/// <para><b>Ordre de flush ids → agrégats → curseurs, reprojection des mois ouverts au démarrage</b> (D-33-14) : la chaîne
+/// s'ARRÊTE à la première étape en échec (DATA-2) — un curseur ne dépasse jamais ce que l'index a persisté. Un arrêt à
 /// n'importe quel point est rattrapé — les ids écrits sont reprojetés, les fichiers sans curseur sont relus depuis le dernier
 /// curseur persisté et leurs ids connus rendent delta 0. Une ligne sans aucun id reçoit ici une CLÉ SYNTHÉTIQUE déterministe
 /// (instant, modèle, origine, quatre compteurs) : sans elle, la reprojection ne pourrait pas restituer ce que l'index ignore,
@@ -44,6 +45,14 @@ public sealed record BilanPasse(int FichiersTotal, int FichiersOuverts, int Racc
 /// suivante REJOUE l'initialisation depuis l'état disque (index relu, état mémoire des agrégats abandonné, curseurs relus) :
 /// le delta n'est ni perdu ni compté deux fois. Un mois ouvert dont l'index ne sait rien (shard absent ou de 0 octet) alors
 /// que son fichier d'agrégats porte des octets n'est pas reprojeté vide : il est relu tel quel.</para>
+///
+/// <para><b>Mois gelés</b> (DATA-1, phase 42.2) : l'index ne charge d'office que les mois ouverts. Avant d'indexer un message
+/// d'un autre mois, <see cref="Traiter"/> demande son shard (<see cref="IndexMessages.AssurerMoisCharge"/>) : présent ⇒ chargé,
+/// la relecture reste idempotente ; absent ET fichier d'agrégats du mois présent au démarrage ⇒ le mois est déjà compté, le
+/// message est ignoré et compté (<see cref="MessagesIgnoresMoisGeles"/>) ; absent sans fichier ⇒ première reconstruction,
+/// acceptée. Compromis assumé : une PREMIÈRE reconstruction d'un mois sorti de la rétention des shards, interrompue entre
+/// l'écriture de ses agrégats et celle de tous ses curseurs, laisse au démarrage suivant un mois tenu pour déjà compté — les
+/// messages non encore lus en sont ignorés. Sous-comptage possible plutôt que double comptage.</para>
 ///
 /// <para>Lecture seule stricte de la racine des projets ; écriture uniquement sous <c>HistoriqueDir</c>, par les briques
 /// (le service n'écrit rien lui-même). Type NEUTRE (aucun WPF). Progression en ENTIERS (garde TOK-05) : les champs d'état
@@ -82,6 +91,8 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
     private Curseurs? _curseurs;
     private CouvertureTokens? _couverture;
     private bool _initialise;
+    private readonly HashSet<DateTimeOffset> _moisAgregesAuDemarrage = new();   // DATA-1 : mois hors fenêtre déjà agrégés sur disque
+    private readonly HashSet<DateTimeOffset> _moisGelesSansIndex = new();       // DATA-1 : … dont le shard est absent → messages ignorés
 
     // --- État exposé (IEtatReconstruction) : écrit par le thread de fond, lu par le thread UI. Écritures atomiques, Volatile pour l'ordre. ---
     private int _phase = (int)PhaseReconstruction.JamaisLancee;
@@ -97,6 +108,7 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
     private long _dureeMurTicks = -1;          // −1 = jamais mesuré (un TimeSpan? n'est pas atomique : on garde des ticks)
     private long _dureeCpuTicks = -1;
     private long _termineeUtcTicks = -1;
+    private int _messagesIgnoresMoisGeles;
 
     public ReconstructionTokens(ChronosPaths paths, MagasinAgregats magasin, IndexMessages index, IClock clock,
                                 TimeSpan? cadence = null, Action<string>? apresFichier = null, Action<string>? apresEtapeFlush = null)
@@ -126,6 +138,10 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
     public TimeSpan? DureeCpuProcessusDernierePasse => Duree(Volatile.Read(ref _dureeCpuTicks));
     public DateTimeOffset? DerniereReconstructionTerminee
         => Volatile.Read(ref _termineeUtcTicks) is var t && t >= 0 ? new DateTimeOffset(t, TimeSpan.Zero) : null;
+
+    /// <summary>DATA-1 — messages d'un mois gelé déjà agrégé au démarrage et dont l'index d'ids n'est plus sur disque : ignorés
+    /// parce que déjà comptés (cumul depuis le démarrage, diagnostic).</summary>
+    public int MessagesIgnoresMoisGeles => Volatile.Read(ref _messagesIgnoresMoisGeles);
 
     /// <summary>Fichiers relus de zéro parce que plus courts que leur curseur, lors de la dernière passe (diagnostic).</summary>
     public int RaccourcisRelusDernierePasse => Volatile.Read(ref _raccourcisRelusDernierePasse);
@@ -295,6 +311,15 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
                 + string.Join(", ", _index.MoisIllisibles.Select(m => m.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture)))
                 + ") — reprojection et lecture reportées au cycle suivant");
 
+        // DATA-1 : les mois GELÉS déjà agrégés (fichier présent au démarrage, hors mois ouverts). Relevé une fois par
+        // initialisation : un mois créé pendant la session par une première reconstruction reste dédoublonné en mémoire.
+        _moisAgregesAuDemarrage.Clear();
+        _moisGelesSansIndex.Clear();
+        var ouverts = _index.MoisOuverts().ToHashSet();
+        foreach (var fichier in Directory.GetFiles(_paths.HistoriqueDir))
+            if (MagasinAgregats.EstNomMensuel(Path.GetFileName(fichier), out var moisAgrege) && !ouverts.Contains(moisAgrege))
+                _moisAgregesAuDemarrage.Add(moisAgrege);
+
         // Le fichier d'agrégats d'un mois ouvert n'est jamais la vérité : l'index l'est. Un mois sans aucun id et sans
         // fichier n'a rien à dire (pas de fichier vide créé) ; un fichier existant est remplacé par la projection, même vide.
         // Exception (DATA-3) : un index MUET (shard absent ou de 0 octet) face à un fichier qui porte des octets ne prouve
@@ -343,10 +368,29 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
         return fichiers.OrderByDescending(f => f.Mtime).ToList();
     }
 
-    // Un message lu → l'index décide du delta → le magasin l'applique à la tranche du PREMIER timestamp de l'id.
+    // Un message lu → (DATA-1) son mois doit être connu de l'index → l'index décide du delta → le magasin l'applique à la
+    // tranche du PREMIER timestamp de l'id.
     private void Traiter(MessageLu m)
     {
-        var d = _index.Ajouter(m.Id is null ? m with { Id = CleSansId(m) } : m);
+        var cle = m.Id is null ? m with { Id = CleSansId(m) } : m;
+        var mois = TrancheTokens.MoisDe(TrancheTokens.SlotDe(cle.Ts));
+        if (!_moisGelesSansIndex.Contains(mois) && !_index.EstCharge(mois))
+        {
+            var etat = _index.AssurerMoisCharge(mois);
+            if (etat == ChargementShard.Illisible)
+                throw new LectureIllisibleException("index d'ids : shard "
+                    + mois.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture)
+                    + " illisible au chargement à la demande — passe interrompue sans flush");
+            if (etat == ChargementShard.Absent && _moisAgregesAuDemarrage.Contains(mois))
+                _moisGelesSansIndex.Add(mois);   // décidé une fois : tous les messages de ce mois suivront
+        }
+        if (_moisGelesSansIndex.Contains(mois))
+        {
+            Interlocked.Increment(ref _messagesIgnoresMoisGeles);   // déjà compté dans le mois gelé : ni indexé ni appliqué
+            return;
+        }
+
+        var d = _index.Ajouter(cle);
         if (d is null) return;
         var slot = TrancheTokens.SlotDe(d.Ts);
         if (!_magasin.Appliquer(new DeltaTranche(slot, d.Model, d.Sub, d.In, d.Out, d.CacheW, d.CacheR, d.NouveauMessage)))
@@ -371,24 +415,38 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
         => string.Create(CultureInfo.InvariantCulture,
             $"{PrefixeSansId}{m.Ts.UtcTicks}:{m.Model}:{(m.Sub ? 1 : 0)}:{m.In}:{m.Out}:{m.CacheW}:{m.CacheR}");
 
-    // D-33-14 — dans CET ordre : shards d'ids (ajout) → agrégats (Move) → curseurs (Move). La première erreur est retenue avec le
-    // nom de la brique, sans interrompre les étapes suivantes ; un flush réussi de bout en bout efface l'erreur. Une exception
-    // levée par un hook de test se propage : c'est la « panne simulée » entre deux étapes.
+    // D-33-14 — dans CET ordre : shards d'ids (ajout) → agrégats (Move) → curseurs (Move). La première erreur, retenue avec le
+    // nom de la brique, ARRÊTE la chaîne (DATA-2) : un curseur ne dépasse jamais ce que l'index a persisté, des agrégats jamais
+    // ce que l'index sait reprojeter. Les données restent sales en mémoire : le flush suivant les retente. Un flush réussi de
+    // bout en bout efface l'erreur. Une exception levée par un hook de test se propage : c'est la « panne simulée » entre deux étapes.
     private bool Flush()
     {
-        string? erreur = null;
-
-        if (!_index.Flush()) erreur ??= Prefixer("index", _index.DerniereErreur);
+        if (!_index.Flush())
+        {
+            Volatile.Write(ref _derniereErreur, Prefixer("index", _index.DerniereErreur));
+            _apresEtapeFlush?.Invoke("ids");
+            return false;
+        }
         _apresEtapeFlush?.Invoke("ids");
 
-        if (!_magasin.EcrireMoisSales()) erreur ??= Prefixer("agrégats", _magasin.DerniereErreur);   // le mois reste sale : le lot suivant rattrape
+        if (!_magasin.EcrireMoisSales())   // le mois reste sale : le lot suivant rattrape
+        {
+            Volatile.Write(ref _derniereErreur, Prefixer("agrégats", _magasin.DerniereErreur));
+            _apresEtapeFlush?.Invoke("agregats");
+            return false;
+        }
         _apresEtapeFlush?.Invoke("agregats");
 
-        if (!_curseurs!.Sauvegarder()) erreur ??= Prefixer("curseurs.json", _curseurs.DerniereErreur);
+        if (!_curseurs!.Sauvegarder())
+        {
+            Volatile.Write(ref _derniereErreur, Prefixer("curseurs.json", _curseurs.DerniereErreur));
+            _apresEtapeFlush?.Invoke("curseurs");
+            return false;
+        }
         _apresEtapeFlush?.Invoke("curseurs");
 
-        Volatile.Write(ref _derniereErreur, erreur);
-        return erreur is null;
+        Volatile.Write(ref _derniereErreur, null);
+        return true;
     }
 
     private void RetenirErreur(string brique, string? detail)

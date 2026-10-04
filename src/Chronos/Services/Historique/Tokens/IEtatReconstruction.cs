@@ -54,6 +54,10 @@ public interface IEtatReconstruction
     /// <summary>Instant (horloge injectée) de la fin de la dernière passe COMPLÈTE ; <c>null</c> = aucune encore.</summary>
     DateTimeOffset? DerniereReconstructionTerminee { get; }
 
+    /// <summary>DATA-1 — messages d'un mois GELÉ déjà agrégé (fichier présent au démarrage, index d'ids plus sur disque), ignorés
+    /// car déjà comptés — cumul depuis le démarrage. Membre par défaut : 0 pour qui ne reconstruit rien.</summary>
+    int MessagesIgnoresMoisGeles => 0;
+
     /// <summary>Levé sur le thread de fond après chaque fichier et à chaque changement de phase.</summary>
     event EventHandler? Changement;
 }

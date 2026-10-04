@@ -70,7 +70,9 @@ public sealed class Curseurs
     public string? DerniereErreur { get; private set; }
 
     /// <summary>Relit le fichier ; absent, illisible, JSON invalide ou version ≠ <see cref="SchemaVersion"/> → curseurs vides
-    /// (tout sera relu de 0 : coûteux mais juste, l'index d'ids rend la relecture idempotente).</summary>
+    /// (tout sera relu de 0 : coûteux mais juste). La relecture n'est idempotente que sur les mois que l'index d'ids connaît —
+    /// mois ouverts, ou chargés à la demande tant que leur shard est sur disque ; un mois gelé déjà agrégé dont le shard a été
+    /// purgé est protégé par <see cref="ReconstructionTokens"/>, qui en ignore les messages (DATA-1).</summary>
     public static Curseurs Charger(string chemin, string racine)
     {
         var c = new Curseurs(chemin, racine);

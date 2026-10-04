@@ -324,6 +324,7 @@ public sealed class DiagnosticService
                           + " · semaine courante : " + (rec.SemaineCouranteDisponible ? "complète" : "en cours")
                           + (rec.DernierFichier is { } dernier ? " · dernier fichier : " + dernier : ""));
             sb.AppendLine("    Fichiers disparus : " + rec.FichiersDisparus + " · lignes ignorées : " + rec.LignesIgnorees + " · ids connus : " + rec.IdsConnus);
+            if (rec.MessagesIgnoresMoisGeles > 0) sb.AppendLine("    Messages de mois gelés ignorés (déjà comptés) : " + rec.MessagesIgnoresMoisGeles);
             if (rec.DerniereErreur is { } erreurRec) sb.AppendLine("    ÉCHEC : " + erreurRec);
         }
         sb.AppendLine("    Périmètre : " + LigneAgregat.Perimetre);

@@ -213,7 +213,7 @@ public sealed class IndexMessagesTests : IDisposable
         Assert.Equal(2, index.IdsConnus);
 
         Assert.Null(index.Ajouter(M("msg_B", Utc("2026-08-20T08:00:00Z"), 2, 2, 2, 2)));                 // août : connu
-        Assert.NotNull(index.Ajouter(M("msg_C", Utc("2026-06-20T08:00:00Z"), 3, 3, 3, 3)));              // juin : GELÉ, recompté (limite documentée)
+        Assert.NotNull(index.Ajouter(M("msg_C", Utc("2026-06-20T08:00:00Z"), 3, 3, 3, 3)));              // juin non chargé : la brique seule recompte — la reconstruction charge le shard ou ignore le message avant (DATA-1)
     }
 
     [Fact]

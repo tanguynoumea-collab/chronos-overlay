@@ -348,8 +348,11 @@ bloque le curseur devant elle (D-33-09).
 
 - `IndexMessages.HorizonIndex` = **45 j** : les shards des mois qui chevauchent [maintenant − 45 j, maintenant] sont chargés en mémoire
   (≈ 118 k ids, tas résident ≈ 40–50 Mo mesurés).
-- `IndexMessages.RetentionIndexMois` = **3 mois** : au-delà, le shard est supprimé et le mois d'agrégats est GELÉ — une copie fork d'un
-  message de plus de 3 mois serait comptée deux fois (jamais observé : âge max des copies 3,6 j).
+- `IndexMessages.RetentionIndexMois` = **3 mois** : au-delà, le shard est supprimé et le mois d'agrégats est GELÉ. Un message d'un mois
+  hors des mois chargés (DATA-1, phase 42.2) : shard encore sur disque → chargé à la demande, la relecture reste idempotente ; shard
+  absent et fichier d'agrégats du mois présent au démarrage → message ignoré (déjà compté) et compté au diagnostic (« Messages de mois
+  gelés ignorés ») ; ni shard ni fichier → première reconstruction, acceptée. Compromis : une première reconstruction d'un mois de plus
+  de 3 mois interrompue avant tous ses curseurs peut sous-compter ce mois ; elle ne le double jamais.
 - `MagasinAgregats.RetentionMois` = rétention du journal = **24 mois** ; purge au démarrage, noms non conformes ignorés et comptés.
 - `CouvertureTokens.HorizonPurge` = **30 j** (HYP-4 ci-dessous) ; `ReconstructionTokens.CadenceIncrementale` = **60 s** ;
   `SemaineCourante` = 7 j (par mtime) ; flush par lot de 100 fichiers ou 2 s.

@@ -15,6 +15,22 @@ namespace Chronos.Services.Historique.Tokens;
 /// les quatre compteurs sont « max − déjà compté » (tous égaux aux compteurs lus si <see cref="NouveauMessage"/>).</summary>
 public sealed record DeltaMessage(DateTimeOffset Ts, string Model, bool Sub, long In, long Out, long CacheW, long CacheR, bool NouveauMessage);
 
+/// <summary>DATA-1 — issue de <see cref="IndexMessages.AssurerMoisCharge"/> pour un mois hors des mois ouverts.</summary>
+public enum ChargementShard
+{
+    /// <summary>Le mois était déjà en mémoire (mois ouvert, ou chargé à la demande plus tôt).</summary>
+    DejaCharge,
+
+    /// <summary>Le shard du mois a été lu : ses ids dédoublonnent désormais.</summary>
+    Charge,
+
+    /// <summary>Aucun shard sur disque : l'index ne sait rien de ce mois (marqué chargé — il n'y a rien à dédoublonner).</summary>
+    Absent,
+
+    /// <summary>Shard présent mais illisible (verrou au-delà des reprises, lecture interrompue, aucune ligne valide) : mois NON marqué.</summary>
+    Illisible,
+}
+
 /// <summary>
 /// TOK-03 — la MÉMOIRE D'IDEMPOTENCE des agrégats (D-33-07).
 ///
@@ -27,8 +43,11 @@ public sealed record DeltaMessage(DateTimeOffset Ts, string Model, bool Sub, lon
 /// <c>OpenOrCreate</c> + <c>Seek(End)</c> sous verrou exclusif avec reprises (motif <c>JournalReleves.EcrireSousVerrou</c>,
 /// jamais le mode d'ouverture « ajout ») ; à la relecture le max gagne (<see cref="DedupUsage.Fusionner"/>, la règle vit à un
 /// seul endroit). En mémoire, seuls les mois qui chevauchent <c>[now − HorizonIndex, now]</c> (45 j ≥ 12 × l'âge max observé des
-/// copies) ; au-delà de <see cref="RetentionIndexMois"/> le mois est GELÉ : une copie fork d'un message plus vieux serait
-/// recomptée — jamais observé, limite écrite au §8 de la doc. Entiers seulement (garde TOK-05). Type NEUTRE, horloge injectée.
+/// copies). Un mois plus ancien n'est pas chargé d'office : la reconstruction appelle <see cref="AssurerMoisCharge"/> avant de
+/// décider (DATA-1, phase 42.2) — shard encore sur disque (rétention de <see cref="RetentionIndexMois"/> mois) ⇒ chargé à la
+/// demande, la relecture reste idempotente ; shard absent ⇒ la reconstruction ignore le message si le mois GELÉ est déjà agrégé
+/// (il y est déjà compté), l'accepte sinon (première reconstruction). La brique seule, sans ce garde, recompterait une copie
+/// d'un mois non chargé. Entiers seulement (garde TOK-05). Type NEUTRE, horloge injectée.
 /// </summary>
 public sealed class IndexMessages
 {
@@ -60,6 +79,7 @@ public sealed class IndexMessages
     private readonly Dictionary<string, Entree> _parId = new(StringComparer.Ordinal);
     private readonly List<(string Id, Entree E)> _aEcrire = new();
     private readonly HashSet<DateTimeOffset> _moisIllisibles = new();
+    private readonly HashSet<DateTimeOffset> _moisCharges = new();   // DATA-1 : mois dont l'index en mémoire fait foi (lus, ou sans shard)
     private readonly object _verrou = new();
     private readonly IClock _clock;
 
@@ -137,15 +157,48 @@ public sealed class IndexMessages
             _parId.Clear();
             _aEcrire.Clear();
             _moisIllisibles.Clear();
+            _moisCharges.Clear();
             LignesIgnorees = 0;
             foreach (var mois in MoisOuverts())
             {
                 var chemin = Path.Combine(Dossier, NomFichier(mois));
-                if (!File.Exists(chemin)) continue;
-                ChargerShard(chemin, mois);
+                if (!File.Exists(chemin) || ChargerShard(chemin, mois)) _moisCharges.Add(mois);   // illisible : non marqué
             }
             if (_moisIllisibles.Count == 0) DerniereErreurLecture = null;
             return _parId.Count;
+        }
+    }
+
+    /// <summary>DATA-1 — l'index en mémoire fait-il foi pour ce mois (1er du mois UTC, ou tout instant du mois) ? Vrai pour les
+    /// mois ouverts lus par <see cref="Charger"/> et pour ceux passés par <see cref="AssurerMoisCharge"/> (chargés ou sans shard).</summary>
+    public bool EstCharge(DateTimeOffset mois)
+    {
+        lock (_verrou) return _moisCharges.Contains(TrancheMoisDe(mois));
+    }
+
+    /// <summary>DATA-1 — charge à la demande le shard d'un mois hors des mois ouverts, AVANT que la reconstruction ne décide d'un
+    /// delta. Déjà chargé → <see cref="ChargementShard.DejaCharge"/> ; shard absent → <see cref="ChargementShard.Absent"/> (mois
+    /// marqué : rien à dédoublonner, les ids ajoutés ensuite le seront en mémoire) ; lu → <see cref="ChargementShard.Charge"/> ;
+    /// illisible → <see cref="ChargementShard.Illisible"/>, mois NON marqué (un nouvel essai relira). Ne lève jamais.</summary>
+    public ChargementShard AssurerMoisCharge(DateTimeOffset mois)
+    {
+        var cible = TrancheMoisDe(mois);
+        lock (_verrou)
+        {
+            if (_moisCharges.Contains(cible)) return ChargementShard.DejaCharge;
+
+            var chemin = Path.Combine(Dossier, NomFichier(cible));
+            if (!File.Exists(chemin))
+            {
+                _moisCharges.Add(cible);
+                return ChargementShard.Absent;
+            }
+            if (!ChargerShard(chemin, cible)) return ChargementShard.Illisible;
+
+            _moisIllisibles.Remove(cible);
+            if (_moisIllisibles.Count == 0) DerniereErreurLecture = null;
+            _moisCharges.Add(cible);
+            return ChargementShard.Charge;
         }
     }
 
