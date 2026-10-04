@@ -93,7 +93,10 @@
       "Login : écrire le coffre oauth.dat via le verrou de ChronosTokenAuthority (cas hérité : Save du login entre garde (b) et vérif avant écriture → écrasé) — 42.4-01-SUMMARY",
       "Reconnexion par la pastille avec un AUTRE compte : ancien relevé affiché jusqu au premier relevé frais — 42.4-03-SUMMARY",
       "Cache transcripts : étape 2 de P-07 (lecture par offset des fichiers chauds), libération du cache hors mode dégradé (DS2-04)",
-      "Gardes de câblage textuelles → test depuis le conteneur réel (DS2-05)"
+      "Gardes de câblage textuelles → test depuis le conteneur réel (DS2-05)",
+      "DS3-03 signaux d état de l autorité hors verrou/génération",
+      "DS3-04 relecture null du coffre après écriture",
+      "DS3-05 resets de l ancien compte sur arcs gris ≤ 5 min"
     ]
   },
   "artefacts": {
@@ -114,7 +117,8 @@
     "design_plan_cycle2": ".zeus/DESIGN_PLAN_CYCLE2.md (maquettes .zeus/maquettes/cycle2-cadrans-themes.html)",
     "dod_cycle2": ".zeus/DOD-CYCLE2.md",
     "gate_cycle2": ".zeus/reports/cycle2/gate-2026-10-03.log",
-    "dev_senior_2": ".zeus/reports/dev-senior-2.md"
+    "dev_senior_2": ".zeus/reports/dev-senior-2.md",
+    "dev_senior_3": ".zeus/reports/dev-senior-3.md"
   },
   "phases_sautees": [],
   "historique": [
@@ -161,6 +165,10 @@
     {
       "date": "2026-10-04",
       "evenement": "Décisions utilisateur : DS2-01+DS2-02 corrigés, DS2-03 effacement à la déconnexion. Phase 42.4 exécutée (3 plans), gate 2209/2210 verts 0 avert. Re-vérif dev-senior ciblée n°3 lancée."
+    },
+    {
+      "date": "2026-10-04",
+      "evenement": "Re-vérif dev-senior n°3 : DS2-01/02/03 FERMÉS, 0 critique/majeur ; verdict publiable après phase 43 : OUI. Checkpoint 3 (go publication) présenté."
     }
   ],
   "cycles_precedents": [
