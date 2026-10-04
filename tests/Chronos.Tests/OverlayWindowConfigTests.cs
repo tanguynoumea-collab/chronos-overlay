@@ -17,15 +17,18 @@ public class OverlayWindowConfigTests
         // Le ctor exige désormais un TopmostGuard (ROB-04) ; non attaché ici, on teste FEN-01.
         // Le MainViewModel prend désormais l'orchestrateur + IUiDispatcher + IClock (04-02) ;
         // l'orchestrateur n'est PAS démarré ici (aucun I/O) — le VM sert juste de DataContext.
+        // Chemins TEMPORAIRES (42.2-02) : SettingsService peut désormais mettre en quarantaine (renommer) un settings.json
+        // illisible — jamais sur le vrai %APPDATA%\Chronos depuis un test.
+        var paths = MontageReglages.TempPaths();
         var prov = new FakeUsageProvider();
         var orchestrator = new RefreshOrchestrator(prov, RefreshOptions.Default);
-        var settings = new SettingsService(ChronosPaths.Default());
+        var settings = new SettingsService(paths);
         var vm = new MainViewModel(orchestrator, new FakeUiDispatcher(), new FakeClock(DateTimeOffset.UtcNow),
             new FakeWindowController(), new FakeAutostartService(), settings,
-            new DiagnosticService(ChronosPaths.Default(), settings, prov, new FakeClock(DateTimeOffset.UtcNow)),
+            new DiagnosticService(paths, settings, prov, new FakeClock(DateTimeOffset.UtcNow)),
             new FakeOAuthLogin(), new FakeSessionsController(), new FakeAuthStatus());
         var guard = new TopmostGuard();
-        var controller = new OverlayController(guard, new SettingsService(ChronosPaths.Default()));
+        var controller = new OverlayController(guard, new SettingsService(paths));
         var fenetre = new MainWindow(vm, guard, controller);
 
         // Chaque propriété FEN-01 : l'oubli d'une seule casse ou dénature l'overlay.
