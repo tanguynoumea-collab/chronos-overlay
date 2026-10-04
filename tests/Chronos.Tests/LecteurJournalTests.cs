@@ -121,4 +121,71 @@ public class LecteurJournalTests
         Assert.Equal(minuit, lecture.JournalOuvertLe);
         Assert.All(lecture.Releves, r => Assert.Equal(SourceUsage.SondeEnTetes, r.Source));
     }
+    // ------------------------------------------------------------------ 42.2-05 : « inaccessible » n'est pas « vide » (TEST-4, DATA-13)
+
+    // Copie la fixture « a-cheval » (septembre + octobre) dans un dossier temp : on peut y verrouiller un mois sans toucher aux fixtures.
+    private static string CopieACheval()
+    {
+        var dossier = FabriqueJournal.DossierTemp();
+        foreach (var f in Directory.GetFiles(TestDataDir("a-cheval")))
+            File.Copy(f, Path.Combine(dossier, Path.GetFileName(f)));
+        return dossier;
+    }
+
+    [Fact]
+    public void Un_fichier_tenu_sans_partage_est_lu_comme_inaccessible_pas_comme_vide()
+    {
+        var chemin = Path.Combine(CopieACheval(), "releves-2026-10.jsonl");
+
+        using (new FileStream(chemin, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var lecture = LecteurJournal.LireFichier(chemin);
+
+            Assert.True(lecture.Inaccessible);
+            Assert.Empty(lecture.Releves);
+            Assert.Empty(lecture.Evenements);
+        }
+
+        var relu = LecteurJournal.LireFichier(chemin);   // verrou relâché : lu normalement
+        Assert.False(relu.Inaccessible);
+        Assert.Single(relu.Releves);
+    }
+
+    [Fact]
+    public void Un_fichier_absent_est_vide_et_pas_inaccessible()
+    {
+        var lecture = LecteurJournal.LireFichier(Path.Combine(FabriqueJournal.DossierTemp(), "releves-2026-10.jsonl"));
+
+        Assert.False(lecture.Inaccessible);
+        Assert.Empty(lecture.Releves);
+    }
+
+    [Fact]
+    public void Une_plage_dont_un_mois_est_verrouille_est_une_lecture_incomplete_avec_le_mois_lisible()
+    {
+        var dossier = CopieACheval();
+        var de = Utc("2026-09-30T23:00:00Z");
+        var a = Utc("2026-10-01T01:00:00Z");
+
+        using (new FileStream(Path.Combine(dossier, "releves-2026-10.jsonl"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var lecture = LecteurJournal.Lire(dossier, de, a);
+
+            Assert.True(lecture.LectureIncomplete);
+            var seul = Assert.Single(lecture.Releves);
+            Assert.Equal(Utc("2026-09-30T23:58:00Z"), seul.T);   // le mois lisible est rendu
+        }
+
+        var complete = LecteurJournal.Lire(dossier, de, a);
+        Assert.False(complete.LectureIncomplete);
+        Assert.Equal(2, complete.Releves.Count);
+    }
+
+    [Fact]
+    public void Un_journal_lisible_n_est_pas_une_lecture_incomplete()
+    {
+        Assert.False(LecteurJournal.Lire(TestDataDir("a-cheval"), Utc("2026-09-30T23:00:00Z"), Utc("2026-10-01T01:00:00Z")).LectureIncomplete);
+        Assert.False(LecteurJournal.Lire(Path.Combine(Path.GetTempPath(), "chronos-tests", "inexistant-" + Guid.NewGuid().ToString("N")),
+            Utc("2026-09-01T00:00:00Z"), Utc("2026-10-01T00:00:00Z")).LectureIncomplete);
+    }
 }

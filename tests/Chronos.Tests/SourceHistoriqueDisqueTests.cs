@@ -245,4 +245,79 @@ public sealed class SourceHistoriqueDisqueTests : IDisposable
         Assert.Equal("288 relevés attendus · 13 présents · 1 interruption (Chronos arrêté, mar. 23:00 → 07:00)",
             Chronos.Text.TextesHistorique.LigneFraicheurJour(mercredi, d.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, Tz));
     }
+    // ------------------------------------------------------------------ 42.2-05 : verrouillé ≠ vide, dossier poison (TEST-4, DATA-13)
+
+    private Plage[] SemaineEtPrecedente()
+    {
+        var semaine = BornesPlage.SemaineDeForfait(Now, R7Fixture, null, Tz);
+        var precedente = BornesPlage.SemaineDeForfait(semaine.Debut.AddTicks(-1), semaine.Debut, null, Tz);
+        return new[] { semaine, precedente };
+    }
+
+    [Fact]
+    public void Un_dossier_poison_ne_fait_jamais_lever_la_facade_et_rend_des_replis_non_nuls()
+    {
+        // Un FICHIER à la place du dossier de l'historique.
+        Directory.CreateDirectory(Path.GetDirectoryName(_paths.HistoriqueDir)!);
+        File.WriteAllText(_paths.HistoriqueDir, "je ne suis pas un dossier");
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+        var p = SemaineEtPrecedente();
+        var jour = BornesPlage.Jour(Now, Tz);
+        var semaines = QuatreSemaines();
+
+        Assert.Null(source.RepereHebdo(Now));
+        var s = source.LireSemaine(p[0], p[1], Now);
+        var j = source.LireJour(jour, Now);
+        var q = source.LireQuatreSemaines(semaines, NowQuatre);
+
+        Assert.NotNull(s);
+        Assert.NotNull(s.Analyse);
+        Assert.NotNull(s.Barres);
+        Assert.NotNull(j);
+        Assert.NotNull(j.Colonnes);
+        Assert.NotNull(q);
+        Assert.Equal(4, q.Semaines.Count);
+        // Un journal qu'on ne peut pas ouvrir n'est pas un journal vide.
+        Assert.True(s.LectureIncomplete);
+        Assert.True(j.LectureIncomplete);
+        Assert.True(q.LectureIncomplete);
+        Assert.True(File.Exists(_paths.HistoriqueDir), "La façade ne touche jamais au fichier poison.");
+    }
+
+    [Fact]
+    public void Un_mois_de_journal_verrouille_rend_les_trois_vues_incompletes()
+    {
+        DeposerJournalTrouArrete();
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+        var p = SemaineEtPrecedente();
+        var jour = BornesPlage.Jour(Utc("2026-09-27T10:00:00Z"), Tz);
+        var semaines = QuatreSemaines();
+
+        using (new FileStream(Path.Combine(_paths.HistoriqueDir, "releves-2026-09.jsonl"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var s = source.LireSemaine(p[0], p[1], Now);
+            var j = source.LireJour(jour, Now);
+            var q = source.LireQuatreSemaines(semaines, NowQuatre);
+
+            Assert.True(s.LectureIncomplete);
+            Assert.Empty(s.Analyse.Serie);
+            Assert.True(j.LectureIncomplete);
+            Assert.True(q.LectureIncomplete);
+        }
+    }
+
+    [Fact]
+    public void Un_journal_lisible_n_est_pas_une_lecture_incomplete()
+    {
+        DeposerJournalTrouArrete();
+        var source = new SourceHistoriqueDisque(_paths, Tz);
+        var p = SemaineEtPrecedente();
+
+        Assert.False(source.LireSemaine(p[0], p[1], Now).LectureIncomplete);
+        Assert.False(source.LireJour(BornesPlage.Jour(Utc("2026-09-27T10:00:00Z"), Tz), Now).LectureIncomplete);
+        Assert.False(source.LireQuatreSemaines(QuatreSemaines(), NowQuatre).LectureIncomplete);
+        // Dossier absent : rien n'a été écrit, ce n'est pas une lecture ratée.
+        var absent = new SourceHistoriqueDisque(new ChronosPaths(Path.Combine(_dir, "autre", "usage.json"), Path.Combine(_dir, "projects")), Tz);
+        Assert.False(absent.LireSemaine(p[0], p[1], Now).LectureIncomplete);
+    }
 }
