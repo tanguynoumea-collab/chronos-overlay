@@ -62,6 +62,12 @@ public sealed class LastExactUsageProvider : IUsageProvider
         var snap = await _inner.GetAsync(ct);
         var now = _clock.UtcNow;
 
+        // DS2-03 / D-03 — relevé de l'ancien compte (cache RAM d'un provider, ou sonde partie avant la déconnexion) :
+        // jamais affiché exact, jamais persisté. Écarté AVANT le bloc magasin (pas de Save) et AVANT Statuer (pas
+        // d'affichage). Le reset vivant est conservé (une fenêtre indisponible le garde aussi). Le filtre du magasin,
+        // sous son verrou, couvre la course restante : un oubli qui tombe entre cette ligne et le Save.
+        snap = snap with { FiveHour = Ecarter(snap.FiveHour), SevenDay = Ecarter(snap.SevenDay) };
+
         LastExactWindows? memorise = null;
         bool? dejaEuUnExact = null;   // null = non évalué : un magasin en panne n'AFFIRME rien
         try
@@ -110,4 +116,17 @@ public sealed class LastExactUsageProvider : IUsageProvider
             UnExactADejaEteObtenu = dejaEuUnExact,
         };
     }
+
+    /// <summary>DS2-03 — démote une fenêtre exacte capturée avant le dernier oubli (« Se déconnecter »).</summary>
+    private WindowState Ecarter(WindowState w)
+        => w.Reliability == SourceReliability.Exact && _store.AnterieurAOubli(w)
+            ? w with
+            {
+                Reliability = SourceReliability.Unavailable,
+                Utilization = null,
+                Provenance = null,
+                Source = null,
+                TokensDepuisReleve = null,
+            }
+            : w;
 }

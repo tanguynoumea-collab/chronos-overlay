@@ -35,6 +35,15 @@ namespace Chronos.Services;
 /// trois fois la panne silencieuse — jeton expiré, usage.json figé, puis un faux « gel » de ce fichier
 /// qui a fondé une phase : la copie copy-on-write du paquet MSIX, lue depuis une session, alors que le
 /// fichier réel était réécrit chaque minute. L'ÉCRITURE ne se tait plus ; la LECTURE reste tolérante.
+///
+/// Oubli VOLONTAIRE (DS2-03 / D-03, 42.4) : « Se déconnecter » efface le dernier relevé exact. Le magasin n'a pas
+/// de copie mémoire (chaque Load relit le fichier) : la « mémoire » à oublier est donc le fichier… PLUS les caches
+/// RAM des providers (sonde d'en-têtes : 300 s ; secours OAuth), qui servent encore l'exact de l'ancien compte
+/// quand le jeton devient null — la tête le RÉÉCRIRAIT au tick suivant. Parade unique, sans toucher aux
+/// providers : le magasin retient l'INSTANT de l'oubli et refuse, sous son verrou, toute fenêtre capturée à cet
+/// instant ou avant (Save, Load, UnExactADejaEteObtenu). Un relevé de l'ancien compte (cache, ou sonde partie
+/// avant la déconnexion : CapturedAt = début du GetAsync du provider) est antérieur par construction ; un relevé
+/// du nouveau compte est postérieur. Même horloge partout (singleton IClock).
 /// </summary>
 public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
 {
@@ -61,6 +70,19 @@ public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
 
     private readonly string _path;
 
+    // DS2-03 — toutes les opérations sur le fichier passent sous ce verrou : un oubli qui tombe entre la
+    // relecture et le renommage d'un Save ne doit pas être défait par ce Save.
+    private readonly object _verrou = new();
+
+    // Instant du dernier oubli. En RAM seulement : les caches des providers ne survivent pas au redémarrage,
+    // persister l'instant serait inutile — et le fichier, lui, a été effacé (ou le sera au prochain essai).
+    private DateTimeOffset? _oublieA;
+
+    // Vrai quand la suppression du fichier a échoué (fichier tenu par un autre processus). Elle est retentée
+    // sous verrou dès qu'une lecture prouve que tout ce que le fichier contient est antérieur à l'oubli : le
+    // relevé de l'ancien compte ne doit pas ressurgir au redémarrage, quand l'instant d'oubli aura disparu.
+    private bool _effacementEnAttente;
+
     public LastExactStore(string path)
     {
         _path = path;
@@ -76,9 +98,68 @@ public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
         catch { DerniereEcriture = null; }
     }
 
-    // DS2-03 — provisoire (RED) : aucun comportement.
-    public void OublierDernierReleve(DateTimeOffset instant) { }
-    public bool AnterieurAOubli(WindowState w) => false;
+    // --- IOubliDernierReleve (DS2-03 / D-03) ---------------------------------------------------------
+
+    /// <summary>
+    /// Efface le dernier relevé exact : supprime le fichier (et le temporaire de ce processus) et oublie, pour le
+    /// reste du processus, toute fenêtre capturée à <paramref name="instant"/> ou avant. NE LÈVE JAMAIS : si la
+    /// suppression échoue, le filtre en RAM garantit que l'ancien relevé n'est plus servi, la cause se lit dans
+    /// <see cref="DerniereErreur"/> et l'effacement est retenté à la lecture suivante. <see cref="EcritureRatee"/>
+    /// n'est PAS levé : ce n'est pas une écriture. Seuls le fichier piloté et son temporaire sont visés — ni
+    /// l'Historique, ni aucun autre magasin, ni aucun dossier.
+    /// </summary>
+    public void OublierDernierReleve(DateTimeOffset instant)
+    {
+        lock (_verrou)
+        {
+            // Monotone : un oubli plus ancien (horloge recalée) ne rouvre jamais la porte.
+            _oublieA = _oublieA is { } o && o > instant ? o : instant;
+            _effacementEnAttente = true;
+            Effacer();
+        }
+    }
+
+    /// <summary>DS2-03 — vrai si la fenêtre a été capturée à l'instant du dernier oubli ou avant : c'est un relevé
+    /// de l'ancien compte, que la tête ne doit plus jamais afficher exact.</summary>
+    public bool AnterieurAOubli(WindowState w)
+    {
+        lock (_verrou)
+            return w.CapturedAt is { } c && _oublieA is { } o && c <= o;
+    }
+
+    // Appelé sous verrou. Supprime le fichier et le temporaire de ce processus ; ne lève jamais.
+    private void Effacer()
+    {
+        try
+        {
+            if (System.IO.File.Exists(_path)) System.IO.File.Delete(_path);
+            var tmp = _path + $".tmp-{Environment.ProcessId}";
+            if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp);
+            DerniereEcriture = null;
+            DerniereErreur = null;
+            _effacementEnAttente = false;
+        }
+        catch (Exception ex)
+        {
+            DerniereErreur = "oubli : " + ex.GetType().Name + " : " + ex.Message;
+        }
+    }
+
+    // Appelé sous verrou. Une entrée capturée à l'instant de l'oubli ou avant est traitée comme ABSENTE. Après un
+    // oubli, une entrée persistée sans instant de capture est d'âge inconnu : absente elle aussi.
+    private Entry? Filtrer(Entry? e)
+        => e is not null && _oublieA is { } o && (e.CapturedAt is not { } c || c <= o) ? null : e;
+
+    // Appelé sous verrou. Relecture brute filtrée ; si un effacement a raté et que le fichier, désormais lisible,
+    // ne contient plus que de l'antérieur à l'oubli, il est retenté (amendement 42.4-03).
+    private Payload? LireFiltre()
+    {
+        var brut = LireBrut();
+        if (brut is null) return null;
+        var filtre = brut with { FiveHour = Filtrer(brut.FiveHour), SevenDay = Filtrer(brut.SevenDay) };
+        if (_effacementEnAttente && filtre.FiveHour is null && filtre.SevenDay is null) Effacer();
+        return filtre;
+    }
 
     /// <summary>Fichier effectivement piloté (injecté, donc isolable en test).</summary>
     public string Path => _path;
@@ -110,12 +191,19 @@ public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
     /// </summary>
     public void Save(UsageSnapshot snapshot)
     {
+        lock (_verrou)
+            SaveSousVerrou(snapshot);
+    }
+
+    private void SaveSousVerrou(UsageSnapshot snapshot)
+    {
         // Fusion par fenêtre : relecture BRUTE (sans la garde de reset) — la fusion ne doit pas
         // purger silencieusement une fenêtre que Load refuserait seulement à cet instant précis.
-        var existant = LireBrut();
+        // DS2-03 : ni l'entrée persistée ni l'entrée entrante ne passent si elles sont antérieures à l'oubli.
+        var existant = LireFiltre();
 
-        var five = Convertir(snapshot.FiveHour) ?? existant?.FiveHour;
-        var seven = Convertir(snapshot.SevenDay) ?? existant?.SevenDay;
+        var five = Filtrer(Convertir(snapshot.FiveHour)) ?? existant?.FiveHour;
+        var seven = Filtrer(Convertir(snapshot.SevenDay)) ?? existant?.SevenDay;
 
         // Rien d'exact à mémoriser et rien à préserver : ne pas créer un fichier vide.
         if (five is null && seven is null) return;
@@ -138,6 +226,7 @@ public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
             // et c'est le chiffre que le diagnostic comparera aux faits disque.
             DerniereEcriture = new DateTimeOffset(System.IO.File.GetLastWriteTimeUtc(_path), TimeSpan.Zero);
             DerniereErreur = null;
+            _effacementEnAttente = false;   // le fichier de l'ancien compte vient d'être remplacé en entier
         }
         catch (Exception ex)
         {
@@ -157,7 +246,13 @@ public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
     /// </summary>
     public LastExactWindows? Load(DateTimeOffset now)
     {
-        var brut = LireBrut();
+        lock (_verrou)
+            return LoadSousVerrou(now);
+    }
+
+    private LastExactWindows? LoadSousVerrou(DateTimeOffset now)
+    {
+        var brut = LireFiltre();
         if (brut is null) return null;
 
         var five = Reconstruire(brut.FiveHour, WindowKind.FiveHour, LongueurCinqHeures, now);
@@ -178,7 +273,11 @@ public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
     /// Tolérant par construction : s'appuie sur LireBrut, qui ne lève jamais.
     /// </summary>
     public bool UnExactADejaEteObtenu()
-        => LireBrut() is { } p && (p.FiveHour is not null || p.SevenDay is not null);
+    {
+        // DS2-03 : après l'oubli, l'ancien compte ne compte plus — « jamais rien obtenu » pour le compte connecté.
+        lock (_verrou)
+            return LireFiltre() is { } p && (p.FiveHour is not null || p.SevenDay is not null);
+    }
 
     /// <summary>
     /// Lecture brute du fichier, sans aucune garde de validité temporelle. Tolérante : toute

@@ -436,6 +436,11 @@ public partial class App : Application
         services.AddSingleton(sp => new LastExactStore(
             sp.GetRequiredService<ChronosPaths>().LastExactFile));
 
+        // DS2-03 / D-03 : « Se déconnecter » efface le dernier relevé exact. MÊME instance que la tête : un second
+        // magasin n'aurait pas l'instant d'oubli, et la tête réécrirait le relevé de l'ancien compte au tick suivant.
+        // AddSingleton<MainViewModel>() reste automatique : le paramètre optionnel d'un type enregistré est injecté.
+        services.AddSingleton<IOubliDernierReleve>(sp => sp.GetRequiredService<LastExactStore>());
+
         // v2.1 : SOURCE EXACTE PRIMAIRE = login OAuth propre à Chronos (jeton obtenu par login
         // navigateur, stocké chiffré DPAPI). Marche que l'utilisateur soit en app bureau OU terminal.
         services.AddSingleton<ChronosOAuthStore>(_ => new ChronosOAuthStore());

@@ -436,7 +436,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// puis qu'au plan 18-05 pour <c>DiagnosticService</c> et ses 10 sites.
     /// <paramref name="journal"/> (JRN-04, 32-05) suit le même protocole, en toute dernière position, puis
     /// <paramref name="reconstruction"/> (TOK-02, 33-05) après lui, puis <paramref name="ouvreurHistorique"/> (ACC-02, 35-02) et
-    /// <paramref name="historique"/> (ACC-01, 35-02), puis <paramref name="pressePapiers"/> (réglages v2 : « ⧉ Copier » du diagnostic).
+    /// <paramref name="historique"/> (ACC-01, 35-02), puis <paramref name="pressePapiers"/> (réglages v2 : « ⧉ Copier » du diagnostic),
+    /// puis <paramref name="oubliReleve"/> (DS2-03 / D-03, 42.4-03 : la déconnexion efface le dernier relevé exact ; injecté par la
+    /// DI dès que le type est enregistré, null sinon — la résolution sans enregistrement reste possible).
     /// </summary>
     public MainViewModel(
         RefreshOrchestrator orchestrator, IUiDispatcher ui, IClock clock,
@@ -844,14 +846,23 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Se connecter à Claude (login OAuth intégré = source exacte universelle) ou se déconnecter.
     /// P-01 : après une déconnexion OU un login réussi, réarme l'autorité de jeton — sa copie mémoire est
     /// oubliée et le coffre relu. Sans ce réarmement, le rafraîchissement suivant recréait oauth.dat avec
-    /// les jetons de l'ancien compte (déconnexion annulée, nouveau login écrasé en silence). Un login
-    /// échoué ne réarme rien. Redéclenche ensuite l'orchestrateur pour rafraîchir aussitôt les chiffres.</summary>
+    /// les jetons de l'ancien compte (déconnexion annulée, nouveau login écrasé en silence).
+    /// DS2-03 / D-03 (décision « Les effacer ») : la déconnexion ET le changement de compte effacent le dernier
+    /// relevé exact, sinon le last-exact.json de l'ancien compte restait affiché « exact — encore valide » jusqu'au
+    /// reset. Séquence : oubli ; réarmement ; Logout()|LoginAsync() ; réarmement ; oubli. La première paire ferme la
+    /// porte AVANT que le coffre ne change (aucune séquence de l'autorité ne sert plus l'ancien jeton) ; la seconde
+    /// rattrape ce qui serait arrivé pendant le login (navigateur ouvert plusieurs secondes). Un login échoué garde la
+    /// sortie anticipée de 42.3 : seule la première paire a eu lieu, l'Historique n'est jamais touché.
+    /// Redéclenche ensuite l'orchestrateur pour rafraîchir aussitôt les chiffres.</summary>
     [RelayCommand]
     private async Task LoginClaude()
     {
+        _oubliReleve?.OublierDernierReleve(_clock.UtcNow);   // D-03 : déconnexion ou changement de compte — avant Logout / LoginAsync
+        _authStatus.ReinitialiserApresLogin();
         if (_oauthLogin.IsLoggedIn) _oauthLogin.Logout();
         else if (!await _oauthLogin.LoginAsync()) { IsLoggedIn = _oauthLogin.IsLoggedIn; return; }
         _authStatus.ReinitialiserApresLogin();   // la copie mémoire de l'autorité est oubliée, le coffre relu
+        _oubliReleve?.OublierDernierReleve(_clock.UtcNow);   // D-03 : second oubli, après le changement de coffre
         IsLoggedIn = _oauthLogin.IsLoggedIn;
         _orchestrator.RequestRefresh();          // application immédiate, sans attendre le tick de 60 s
     }
@@ -865,6 +876,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// Le prochain GetAsync ne suffirait pas : l'autorité VERROUILLE l'état « Deconnecte » et pose un
     /// recul ; sans réarmement explicite, le jeton tout neuf ne serait pas utilisé et la pastille
     /// survivrait à sa propre réparation. Et RequestRefresh évite d'attendre le tick de 60 s.
+    ///
+    /// DS2-03 : n'efface PAS le dernier relevé exact — même compte dans la quasi-totalité des cas (« répare-moi »),
+    /// et effacer y masquerait jusqu'à 5 min (frein de la sonde) un chiffre vrai.
     /// </summary>
     [RelayCommand]
     private async Task ReconnecterAsync()
