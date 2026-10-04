@@ -461,8 +461,13 @@ VAL-04 et 35-07 / VAL-05).
      F11) ; 15 thèmes en 3 groupes avec gris épuisé visible ; et les points repris de 32-08 (une seule instance, tableau des
      gestes L1…Q, V01…V12, journal qui s'écrit) et de 35-07 (Historique sur vraies données, trou réel annoté) — écarts compris
      (VAL-07).
-**Plans**: TBD — le plan de constat est `autonomous: false` (point de contrôle humain) ; il sert aussi de revue visuelle selon
-les critères §9 du plan de design.
+**Plans**: 4 plans (séquentiels) — le plan de constat est `autonomous: false` (point de contrôle humain) ; il sert aussi de revue
+visuelle selon les critères §9 du plan de design.
+Plans:
+- [ ] 43-01-PLAN.md — DS3-02 (TDD) : racine des transcripts inaccessible → « Indisponible », racine absente documentée ; limites DS3-01/DS3-02 au §4 de data-sources
+- [ ] 43-02-PLAN.md — Version 3.5.0 (4 propriétés du csproj) ; README, docs/publish.md (§2, §5 autostart, §6, §7, SHA-256, exe-vX.Y.Z) et data-sources de la 3.5, sous garde
+- [ ] 43-03-PLAN.md — Porte Debug + Release, `dotnet publish`, copie `Chronos-v3.5.0.exe`, FileVersion lue sans lancer, SHA-256 ; commit de release sans tag ni push
+- [ ] 43-04-PLAN.md — `43-CONSTAT.md` (protocole à cocher, sonde WMI hors arbre) puis point de contrôle humain ; résultats, écarts et verdict consignés
 **UI hint**: yes
 
 ### Progress
