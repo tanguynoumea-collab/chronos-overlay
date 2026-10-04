@@ -131,6 +131,12 @@ Toutes les conversions d'unité (pourcentage ↔ fraction, epoch ↔ instant) pa
   la fenêtre (jusqu'à 7 jours pour l'hebdomadaire), tant que Claude Code n'écrit rien. La pastille « relevé daté » signale
   l'âge du relevé, mais le nombre lui-même ne porte aucun signe. Dès que la sonde ou le secours répond, le chiffre redevient
   frais.
+- **La déconnexion efface le dernier relevé exact.** « Se déconnecter » (et un changement de compte, avant le login du
+  nouveau) supprime `last-exact.json` et oublie, pour le reste du processus, tout relevé capturé avant cet instant — y
+  compris celui qu'une source garde encore en cache ou qu'une sonde partie avant la déconnexion rapporte. Le cadran affiche
+  « données indisponibles » jusqu'au premier relevé du compte connecté. Effacement volontaire : l'Historique (journal des
+  relevés) n'est pas effacé, et les fichiers illisibles restent mis en quarantaine, jamais supprimés. (Décision du
+  2026-10-04, DS2-03.)
 - **Famille d'en-têtes « unified » non documentée.** `anthropic-ratelimit-unified-*` n'apparaît nulle part dans la
   documentation publique d'Anthropic : elle peut être renommée à tout moment. Le diagnostic liste les noms reconnus (jamais
   leurs valeurs) ; un 200 sans aucun en-tête reconnu est dit tel quel (« la famille a peut-être été renommée ») et rien
