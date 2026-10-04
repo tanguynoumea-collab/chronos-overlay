@@ -115,8 +115,12 @@ public sealed class SessionMonitor
     /// et l'instant depuis lequel claude est au premier plan ; une session lue est inscrite dans treated.json et masquée
     /// dès ce cycle (le magasin est relu APRÈS l'observation).
     /// Puis applique les filtres, EN RENDANT COMPTE de chacun au lieu de jeter en silence.
+    /// <para>P-04 (42.3) — <paramref name="observer"/> à <c>false</c> = lecture PASSIVE : le détecteur de traitement
+    /// n'observe pas ce cycle, donc aucun effet sur treated.json (ni « répondue », ni « lue », ni purge). C'est le mode du
+    /// diagnostic : un rapport n'est pas un cycle d'observation. Les causes affichées restent celles du dernier cycle
+    /// observé (lecture pure de <see cref="SessionTreatmentTracker.CauseDe"/>). <see cref="Read"/> observe toujours.</para>
     /// </summary>
-    public LectureSessions Inspecter(System.DateTimeOffset now)
+    public LectureSessions Inspecter(System.DateTimeOffset now, bool observer = true)
     {
         // 1 & 2) COLLECTE. Les deux sources déposent leurs signaux dans une même liste, et l'ordre de cette
         //        collecte n'a plus AUCUNE conséquence (FUS-01) : c'est ArbitrageSessions qui tranche, sur la
@@ -207,7 +211,7 @@ public sealed class SessionMonitor
                 appBureau.Selection?.CliSessionId,
                 premierPlan.ClaudeDepuis)
             : null;
-        try { _tracker?.Observe(arbitrage.Vainqueurs, now, contexte); } catch { }
+        if (observer) { try { _tracker?.Observe(arbitrage.Vainqueurs, now, contexte); } catch { } }
 
         // 2.d) Le TITRE de l'app (APP-02) n'est pas un signal : posé sur les RETENUS, après l'arbitrage et avant les
         //      filtres — les masquées le portent aussi, le rapport les liste. Sans métadonnées, la liste est celle

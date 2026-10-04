@@ -93,6 +93,9 @@ public class DiagnosticSansEffetDeBordTests
         source.Snaps = new List<SessionSnapshot> { new("s", "Proj", SessionActivity.WaitingTurn, null, T) };
         moniteur.Read(T);
         Assert.Equal(avant, File.ReadAllBytes(cheminTraitees));
+        // Ce magasin n'a rien écrit : DerniereEcriture rend la date du fichier sur le disque — elle doit rester la même.
+        var ecritureAvant = store.DerniereEcriture;
+        Assert.NotNull(ecritureAvant);
 
         var t2 = T.AddSeconds(5);
         source.Snaps = new List<SessionSnapshot> { new("s", "Proj", SessionActivity.Working, null, t2) };
@@ -104,7 +107,7 @@ public class DiagnosticSansEffetDeBordTests
         await diag.BuildReportAsync();
 
         Assert.Equal(avant, File.ReadAllBytes(cheminTraitees));
-        Assert.Null(store.DerniereEcriture);
+        Assert.Equal(ecritureAvant, store.DerniereEcriture);
         Assert.False(store.Load().ContainsKey("s"));
     }
 }

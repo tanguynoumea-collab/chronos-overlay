@@ -36,6 +36,12 @@ public sealed class SessionTreatmentTracker
 {
     private readonly TreatedStore _store;
 
+    // P-04 (42.3) — un seul verrou pour Observe et CauseDe. Le détecteur est appelé par le timer UI (2 s) et l'a été,
+    // avant 42.3, par le diagnostic sur le pool : les trois dictionnaires ci-dessous ne sont pas thread-safe. Les
+    // écritures _store.Set/Remove restent sous ce verrou : TreatedStore a son propre verrou et n'appelle jamais le
+    // détecteur, donc aucun ordre de verrous inversé n'est possible.
+    private readonly object _verrou = new();
+
     // Dernier signal VU par session : son état ET sa source. La source est la moitié de l'information —
     // sans elle, « attente puis travail » ne distingue pas une réponse d'un relais entre deux sources.
     // Persiste tant que la session existe ; PAS réinitialisé sur absence, pour que NET-01 fonctionne quand
@@ -62,7 +68,10 @@ public sealed class SessionTreatmentTracker
     /// <summary>La cause connue de l'inscription <paramref name="episodeTraite"/>, ou nul si le détecteur ne l'a pas
     /// constatée (geste, entrée antérieure au démarrage non relue, épisode différent).</summary>
     public CauseTraitement? CauseDe(string sessionId, long episodeTraite)
-        => _causes.TryGetValue(sessionId, out var c) && c.Episode == episodeTraite ? c.Cause : null;
+    {
+        lock (_verrou)
+            return _causes.TryGetValue(sessionId, out var c) && c.Episode == episodeTraite ? c.Cause : null;
+    }
 
     // Trois valeurs disent « quelque chose m'attend ». L'attente DÉDUITE en fait partie depuis la phase 25 :
     // le bandeau la compte, le cadran la colore, et l'exclure ici faisait qu'une attente devenue déduite
@@ -115,75 +124,78 @@ public sealed class SessionTreatmentTracker
     /// </summary>
     public void Observe(IReadOnlyList<SignalSession> vainqueurs, System.DateTimeOffset now, ContexteLecture? lecture = null)
     {
-        var nowMs = now.ToUnixTimeMilliseconds();
-        var traitees = _store.Load();   // une seule lecture par cycle (sert au test de réapparition NET-03)
-
-        foreach (var v in vainqueurs)
+        lock (_verrou)
         {
-            var id = v.Session.SessionId;
-            var etat = v.Session.Activity;
-            var estAttente = EstAttente(etat);
-            var connue = _dernier.TryGetValue(id, out var prec);
+            var nowMs = now.ToUnixTimeMilliseconds();
+            var traitees = _store.Load();   // une seule lecture par cycle (sert au test de réapparition NET-03)
 
-            // NET-01 (répondu) — TRT-01. Trois conditions, et il en faut TROIS : la MÊME source a parlé
-            // aux deux cycles, elle disait une attente, elle dit maintenant un travail OBSERVÉ. Une source
-            // qui expire pendant qu'une autre reprend la main n'est pas l'utilisateur qui répond.
-            if (connue && prec.Source == v.Source && EstAttente(prec.Activite) && EstTravailObserve(etat))
+            foreach (var v in vainqueurs)
             {
-                var ep = _attenteDepuis.TryGetValue(id, out var e) ? e : InstantDuSignal(v, nowMs);
-                _store.Set(id, ep);
-                _attenteDepuis.Remove(id);
-                // Une réponse est un fait NOUVEAU : elle remplace toujours la cause (lue puis répondue = répondue).
-                if (UsageNormalization.InstantDepuisEpochMillisecondes(ep) is { } attenteRepondue)
-                    _causes[id] = (ep, new CauseTraitement(MotifMasquage.Repondue, attenteRepondue, Constat: now));
-                else
-                    _causes.Remove(id);
-            }
+                var id = v.Session.SessionId;
+                var etat = v.Session.Activity;
+                var estAttente = EstAttente(etat);
+                var connue = _dernier.TryGetValue(id, out var prec);
 
-            // Épisode d'attente courant. Il ne suit PAS l'horloge du guetteur : il suit l'instant que la
-            // source AFFIRME. Il n'avance donc que lorsque la source dit quelque chose de plus récent —
-            // une nouvelle demande — et reste immobile tant qu'elle se tait.
-            // Il n'est pas effacé par un changement de source : une attente qui continue est la même.
-            if (estAttente)
-            {
-                var ep = InstantDuSignal(v, nowMs);
-                if (!_attenteDepuis.TryGetValue(id, out var deja) || ep > deja) _attenteDepuis[id] = ep;
-            }
-
-            // NET-03 ET LA RÈGLE « LUE » — UNE décision (30-RESEARCH Q1.c). Le magasin a été lu UNE fois en tête de
-            // cycle : deux blocs successifs purgeraient ce qui vient d'être écrit, ou écriraient deux fois. Au plus une
-            // écriture par session et par épisode. Table à six cas, pour une session en attente d'épisode `cur` :
-            //   1. non lue, absente du magasin      → rien
-            //   2. non lue, magasin ≥ cur           → rien (déjà traitée pour cet épisode ou au-delà)
-            //   3. non lue, magasin < cur           → Remove — NET-03 INCHANGÉ : la session redemande, elle revient
-            //   4. lue, absente du magasin          → Set(cur)
-            //   5. lue, magasin < cur               → Set(cur) — un nouvel épisode déjà lu : PAS de Remove préalable
-            //   6. lue, magasin ≥ cur               → rien : zéro écriture (c'est la preuve du « pas à chaque cycle »)
-            if (estAttente && _attenteDepuis.TryGetValue(id, out var cur))
-            {
-                var lue = Lue(id, cur, lecture, now);
-                var traitee = traitees.TryGetValue(id, out var tts);
-                if (lue is not null)
+                // NET-01 (répondu) — TRT-01. Trois conditions, et il en faut TROIS : la MÊME source a parlé
+                // aux deux cycles, elle disait une attente, elle dit maintenant un travail OBSERVÉ. Une source
+                // qui expire pendant qu'une autre reprend la main n'est pas l'utilisateur qui répond.
+                if (connue && prec.Source == v.Source && EstAttente(prec.Activite) && EstTravailObserve(etat))
                 {
-                    if (!traitee || tts < cur)                          // cas 4 et 5 : un épisode pas encore inscrit
+                    var ep = _attenteDepuis.TryGetValue(id, out var e) ? e : InstantDuSignal(v, nowMs);
+                    _store.Set(id, ep);
+                    _attenteDepuis.Remove(id);
+                    // Une réponse est un fait NOUVEAU : elle remplace toujours la cause (lue puis répondue = répondue).
+                    if (UsageNormalization.InstantDepuisEpochMillisecondes(ep) is { } attenteRepondue)
+                        _causes[id] = (ep, new CauseTraitement(MotifMasquage.Repondue, attenteRepondue, Constat: now));
+                    else
+                        _causes.Remove(id);
+                }
+
+                // Épisode d'attente courant. Il ne suit PAS l'horloge du guetteur : il suit l'instant que la
+                // source AFFIRME. Il n'avance donc que lorsque la source dit quelque chose de plus récent —
+                // une nouvelle demande — et reste immobile tant qu'elle se tait.
+                // Il n'est pas effacé par un changement de source : une attente qui continue est la même.
+                if (estAttente)
+                {
+                    var ep = InstantDuSignal(v, nowMs);
+                    if (!_attenteDepuis.TryGetValue(id, out var deja) || ep > deja) _attenteDepuis[id] = ep;
+                }
+
+                // NET-03 ET LA RÈGLE « LUE » — UNE décision (30-RESEARCH Q1.c). Le magasin a été lu UNE fois en tête de
+                // cycle : deux blocs successifs purgeraient ce qui vient d'être écrit, ou écriraient deux fois. Au plus une
+                // écriture par session et par épisode. Table à six cas, pour une session en attente d'épisode `cur` :
+                //   1. non lue, absente du magasin      → rien
+                //   2. non lue, magasin ≥ cur           → rien (déjà traitée pour cet épisode ou au-delà)
+                //   3. non lue, magasin < cur           → Remove — NET-03 INCHANGÉ : la session redemande, elle revient
+                //   4. lue, absente du magasin          → Set(cur)
+                //   5. lue, magasin < cur               → Set(cur) — un nouvel épisode déjà lu : PAS de Remove préalable
+                //   6. lue, magasin ≥ cur               → rien : zéro écriture (c'est la preuve du « pas à chaque cycle »)
+                if (estAttente && _attenteDepuis.TryGetValue(id, out var cur))
+                {
+                    var lue = Lue(id, cur, lecture, now);
+                    var traitee = traitees.TryGetValue(id, out var tts);
+                    if (lue is not null)
                     {
-                        _store.Set(id, cur);
-                        _causes[id] = (cur, lue);
+                        if (!traitee || tts < cur)                          // cas 4 et 5 : un épisode pas encore inscrit
+                        {
+                            _store.Set(id, cur);
+                            _causes[id] = (cur, lue);
+                        }
+                        // cas 6 (déjà inscrit pour cet épisode ou au-delà) : zéro écriture. La cause d'un épisode est FIGÉE
+                        // à son premier constat — « depuis N s » ne grandit pas à chaque cycle ; une cause déjà connue pour
+                        // cet épisode (répondue, ou lue plus tôt) n'est pas remplacée.
+                        else if (!_causes.TryGetValue(id, out var deja) || deja.Episode != cur)
+                            _causes[id] = (cur, lue);
                     }
-                    // cas 6 (déjà inscrit pour cet épisode ou au-delà) : zéro écriture. La cause d'un épisode est FIGÉE
-                    // à son premier constat — « depuis N s » ne grandit pas à chaque cycle ; une cause déjà connue pour
-                    // cet épisode (répondue, ou lue plus tôt) n'est pas remplacée.
-                    else if (!_causes.TryGetValue(id, out var deja) || deja.Episode != cur)
-                        _causes[id] = (cur, lue);
+                    else if (traitee && cur > tts)                          // cas 3 : NET-03 INCHANGÉ — la session redemande
+                    {
+                        _store.Remove(id);
+                        _causes.Remove(id);
+                    }
                 }
-                else if (traitee && cur > tts)                          // cas 3 : NET-03 INCHANGÉ — la session redemande
-                {
-                    _store.Remove(id);
-                    _causes.Remove(id);
-                }
-            }
 
-            _dernier[id] = (v.Source, etat);
+                _dernier[id] = (v.Source, etat);
+            }
         }
     }
 

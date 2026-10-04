@@ -466,7 +466,9 @@ public sealed class DiagnosticService
         {
             try
             {
-                var lecture = _moniteurSessions.Inspecter(_clock.UtcNow);
+                // P-04 (42.3) : lecture PASSIVE. Un diagnostic ne doit pas faire passer une session à « répondue » ou
+                // « lue » (treated.json inchangé) ; les causes affichées sont celles du dernier cycle du widget.
+                var lecture = _moniteurSessions.Inspecter(_clock.UtcNow, observer: false);
 
                 sb.AppendLine($"  Fichiers de hook écartés (trop anciens) : {lecture.FichiersEcartesParAnciennete}");
 

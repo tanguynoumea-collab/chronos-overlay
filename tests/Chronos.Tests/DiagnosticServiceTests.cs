@@ -1268,6 +1268,8 @@ public class DiagnosticServiceTests : IDisposable
             new SourceFixe22(new SessionSnapshot(IdB29, "JARVIS", SessionActivity.WaitingTurn, null, U30(13, 59, 5))),
             treated, racine, FakePremierPlan.Autre("explorer"));
 
+        // P-04 (42.3) : le rapport lit en passif — la lecture est constatée par un cycle du WIDGET, que le rapport décrit.
+        moniteur.Read(maintenant);
         var report = await RapportA(moniteur, maintenant);
 
         var ligne = Assert.Single(report.Split('\n'), l => l.Contains("c17a1b03") && l.Contains("masquée par"));
@@ -1284,6 +1286,8 @@ public class DiagnosticServiceTests : IDisposable
     {
         var (moniteur, _) = MontageGesteB30();
 
+        // P-04 (42.3) : le rapport lit en passif — la lecture est constatée par un cycle du WIDGET, que le rapport décrit.
+        moniteur.Read(U30(18, 34, 6, 828));
         var report = await RapportA(moniteur, U30(18, 34, 6, 828));
 
         var ligne = Assert.Single(report.Split('\n'), l => l.Contains("11456cab") && l.Contains("masquée par"));
