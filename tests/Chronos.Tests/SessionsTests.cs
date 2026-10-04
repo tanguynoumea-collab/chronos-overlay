@@ -578,7 +578,7 @@ public class SessionsTests
             WriteTranscript(projRoot, "dup", new[] { CwdLine, AssistantToolUse }, TimeSpan.FromMinutes(1));
             WriteState(hookDir, "dup", SessionActivity.WaitingAttention, now.ToUnixTimeMilliseconds());
 
-            var snaps = new SessionMonitor(hookDir, new TranscriptSessionSource(projRoot)).Read(now);
+            var snaps = new SessionMonitor(hookDir, new TranscriptSessionSource(projRoot), new ArchiveStore(Path.Combine(TempDir(), "archived.json"))).Read(now);
             Assert.Single(snaps);
             Assert.Equal(SessionActivity.WaitingAttention, snaps[0].Activity); // le plus RÉCENT gagne — ici c'est le hook
         }
@@ -616,7 +616,7 @@ public class SessionsTests
         try
         {
             WriteTranscript(projRoot, "cli-only", new[] { CwdLine, AssistantEndTurn }, TimeSpan.FromMinutes(1));
-            var snaps = new SessionMonitor(TempDir(), new TranscriptSessionSource(projRoot)).Read(now);
+            var snaps = new SessionMonitor(TempDir(), new TranscriptSessionSource(projRoot), new ArchiveStore(Path.Combine(TempDir(), "archived.json"))).Read(now);
             Assert.Single(snaps);
             Assert.Equal("cli-only", snaps[0].SessionId);
         }
