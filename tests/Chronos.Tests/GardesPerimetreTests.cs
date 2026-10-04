@@ -142,9 +142,36 @@ public class GardesPerimetreTests
 
         // Une garde qui lirait un fichier vide, ou un fichier où la section a disparu, serait muette.
         Assert.Contains("BuildReportAsync", texte, StringComparison.Ordinal);
-        Assert.Contains("_moniteurSessions.Inspecter(_clock.UtcNow)", texte, StringComparison.Ordinal);
+        // P-04 (42.3) : le diagnostic lit en PASSIF — il n'est pas un cycle d'observation du détecteur.
+        Assert.Contains("_moniteurSessions.Inspecter(_clock.UtcNow, observer: false)", texte, StringComparison.Ordinal);
 
         Assert.DoesNotContain("new SessionMonitor", texte, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// GARDE DE SÉRIALISATION (P-04, 42.3) — le détecteur de traitement mute trois dictionnaires non thread-safe et
+    /// écrit treated.json ; il est appelé par le timer UI et l'a été par le diagnostic sur le pool. <c>Observe</c> ET
+    /// <c>CauseDe</c> doivent prendre le même verrou. Le test de concurrence de TreatedSessionsTests est probabiliste :
+    /// c'est cette garde qui en est la preuve structurelle.
+    /// </summary>
+    [Fact]
+    public void Le_detecteur_de_traitement_est_serialise()
+    {
+        var fichier = Path.Combine(CheminSources(), "Services", "SessionTreatmentTracker.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+        var texte = File.ReadAllText(fichier);
+
+        Assert.Contains("private readonly object _verrou", texte, StringComparison.Ordinal);
+
+        var debutObserve = texte.IndexOf("public void Observe(", StringComparison.Ordinal);
+        var finObserve = texte.IndexOf("private static CauseTraitement? Lue(", StringComparison.Ordinal);
+        Assert.True(debutObserve >= 0 && finObserve > debutObserve, "Observe introuvable");
+        Assert.Contains("lock (_verrou)", texte[debutObserve..finObserve], StringComparison.Ordinal);
+
+        var debutCause = texte.IndexOf("public CauseTraitement? CauseDe(", StringComparison.Ordinal);
+        var finCause = texte.IndexOf("internal static bool EstAttente(", StringComparison.Ordinal);
+        Assert.True(debutCause >= 0 && finCause > debutCause, "CauseDe introuvable");
+        Assert.Contains("lock (_verrou)", texte[debutCause..finCause], StringComparison.Ordinal);
     }
 
     /// <summary>

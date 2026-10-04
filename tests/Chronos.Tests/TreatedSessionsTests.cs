@@ -378,4 +378,82 @@ public class TreatedSessionsTests
         Assert.DoesNotContain(lecture.Masquees, m => m.Session.SessionId == Id && m.Motif == MotifMasquage.Traitee);
         Assert.False(store.Load().ContainsKey(Id), "expirer n'est pas répondre : rien ne doit être marqué traité");
     }
+
+    // --- P-04 (42.3) : une lecture passive n'est pas un cycle d'observation ; le détecteur est sérialisé ---
+
+    /// <summary>
+    /// P-04 — <c>Inspecter(now, observer: false)</c> est une lecture PASSIVE : dans le scénario même où un cycle
+    /// d'observation inscrirait la session « répondue » (NET-01 : attente au cycle 1, travail de la même source au
+    /// cycle 2), treated.json n'est pas créé et le magasin n'a rien écrit. Puis le widget, qui observe par défaut,
+    /// inscrit bien la réponse au cycle suivant : la lecture passive n'a pas consommé la transition.
+    /// </summary>
+    [Fact]
+    public void Une_lecture_passive_n_ecrit_pas_treated_json_et_le_widget_observe_toujours()
+    {
+        var chemin = TempFile();
+        Assert.StartsWith(Path.GetTempPath(), chemin);
+        var store = new TreatedStore(chemin, new FakeClock(T));
+        var tracker = new SessionTreatmentTracker(store);
+        var source = new MutableSource();
+        var monitor = BuildMonitor(source, store, tracker);
+        var t1 = T;
+        var t2 = t1.AddSeconds(5);
+        var t3 = t2.AddSeconds(2);
+
+        // Cycle 1 (widget) : la session attend — rien à inscrire.
+        source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.WaitingTurn, t1) };
+        monitor.Read(t1);
+        Assert.False(File.Exists(chemin));
+
+        // Lecture passive (diagnostic) : la même source dit maintenant un travail. Un cycle d'observation
+        // inscrirait « répondue » ici ; la lecture passive n'écrit rien.
+        source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.Working, t2) };
+        var passive = monitor.Inspecter(t2, observer: false);
+        Assert.Contains(passive.Visibles, s => s.SessionId == "s");
+        Assert.False(File.Exists(chemin), "une lecture passive ne crée pas treated.json");
+        Assert.Null(store.DerniereEcriture);
+
+        // Non-régression du widget : Read observe toujours, et la transition attente → travail est reconnue.
+        source.Snaps = new List<SessionSnapshot> { Cli("s", SessionActivity.Working, t3) };
+        monitor.Read(t3);
+        Assert.True(store.Load().ContainsKey("s"));
+        Assert.NotNull(store.DerniereEcriture);
+    }
+
+    /// <summary>
+    /// P-04 — le détecteur est appelé par le timer UI (2 s) et, avant 42.3, par le diagnostic sur le pool : ses trois
+    /// dictionnaires ne sont pas thread-safe. Quatre tâches observent et lisent les causes en parallèle ; aucune ne doit
+    /// lever, et l'état final reste lisible. NB : sans verrou, l'échec est probable mais pas garanti (course) — ce test
+    /// est une garde de régression ; la preuve structurelle est la garde de source de GardesPerimetreTests.
+    /// </summary>
+    [Fact]
+    public async Task Le_detecteur_supporte_des_observations_concurrentes()
+    {
+        var chemin = TempFile();
+        Assert.StartsWith(Path.GetTempPath(), chemin);
+        var store = new TreatedStore(chemin, new FakeClock(T));
+        var tracker = new SessionTreatmentTracker(store);
+        const int Iterations = 2000;
+
+        var taches = Enumerable.Range(0, 4).Select(n => Task.Run(() =>
+        {
+            for (var i = 0; i < Iterations; i++)
+            {
+                var id = "s" + ((i + n) % 16);
+                var instant = T.AddMilliseconds(i);
+                var etat = (i + n) % 2 == 0 ? SessionActivity.WaitingTurn : SessionActivity.Working;
+                tracker.Observe(new[] { Sig(id, etat, instant), Sig("c" + (i % 64), etat, instant) }, instant);
+                _ = tracker.CauseDe(id, instant.ToUnixTimeMilliseconds());
+            }
+        })).ToArray();
+
+        await Task.WhenAll(taches);
+        Assert.All(taches, t => Assert.True(t.IsCompletedSuccessfully));
+
+        // État final cohérent : pour chaque id, CauseDe rend une valeur ou null sans lever, et le magasin se relit.
+        foreach (var kv in store.Load())
+            _ = tracker.CauseDe(kv.Key, kv.Value);
+        for (var k = 0; k < 16; k++)
+            _ = tracker.CauseDe("s" + k, T.ToUnixTimeMilliseconds());
+    }
 }
