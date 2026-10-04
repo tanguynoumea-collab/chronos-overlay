@@ -109,7 +109,8 @@
     "inventaires_cycle2": ".zeus/reports/cycle2/",
     "design_plan_cycle2": ".zeus/DESIGN_PLAN_CYCLE2.md (maquettes .zeus/maquettes/cycle2-cadrans-themes.html)",
     "dod_cycle2": ".zeus/DOD-CYCLE2.md",
-    "gate_cycle2": ".zeus/reports/cycle2/gate-2026-10-03.log"
+    "gate_cycle2": ".zeus/reports/cycle2/gate-2026-10-03.log",
+    "dev_senior_2": ".zeus/reports/dev-senior-2.md"
   },
   "phases_sautees": [],
   "historique": [
@@ -148,7 +149,11 @@
     "2026-10-04 — Phase 42.2 (corrections dev-council, 10 plans) executee : quarantaine des fichiers Chronos, passerelle unique ~/.claude/settings.json, filet global, mois geles proteges, session_id valide, autostart repointe, diagnostic 8 hooks, Alt+F4, pont Node retire, code mort. Porte : 2113/2113, 0 avertissement. -> re-verification ciblee DEV-COUNCIL.",
     "2026-10-04 — Re-verification ciblee DEV-COUNCIL : 24 findings fermes, DATA-2 partiel (FIAB-R4), PKG-7 partiel (doc phase 43), 0 nouveau bloquant/majeur ; 7 mineurs nouveaux corriges dans 42.2-11 (decision ZEUS, release distribuee). AUDIT_POINTS.md cree avec l'utilisateur.",
     "2026-10-04 — 42.2-11 (mineurs de la re-verification) fait ; porte 2151 verts / 1 ignore, 0 avertissement. DEV-COUNCIL clos (aucun critique ouvert). -> DEV-SENIOR (audit externe sur AUDIT_POINTS.md).",
-    "2026-10-04 — DEV-SENIOR (audit externe) : 3 bloquants annonces (deconnexion OAuth inoperante, « encore valide » sans signe, version 3.4.0), 8 majeurs. Decisions utilisateur : deconnexion corrigee, « encore valide » garde avec hypothese documentee, version a la release. -> GSD phase 42.3 (iteration 2/3)."
+    "2026-10-04 — DEV-SENIOR (audit externe) : 3 bloquants annonces (deconnexion OAuth inoperante, « encore valide » sans signe, version 3.4.0), 8 majeurs. Decisions utilisateur : deconnexion corrigee, « encore valide » garde avec hypothese documentee, version a la release. -> GSD phase 42.3 (iteration 2/3).",
+    {
+      "date": "2026-10-04",
+      "evenement": "Phase 42.3 terminée (2179 verts, 0 avert.) ; re-vérification dev-senior n°2 : 3 bloquants levés sauf version (phase 43) ; nouveaux DS2-01 (mineur), DS2-02 (majeur), DS2-03 (décision produit). Attente décision utilisateur avant phase 43."
+    }
   ],
   "cycles_precedents": [
     {
