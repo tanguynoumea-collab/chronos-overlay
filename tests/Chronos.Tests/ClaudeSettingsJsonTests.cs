@@ -161,11 +161,16 @@ public class ClaudeSettingsJsonTests
         var vide = ClaudeSettingsJson.ParseOrNull(null);
         Assert.NotNull(vide);
         Assert.Empty(vide!);
-
-        var blanc = ClaudeSettingsJson.ParseOrNull("   ");
-        Assert.NotNull(blanc);
-        Assert.Empty(blanc!);
     }
+
+    /// <summary>DATA-4 : un fichier EXISTANT mais vide ou blanc est INEXPLOITABLE, pas un objet vide — c'est ce que
+    /// voit un lecteur qui tombe pendant une réécriture tronquante. Seul un fichier ABSENT (null) vaut « objet vide ».</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\n  \n")]
+    public void ParseOrNull_sur_contenu_vide_ou_blanc_rend_null(string json)
+        => Assert.Null(ClaudeSettingsJson.ParseOrNull(json));
 
     [Fact]
     public void ParseOrNull_tolere_commentaires_et_virgule_trainante()
