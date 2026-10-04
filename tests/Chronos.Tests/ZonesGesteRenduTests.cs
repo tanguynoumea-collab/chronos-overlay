@@ -71,6 +71,7 @@ public class ZonesGesteRenduTests
             (2, 2), (167, 2), (2, 167), (167, 167),
             (6, 85), (164, 85), (85, 164),
             (40, 3), (130, 3),
+            (85, 8), // r 76,5 à midi : ancien secteur de la flèche de reset de Braises, retirée au plan 43-07 — le clic y passe
         };
 
         // Auto-contrôle : marge de 2 px de part et d'autre du bord (anticrénelage).
@@ -79,9 +80,6 @@ public class ZonesGesteRenduTests
         foreach (var (x, y) in dehors)
         {
             Assert.True(DistanceCentre(x, y) >= RayonDisque + 2, $"Témoin dehors ({x},{y}) trop près du bord : {DistanceCentre(x, y):0.0}");
-            // Phase 41 : la flèche de reset de Braises (triangle (80,5)(90,5)(85,12) + filet x 85, y 13→25) dépasse le
-            // disque r 74. Ces pixels peints hors silhouette sont ASSUMÉS : aucun témoin dehors dans ce secteur.
-            Assert.False(x >= 76 && x <= 94 && y >= 0 && y <= 26, $"Témoin dehors ({x},{y}) dans le secteur de la flèche de reset.");
         }
         return (dedans, dehors);
 

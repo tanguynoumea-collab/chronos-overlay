@@ -83,11 +83,9 @@ public class CadransThemeBindingTests
                         Assert.Equal((66.0, 20, 4.0, 4, 13.2), (cinq.Radius, cinq.Count, cinq.PipRadius, cinq.GroupSize, cinq.GroupPitch));
                         Assert.Equal((44.0, 14, 3.6, 2, 15.6), (hebdo.Radius, hebdo.Count, hebdo.PipRadius, hebdo.GroupSize, hebdo.GroupPitch));
 
-                        // Flèche de reset : couleur TickReset du thème (triangle et filet).
-                        var triangle = Assert.Single(Descendants<Polygon>(hote));
-                        Assert.Same(T("TickReset"), triangle.Fill);
-                        var filet = Assert.Single(Descendants<Line>(hote));
-                        Assert.Same(T("TickReset"), filet.Stroke);
+                        // Plan 43-07 : flèche de reset retirée (constat du 2026-10-04) — plus aucun triangle ni filet.
+                        Assert.Empty(Descendants<Polygon>(hote));
+                        Assert.Empty(Descendants<Line>(hote));
                         break;
                     }
                     case CadranFusibleView:

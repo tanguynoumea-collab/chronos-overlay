@@ -158,8 +158,10 @@ public class CadranBraisesTests
     }
 
     [WpfFact]
-    public void La_fleche_de_reset_est_fixe_a_midi_hors_anneau_et_non_cliquable()
+    public void La_vue_Braises_n_a_plus_de_fleche_de_reset()
     {
+        // Constat du 2026-10-04 (plan 43-07) : la flèche de reset fixe à midi « ne sert à rien » — décision utilisateur,
+        // retirée. Les braises et le « ↻ HH:MM » du centre restent.
         var theme = ThemeCatalog.Default;
         var vm = new CadranPreviewViewModel { SelectedTheme = theme };
         var vue = new CadranBraisesView();
@@ -170,27 +172,20 @@ public class CadranBraisesTests
         hote.UpdateLayout();
 
         // Les noms vivent dans le namescope du UserControl (Pitfall 3).
-        var fleche = Assert.IsType<Canvas>(vue.FindName("FlecheReset"));
-        Assert.False(fleche.IsHitTestVisible);
-        Assert.Equal(Visibility.Visible, fleche.Visibility);
+        Assert.Null(vue.FindName("FlecheReset"));
+        Assert.Empty(Descendants(hote).OfType<Polygon>());
+        Assert.Empty(Descendants(hote).OfType<Line>());
+        Assert.NotNull(vue.FindName("HeureResetBraises"));
 
-        var triangle = Assert.Single(fleche.Children.OfType<Polygon>());
-        Assert.Equal(new[] { new Point(80, 5), new Point(90, 5), new Point(85, 12) }, triangle.Points.ToArray());   // base 10, hauteur 7
-
-        var filet = Assert.Single(fleche.Children.OfType<Line>());
-        Assert.Equal((85.0, 13.0, 85.0, 25.0), (filet.X1, filet.Y1, filet.X2, filet.Y2));                           // 12 px
-        Assert.Equal(1.2, filet.StrokeThickness, 6);
-
-        foreach (var p in triangle.Points.Append(new Point(filet.X1, filet.Y1)).Append(new Point(filet.X2, filet.Y2)))
-            Assert.True(p.X is >= 0 and <= Cote && p.Y is >= 0 and <= Cote, $"point hors empreinte : {p}");
-
-        // Structure, pas donnée : la flèche reste quand le reset 5 h est inconnu.
-        vm.FiveHour.HasTime = false;
-        hote.UpdateLayout();
-        Assert.Equal(Visibility.Visible, fleche.Visibility);
-        // IsVisible exige une PresentationSource (fenêtre) : on vérifie plutôt toute la chaîne d'ancêtres jusqu'à la vue.
-        for (DependencyObject? e = fleche; e is not null && !ReferenceEquals(e, hote); e = VisualTreeHelper.GetParent(e))
-            if (e is UIElement u) Assert.Equal(Visibility.Visible, u.Visibility);
+        static IEnumerable<DependencyObject> Descendants(DependencyObject racine)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(racine); i++)
+            {
+                var enfant = VisualTreeHelper.GetChild(racine, i);
+                yield return enfant;
+                foreach (var d in Descendants(enfant)) yield return d;
+            }
+        }
     }
 
     [Fact]
