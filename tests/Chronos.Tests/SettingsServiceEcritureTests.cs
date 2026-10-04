@@ -325,6 +325,46 @@ public sealed class SettingsServiceEcritureTests : IDisposable
         Assert.NotNull(_service.DerniereLectureNonAboutie);
     }
 
+    // ---------------------------------------------------------------------------------- Garde de source
+
+    /// <summary>Plus aucun lire-modifier-écrire hors de SettingsService (MAT-3) ; le widget n'écrit plus pendant le glisser (FIAB-2).</summary>
+    [Fact]
+    public void Garde_de_source_tous_les_sites_passent_par_Modifier()
+    {
+        var src = GardesPerimetreTests.CheminSources();
+        var service = Path.Combine(src, "Services", "SettingsService.cs");
+        Assert.True(File.Exists(service), $"Garde muette : {service} introuvable");
+
+        var sep = Path.DirectorySeparatorChar;
+        var fichiers = Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(sep + "bin" + sep) && !f.Contains(sep + "obj" + sep))
+            .Where(f => !string.Equals(Path.GetFullPath(f), Path.GetFullPath(service), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        Assert.True(fichiers.Count > 50, $"Garde muette : {fichiers.Count} sources vues");
+
+        var lireEcrire = new System.Text.RegularExpressions.Regex(@"\.Save\(\s*\w*\.?_?\w*\.Load\(\)");
+        var mutationNue = new System.Text.RegularExpressions.Regex(@"\.Save\(\s*mutat");
+        foreach (var f in fichiers)
+        {
+            var texte = File.ReadAllText(f);
+            Assert.False(lireEcrire.IsMatch(texte), $"Save(…Load()…) dans {f}");
+            Assert.False(mutationNue.IsMatch(texte), $"Save(mutation…) dans {f}");
+        }
+
+        string Lire(params string[] morceaux) => File.ReadAllText(Path.Combine(new[] { src }.Concat(morceaux).ToArray()));
+        var vm = Lire("ViewModels", "MainViewModel.cs");
+        var sessions = Lire("Views", "SessionsController.cs");
+        var overlay = Lire("Services", "OverlayController.cs");
+        var historique = Lire("Services", "Historique", "ReglagesHistorique.cs");
+
+        Assert.DoesNotContain("_settingsService.Save(", vm, StringComparison.Ordinal);
+        Assert.DoesNotContain("LocationChanged", sessions, StringComparison.Ordinal);
+        Assert.Contains("DeplacementTermine +=", sessions, StringComparison.Ordinal);
+        foreach (var texte in new[] { overlay, historique, sessions, vm })
+            Assert.Contains(".Modifier(", texte, StringComparison.Ordinal);
+        Assert.DoesNotContain("Save(", overlay, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Sans_ChargerPourDemarrage_la_lecture_de_demarrage_est_nulle()
     {

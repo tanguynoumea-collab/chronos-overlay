@@ -27,7 +27,7 @@ public sealed class ReglagesHistoriqueSurDisque(SettingsService settings) : IReg
     public void Modifier(Func<ChronosSettings, ChronosSettings> mutation)
     {
         ArgumentNullException.ThrowIfNull(mutation);
-        _settings.Save(mutation(_settings.Load()));
+        _settings.Modifier(mutation);   // lire-modifier-écrire sous verrou (42.2-02, MAT-3)
     }
 }
 

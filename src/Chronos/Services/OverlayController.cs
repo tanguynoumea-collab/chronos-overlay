@@ -100,13 +100,17 @@ public sealed class OverlayController : IWindowController
         _setWindowPos(_hwnd, IntPtr.Zero, (int)px, (int)py, 0, 0,
             NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
 
-        // g. Persiste coin + device = vérité ; X/Y purement indicatifs (diagnostic).
-        _settings.Save(_settings.Load() with
+        // g. Persiste coin + device = vérité ; X/Y purement indicatifs (diagnostic). Modifier : relecture sous verrou,
+        //    jamais d'écrasement d'un fichier illisible sans quarantaine, ne lève jamais (FIAB-2 : chemin UI chaud).
+        var device = mi.szDevice;
+        var x = _window.Left;
+        var y = _window.Top;
+        _settings.Modifier(s => s with
         {
             Corner = corner,
-            MonitorDeviceName = mi.szDevice,
-            X = _window.Left,
-            Y = _window.Top,
+            MonitorDeviceName = device,
+            X = x,
+            Y = y,
         });
     }
 
@@ -216,7 +220,7 @@ public sealed class OverlayController : IWindowController
         _guard.Suspend();                            // sinon le guard re-force le topmost toutes les 2 s
         _setWindowPos(_hwnd, NativeMethods.HWND_BOTTOM, 0, 0, 0, 0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
-        _settings.Save(_settings.Load() with { Background = true });
+        _settings.Modifier(s => s with { Background = true });
     }
 
     public void BringToForeground()
@@ -224,7 +228,7 @@ public sealed class OverlayController : IWindowController
         if (_window is null) return;
         _window.Topmost = true;
         _guard.Resume();                             // repose HWND_TOPMOST immédiatement, sans vol de focus
-        _settings.Save(_settings.Load() with { Background = false });
+        _settings.Modifier(s => s with { Background = false });
     }
 
     public void Quit() => System.Windows.Application.Current.Shutdown();

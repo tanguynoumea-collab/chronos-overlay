@@ -313,14 +313,20 @@ public sealed partial class MainViewModel : ObservableObject
     private void ChoisirOrientation(OrientationCadran orientation)
     {
         if (!EstStyleOrientable) return;
-        var fraiche = _settingsService.Load();
-        switch (CadranStyle)
+        var style = CadranStyle;
+        switch (style)
         {
-            case CadranStyle.Fusible: OrientationFusible = VersWpf(orientation); _settings = fraiche with { OrientationFusible = orientation }; break;
-            case CadranStyle.Maree:   OrientationMaree   = VersWpf(orientation); _settings = fraiche with { OrientationMaree = orientation }; break;
-            case CadranStyle.Volets:  OrientationVolets  = VersWpf(orientation); _settings = fraiche with { OrientationVolets = orientation }; break;
+            case CadranStyle.Fusible: OrientationFusible = VersWpf(orientation); break;
+            case CadranStyle.Maree:   OrientationMaree   = VersWpf(orientation); break;
+            case CadranStyle.Volets:  OrientationVolets  = VersWpf(orientation); break;
         }
-        _settingsService.Save(_settings);
+        _settings = _settingsService.Modifier(s => style switch
+        {
+            CadranStyle.Fusible => s with { OrientationFusible = orientation },
+            CadranStyle.Maree => s with { OrientationMaree = orientation },
+            CadranStyle.Volets => s with { OrientationVolets = orientation },
+            _ => s,
+        });
     }
 
     /// <summary>Catalogue des styles de cadran affiché dans la fenêtre de réglages (surbrillance du sélectionné).</summary>
@@ -338,8 +344,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (choice is null) return;
         foreach (var c in CadranStyles) c.IsSelected = ReferenceEquals(c, choice);
         CadranStyle = choice.Style;
-        _settings = _settingsService.Load() with { CadranStyle = choice.Style };
-        _settingsService.Save(_settings);
+        var style = choice.Style;
+        _settings = _settingsService.Modifier(s => s with { CadranStyle = style });
     }
 
     /// <summary>Catalogue des styles du widget de sessions (settings). Surbrillance du sélectionné.</summary>
@@ -353,8 +359,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (choice is null) return;
         foreach (var c in SessionStyles) c.IsSelected = ReferenceEquals(c, choice);
         SessionStyle = choice.Style;
-        _settings = _settingsService.Load() with { SessionStyle = choice.Style };
-        _settingsService.Save(_settings);
+        var style = choice.Style;
+        _settings = _settingsService.Modifier(s => s with { SessionStyle = style });
         _sessions.SetStyle(choice.Style);   // application immédiate si le panneau est ouvert
     }
 
@@ -380,8 +386,8 @@ public sealed partial class MainViewModel : ObservableObject
     private void ToggleVerticalLayout()
     {
         VerticalLayout = !VerticalLayout;
-        _settings = _settingsService.Load() with { VerticalLayout = VerticalLayout };
-        _settingsService.Save(_settings);
+        var vertical = VerticalLayout;
+        _settings = _settingsService.Modifier(s => s with { VerticalLayout = vertical });
         _sessions.SetVerticalLayout(VerticalLayout);
     }
 
@@ -414,8 +420,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (choice is null) return;
         foreach (var t in Themes) t.IsSelected = ReferenceEquals(t, choice);
         SelectedThemeKey = choice.Theme.Key;
-        _settings = _settingsService.Load() with { ThemeKey = choice.Theme.Key }; // GAP-1
-        _settingsService.Save(_settings);
+        var cle = choice.Theme.Key;
+        _settings = _settingsService.Modifier(s => s with { ThemeKey = cle }); // GAP-1
         FiveHour.SetTheme(choice.Theme);
         SevenDay.SetTheme(choice.Theme);
         ThemeChanged?.Invoke(choice.Theme);
@@ -814,11 +820,8 @@ public sealed partial class MainViewModel : ObservableObject
     private void ToggleCadranMode()
     {
         IsModeEtendu = !IsModeEtendu;
-        _settings = _settingsService.Load() with
-        {
-            CadranMode = IsModeEtendu ? CadranDisplayMode.Etendu : CadranDisplayMode.Normal
-        };
-        _settingsService.Save(_settings);
+        var mode = IsModeEtendu ? CadranDisplayMode.Etendu : CadranDisplayMode.Normal;
+        _settings = _settingsService.Modifier(s => s with { CadranMode = mode });
     }
 
     /// <summary>HDR-06 — coupe ou rallume la sonde d'en-têtes. Persiste avec une relecture disque FRAÎCHE
@@ -830,8 +833,8 @@ public sealed partial class MainViewModel : ObservableObject
     private void ToggleSondeEnTetes()
     {
         IsSondeEnTetesActivee = !IsSondeEnTetesActivee;
-        _settings = _settingsService.Load() with { SondeEnTetesActivee = IsSondeEnTetesActivee };
-        _settingsService.Save(_settings);
+        var activee = IsSondeEnTetesActivee;
+        _settings = _settingsService.Modifier(s => s with { SondeEnTetesActivee = activee });
         _orchestrator.RequestRefresh();   // application immédiate (la sonde relit son flag à chaque GetAsync)
     }
 

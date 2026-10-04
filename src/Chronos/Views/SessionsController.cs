@@ -106,7 +106,9 @@ public sealed class SessionsController : ISessionsController
             _window.ApplyThemeBrushes(theme);
             if (s.SessionsX is { } x && s.SessionsY is { } y) { _window.Left = x; _window.Top = y; }
             else { _window.Left = 80; _window.Top = 80; }
-            _window.LocationChanged += (_, _) => PersistPosition();
+            // FIAB-2 : persister à la FIN du glisser, plus à chaque changement de position (des dizaines de cycles temp + Move par
+            // seconde pendant un glisser, sur le thread UI).
+            _window.DeplacementTermine += (_, _) => PersistPosition();
             vm.StartClock();
         }
         _window.Show();
@@ -115,11 +117,13 @@ public sealed class SessionsController : ISessionsController
     private void PersistPosition()
     {
         if (_window is null) return;
-        Persist(s => s with { SessionsX = _window.Left, SessionsY = _window.Top });
+        var x = _window.Left;
+        var y = _window.Top;
+        Persist(s => s with { SessionsX = x, SessionsY = y });
     }
 
     private void Persist(System.Func<ChronosSettings, ChronosSettings> mutate)
-        => _settings.Save(mutate(_settings.Load())); // GAP-1
+        => _settings.Modifier(mutate); // GAP-1 : lire-modifier-écrire sous verrou, ne lève jamais (42.2-02)
 
     private static Window? Owner() => Application.Current?.MainWindow;
 }

@@ -21,9 +21,15 @@ public partial class SessionsWindow : Window
         DataContext = vm;
     }
 
+    /// <summary>Fin d'un glisser (au retour de DragMove) : le contrôleur y persiste la position (FIAB-2).</summary>
+    public event EventHandler? DeplacementTermine;
+
     private void Drag(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState == MouseButtonState.Pressed) DragMove();
+        if (e.ButtonState != MouseButtonState.Pressed) return;
+        try { DragMove(); }                           // BLOQUE jusqu'au relâchement
+        catch (InvalidOperationException) { }         // bouton déjà relâché : DragMove lève
+        DeplacementTermine?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Injecte les pinceaux « sessions » du thème dans les ressources de la fenêtre → les
