@@ -141,8 +141,15 @@ public partial class App : Application
             // perdraient les purges. Best-effort et silencieux : ne peut pas empêcher le démarrage.
             try
             {
+                // MAT-5 — une ignorance sur un fichier Chronos ne devient pas une écriture dans la configuration de Claude Code :
+                // si les réglages Chronos n'ont pas été lus de façon fiable au démarrage, SessionsWidgetEnabled est un DÉFAUT,
+                // pas la volonté de l'utilisateur ; null laisse alors les hooks tels quels.
+                var lectureDemarrage = _host.Services.GetRequiredService<SettingsService>().LectureDuDemarrage;
+                bool? hooksVoulus = lectureDemarrage is { EstFiable: false } ? null : settings.SessionsWidgetEnabled;
+                // Arbitrage ZEUS — après une quarantaine des réglages, le widget est revenu à « désactivé » par défaut : tant que
+                // le marqueur est posé (effacé au prochain choix explicite sur le widget), aucun hook Chronos n'est retiré.
                 _host.Services.GetRequiredService<ClaudeSettingsReconciler>()
-                     .Reconcile(settings.SessionsWidgetEnabled, commandeHeritee);
+                     .Reconcile(hooksVoulus, commandeHeritee, conserverHooks: settings.QuarantaineReglagesDepuis is not null, quarantaineDepuis: settings.QuarantaineReglagesDepuis);
             }
             catch { }
 
@@ -366,12 +373,16 @@ public partial class App : Application
             new TranscriptSessionSource(),
             sp.GetRequiredService<IClock>()));
 
-        services.AddSingleton(_ => new SessionHookInstaller());
+        // MAT-1 — UNE seule passerelle vers ~/.claude/settings.json, partagée par l'installateur de hooks et le réconciliateur :
+        // une seule voie d'écriture (lecture tri-état, sauvegarde du texte lu, contrôle « inchangé », refus sur lien symbolique).
+        services.AddSingleton(_ => PasserelleReglagesClaude.ParDefaut());
+
+        services.AddSingleton(sp => new SessionHookInstaller(sp.GetRequiredService<PasserelleReglagesClaude>()));
 
         // PUR-03, DAT-03 : réconciliation de ~/.claude/settings.json au démarrage (purge des entrées fantômes des
         // versions révolues, hooks repointés, retrait de la barre de statut Chronos). Chemins par défaut = profil utilisateur ; les tests
         // injectent systématiquement des chemins temp.
-        services.AddSingleton(_ => new ClaudeSettingsReconciler());
+        services.AddSingleton(sp => new ClaudeSettingsReconciler(sp.GetRequiredService<PasserelleReglagesClaude>()));
 
         services.AddSingleton<ISessionsController>(sp => new Views.SessionsController(
             sp.GetRequiredService<SessionHookInstaller>(),

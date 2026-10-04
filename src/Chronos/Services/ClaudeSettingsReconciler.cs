@@ -22,8 +22,13 @@ public enum IssueBarreStatut
 /// Bilan d'un passage de la réconciliation, journalisé dans <c>chronos.log</c> (section
 /// « [Réglages de Claude Code] » du diagnostic). <paramref name="Barre"/> vaut <c>null</c> quand le
 /// fichier n'a pas pu être examiné ; <paramref name="Cause"/> dit alors pourquoi.
+/// <paramref name="HooksLaissesTelsQuels"/> : la volonté de l'utilisateur sur les hooks était inconnue (réglages Chronos
+/// illisibles au démarrage, MAT-5), ils n'ont donc été ni posés, ni retirés, ni repointés.
+/// <paramref name="HooksConservesDepuis"/> : le marqueur de quarantaine des réglages était posé depuis cette date ; aucun hook
+/// Chronos n'a été retiré (arbitrage ZEUS).
 /// </summary>
-public sealed record BilanReconciliation(bool Ecrit, IssueBarreStatut? Barre, string? Sauvegarde, string? Cause);
+public sealed record BilanReconciliation(bool Ecrit, IssueBarreStatut? Barre, string? Sauvegarde, string? Cause,
+                                         bool HooksLaissesTelsQuels = false, DateTimeOffset? HooksConservesDepuis = null);
 
 /// <summary>
 /// Fait converger <c>%USERPROFILE%\.claude\settings.json</c> vers l'ÉTAT DÉSIRÉ de Chronos, une seule
@@ -53,18 +58,21 @@ public sealed record BilanReconciliation(bool Ecrit, IssueBarreStatut? Barre, st
 /// <c>model</c> et les hooks de tous les autres outils.</para>
 ///
 /// <para><b>(d) Limite assumée : les commentaires éventuels sont perdus à la réécriture</b> (System.Text.Json
-/// sait les LIRE mais pas les réémettre). C'est précisément ce que couvre la sauvegarde horodatée créée
-/// dans <c>%APPDATA%\Chronos\backups\</c> AVANT toute écriture — et uniquement quand une écriture va
-/// réellement avoir lieu, sinon la rétention évincerait la sauvegarde la plus précieuse : celle du tout
-/// premier passage, seule à contenir l'état pré-purge complet.</para>
+/// sait les LIRE mais pas les réémettre). C'est précisément ce que couvre la sauvegarde horodatée du TEXTE LU,
+/// créée dans <c>%APPDATA%\Chronos\backups\</c> par <see cref="PasserelleReglagesClaude"/> AVANT toute écriture — et
+/// uniquement quand une écriture va réellement avoir lieu, sinon la rétention évincerait la sauvegarde la plus
+/// précieuse : celle du tout premier passage, seule à contenir l'état pré-purge complet. Toute E/S passe par cette
+/// passerelle, partagée avec l'installateur de hooks (MAT-1) : lecture tri-état, contrôle « inchangé » juste avant
+/// l'écriture, refus sur lien symbolique.</para>
+///
+/// <para><b>(e) Une ignorance ne devient pas une écriture (MAT-5).</b> Si les réglages Chronos n'ont pas pu être lus de
+/// façon fiable au démarrage, la volonté de l'utilisateur sur les hooks est inconnue : <c>hooksWanted: null</c> laisse
+/// les hooks tels quels (la barre est quand même retirée). Et tant que le marqueur de quarantaine des réglages est
+/// posé, aucun hook Chronos n'est RETIRÉ : la quarantaine a remis le widget à « désactivé » par défaut, pas par choix.</para>
 /// </summary>
 public sealed class ClaudeSettingsReconciler
 {
-    /// <summary>Nombre de sauvegardes horodatées conservées dans le dossier de sauvegarde.</summary>
-    private const int SauvegardesConservees = 5;
-
-    private readonly string _settingsPath;
-    private readonly string _backupDir;
+    private readonly PasserelleReglagesClaude _passerelle;
     private readonly string? _exePath;
 
     /// <summary>
@@ -80,19 +88,25 @@ public sealed class ClaudeSettingsReconciler
     /// idempotence — la propriété même que ces tests doivent prouver — serait invérifiable.</para>
     /// </summary>
     public ClaudeSettingsReconciler(string? settingsPath = null, string? backupDir = null, string? exePath = null)
+        : this(new PasserelleReglagesClaude(
+                   settingsPath ?? PasserelleReglagesClaude.ParDefaut().SettingsPath,
+                   backupDir ?? PasserelleReglagesClaude.ParDefaut().BackupDir),
+               exePath)
     {
-        _settingsPath = settingsPath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
-        _backupDir = backupDir ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "backups");
+    }
+
+    /// <summary>Constructeur de production : la passerelle UNIQUE, partagée avec l'installateur de hooks (MAT-1).</summary>
+    public ClaudeSettingsReconciler(PasserelleReglagesClaude passerelle, string? exePath = null)
+    {
+        _passerelle = passerelle;
         _exePath = exePath;
     }
 
     /// <summary>Fichier de settings de Claude Code ciblé (diagnostic + garde anti-accident en test).</summary>
-    public string SettingsPath => _settingsPath;
+    public string SettingsPath => _passerelle.SettingsPath;
 
     /// <summary>Dossier des sauvegardes horodatées (diagnostic + garde anti-accident en test).</summary>
-    public string BackupDir => _backupDir;
+    public string BackupDir => _passerelle.BackupDir;
 
     /// <summary>
     /// Bilan du dernier passage de <see cref="Reconcile"/> ; <c>null</c> = pas encore passée. Assigné en
@@ -155,23 +169,37 @@ public sealed class ClaudeSettingsReconciler
     ///
     /// <para>Propriété testée : <c>ReconcileJson(ReconcileJson(x)) == null</c> (point fixe = PUR-01/02/03).</para>
     /// </summary>
-    public static string? ReconcileJson(string? settingsJson, string exePath, bool hooksWanted)
+    public static string? ReconcileJson(string? settingsJson, string exePath, bool? hooksWanted)
         => ReconcileJson(settingsJson, exePath, hooksWanted, commandeHeritee: null, out _);
 
     /// <summary>
     /// Variante complète : <paramref name="commandeHeritee"/> est l'ancienne barre de l'utilisateur
     /// (restaurée à la place de la barre Chronos si elle n'est pas elle-même Chronos) ;
     /// <paramref name="barre"/> rend l'issue sur <c>statusLine</c>, <c>null</c> si le contenu est inexploitable.
+    ///
+    /// <para><paramref name="hooksWanted"/> <c>null</c> = volonté inconnue (MAT-5) : les hooks ne sont pas touchés, seule la
+    /// barre est traitée. <paramref name="conserverHooks"/> (marqueur de quarantaine posé) : un « non » n'est pas un choix de
+    /// l'utilisateur, donc AUCUN groupe Chronos n'est retiré ; s'il en existe, ils sont repointés vers l'exe courant (retirer
+    /// puis ajouter), sinon rien n'est ajouté.</para>
     /// </summary>
-    public static string? ReconcileJson(string? settingsJson, string exePath, bool hooksWanted,
-                                        string? commandeHeritee, out IssueBarreStatut? barre)
+    public static string? ReconcileJson(string? settingsJson, string exePath, bool? hooksWanted,
+                                        string? commandeHeritee, out IssueBarreStatut? barre, bool conserverHooks = false)
     {
         barre = null;
         var root = ClaudeSettingsJson.ParseOrNull(settingsJson);
         if (root is null) return null;                       // JAMAIS un objet vierge : cela effacerait tout
 
         var avant = ClaudeSettingsJson.Serialize(root);      // forme normalisée AVANT mutation
-        SessionHookInstaller.ApplyHooks(root, exePath, hooksWanted);
+        if (hooksWanted == true)
+            SessionHookInstaller.ApplyHooks(root, exePath, wanted: true);
+        else if (hooksWanted == false)
+        {
+            if (!conserverHooks)
+                SessionHookInstaller.ApplyHooks(root, exePath, wanted: false);
+            else if (PorteUnGroupeChronos(root))             // marqueur posé : jamais de purge, seulement repointer
+                SessionHookInstaller.ApplyHooks(root, exePath, wanted: true);
+        }
+        // hooksWanted null (MAT-5) : aucun appel à ApplyHooks, les hooks restent tels quels.
         barre = RetirerBarreChronos(root, commandeHeritee);  // retire seulement ; ne pose jamais de barre
         var apres = ClaudeSettingsJson.Serialize(root);
 
@@ -203,110 +231,67 @@ public sealed class ClaudeSettingsReconciler
         return IssueBarreStatut.Retiree;
     }
 
-    // --- Couche E/S ---
+    /// <summary>Vrai si au moins un groupe Chronos existe sous une clé quelconque de <c>hooks</c> (purge LARGE, mêmes règles qu'ApplyHooks).</summary>
+    private static bool PorteUnGroupeChronos(JsonObject root)
+        => root["hooks"] is JsonObject hooks
+           && hooks.Any(kv => kv.Value is JsonArray arr
+                              && arr.Any(g => ClaudeSettingsJson.IsChronosGroup(g, ClaudeSettingsJson.HookMarker)));
+
+    // --- Couche E/S (par la passerelle unique) ---
 
     /// <summary>
-    /// Lit, réconcilie, sauvegarde puis écrit. Renvoie <c>true</c> si une écriture a EU LIEU, et pose
-    /// <see cref="DernierBilan"/> à CHAQUE sortie. Ne lève jamais : une panne de lecture, de sauvegarde ou
-    /// d'écriture dégrade silencieusement (le settings.json de l'utilisateur vaut plus que la fonctionnalité).
+    /// Lit, réconcilie puis écrit PAR LA PASSERELLE (sauvegarde du texte lu, contrôle « inchangé », refus sur lien
+    /// symbolique). Renvoie <c>true</c> si une écriture a EU LIEU, et pose <see cref="DernierBilan"/> à CHAQUE sortie. Ne lève
+    /// jamais : une panne de lecture, de sauvegarde ou d'écriture dégrade silencieusement (le settings.json de l'utilisateur
+    /// vaut plus que la fonctionnalité).
+    ///
+    /// <para><paramref name="hooksWanted"/> <c>null</c> : réglages Chronos illisibles au démarrage (MAT-5), hooks laissés tels
+    /// quels. <paramref name="conserverHooks"/> / <paramref name="quarantaineDepuis"/> : marqueur de quarantaine des réglages,
+    /// aucun hook Chronos retiré (arbitrage ZEUS).</para>
     /// </summary>
-    public bool Reconcile(bool hooksWanted, string? commandeHeritee = null)
+    public bool Reconcile(bool? hooksWanted, string? commandeHeritee = null, bool conserverHooks = false,
+                          DateTimeOffset? quarantaineDepuis = null)
     {
+        var laisses = hooksWanted is null;
+        var conservesDepuis = conserverHooks ? quarantaineDepuis : null;
         try
         {
-            if (!File.Exists(_settingsPath))                 // on ne CRÉE jamais le fichier : purge seulement
+            var lecture = _passerelle.Lire();
+            if (lecture.Issue == IssueLectureClaude.Absent)      // on ne CRÉE jamais le fichier : purge seulement
             {
-                DernierBilan = new BilanReconciliation(false, null, null, "fichier absent");
+                DernierBilan = new BilanReconciliation(false, null, null, "fichier absent", laisses, conservesDepuis);
+                return false;
+            }
+            if (lecture.Issue == IssueLectureClaude.Inexploitable)   // vide, invalide, verrouillé : on n'y touche pas
+            {
+                DernierBilan = new BilanReconciliation(false, null, null,
+                    "illisible — rien écrit" + (lecture.Cause is { } c ? " (" + c + ")" : ""), laisses, conservesDepuis);
                 return false;
             }
 
             // Mono-fichier : Environment.ProcessPath, JAMAIS l'emplacement de l'assembly (vide en single-file).
             var exePath = _exePath ?? Environment.ProcessPath ?? "Chronos.exe";
-            var actuel = File.ReadAllText(_settingsPath);
-            var reconcilie = ReconcileJson(actuel, exePath, hooksWanted, commandeHeritee, out var barre);
+            var reconcilie = ReconcileJson(lecture.Texte, exePath, hooksWanted, commandeHeritee, out var barre, conserverHooks);
 
-            if (barre is null)                               // inexploitable : on n'y touche pas
+            if (barre is null)                               // inexploitable (ne devrait plus arriver après Lire) : on n'y touche pas
             {
-                DernierBilan = new BilanReconciliation(false, null, null, "illisible — rien écrit");
+                DernierBilan = new BilanReconciliation(false, null, null, "illisible — rien écrit", laisses, conservesDepuis);
                 return false;
             }
             if (reconcilie is null)                          // déjà conforme → rien à faire
             {
-                DernierBilan = new BilanReconciliation(false, barre, null, null);
+                DernierBilan = new BilanReconciliation(false, barre, null, null, laisses, conservesDepuis);
                 return false;
             }
 
-            var sauvegarde = Sauvegarder();
-            if (sauvegarde is null)                          // échec de sauvegarde ⇒ on N'ÉCRIT PAS
-            {
-                DernierBilan = new BilanReconciliation(false, barre, null, "sauvegarde impossible — rien écrit");
-                return false;
-            }
-
-            WriteAtomic(reconcilie);
-            DernierBilan = new BilanReconciliation(true, barre, sauvegarde, null);
-            return true;
+            var ecriture = _passerelle.Ecrire(lecture, reconcilie, creerSiAbsent: false);
+            DernierBilan = new BilanReconciliation(ecriture.Ecrit, barre, ecriture.Sauvegarde, ecriture.Cause, laisses, conservesDepuis);
+            return ecriture.Ecrit;
         }
         catch (Exception ex)
         {
-            DernierBilan = new BilanReconciliation(false, null, null, ex.GetType().Name);
+            DernierBilan = new BilanReconciliation(false, null, null, ex.GetType().Name, laisses, conservesDepuis);
             return false;
         }
-    }
-
-    /// <summary>
-    /// Copie l'original dans le dossier de sauvegarde AVANT toute écriture, puis ne conserve que les
-    /// <paramref name="garder"/> plus récentes. Renvoie le CHEMIN de la sauvegarde, ou <c>null</c> si la
-    /// copie a échoué → l'appelant ABANDONNE l'écriture. La purge de rétention, elle, n'est jamais bloquante.
-    /// </summary>
-    private string? Sauvegarder(int garder = SauvegardesConservees)
-    {
-        try
-        {
-            Directory.CreateDirectory(_backupDir);
-
-            var cible = CibleDeSauvegarde();
-            if (cible is null) return null;    // 100 collisions d'affilée : on renonce plutôt qu'on écrase
-            File.Copy(_settingsPath, cible, overwrite: true);
-
-            foreach (var vieux in new DirectoryInfo(_backupDir)
-                         .GetFiles("claude-settings-*.json")
-                         .OrderByDescending(f => f.Name)
-                         .Skip(garder))
-                try { vieux.Delete(); } catch { }   // rétention best-effort : un échec ici n'est pas bloquant
-
-            return cible;
-        }
-        catch { return null; }
-    }
-
-    /// <summary>
-    /// Nom de sauvegarde horodaté à la seconde. L'horodatage seul ne suffit pas : deux réconciliations
-    /// écrivantes dans la même seconde (boucle de test, double lancement) s'écraseraient. On désambiguïse
-    /// alors par un suffixe <c>-1</c>, <c>-2</c>, … Renvoie <c>null</c> après 100 tentatives.
-    /// </summary>
-    private string? CibleDeSauvegarde()
-    {
-        var racine = Path.Combine(_backupDir, "claude-settings-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-        if (!File.Exists(racine + ".json")) return racine + ".json";
-
-        for (int i = 1; i <= 100; i++)
-        {
-            var candidat = racine + "-" + i + ".json";
-            if (!File.Exists(candidat)) return candidat;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Écriture atomique temp → rename, motif identique à celui de l'installateur de hooks : on n'observe
-    /// jamais un settings.json partiellement écrit.
-    /// </summary>
-    private void WriteAtomic(string content)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
-        var tmp = _settingsPath + ".tmp-" + Environment.ProcessId;
-        File.WriteAllText(tmp, content);
-        File.Move(tmp, _settingsPath, overwrite: true);
     }
 }

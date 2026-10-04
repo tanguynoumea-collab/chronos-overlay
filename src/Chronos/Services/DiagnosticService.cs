@@ -535,6 +535,13 @@ public sealed class DiagnosticService
         // MAINTENANT. Lu sur le fichier du réconciliateur injecté quand il l'est (le même que celui qu'il a réconcilié).
         sb.AppendLine("[Réglages de Claude Code]");
         sb.AppendLine("  Ce lancement : " + LibelleBilan(_reglagesClaude?.DernierBilan, _reglagesClaude is not null));
+        // MAT-5 — la volonté sur les hooks était inconnue au démarrage : ils n'ont été ni posés, ni retirés, ni repointés.
+        if (_reglagesClaude?.DernierBilan is { HooksLaissesTelsQuels: true })
+            sb.AppendLine("  Hooks laissés tels quels : réglages Chronos illisibles au démarrage");
+        // Arbitrage ZEUS — source = le réglage lui-même : vrai tant que le marqueur est posé, avec ou sans réconciliation.
+        if (s.QuarantaineReglagesDepuis is { } quarantaine)
+            sb.AppendLine("  Hooks conservés après quarantaine des réglages (depuis "
+                          + quarantaine.ToLocalTime().ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture) + ")");
         sb.AppendLine("  Barre de statut actuelle : " + BarreActuelle(_reglagesClaude?.SettingsPath ?? claudeSettings));
         sb.AppendLine();
 

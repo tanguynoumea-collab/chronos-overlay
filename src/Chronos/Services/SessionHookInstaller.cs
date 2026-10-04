@@ -20,9 +20,10 @@ namespace Chronos.Services;
 /// <para>RÉVERSIBLE, et — leçon vérifiée sur la vraie machine — le chemin de l'exe est en SLASHES
 /// AVANT (des backslashes seraient avalés par le shell).</para>
 ///
-/// <para>Un settings.json INEXPLOITABLE (clés dupliquées, racine non-objet, JSON invalide) fait
+/// <para>Un settings.json INEXPLOITABLE (vide, clés dupliquées, racine non-objet, JSON invalide) fait
 /// abandonner l'écriture : les cœurs purs renvoient <c>null</c> et les méthodes d'E/S ne touchent
-/// pas au fichier. On ne repart JAMAIS d'un objet vide, ce qui effacerait tout le fichier.</para>
+/// pas au fichier. On ne repart JAMAIS d'un objet vide, ce qui effacerait tout le fichier. Toute E/S passe
+/// par <see cref="PasserelleReglagesClaude"/> (MAT-1) : aucune écriture disque propre dans ce fichier.</para>
 ///
 /// Rappel prouvé : la config des hooks est lue au DÉMARRAGE d'une session → seules les sessions Claude
 /// Code lancées APRÈS l'installation seront suivies.
@@ -124,52 +125,75 @@ public sealed class SessionHookInstaller
     /// mais DÉRIVÉ du câblage : une seule source de vérité, jamais deux listes à tenir d'accord.</summary>
     public static readonly string[] Events = Cablage.Select(c => c.Evenement).ToArray();
 
-    private readonly string _settingsPath;
+    private readonly PasserelleReglagesClaude _passerelle;
 
+    /// <summary>
+    /// Constructeur de production : la passerelle UNIQUE de <c>~/.claude/settings.json</c>, partagée avec le réconciliateur
+    /// (MAT-1). Lecture tri-état, sauvegarde du texte lu, contrôle « inchangé » avant l'écriture, refus sur lien symbolique.
+    /// </summary>
+    public SessionHookInstaller(PasserelleReglagesClaude passerelle) => _passerelle = passerelle;
+
+    /// <summary>
+    /// Constructeur de compatibilité. <c>null</c> ⇒ vrais chemins du profil (<see cref="PasserelleReglagesClaude.ParDefaut"/>).
+    /// Un chemin explicite (tests) range ses sauvegardes dans <c>chronos-backups</c> À CÔTÉ de ce chemin : un chemin de test
+    /// n'envoie JAMAIS de sauvegarde dans le dossier de sauvegarde du vrai profil (<c>%APPDATA%\Chronos\backups</c>).
+    /// </summary>
     public SessionHookInstaller(string? settingsPath = null)
-        => _settingsPath = settingsPath ?? Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".claude", "settings.json");
+        : this(settingsPath is null
+            ? PasserelleReglagesClaude.ParDefaut()
+            : new PasserelleReglagesClaude(settingsPath, Path.Combine(Path.GetDirectoryName(settingsPath)!, "chronos-backups")))
+    {
+    }
 
-    public string SettingsPath => _settingsPath;
+    public string SettingsPath => _passerelle.SettingsPath;
 
     /// <summary>Commande de hook pour un événement (exe en slashes avant, impératif sous shell).</summary>
     public static string HookCommand(string exePath, string ev)
         => "\"" + exePath.Replace('\\', '/') + "\" --hook " + ev;
 
     /// <summary>
-    /// Les hooks pointent-ils sur CET exe ? Question de FRAÎCHEUR, pas d'appartenance : un groupe
-    /// Chronos d'une version précédente répond <c>false</c>, ce qui permet à l'appelant de repointer.
+    /// Pose les hooks pour CET exe, par la passerelle : sauvegarde du texte lu AVANT d'écrire (comme le réconciliateur), un
+    /// fichier déjà conforme n'est pas réécrit, un fichier ABSENT est créé, un fichier vide ou illisible n'est jamais touché.
+    /// Ne lève jamais : le bilan dit si l'écriture a eu lieu, et sinon pourquoi.
     /// </summary>
-    public bool IsInstalled(string exePath)
+    public EcritureReglagesClaude Install(string exePath)
     {
-        try
-        {
-            if (!File.Exists(_settingsPath)) return false;
-            var root = ClaudeSettingsJson.ParseOrNull(File.ReadAllText(_settingsPath));
-            if (root?["hooks"]?["Notification"] is not JsonArray arr) return false;
-            return arr.Any(g => g is JsonObject go && go["hooks"] is JsonArray hs
-                && hs.Any(h => ClaudeSettingsJson.CommandOf(h) is { } c
-                    && ClaudeSettingsJson.IsChronosCommand(c, ClaudeSettingsJson.HookMarker)
-                    && ClaudeSettingsJson.PointsToExe(c, exePath)));
-        }
-        catch { return false; }
+        var lecture = _passerelle.Lire();
+        if (lecture.Issue == IssueLectureClaude.Inexploitable)
+            return new EcritureReglagesClaude(false, null, "illisible — " + (lecture.Cause ?? "cause inconnue") + " — rien écrit");
+
+        var texte = TransformForInstall(lecture.Texte, exePath);
+        if (texte is null) return new EcritureReglagesClaude(false, null, "illisible — rien écrit");
+        if (DejaConforme(lecture, texte)) return new EcritureReglagesClaude(false, null, "déjà conforme");
+
+        return _passerelle.Ecrire(lecture, texte, creerSiAbsent: true);
     }
 
-    public void Install(string exePath)
+    /// <summary>
+    /// Retire TOUS les groupes Chronos, par la passerelle (sauvegarde d'abord). Un fichier absent n'est pas créé ; un fichier
+    /// vide ou illisible n'est jamais touché. Ne lève jamais.
+    /// </summary>
+    public EcritureReglagesClaude Uninstall()
     {
-        var current = File.Exists(_settingsPath) ? File.ReadAllText(_settingsPath) : null;
-        var updated = TransformForInstall(current, exePath);
-        if (updated is null) return;        // fichier inexploitable → on n'écrit RIEN (dégradation silencieuse)
-        WriteAtomic(updated);
+        var lecture = _passerelle.Lire();
+        if (lecture.Issue == IssueLectureClaude.Absent) return new EcritureReglagesClaude(false, null, "fichier absent");
+        if (lecture.Issue == IssueLectureClaude.Inexploitable)
+            return new EcritureReglagesClaude(false, null, "illisible — " + (lecture.Cause ?? "cause inconnue") + " — rien écrit");
+
+        var texte = TransformForUninstall(lecture.Texte);
+        if (texte is null) return new EcritureReglagesClaude(false, null, "illisible — rien écrit");
+        if (DejaConforme(lecture, texte)) return new EcritureReglagesClaude(false, null, "déjà conforme");
+
+        return _passerelle.Ecrire(lecture, texte, creerSiAbsent: false);
     }
 
-    public void Uninstall()
-    {
-        if (!File.Exists(_settingsPath)) return;
-        var updated = TransformForUninstall(File.ReadAllText(_settingsPath));
-        if (updated is null) return;
-        WriteAtomic(updated);
-    }
+    /// <summary>
+    /// Comparaison sur la forme NORMALISÉE (comme le réconciliateur) : une différence d'indentation seule ne déclenche ni
+    /// écriture ni sauvegarde — sinon la rétention évincerait les sauvegardes utiles.
+    /// </summary>
+    private static bool DejaConforme(LectureReglagesClaude lecture, string texte)
+        => lecture.Issue == IssueLectureClaude.Lu
+           && string.Equals(texte, ClaudeSettingsJson.Serialize(ClaudeSettingsJson.ParseOrNull(lecture.Texte)!), StringComparison.Ordinal);
 
     // --- Cœurs PURS testables ---
 
@@ -319,14 +343,5 @@ public sealed class SessionHookInstaller
         if (root is null) return null;
         ApplyHooks(root, exePath: "", wanted: false);
         return ClaudeSettingsJson.Serialize(root);
-    }
-
-    private void WriteAtomic(string content)
-    {
-        var dir = Path.GetDirectoryName(_settingsPath)!;
-        System.IO.Directory.CreateDirectory(dir);
-        var tmp = _settingsPath + ".tmp-" + System.Environment.ProcessId;
-        File.WriteAllText(tmp, content);
-        File.Move(tmp, _settingsPath, overwrite: true);
     }
 }

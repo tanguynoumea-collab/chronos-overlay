@@ -42,11 +42,17 @@ public sealed class SessionsController : ISessionsController
     {
         try
         {
-            _installer.Install(ExePath); // hooks = précision « permission » pour le terminal (bonus)
-            Persist(s => s with { SessionsWidgetEnabled = true });
+            // Hooks = précision « permission » pour le terminal (bonus) : le widget s'active TOUJOURS, même si la passerelle
+            // refuse d'écrire (fichier vide, illisible, modifié entre-temps, lien symbolique) — elle ne lève jamais.
+            var bilan = _installer.Install(ExePath);
+            // Choix EXPLICITE de l'utilisateur ⇒ le marqueur de quarantaine des réglages est effacé (arbitrage ZEUS).
+            Persist(s => s with { SessionsWidgetEnabled = true, QuarantaineReglagesDepuis = null });
             ShowWindow();
             // Le texte vient du producteur des mots (réserve R9) : il dit ce que l'écran dit, et rien d'autre.
-            MessageBox.Show(Owner(), AffichageSessions.TexteActivation(), "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
+            var texte = AffichageSessions.TexteActivation();
+            if (!bilan.Ecrit && bilan.Cause != "déjà conforme")
+                texte += "\n\nHooks non installés : " + bilan.Cause + " — ~/.claude/settings.json n'a pas été modifié.";
+            MessageBox.Show(Owner(), texte, "Chronos", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (System.Exception ex)
         {
@@ -58,8 +64,9 @@ public sealed class SessionsController : ISessionsController
     {
         try
         {
-            Persist(s => s with { SessionsWidgetEnabled = false });
-            try { _installer.Uninstall(); } catch { }
+            // Choix EXPLICITE de l'utilisateur ⇒ le marqueur de quarantaine des réglages est effacé (arbitrage ZEUS).
+            Persist(s => s with { SessionsWidgetEnabled = false, QuarantaineReglagesDepuis = null });
+            _installer.Uninstall();   // ne lève jamais ; un refus (fichier illisible…) n'empêche pas la désactivation
             _window?.Hide();
         }
         catch { }
