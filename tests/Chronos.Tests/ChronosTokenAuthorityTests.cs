@@ -501,6 +501,126 @@ public class ChronosTokenAuthorityTests
         Assert.Equal(EtatAuthentification.Connecte, autorite.Etat);
     }
 
+    // ------------------------------------------------------------------------------------------
+    // P-01 (audit externe, DS-ARCH-01) : déconnexion et changement de compte depuis les Réglages.
+    // Avant correction, la copie mémoire de l'autorité survivait à « Se déconnecter » et le
+    // rafraîchissement suivant RECRÉAIT oauth.dat avec les jetons de l'ancien compte — écrasant en
+    // silence un nouveau login. Tous ces tests travaillent sur un coffre TEMPORAIRE (CheminCoffreTemp).
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>Répondeur qui tient un rafraîchissement « EN VOL » : il signale son entrée, attend la
+    /// libération, puis rend la rotation nominale (REF-1 → REF-2). Le handler factice étant SYNCHRONE,
+    /// l'appel reste bloqué dans RefreshAsync, sous le sémaphore de l'autorité.</summary>
+    private static (FakeHttpMessageHandler handler, ManualResetEventSlim entre, ManualResetEventSlim liberer)
+        RepondeurBloquant()
+    {
+        var entre = new ManualResetEventSlim(false);
+        var liberer = new ManualResetEventSlim(false);
+        var handler = new FakeHttpMessageHandler(_ =>
+        {
+            entre.Set();
+            if (!liberer.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException("répondeur jamais libéré");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(CorpsRefresh200) };
+        });
+        return (handler, entre, liberer);
+    }
+
+    /// <summary>A — déconnexion propre (Clear + réarmement) : l'autorité oublie ses jetons, aucun
+    /// rafraîchissement n'a lieu et le coffre n'est jamais recréé.</summary>
+    [Fact]
+    public async Task Apres_deconnexion_aucun_rafraichissement_ne_recree_le_coffre()
+    {
+        var (autorite, handler, horloge, chemin) = Autorite(Maintenant.AddHours(1));
+        Assert.Equal("ACC-1", await autorite.GetAccessTokenAsync());   // jeton valide servi une fois
+
+        new ChronosOAuthStore(chemin).Clear();                          // « Se déconnecter » (OAuthLogin.Logout)
+        autorite.ReinitialiserApresLogin();
+        horloge.UtcNow = Maintenant.AddHours(2);                       // au-delà de l'échéance
+
+        Assert.Null(await autorite.GetAccessTokenAsync());
+        Assert.False(File.Exists(chemin));
+        Assert.Equal(0, handler.SendCount);                             // aucune rotation
+        Assert.Equal(EtatAuthentification.NonConnecte, autorite.Etat);
+    }
+
+    /// <summary>A' — défense en profondeur : même SANS réarmement (fenêtre entre Clear et l'appel au
+    /// réarmement), un rafraîchissement ne ressuscite pas un coffre effacé.</summary>
+    [Fact]
+    public async Task Un_coffre_efface_sans_reinitialisation_n_est_pas_recree_par_le_rafraichissement()
+    {
+        var (autorite, _, horloge, chemin) = Autorite(Maintenant.AddHours(1));
+        Assert.Equal("ACC-1", await autorite.GetAccessTokenAsync());
+
+        new ChronosOAuthStore(chemin).Clear();
+        horloge.UtcNow = Maintenant.AddHours(2);
+
+        Assert.Null(await autorite.GetAccessTokenAsync());
+        Assert.False(File.Exists(chemin));
+        Assert.Equal(EtatAuthentification.NonConnecte, autorite.Etat);
+    }
+
+    /// <summary>B — un rafraîchissement EN VOL au moment de la déconnexion ne recrée pas oauth.dat.</summary>
+    [Fact]
+    public async Task Un_rafraichissement_en_vol_ne_ressuscite_pas_un_coffre_efface()
+    {
+        var (h, entre, liberer) = RepondeurBloquant();
+        var (autorite, _, _, chemin) = Autorite(Maintenant.AddMinutes(-1), h);
+
+        var enVol = Task.Run(() => autorite.GetAccessTokenAsync());
+        Assert.True(entre.Wait(TimeSpan.FromSeconds(5)), "le rafraîchissement n'a pas démarré");
+
+        new ChronosOAuthStore(chemin).Clear();
+        autorite.ReinitialiserApresLogin();
+        liberer.Set();
+
+        Assert.Null(await enVol.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.False(File.Exists(chemin));
+    }
+
+    /// <summary>C — nouveau login pendant un rafraîchissement en vol de l'ancien compte : les jetons de
+    /// l'ancien compte n'écrasent jamais le coffre, et c'est le jeton du nouveau login qui est servi.</summary>
+    [Fact]
+    public async Task Un_nouveau_login_n_est_jamais_ecrase_par_les_jetons_de_l_ancien_compte()
+    {
+        var (h, entre, liberer) = RepondeurBloquant();
+        var (autorite, handler, _, chemin) = Autorite(Maintenant.AddMinutes(-1), h);
+
+        var enVol = Task.Run(() => autorite.GetAccessTokenAsync());
+        Assert.True(entre.Wait(TimeSpan.FromSeconds(5)), "le rafraîchissement n'a pas démarré");
+
+        new ChronosOAuthStore(chemin).Save(new OAuthTokens("ACC-N", "REF-N", Maintenant.AddHours(1)));   // le login
+        autorite.ReinitialiserApresLogin();
+        liberer.Set();
+
+        await enVol.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal("REF-N", new ChronosOAuthStore(chemin).Load()!.RefreshToken);   // jamais REF-2
+
+        Assert.Equal("ACC-N", await autorite.GetAccessTokenAsync());
+        Assert.Equal(1, handler.SendCount);                                         // aucune nouvelle requête
+        Assert.Equal("REF-N", new ChronosOAuthStore(chemin).Load()!.RefreshToken);
+    }
+
+    /// <summary>D — écrivain tiers SANS réarmement (fenêtre login → réarmement) : la comparaison entre le
+    /// coffre et le refresh token attendu empêche l'écrasement.</summary>
+    [Fact]
+    public async Task Un_coffre_reecrit_par_un_tiers_n_est_pas_ecrase()
+    {
+        var (h, entre, liberer) = RepondeurBloquant();
+        var (autorite, _, _, chemin) = Autorite(Maintenant.AddMinutes(-1), h);
+
+        var enVol = Task.Run(() => autorite.GetAccessTokenAsync());
+        Assert.True(entre.Wait(TimeSpan.FromSeconds(5)), "le rafraîchissement n'a pas démarré");
+
+        new ChronosOAuthStore(chemin).Save(new OAuthTokens("ACC-N", "REF-N", Maintenant.AddHours(1)));
+        liberer.Set();
+
+        var rendu = await enVol.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(rendu is null || rendu == "ACC-N", $"jeton inattendu servi : {(rendu is null ? "null" : "autre")}");
+        Assert.Equal("REF-N", new ChronosOAuthStore(chemin).Load()!.RefreshToken);   // jamais REF-2
+
+        Assert.Equal("ACC-N", await autorite.GetAccessTokenAsync());
+    }
+
     /// <summary>Critère de succès 3 de la phase : la pastille disparaît dès qu'un chiffre exact est de
     /// nouveau obtenu, même après une période « Deconnecte ».</summary>
     [Fact]

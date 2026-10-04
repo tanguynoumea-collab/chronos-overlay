@@ -657,6 +657,52 @@ public class MainViewModelTests
         Assert.False(vm.IsLoggedIn);
     }
 
+    // --- P-01 (audit externe, DS-ARCH-01) : la commande du menu réarme l'autorité de jeton ---
+    // Sans réarmement, la copie mémoire de l'autorité survivait à « Se déconnecter » et le
+    // rafraîchissement suivant recréait oauth.dat avec les jetons de l'ancien compte.
+
+    [Fact]
+    public async Task LoginClaudeCommand_en_etat_connecte_deconnecte_ET_rearme_l_autorite()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = true };
+        var auth = new FakeAuthStatus();
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, login.LogoutCount);
+        Assert.Equal(1, auth.ReinitCount);    // l'autorité oublie ses jetons : le coffre effacé n'est pas recréé
+        Assert.False(vm.IsLoggedIn);
+    }
+
+    [Fact]
+    public async Task LoginClaudeCommand_login_reussi_rearme_l_autorite()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = false };
+        var auth = new FakeAuthStatus();
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, login.LoginCount);
+        Assert.Equal(1, auth.ReinitCount);    // le coffre du nouveau login est relu, jamais écrasé par l'ancien
+        Assert.True(vm.IsLoggedIn);
+    }
+
+    [Fact]
+    public async Task LoginClaudeCommand_login_ECHOUE_ne_rearme_pas_l_autorite()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = false, LoginDoitReussir = false };
+        var auth = new FakeAuthStatus();
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, login.LoginCount);
+        Assert.Equal(0, auth.ReinitCount);    // aucun jeton neuf : rien à relire
+        Assert.False(vm.IsLoggedIn);
+    }
+
     [Fact]
     public async Task ReconnecterCommand_sur_login_reussi_demande_un_rafraichissement_IMMEDIAT()
     {
