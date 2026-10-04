@@ -52,6 +52,11 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
     // elle, un rafraîchissement EN VOL pendant « Se déconnecter » recréait oauth.dat.
     private int _generation;
 
+    // DS2-01 (42.4) — génération dont l'état mémorisé (jetons, refus, recul…) a été remis à zéro. Lue et
+    // écrite UNIQUEMENT sous le verrou : la réinitialisation n'écrit plus aucun champ, la remise à zéro est
+    // faite paresseusement au début de la séquence suivante.
+    private int _generationAppliquee;
+
     // P-01 — refresh token que l'autorité SAIT être dans le coffre : posé au chargement et après un Save
     // RÉUSSI, inchangé si Save échoue (invariant 4). Avant de réécrire, le coffre est relu et comparé :
     // un autre écrivain (le login) a pu y déposer de nouveaux jetons, qu'il ne faut jamais écraser.
@@ -61,6 +66,9 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
     /// séquence (« apres-chargement », « avant-ecriture », « apres-ecriture ») pour y glisser une
     /// réinitialisation concurrente de façon déterministe (DS2-01, 42.4).</summary>
     internal Action<string>? PointDeControle { get; set; }
+
+    /// <summary>Vrai si une réinitialisation (login / déconnexion) est survenue depuis le début de la séquence.</summary>
+    private bool Perimee(int generation) => generation != Volatile.Read(ref _generation);
 
     /// <summary>État courant. Lisible à tout instant, y compris avant la première transition.</summary>
     public EtatAuthentification Etat { get; private set; } = EtatAuthentification.NonConnecte;
@@ -81,6 +89,9 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
     /// Ce dernier ne quitte l'autorité que vers <see cref="ChronosOAuthClient.RefreshAsync"/>.
     ///
     /// Toute la séquence (charger → décider → rafraîchir → persister → publier) est sous le sémaphore.
+    /// DS2-01 (42.4) : les jetons sont lus UNE fois dans une variable locale (une réinitialisation
+    /// concurrente ne peut plus les rendre null en cours de route), et la génération est relue avant de
+    /// servir un jeton, avant de rafraîchir, puis avant ET après l'écriture du coffre.
     /// </summary>
     public async Task<string?> GetAccessTokenAsync(CancellationToken ct = default)
     {
@@ -88,28 +99,55 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
         try
         {
             var now = _horloge.UtcNow;
-            if (_jetons is null)
+
+            // DS2-01 — REMISE À ZÉRO PARESSEUSE : une réinitialisation survenue depuis la dernière séquence
+            // est appliquée ICI, sous le verrou. Efface aussi toute écriture d'état faite par une séquence
+            // précédente sous une génération devenue périmée entre-temps.
+            var generation = Volatile.Read(ref _generation);
+            if (generation != _generationAppliquee)
             {
-                _jetons = _coffre.Load();
-                _refreshAttenduAuCoffre = _jetons?.RefreshToken;
+                _jetons = null;
+                _refreshAttenduAuCoffre = null;
+                _forcerRafraichissement = false;
+                _refusDefinitif = false;
+                _recul = ReculInitial;
+                _prochainEssai = default;
+                _generationAppliquee = generation;
+            }
+
+            // Copie LOCALE : à partir d'ici, la séquence ne relit plus jamais le champ.
+            var jetons = _jetons;
+            if (jetons is null)
+            {
+                jetons = _coffre.Load();
+                _jetons = jetons;
+                _refreshAttenduAuCoffre = jetons?.RefreshToken;
             }
 
             // Coffre vide : l'utilisateur ne s'est jamais connecté. Rien à rafraîchir — ce n'est PAS
             // une panne, et cela ne doit allumer aucune pastille de déconnexion.
-            if (_jetons is null) { Publier(EtatAuthentification.NonConnecte); return null; }
+            if (jetons is null) { Publier(EtatAuthentification.NonConnecte); return null; }
             PointDeControle?.Invoke("apres-chargement");
 
             // VERROU DÉFINITIF : le serveur a refusé les identifiants. Seul un login répare ; réessayer
-            // ne ferait que consommer du rate-limit sur le point de terminaison de jeton.
-            if (_refusDefinitif) { Publier(EtatAuthentification.Deconnecte); return null; }
+            // ne ferait que consommer du rate-limit sur le point de terminaison de jeton. Sous une
+            // génération périmée, ne rien publier : la réinitialisation a déjà publié NonConnecte.
+            if (_refusDefinitif)
+            {
+                if (!Perimee(generation)) Publier(EtatAuthentification.Deconnecte);
+                return null;
+            }
 
             // DOUBLE-VÉRIFICATION : un appelant concurrent vient peut-être de rafraîchir pendant
             // l'attente du sémaphore. Sans elle, N appelants en attente déclenchent N rotations en
             // série, donc N-1 invalid_grant — une fausse déconnexion fabriquée par nous-mêmes.
-            if (!_forcerRafraichissement && !DoitRafraichir(_jetons.ExpiresAt, now, Marge))
+            if (!_forcerRafraichissement && !DoitRafraichir(jetons.ExpiresAt, now, Marge))
             {
+                // Réinitialisation survenue en cours de séquence : ne jamais servir le jeton de l'ancien
+                // compte ; l'appel suivant relira le coffre.
+                if (Perimee(generation)) return null;
                 Publier(EtatAuthentification.Connecte);
-                return _jetons.AccessToken;
+                return jetons.AccessToken;
             }
 
             // Fenêtre de recul : ne jamais marteler le point de terminaison. Cette politique vit ICI,
@@ -118,12 +156,13 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
             // de l'exe : il ne freinait rien du tout au redémarrage, ce qui entretenait le 429.
             if (now < _prochainEssai) return null;
 
-            var generation = Volatile.Read(ref _generation);
-            var res = await _client.RefreshAsync(_jetons.RefreshToken, ct);
+            // Ne jamais faire tourner le refresh token de l'ancien compte après une réinitialisation.
+            if (Perimee(generation)) return null;
+            var res = await _client.RefreshAsync(jetons.RefreshToken, ct);
 
-            // P-01 : déconnexion ou login survenus PENDANT l'appel. Ne toucher à AUCUN état —
-            // ReinitialiserApresLogin a déjà tout remis à zéro, le prochain appel relira le coffre.
-            if (generation != Volatile.Read(ref _generation)) return null;
+            // P-01 : déconnexion ou login survenus PENDANT l'appel. Ne toucher à AUCUN état — la
+            // remise à zéro paresseuse du prochain appel relira le coffre.
+            if (Perimee(generation)) return null;
 
             switch (res.Issue)
             {
@@ -149,24 +188,45 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
                         return null;
                     }
 
-                    _jetons = res.Jetons!;
+                    var neufs = res.Jetons!;
                     PointDeControle?.Invoke("avant-ecriture");
+
+                    // DS2-01 : génération relue JUSTE AVANT l'écriture — une déconnexion glissée depuis la
+                    // vérification précédente ne doit pas voir le coffre recréé avec l'ancien compte.
+                    if (Perimee(generation)) return null;
+
                     // ROTATION : persister AVANT de rendre le jeton. Un Save en échec ne doit PAS faire
                     // croire à un échec de refresh : les jetons neufs restent en mémoire, la session
                     // courante continue — l'ancien refresh token est de toute façon déjà mort côté serveur.
+                    var ecrit = false;
                     try
                     {
-                        _coffre.Save(_jetons);
-                        _refreshAttenduAuCoffre = _jetons.RefreshToken;
+                        _coffre.Save(neufs);
+                        ecrit = true;
                     }
-                    catch { /* dégradation : session courante préservée */ }
+                    catch { /* dégradation : session courante préservée (invariant 4) */ }
                     PointDeControle?.Invoke("apres-ecriture");
+
+                    // DS2-01 : génération relue JUSTE APRÈS l'écriture. Réinitialisation survenue pendant :
+                    // retirer ce que NOUS venons d'écrire — et seulement nos propres jetons ; un login
+                    // écrit après nous (refresh token différent) est laissé intact.
+                    if (Perimee(generation))
+                    {
+                        if (ecrit && _coffre.Load()?.RefreshToken == neufs.RefreshToken) _coffre.Clear();
+                        return null;
+                    }
+
+                    _jetons = neufs;
+                    if (ecrit) _refreshAttenduAuCoffre = neufs.RefreshToken;
                     _forcerRafraichissement = false;
                     _recul = ReculInitial;
                     _prochainEssai = default;
                     Publier(EtatAuthentification.Connecte);
-                    return _jetons.AccessToken;
+                    return neufs.AccessToken;
 
+                // Branches d'échec : une réinitialisation survenue après la dernière vérification rend ces
+                // écritures d'état périmées — elles sont effacées par la remise à zéro paresseuse du
+                // prochain appel (DS2-01), jamais héritées par le nouveau compte.
                 case IssueRafraichissement.IdentifiantsRejetes:
                     // AUCUN réessai automatique. Et surtout AUCUN effacement du coffre : un faux positif
                     // serveur (cas documenté claude-code#54443) détruirait définitivement un login
@@ -192,18 +252,15 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
 
     /// <summary>TOK-03 / P-01 — après un login réussi ET après une déconnexion : relâche le verrou
     /// « Deconnecte » ET le recul, et oublie les jetons mémorisés pour relire le coffre (réécrit par le
-    /// login, ou effacé par la déconnexion). Incrémente la génération : un rafraîchissement en vol à cet
-    /// instant n'écrira rien à son retour. Sans cet appel, le jeton tout neuf ne serait pas utilisé — ou
-    /// les jetons de l'ancien compte recréeraient le coffre au rafraîchissement suivant.</summary>
+    /// login, ou effacé par la déconnexion). Incrémente la génération : une séquence en cours à cet
+    /// instant ne sert plus de jeton et n'écrira rien. Sans cet appel, le jeton tout neuf ne serait pas
+    /// utilisé — ou les jetons de l'ancien compte recréeraient le coffre au rafraîchissement suivant.
+    ///
+    /// DS2-01 (42.4) : l'état mémorisé est remis à zéro au début de la prochaine séquence, SOUS le verrou ;
+    /// aucun champ n'est écrit ici, donc aucune séquence en cours ne peut lire un état à moitié remis à zéro.</summary>
     public void ReinitialiserApresLogin()
     {
         Interlocked.Increment(ref _generation);
-        _refreshAttenduAuCoffre = null;
-        _jetons = null;
-        _forcerRafraichissement = false;
-        _refusDefinitif = false;
-        _recul = ReculInitial;
-        _prochainEssai = default;
         Publier(EtatAuthentification.NonConnecte);   // sera relevé au premier GetAccessTokenAsync
     }
 
