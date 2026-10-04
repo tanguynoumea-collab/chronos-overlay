@@ -455,4 +455,78 @@ public class EcritureEtatSessionTests
         }
         finally { Directory.Delete(dossier, true); }
     }
+
+    // --- SEC-2 (phase 42.2) : un session_id forgé ne sort pas du dossier des sessions ---
+
+    [Theory]
+    [InlineData("3f2b9c1e-8d4a-4b7f-9e21-0a1b2c3d4e5f")]
+    [InlineData("s1")]
+    [InlineData("sess_42-a")]
+    [InlineData(Sid)]
+    public void Un_identifiant_de_session_conforme_est_accepte(string sid)
+        => Assert.True(SessionHookProcessor.IdentifiantSessionValide(sid));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("..\\x")]
+    [InlineData("../x")]
+    [InlineData("C:\\x\\y")]
+    [InlineData("a:b")]
+    [InlineData("a/b")]
+    [InlineData("a b")]
+    public void Un_identifiant_de_session_hors_motif_est_refuse(string? sid)
+        => Assert.False(SessionHookProcessor.IdentifiantSessionValide(sid));
+
+    [Fact]
+    public void Un_identifiant_de_129_caracteres_est_refuse_et_128_accepte()
+    {
+        Assert.True(SessionHookProcessor.IdentifiantSessionValide(new string('a', 128)));
+        Assert.False(SessionHookProcessor.IdentifiantSessionValide(new string('a', 129)));
+    }
+
+    [Fact]
+    public void Un_hook_dont_le_session_id_remonte_l_arborescence_est_ignore()
+    {
+        var r = SessionHookProcessor.Process("Stop", "{\"session_id\":\"..\\\\..\\\\historique\\\\curseurs\"}", 1_000);
+
+        Assert.Same(SessionHookResult.Ignored, r);
+    }
+
+    [Fact]
+    public void Une_suppression_forgee_hors_du_dossier_echoue_sans_rien_supprimer()
+    {
+        var racine = TempDossier();
+        try
+        {
+            var dossier = Path.Combine(racine, "sessions");
+            Directory.CreateDirectory(dossier);
+            var victime = Path.Combine(racine, "x.json");
+            File.WriteAllText(victime, "{}");
+
+            var resultat = EcritureEtatSession.Appliquer(dossier, new SessionHookResult("..\\x", Delete: true, StateJson: null, Ignore: false));
+
+            Assert.False(resultat.Reussi);
+            Assert.NotNull(resultat.Cause);
+            Assert.True(File.Exists(victime), "un fichier hors du dossier des sessions ne doit jamais être supprimé");
+        }
+        finally { Directory.Delete(racine, true); }
+    }
+
+    [Fact]
+    public void Une_ecriture_forgee_hors_du_dossier_echoue_sans_rien_ecrire()
+    {
+        var racine = TempDossier();
+        try
+        {
+            var dossier = Path.Combine(racine, "sessions");
+            Directory.CreateDirectory(dossier);
+
+            var resultat = EcritureEtatSession.Appliquer(dossier, new SessionHookResult("../evade", Delete: false, StateJson: "{}", Ignore: false));
+
+            Assert.False(resultat.Reussi);
+            Assert.False(File.Exists(Path.Combine(racine, "evade.json")));
+        }
+        finally { Directory.Delete(racine, true); }
+    }
 }
