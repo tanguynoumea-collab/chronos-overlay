@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "GSD",
-  "phase_status": "retour_dev_council_1",
+  "phase": "DEV-COUNCIL",
+  "phase_status": "reverification_ciblee",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -132,7 +132,8 @@
     "2026-10-03 — Phase 42.1 (corrections DR1) executee : 4 plans, B1-B4 + M1/M2/M3/M9/M10/M11/M15 ; porte 1949/1949, 0 avertissement. -> DESIGN-REVIEW iteration 2/3.",
     "2026-10-03 — DESIGN-REVIEW 2/3 CONFORME : B1-B4 corriges (verifie par ZEUS sur rendus), aucune regression bloquante, 3 nouveaux mineurs (roadmap). Clics reels / 4 coins / F11-Echap -> constat humain phase 43. -> DEV-COUNCIL.",
     "2026-10-03 — DEV-COUNCIL iteration 1 : 8 roles + sceptique + matrice ; 0 bloquant, 8 majeurs distincts (MAT-3 cause racine lecture ratee => reecriture, DATA-1, DATA-5, FIAB-1, FIAB-2, ARCH-3, MAINT-2, PKG-1). Rapport .zeus/reports/dev-council-2026-10-03.md. CHECKPOINT 2 (triage) en attente.",
-    "2026-10-04 — CHECKPOINT 2 VALIDE : lots A-E critiques ; Chronos distribue (releases GitHub + SHA-256). -> GSD phase 42.2 (corrections du dev-council), compteur dev_council 1/3."
+    "2026-10-04 — CHECKPOINT 2 VALIDE : lots A-E critiques ; Chronos distribue (releases GitHub + SHA-256). -> GSD phase 42.2 (corrections du dev-council), compteur dev_council 1/3.",
+    "2026-10-04 — Phase 42.2 (corrections dev-council, 10 plans) executee : quarantaine des fichiers Chronos, passerelle unique ~/.claude/settings.json, filet global, mois geles proteges, session_id valide, autostart repointe, diagnostic 8 hooks, Alt+F4, pont Node retire, code mort. Porte : 2113/2113, 0 avertissement. -> re-verification ciblee DEV-COUNCIL."
   ],
   "cycles_precedents": [
     {
