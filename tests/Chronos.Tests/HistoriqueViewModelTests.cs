@@ -691,4 +691,31 @@ public class HistoriqueViewModelTests
         b.Vm.BasculerPleinEcranCommand.Execute(null);
         Assert.Equal(avant, b.Reglages.Courant);
     }
+
+    // ------------------------------------------------------------------ 42.2-05 : verrouillé ≠ vide dans la ligne de fraîcheur
+
+    [Fact]
+    public async Task Une_semaine_lue_incompletement_ne_s_affiche_pas_comme_une_semaine_sans_releve()
+    {
+        var b = Construire();
+        b.Source.TransformerSemaine = d => d with { Analyse = d.Analyse with { Serie = Array.Empty<ReleveJournal>() }, LectureIncomplete = true };
+        await Ouvert(b);
+
+        Assert.Contains("inaccessible", b.Vm.TexteFraicheur, StringComparison.Ordinal);
+        Assert.DoesNotContain("aucun relevé sur cette semaine", b.Vm.TexteFraicheur, StringComparison.Ordinal);
+        Assert.Equal(TextesHistorique.LectureImpossible, b.Vm.TexteFraicheur);
+    }
+
+    [Fact]
+    public async Task Quatre_semaines_lues_incompletement_le_disent_dans_la_ligne_de_fraicheur()
+    {
+        var b = Construire();
+        b.Source.TransformerQuatreSemaines = d => d with { LectureIncomplete = true };
+        await Ouvert(b);
+
+        b.Vm.ChoisirVueCommand.Execute(VueHistorique.QuatreSemaines);
+        await b.Vm.AttendreLecture();
+
+        Assert.StartsWith(TextesHistorique.LectureIncomplete + " · Dernier relevé", b.Vm.TexteFraicheur, StringComparison.Ordinal);
+    }
 }

@@ -298,4 +298,29 @@ public class TextesHistoriqueTests
         // 35-04 : le segment « 4 semaines » est actif, la constante « bientôt (phase 35) » n'existe plus.
         Assert.Null(typeof(TextesHistorique).GetField("InfobulleBientot"));
     }
+
+    // ------------------------------------------------------------------ 42.2-05 : état de lecture (TEST-4, DATA-13)
+
+    [Fact]
+    public void AvecEtatLecture_laisse_la_ligne_intacte_quand_la_lecture_est_complete()
+    {
+        Assert.Equal(TextesHistorique.AucunReleveSemaine, TextesHistorique.AvecEtatLecture(TextesHistorique.AucunReleveSemaine, false));
+        Assert.Equal("Dernier relevé il y a 2 min", TextesHistorique.AvecEtatLecture("Dernier relevé il y a 2 min", false));
+    }
+
+    [Fact]
+    public void AvecEtatLecture_remplace_un_faux_aucun_releve_par_la_lecture_impossible()
+    {
+        Assert.Equal("journal momentanément inaccessible — relevés non lus, ce n'est pas une absence de relevés", TextesHistorique.LectureImpossible);
+        Assert.Equal(TextesHistorique.LectureImpossible, TextesHistorique.AvecEtatLecture(TextesHistorique.AucunReleveSemaine, true));
+        Assert.Equal(TextesHistorique.LectureImpossible, TextesHistorique.AvecEtatLecture(TextesHistorique.AucunReleveJour, true));
+    }
+
+    [Fact]
+    public void AvecEtatLecture_prefixe_une_ligne_partielle_par_la_lecture_incomplete()
+    {
+        const string ligne = "Dernier relevé il y a 2 min · sonde d'en-têtes de rate-limit";
+        Assert.Equal("lecture incomplète : un fichier du journal était inaccessible", TextesHistorique.LectureIncomplete);
+        Assert.Equal(TextesHistorique.LectureIncomplete + " · " + ligne, TextesHistorique.AvecEtatLecture(ligne, true));
+    }
 }
