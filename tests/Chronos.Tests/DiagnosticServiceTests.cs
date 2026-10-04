@@ -2086,4 +2086,80 @@ public class DiagnosticServiceTests : IDisposable
         }
         finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
     }
+    // ---------------------------------------------------------------- 42.2-09 : MAINT-5, les 8 hooks depuis la source unique
+
+    /// <summary>Extrait la ligne « Hooks --hook installés : » de la section du widget.</summary>
+    private static string LigneHooksInstalles(string report)
+        => report.Split('\n').Single(l => l.TrimStart().StartsWith("Hooks --hook installés : "));
+
+    /// <summary>MAINT-5 : sur le settings.json du réconciliateur injecté (fichier témoin temporaire portant les 8 groupes Chronos),
+    /// la ligne « Hooks --hook installés » cite CHACUN des événements de <see cref="SessionHookInstaller.Events"/> — dont les trois
+    /// que l'ancienne liste en dur taisait (PermissionRequest, PreToolUse, PostToolUse).</summary>
+    [Fact]
+    public async Task Le_rapport_liste_les_8_hooks_caables_depuis_SessionHookInstaller_Events()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Chronos_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var texte = SessionHookInstaller.TransformForInstall(null, "C:/Outils/Chronos-v3.5.0.exe");
+            Assert.NotNull(texte);
+            File.WriteAllText(Path.Combine(dir, "settings.json"), texte);
+            var reconciler = new ClaudeSettingsReconciler(
+                Path.Combine(dir, "settings.json"), Path.Combine(dir, "backups"), Path.Combine(dir, "Chronos.exe"));
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+
+            var paths = TempPaths();
+            var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                             new FakeClock(DateTimeOffset.UtcNow), reglagesClaude: reconciler);
+            var ligne = LigneHooksInstalles(await diag.BuildReportAsync());
+
+            Assert.Equal(8, SessionHookInstaller.Events.Length);
+            foreach (var ev in SessionHookInstaller.Events) Assert.Contains(ev, ligne);
+            Assert.Contains("PermissionRequest", ligne);
+            Assert.Contains("PreToolUse", ligne);
+            Assert.Contains("PostToolUse", ligne);
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
+    }
+
+    /// <summary>MAINT-5 : un settings.json témoin sans hooks donne « AUCUN » — et c'est bien le fichier du réconciliateur qui est
+    /// lu, jamais le vrai ~/.claude.</summary>
+    [Fact]
+    public async Task Sans_hooks_dans_le_fichier_du_reconciliateur_le_rapport_dit_AUCUN()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Chronos_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "settings.json"), "{\"model\":\"opus\"}");
+            var reconciler = new ClaudeSettingsReconciler(
+                Path.Combine(dir, "settings.json"), Path.Combine(dir, "backups"), Path.Combine(dir, "Chronos.exe"));
+
+            var paths = TempPaths();
+            var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                             new FakeClock(DateTimeOffset.UtcNow), reglagesClaude: reconciler);
+            var ligne = LigneHooksInstalles(await diag.BuildReportAsync());
+
+            Assert.Equal("Hooks --hook installés : AUCUN", ligne.Trim());
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
+    }
+
+    /// <summary>MAINT-5 (garde de source) : plus aucune liste d'événements tenue en dur dans le diagnostic.</summary>
+    [Fact]
+    public void Le_diagnostic_ne_tient_plus_sa_propre_liste_d_evenements()
+    {
+        var dir = AppContext.BaseDirectory;
+        string? source = null;
+        while (dir is not null)
+        {
+            var c = Path.Combine(dir, "src", "Chronos", "Services", "DiagnosticService.cs");
+            if (File.Exists(c)) { source = File.ReadAllText(c); break; }
+            dir = Path.GetDirectoryName(dir);
+        }
+        Assert.NotNull(source);
+        Assert.DoesNotContain("new[] { \"Notification\", \"Stop\"", source);
+        Assert.Contains("SessionHookInstaller.Events", source);
+    }
 }
