@@ -334,13 +334,29 @@ l'échelle 1). **Contrat :** `.zeus/DESIGN_PLAN_CYCLE2.md` §2.
 
 ### Phase 42.4: Corrections de la re-vérification externe (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Corriger, avant la release 3.5.0, les trois points retenus de la re-vérification dev-senior n° 2
+(`.zeus/reports/dev-senior-2.md`, décisions du 2026-10-04) : l'autorité de jeton ne court plus avec la réinitialisation
+(plus d'exception, coffre jamais recréé) et la boucle de rafraîchissement survit à toute exception d'un provider (DS2-01) ;
+un journal d'activité périmé ou amputé ne certifie plus jamais « exact — encore valide » (DS2-02) ; « Se déconnecter »
+efface le dernier relevé exact, documenté en data-sources §4 (DS2-03).
+**Requirements**: DAT-02, DAT-05 (renforcées)
+**Success Criteria** (what must be TRUE):
+  1. Une réinitialisation (déconnexion / login) au milieu de `GetAccessTokenAsync` ne lève jamais et ne recrée jamais
+     `oauth.dat` (tests à point de contrôle sur coffre temporaire) ; une exception d'un provider est consignée dans
+     `chronos.log` et la boucle de l'orchestrateur publie encore au tick suivant.
+  2. Si la relecture des transcripts échoue avec un journal hors de sa validité (60 s), ou si un transcript présent est
+     illisible, la fenêtre est « indisponible », jamais « exact — encore valide » (prouvé par composition mémoïseur + tête).
+  3. Après « Se déconnecter » (et avant le login d'un nouveau compte), `last-exact.json` est absent, le snapshot suivant
+     n'est pas exact, un relevé de l'ancien compte (cache ou sonde en vol) n'est jamais réécrit ; l'Historique est intact.
+  4. `docs/data-sources.md` §4 dit que la déconnexion efface le dernier relevé exact ; gardes existantes intactes ; suite
+     complète verte, build Debug et Release 0 avertissement.
 **Depends on:** Phase 42
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 42.4 to break down)
+- [ ] 42.4-01-PLAN.md — DS2-01 : autorité de jeton sans course (copie locale, génération autour de Save, remise à zéro paresseuse) + filet journalisé de la boucle de rafraîchissement
+- [ ] 42.4-02-PLAN.md — DS2-02 : plus aucun journal d'activité périmé servi par le mémoïseur ; transcript illisible = passe en échec
+- [ ] 42.4-03-PLAN.md — DS2-03 : la déconnexion efface le dernier relevé exact (magasin sous verrou, tête, menu, câblage) + data-sources §4 + porte finale
 
 ### Phase 42.3: Corrections de l'audit externe (INSERTED)
 
@@ -364,7 +380,8 @@ appelant, commentaires « trois composites ») ; hypothèse « encore valide » 
 **Plans:** 5/5 plans complete
 
 Plans:
-- [x] TBD (run /gsd:plan-phase 42.3 to break down) (completed 2026-10-04)
+- [x] TBD (run /gsd:plan-phase 42.3 to break down)
+ (completed 2026-10-04)
 
 ### Phase 42.2: Corrections du dev-council (INSERTED)
 
