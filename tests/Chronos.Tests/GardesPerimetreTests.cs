@@ -896,4 +896,44 @@ public class GardesPerimetreTests
                              $"{Path.GetFileName(f)} contient « {interdit} » : un test viserait le vrai ~/.claude");
         }
     }
+
+    /// <summary>
+    /// GARDE FIAB-9 (42.2-09). Fermer le cadran (Alt+F4) termine le processus : <c>ShutdownMode="OnMainWindowClose"</c> sur
+    /// l'<c>Application</c>. Avec le défaut OnLastWindowClose, la fenêtre de sessions cachée gardait le Host, la sonde et le mutex
+    /// en vie (« Chronos tourne déjà »). Et le cadran reste la MainWindow posée explicitement par OnStartup. Contrôle de SOURCE
+    /// (l'exe n'est jamais lancé par les tests).
+    /// </summary>
+    [Fact]
+    public void Fermer_le_cadran_termine_l_application()
+    {
+        var xaml = Path.Combine(CheminSources(), "App.xaml");
+        Assert.True(File.Exists(xaml), "App.xaml introuvable (garde muette)");
+        var texte = File.ReadAllText(xaml);
+        Assert.Contains("ShutdownMode=\"OnMainWindowClose\"", texte);
+
+        var app = File.ReadAllText(Path.Combine(CheminSources(), "App.xaml.cs"));
+        Assert.Contains("MainWindow = window;", app);
+    }
+
+    /// <summary>
+    /// GARDE PKG-7 / PERT-1 (42.2-09). Le pont statusLine en Node et son installeur ont été retirés en 3.5 : le dossier
+    /// <c>scripts/</c> ne contient plus aucun script JavaScript, et son README le dit. Anti-muet : le README doit exister.
+    /// </summary>
+    [Fact]
+    public void Le_pont_statusLine_Node_ne_revient_pas_dans_scripts()
+    {
+        var scripts = Path.GetFullPath(Path.Combine(CheminSources(), "..", "..", "scripts"));
+        var readme = Path.Combine(scripts, "README.md");
+        Assert.True(File.Exists(readme), "scripts/README.md introuvable (garde muette)");
+
+        var revenants = Directory.GetFiles(scripts, "*.js", SearchOption.AllDirectories)
+            .Concat(Directory.GetFiles(scripts, "*.mjs", SearchOption.AllDirectories))
+            .Select(Path.GetFileName)
+            .ToList();
+        Assert.True(revenants.Count == 0, "scripts/ contient de nouveau un script Node : " + string.Join(", ", revenants));
+
+        var texte = File.ReadAllText(readme);
+        Assert.Contains("retiré", texte);
+        Assert.DoesNotContain("source primaire", texte);
+    }
 }

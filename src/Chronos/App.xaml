@@ -1,6 +1,11 @@
+<!-- FIAB-9 (42.2) : ShutdownMode EXPLICITE. Fermer le cadran (Alt+F4) doit arrêter l'application : OnExit arrête le Host et
+     libère le mutex d'instance unique. Avec le défaut OnLastWindowClose, la fenêtre de sessions (cachée par Hide, jamais fermée)
+     gardait le processus en vie, invisible — et le relancement répondait « Chronos tourne déjà ». Application.MainWindow est posé
+     explicitement par OnStartup (le cadran, ou la galerie des modes de revue). -->
 <Application x:Class="Chronos.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
     <!-- Aucun démarrage automatique par URI : la fenêtre est résolue par la composition root. -->
     <Application.Resources>
         <ResourceDictionary>
