@@ -10,6 +10,10 @@ namespace Chronos.Services;
 public sealed record ChronosPaths(string UsageFile, string ProjectsRoot)
 {
     /// <summary>Chemins réels : dossier %APPDATA%\Chronos (ancré par usage.json) et %USERPROFILE%\.claude\projects.</summary>
+    /// <remarks>
+    /// La variable CLAUDE_CONFIG_DIR de Claude Code n'est pas lue : des transcripts déplacés hors de %USERPROFILE%\.claude\projects
+    /// sont invisibles (limite écrite au §4 de docs/data-sources.md).
+    /// </remarks>
     public static ChronosPaths Default() => new(
         UsageFile: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Chronos", "usage.json"),
         ProjectsRoot: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "projects"));

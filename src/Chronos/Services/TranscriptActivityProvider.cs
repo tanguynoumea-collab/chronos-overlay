@@ -102,8 +102,9 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     /// Passe disque : matérialise (instant, tokens) pour chaque réponse assistant récente, puis rend un
     /// journal pur interrogeable N fois. Un fichier DISPARU entre l'énumération et la lecture est ignoré ;
     /// un fichier PRÉSENT mais illisible (partage refusé, accès refusé) fait échouer la passe : un journal
-    /// amputé de son activité affirmerait « aucune activité » et ne doit rien certifier (DS2-02). L'appelant
-    /// (LastExactUsageProvider) convertit cet échec en « Indisponible ».
+    /// amputé de son activité affirmerait « aucune activité » et ne doit rien certifier (DS2-02). Une racine
+    /// PRÉSENTE mais inaccessible fait aussi échouer la passe (DS3-02) ; une racine ABSENTE rend un journal vide.
+    /// L'appelant (LastExactUsageProvider) convertit cet échec en « Indisponible ».
     ///
     /// Depuis 42.3 la passe est INCRÉMENTALE : seuls les fichiers dont (taille, mtime) a changé — ou encore
     /// « chauds » — sont relus ; les autres sont repris du cache. Le journal est ensuite reconstruit en
@@ -235,20 +236,21 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
         return lignes;
     }
 
-    // Enumere les *.jsonl sous root. Dossier absent / inaccessible -> sequence vide (jamais d'exception).
+    // Énumère les *.jsonl sous root.
+    // Racine ABSENTE → séquence vide : cas normal d'une machine sans Claude Code (hypothèse écrite au §4 de
+    // data-sources). Racine PRÉSENTE mais inaccessible → l'exception remonte, que l'énumération lève tout de
+    // suite (.NET ouvre la racine à la construction) ou pendant l'itération (sous-dossier refusé) : un journal
+    // qui n'a pas pu tout lire affirmerait « aucune activité » et ne doit rien certifier (DS3-02, même règle
+    // que DS2-02 pour un fichier). LastExactUsageProvider convertit l'échec en « Indisponible ».
     private IEnumerable<string> EnumerateJsonl(string root, DateTimeOffset now)
     {
         if (!Directory.Exists(root)) return Array.Empty<string>();
-        try
-        {
-            // Perf : un JSONL est append-only -> son message le plus recent >= LastWriteTime. Un fichier
-            // non ecrit depuis plus que l'horizon ne peut contenir de message plus recent, donc ne
-            // contribue a aucune requete : on l'ignore pour eviter de scanner tout l'historique.
-            var cutoff = now - HorizonSpan;
-            return _enumererJsonl(root).Where(f => RecentEnough(f, cutoff));
-        }
-        catch (IOException) { return Array.Empty<string>(); }
-        catch (UnauthorizedAccessException) { return Array.Empty<string>(); }
+
+        // Perf : un JSONL est append-only -> son message le plus recent >= LastWriteTime. Un fichier
+        // non ecrit depuis plus que l'horizon ne peut contenir de message plus recent, donc ne
+        // contribue a aucune requete : on l'ignore pour eviter de scanner tout l'historique.
+        var cutoff = now - HorizonSpan;
+        return _enumererJsonl(root).Where(f => RecentEnough(f, cutoff));
     }
 
     // Recursif total : inclut INTENTIONNELLEMENT le sous-dossier subagents/ — les sous-agents

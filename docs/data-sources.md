@@ -51,6 +51,8 @@ Le cadran n'affiche que ce que la tête rend.
 `~/.claude/projects/<slug-projet>/<session-uuid>.jsonl` — un transcript par session, en
 append continu pendant que la session tourne.
 
+Seul `%USERPROFILE%\.claude\projects` est lu (la variable `CLAUDE_CONFIG_DIR` de Claude Code n'est pas suivie) : voir §4.
+
 ### Ce qu'ils servent
 
 Les transcripts ne produisent **jamais un pourcentage** : les plafonds du forfait ne sont pas publiés, et les transcripts
@@ -137,6 +139,15 @@ Toutes les conversions d'unité (pourcentage ↔ fraction, epoch ↔ instant) pa
   « données indisponibles » jusqu'au premier relevé du compte connecté. Effacement volontaire : l'Historique (journal des
   relevés) n'est pas effacé, et les fichiers illisibles restent mis en quarantaine, jamais supprimés. (Décision du
   2026-10-04, DS2-03.)
+- **Reconnexion avec un autre compte.** Se reconnecter par la pastille avec un AUTRE compte, sans passer par « Se
+  déconnecter », peut laisser affiché comme exact, pendant au plus ~5 min (le frein de la sonde, jusqu'au premier relevé
+  du nouveau compte), le dernier relevé de l'ancien : la pastille sert à « réparer » le même compte et n'efface rien.
+  Limite connue (DS3-01, 2026-10-04) ; « Se déconnecter » puis se connecter l'évite.
+- **Transcripts hors de `~/.claude/projects`.** Chronos ne lit que `%USERPROFILE%\.claude\projects` ; `CLAUDE_CONFIG_DIR`
+  n'est pas suivi. Si Claude Code écrit ailleurs, ou si ce dossier est absent, l'activité est invisible : un relevé vieilli
+  peut rester « encore valide » jusqu'au reset de sa fenêtre (même hypothèse que ci-dessus). Si le dossier existe mais est
+  inaccessible (accès refusé, partage refusé), la passe échoue et la fenêtre vieillie passe à « Indisponible » — jamais
+  « exact ». (DS3-02, 2026-10-04.)
 - **Famille d'en-têtes « unified » non documentée.** `anthropic-ratelimit-unified-*` n'apparaît nulle part dans la
   documentation publique d'Anthropic : elle peut être renommée à tout moment. Le diagnostic liste les noms reconnus (jamais
   leurs valeurs) ; un 200 sans aucun en-tête reconnu est dit tel quel (« la famille a peut-être été renommée ») et rien
