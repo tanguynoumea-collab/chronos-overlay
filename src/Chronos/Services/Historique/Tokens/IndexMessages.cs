@@ -127,12 +127,15 @@ public sealed class IndexMessages
     /// <summary>Relit les shards des mois ouverts (lecture tolérante ; id déjà vu → le max gagne, le timestamp le plus PETIT
     /// reste). Remplace l'état en mémoire. Rend le nombre d'ids connus. Ne lève jamais : un shard illisible (ouverture refusée
     /// après reprises, lecture interrompue, fichier non vide sans aucune ligne valide) entre dans <see cref="MoisIllisibles"/>
-    /// et pose <see cref="DerniereErreurLecture"/> — c'est à l'appelant de ne pas s'en servir (DATA-3).</summary>
+    /// et pose <see cref="DerniereErreurLecture"/> — c'est à l'appelant de ne pas s'en servir (DATA-3). Les lignes en attente
+    /// sont ABANDONNÉES : l'ordre de flush ids → agrégats → curseurs garantit que leurs messages viennent de fichiers dont le
+    /// curseur n'est pas persisté, ils seront relus (rejeu d'une initialisation après une passe interrompue sans flush).</summary>
     public int Charger()
     {
         lock (_verrou)
         {
             _parId.Clear();
+            _aEcrire.Clear();
             _moisIllisibles.Clear();
             LignesIgnorees = 0;
             foreach (var mois in MoisOuverts())

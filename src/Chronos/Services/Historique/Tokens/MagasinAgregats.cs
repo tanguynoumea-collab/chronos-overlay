@@ -186,6 +186,21 @@ public sealed class MagasinAgregats : IEtatMagasin
         }
     }
 
+    /// <summary>
+    /// DATA-3 (phase 42.2) — abandonne tout l'état mémoire (mois connus ET sales) pour repartir de l'état disque. Appelé par
+    /// la reconstruction quand elle rejoue son initialisation après une passe interrompue sans flush : les deltas non écrits
+    /// seront relus depuis les curseurs persistés — les garder les compterait deux fois. Les mois illisibles et l'erreur de
+    /// lecture restent (diagnostic). Rien n'est écrit.
+    /// </summary>
+    public void AbandonnerEtatMemoire()
+    {
+        lock (_verrou)
+        {
+            _parMois.Clear();
+            _sales.Clear();
+        }
+    }
+
     /// <summary>Copie triée (slot, modèle ordinal, sub) de l'état mémoire d'un mois ; vide si le mois n'est pas en mémoire.</summary>
     public IReadOnlyList<TrancheTokens> TranchesDuMois(DateTimeOffset mois)
     {

@@ -36,6 +36,15 @@ public sealed record BilanPasse(int FichiersTotal, int FichiersOuverts, int Racc
 /// suivant. Une passe en échec ne tue pas le service (D-33-17) : <c>EnEchec</c>, <c>DerniereErreur</c>, nouvelle passe au cycle
 /// suivant ; <c>StopAsync</c> reste propre.</para>
 ///
+/// <para><b>Lecture illisible d'une brique = passe interrompue SANS flush</b> (MAT-3 / DATA-3, phase 42.2) : un shard d'ids
+/// illisible au démarrage (l'index serait incomplet : la reprojection réécrirait le mois ouvert amputé, et toute lecture
+/// recompterait), ou un mois d'agrégats illisible au moment d'y appliquer un delta (le réécrire en entier effacerait ce qu'on
+/// n'a pas lu), lève une <see cref="LectureIllisibleException"/> — qui traverse le lecteur de transcripts et atteint le
+/// <c>catch</c> de <see cref="ExecuterUnePasse"/>, où rien n'est flushé : ni agrégats ni curseurs écrits par-dessus. La passe
+/// suivante REJOUE l'initialisation depuis l'état disque (index relu, état mémoire des agrégats abandonné, curseurs relus) :
+/// le delta n'est ni perdu ni compté deux fois. Un mois ouvert dont l'index ne sait rien (shard absent ou de 0 octet) alors
+/// que son fichier d'agrégats porte des octets n'est pas reprojeté vide : il est relu tel quel.</para>
+///
 /// <para>Lecture seule stricte de la racine des projets ; écriture uniquement sous <c>HistoriqueDir</c>, par les briques
 /// (le service n'écrit rien lui-même). Type NEUTRE (aucun WPF). Progression en ENTIERS (garde TOK-05) : les champs d'état
 /// sont écrits par le thread de fond et lus par le thread UI — valeurs atomiques (int, bool, référence, ticks en <c>long</c>),
@@ -245,6 +254,13 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
             else
                 Changement?.Invoke(this, EventArgs.Empty);   // annulée : la phase est posée par l'appelant (Arretee dans la boucle)
         }
+        catch (LectureIllisibleException ex)
+        {
+            // MAT-3 : rien n'est flushé ; l'initialisation sera rejouée depuis l'état disque (l'index en mémoire connaît déjà
+            // des ids dont le delta n'a pas été appliqué — les garder perdrait ces deltas à la relecture).
+            _initialise = false;
+            Signaler(PhaseReconstruction.EnEchec, ex.Message);
+        }
         catch (Exception ex)
         {
             // D-33-17 : la passe se dit en échec ; pas de nouveau flush ici (la panne peut être dans le flush lui-même).
@@ -270,14 +286,29 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
         _index.Purger();
         _curseurs = Curseurs.Charger(Path.Combine(_paths.HistoriqueDir, Curseurs.NomFichier), _paths.ProjectsRoot);
         _couverture = CouvertureTokens.Charger(CheminCouverture);
+        _magasin.AbandonnerEtatMemoire();   // rejeu après une passe interrompue : repartir de l'état disque, pas de la mémoire
         _index.Charger();
+
+        // DATA-3 : un index incomplet ne doit ni être reprojeté (le mois ouvert serait réécrit amputé) ni servir à dédoublonner.
+        if (_index.MoisIllisibles.Count > 0)
+            throw new LectureIllisibleException("index d'ids : shard illisible ("
+                + string.Join(", ", _index.MoisIllisibles.Select(m => m.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture)))
+                + ") — reprojection et lecture reportées au cycle suivant");
 
         // Le fichier d'agrégats d'un mois ouvert n'est jamais la vérité : l'index l'est. Un mois sans aucun id et sans
         // fichier n'a rien à dire (pas de fichier vide créé) ; un fichier existant est remplacé par la projection, même vide.
+        // Exception (DATA-3) : un index MUET (shard absent ou de 0 octet) face à un fichier qui porte des octets ne prouve
+        // rien — le reprojeter le réécrirait vide. Le mois est relu tel quel ; illisible → passe interrompue.
         foreach (var mois in _index.MoisOuverts())
         {
-            var entrees = _index.Entrees(mois);
-            if (entrees.Any() || File.Exists(_magasin.CheminDuMois(mois)))
+            var entrees = _index.Entrees(mois).ToList();
+            var chemin = _magasin.CheminDuMois(mois);
+            if (entrees.Count == 0 && TailleNonNulle(chemin))
+            {
+                if (_magasin.ChargerMois(mois) < 0) throw MoisIllisible(mois);
+                continue;
+            }
+            if (entrees.Count > 0 || File.Exists(chemin))
                 _magasin.RemplacerMois(mois, ProjectionAgregats.Projeter(entrees));
         }
 
@@ -317,7 +348,21 @@ public sealed class ReconstructionTokens : BackgroundService, IEtatReconstructio
     {
         var d = _index.Ajouter(m.Id is null ? m with { Id = CleSansId(m) } : m);
         if (d is null) return;
-        _magasin.Appliquer(new DeltaTranche(TrancheTokens.SlotDe(d.Ts), d.Model, d.Sub, d.In, d.Out, d.CacheW, d.CacheR, d.NouveauMessage));
+        var slot = TrancheTokens.SlotDe(d.Ts);
+        if (!_magasin.Appliquer(new DeltaTranche(slot, d.Model, d.Sub, d.In, d.Out, d.CacheW, d.CacheR, d.NouveauMessage)))
+            throw MoisIllisible(TrancheTokens.MoisDe(slot));   // DATA-3 : traverse LecteurTranscript (pas une IOException)
+    }
+
+    private static LectureIllisibleException MoisIllisible(DateTimeOffset mois)
+        => new("agrégats : mois " + mois.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture)
+               + " illisible — passe interrompue sans flush, rien n'est écrit par-dessus");
+
+    // Dans le doute (attributs illisibles), « non nul » : on relit plutôt que de reprojeter par-dessus.
+    private static bool TailleNonNulle(string chemin)
+    {
+        try { return new FileInfo(chemin) is { Exists: true, Length: > 0 }; }
+        catch (IOException) { return true; }
+        catch (UnauthorizedAccessException) { return true; }
     }
 
     // D-33-18 : déterministe et indépendante du fichier (un renommage ou une copie ne recompte pas) — deux lignes sans id
