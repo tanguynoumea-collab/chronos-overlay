@@ -53,24 +53,26 @@ public sealed class GardeDocumentationReleaseTests
         return Lire(Path.Combine(sources, "Chronos.csproj"));
     }
 
-    /// <summary>Section d'un document markdown : du titre (début de ligne) au prochain titre de même niveau ou de niveau
-    /// supérieur, ou à la fin du fichier. Le titre absent fait rougir la garde.</summary>
+    /// <summary>Section d'un document markdown : de la ligne de titre au prochain titre de même niveau ou de niveau
+    /// supérieur, ou à la fin du fichier. Les lignes d'un bloc de code (entre ```) ne sont jamais des titres : un
+    /// commentaire « # … » de shell ne coupe pas la section. Le titre absent fait rougir la garde.</summary>
     private static string Section(string texte, string titre)
     {
         var niveau = titre.TakeWhile(c => c == '#').Count();
-        var debut = texte.StartsWith(titre, StringComparison.Ordinal) ? 0 : texte.IndexOf("\n" + titre, StringComparison.Ordinal);
+        var lignes = texte.Split('\n');
+        var debut = Array.FindIndex(lignes, l => l.StartsWith(titre, StringComparison.Ordinal));
         Assert.True(debut >= 0, $"« {titre} » introuvable");
-        if (texte[debut] == '\n') debut++;
 
-        var curseur = debut + titre.Length;
-        while (true)
+        var fin = lignes.Length;
+        var dansCode = false;
+        for (var i = debut + 1; i < lignes.Length; i++)
         {
-            var suivant = texte.IndexOf("\n#", curseur, StringComparison.Ordinal);
-            if (suivant < 0) return texte[debut..];
-            var diese = texte.Skip(suivant + 1).TakeWhile(c => c == '#').Count();
-            if (diese <= niveau) return texte[debut..suivant];
-            curseur = suivant + 1;
+            if (lignes[i].StartsWith("```", StringComparison.Ordinal)) { dansCode = !dansCode; continue; }
+            if (dansCode || !lignes[i].StartsWith('#')) continue;
+            var diese = lignes[i].TakeWhile(c => c == '#').Count();
+            if (diese <= niveau) { fin = i; break; }
         }
+        return string.Join("\n", lignes[debut..fin]);
     }
 
     [Fact]

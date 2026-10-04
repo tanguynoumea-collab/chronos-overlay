@@ -12,11 +12,11 @@
     <ApplicationIcon>Assets\chronos.ico</ApplicationIcon>
 
     <!-- Identité + VERSION embarquée dans l'exe (Propriétés → Détails). À incrémenter à chaque release ;
-         le nom du fichier publié porte aussi la version (Chronos-vX.Y.exe). -->
-    <Version>3.4.0</Version>
-    <FileVersion>3.4.0.0</FileVersion>
-    <AssemblyVersion>3.4.0.0</AssemblyVersion>
-    <InformationalVersion>3.4.0</InformationalVersion>
+         le nom du fichier publié porte aussi la version (Chronos-vX.Y.Z.exe). -->
+    <Version>3.5.0</Version>
+    <FileVersion>3.5.0.0</FileVersion>
+    <AssemblyVersion>3.5.0.0</AssemblyVersion>
+    <InformationalVersion>3.5.0</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Chronos</Product>
     <AssemblyTitle>Chronos — overlay d'usage Claude</AssemblyTitle>

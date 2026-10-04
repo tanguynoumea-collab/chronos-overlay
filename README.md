@@ -6,25 +6,47 @@
 
 **Overlay Windows en forme d'horloge qui affiche, d'un coup d'œil, l'état de tes limites d'usage Claude** (fenêtre 5 h + fenêtre hebdomadaire) — pour Claude Code et Cowork.
 
-Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau. Trois anneaux concentriques, un compte à rebours, des couleurs qui passent du vert au rouge à mesure que tu consommes ton quota.
+Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau. Cinq formes au choix (des anneaux concentriques aux volets d'un afficheur), un compte à rebours, des couleurs qui passent du vert au rouge à mesure que tu consommes ton quota.
 
 <!-- Astuce : remplace ce lien par une vraie capture une fois la release publiée -->
 <!-- ![Chronos](docs/screenshot.png) -->
 
 ## Ce que montre le cadran
 
-- **Anneau interne — fenêtre hebdomadaire** : se remplit à l'approche du reset ; couleur = % de quota consommé.
-- **Anneau du milieu — fenêtre 5 h glissante** : idem pour la fenêtre de 5 heures.
-- **Anneau externe — timeline 24 h** : où tu en es dans la journée, avec des marques à chaque reset 5 h.
-- **Au centre** : les deux pourcentages d'utilisation.
+Quelle que soit sa forme, le cadran dit la même chose pour les deux fenêtres (5 h glissante et hebdomadaire) : la
+**géométrie** dit le temps restant avant le reset, la **couleur** dit le % de quota consommé.
+
+### Cinq cadrans, huit variantes
+
+Réglages → **Apparence** → style du cadran :
+
+- **Anneaux** (défaut) — en mode **Normal** (défaut), deux anneaux : la fenêtre hebdomadaire à l'intérieur et une
+  timeline 24 h colorée par l'usage 5 h, avec un sous-tiret par heure et une marque à chaque reset 5 h. En mode
+  **Étendu** (carte « Mode étendu »), trois anneaux : hebdo, 5 h, timeline 24 h. **Au centre** : les deux pourcentages.
+- **Braises** — deux couronnes de braises : la fenêtre 5 h en 20 braises de 15 min, groupées par heure (5 groupes),
+  avec une flèche de reset fixe à midi ; la fenêtre hebdomadaire en 12 braises. Le nombre de braises allumées dit le
+  temps restant. En mode temps, le centre ajoute l'heure locale du reset 5 h (« ↻ HH:MM »).
+- **Fusible** — une mèche qui brûle.
+- **Marée** — une bande que l'eau gagne.
+- **Volets** — une plaque chiffrée et une rangée de volets, comme un afficheur de gare.
+
+Fusible, Marée et Volets se posent à l'horizontale ou à la verticale (carte **« Orientation »** : Horizontal ·
+Vertical), et chaque cadran retient la sienne (Marée est verticale par défaut, les deux autres horizontaux). Avec les
+deux modes d'Anneaux, cela fait huit variantes. La fenêtre prend la taille réelle du cadran choisi et reste collée à
+son coin d'écran quand on en change.
+
+### Lire le cadran
+
 - **Gestes, sur tout le cadran** : un **clic** bascule entre les pourcentages et le **temps avant reset** (après le délai de double-clic de Windows, ≈ 0,5 s) ; un **double-clic** ouvre l'**Historique** (voir [plus bas](#historique-dutilisation)) ; **appuyer puis glisser** déplace le cadran, qui s'accroche ensuite au coin le plus proche ; **clic droit** ouvre les **Réglages**. À côté du cadran, le clic va au bureau.
 - **Couleurs** : vert → ambre → rouge selon l'utilisation, **gris** quand le quota est épuisé, **neutre** quand la donnée est inconnue (jamais de valeur inventée). Un `≥` devant un pourcentage signale un **plancher** : le dernier relevé exact a vieilli pendant que Claude Code travaillait — le vrai chiffre est au moins celui-là.
 
 ## Installation (portable, sans droits admin)
 
-1. Télécharge **`Chronos.exe`** depuis la [dernière release](../../releases/latest).
-2. Double-clique dessus. C'est tout — pas de .NET à installer, pas de droits administrateur, rien n'est écrit hors de ton profil utilisateur.
-3. Windows SmartScreen affichera peut-être « Éditeur inconnu » (l'exe n'est pas signé) : clique **Informations complémentaires → Exécuter quand même**.
+1. Télécharge **`Chronos-v3.5.0.exe`** depuis la [dernière release](../../releases/latest).
+2. Vérifie son empreinte **SHA-256**, publiée avec la release : dans PowerShell,
+   `Get-FileHash .\Chronos-v3.5.0.exe -Algorithm SHA256` doit rendre la même valeur.
+3. Double-clique dessus depuis l'Explorateur. C'est tout — pas de .NET à installer, pas de droits administrateur, rien n'est écrit hors de ton profil utilisateur.
+4. Windows SmartScreen affichera peut-être « Éditeur inconnu » (l'exe n'est pas signé) : clique **Informations complémentaires → Exécuter quand même**.
 
 L'overlay apparaît dans un coin de l'écran. **Clic droit** dessus ouvre les **Réglages** : une fenêtre classique,
 redimensionnable (bords et poignée ◢), agrandissable, présente dans la barre des tâches, qui retient sa taille, sa
@@ -33,15 +55,16 @@ ferment, et un second clic droit la ramène au premier plan. Six sections dans l
 **Ctrl+1…6**) :
 
 - **Données** — connexion à Claude, sonde d'en-têtes (son coût est écrit).
-- **Historique** — ouvre la fenêtre Historique, choisit le style de la vue Semaine.
-- **Apparence** — thème (15, en 3 groupes Pâle · Classique · Vive) et style du cadran (5), avec un **aperçu en direct** du vrai cadran ; mode étendu (Anneaux).
+- **Historique** — ouvre la fenêtre Historique.
+- **Apparence** — style du cadran (5), avec un **aperçu en direct** du vrai cadran ; **Orientation** (Fusible, Marée,
+  Volets) ; mode étendu (Anneaux) ; thème (15, en 3 groupes Pâle · Classique · Vive).
 - **Sessions** — widget des sessions Claude Code, son style (8) avec aperçu, disposition verticale.
 - **Comportement** — arrière-plan, lancer au démarrage.
 - **Diagnostic** — ce que Chronos voit en ce moment, dans la fenêtre : **↻ Actualiser**, **⧉ Copier**.
 
 **« ⏻ Quitter Chronos »** est isolé en bas du rail.
 
-Déplace l'overlay en le **glissant** par les anneaux ; il s'accroche au coin d'écran le plus proche (multi-écrans géré).
+Déplace l'overlay en le **glissant** depuis n'importe quel point de sa silhouette ; il s'accroche au coin d'écran le plus proche (multi-écrans géré).
 
 ## D'où viennent les chiffres
 
@@ -61,6 +84,11 @@ Une seule chaîne — la sonde d'en-têtes d'abord, son secours ensuite —, dé
 
 Les resets viennent toujours du serveur. Les transcripts locaux (`~/.claude/projects`) ne servent qu'à savoir si Claude
 Code a travaillé et à l'Historique : jamais à fabriquer un pourcentage.
+
+Limites connues (détail au §4 de [`docs/data-sources.md`](docs/data-sources.md)) : se reconnecter par la pastille avec
+un **autre compte** peut laisser l'ancien relevé affiché comme exact quelques minutes ; des transcripts écrits **hors de
+`~/.claude/projects`** (par exemple via `CLAUDE_CONFIG_DIR`) rendent l'activité invisible, et un relevé vieilli peut
+alors rester « exact » jusqu'au reset.
 
 ### À propos du token (transparence)
 
@@ -195,15 +223,18 @@ Prérequis : SDK **.NET 8** (ou ultérieur, capable de cibler `net8.0-windows`).
 dotnet run --project src/Chronos
 
 # Publier l'exe portable mono-fichier (win-x64)
-dotnet publish src/Chronos -c Release -r win-x64 -p:PublishSingleFile=true --self-contained true
+dotnet publish src/Chronos/Chronos.csproj -c Release -r win-x64 -p:PublishSingleFile=true --self-contained true
 # → src/Chronos/bin/Release/net8.0-windows/win-x64/publish/Chronos.exe
 ```
+
+La sortie est ensuite copiée sous son nom versionné, à la version des quatre propriétés du csproj : pour cette release,
+**`Chronos-v3.5.0.exe`**.
 
 Détails de publication dans [`docs/publish.md`](docs/publish.md). Contrat des sources de données dans [`docs/data-sources.md`](docs/data-sources.md).
 
 ## Stack
 
-C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) · rendu du cadran en XAML pur (aucune dépendance native) · exe self-contained mono-fichier. plus de 1 600 tests unitaires.
+C# / .NET 8 / WPF / MVVM (CommunityToolkit.Mvvm) · rendu du cadran en XAML pur (aucune dépendance native) · exe self-contained mono-fichier. plus de 2 200 tests unitaires.
 
 ## Licence
 

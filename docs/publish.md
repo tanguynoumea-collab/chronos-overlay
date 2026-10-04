@@ -40,10 +40,17 @@ src/Chronos/bin/Release/net8.0-windows/win-x64/publish/Chronos.exe
 Un **unique** `Chronos.exe` (+ éventuellement `Chronos.pdb`, à ne pas distribuer). Taille
 mesurée ~77 Mo (3.1.0, 3.2.0, 3.2.1) ; garde-fou < 120 Mo.
 
-Copier ensuite la sortie à la racine du dépôt sous le nom versionné `Chronos-v<X.Y.Z>.exe`
-(ignoré par `.gitignore` : `/Chronos-v*.exe`). La version vient des quatre propriétés du csproj
-(`Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion`), tenues cohérentes par
-`VersionPublieeTests`, et le rapport de diagnostic l'affiche (ligne `Version :`).
+Copier ensuite la sortie à la racine du dépôt principal sous le nom versionné `Chronos-v<X.Y.Z>.exe`
+(`Chronos-v3.5.0.exe` pour cette release ; ignoré par `.gitignore` : `/Chronos-v*.exe`). La version vient des
+quatre propriétés du csproj (`Version`, `FileVersion`, `AssemblyVersion`, `InformationalVersion`), tenues
+cohérentes par `VersionPublieeTests`, et le rapport de diagnostic l'affiche (ligne `Version :`).
+
+**Empreinte** : calculer le SHA-256 de l'exe versionné (`sha256sum Chronos-v3.5.0.exe` ou
+`Get-FileHash .\Chronos-v3.5.0.exe -Algorithm SHA256`) et le publier avec l'exe (notes de release) ;
+l'utilisateur la compare avant le premier lancement.
+
+**Étiquette** : convention `exe-vX.Y.Z` (`exe-v3.5.0`) sur le commit de release, posée par l'utilisateur au
+moment de la publication GitHub — jamais par l'agent.
 
 ---
 
@@ -73,7 +80,7 @@ mirrorées dans `Properties/PublishProfiles/win-x64.pubxml`.
 
 ## 4. Distribution
 
-- Copier **le seul fichier `Chronos.exe`** vers la machine cible (le `.pdb` n'est pas nécessaire).
+- Copier **le seul fichier `Chronos-vX.Y.Z.exe`** vers la machine cible (le `.pdb` n'est pas nécessaire).
 - Aucune installation de runtime .NET n'est requise (self-contained).
 - Les DLL natives WPF sont **extraites automatiquement au 1er lancement** dans un dossier temp.
 - **Premier run** : un léger délai d'extraction et/ou une alerte **SmartScreen** est possible au
@@ -82,7 +89,7 @@ mirrorées dans `Properties/PublishProfiles/win-x64.pubxml`.
 
 ---
 
-## 5. Autostart — chemin stable et limite
+## 5. Autostart — raccourci repointé au démarrage
 
 Le toggle « Lancer au démarrage » (réglages → Comportement, clic droit sur le cadran) crée un
 raccourci `Chronos.lnk` dans `shell:startup` (per-user, sans droit admin). Le raccourci cible
@@ -90,12 +97,27 @@ raccourci `Chronos.lnk` dans `shell:startup` (per-user, sans droit admin). Le ra
 `src/Chronos/Services/AutostartService.cs`).
 
 `Environment.ProcessPath` est **single-file-safe** — contrairement à `Assembly.Location` qui est
-**vide en mono-fichier**. Le raccourci pointe donc toujours vers le bon exe au moment de l'activation.
+**vide en mono-fichier**.
 
-> **⚠️ Limite à connaître** : le raccourci reste valide **tant que l'exe n'est pas déplacé**.
-> Si l'utilisateur déplace `Chronos.exe` **après** avoir activé l'autostart, le `.lnk` continue de
-> pointer vers l'**ancien** emplacement (raccourci cassé). Correctif : **re-basculer l'autostart**
-> (désactiver puis réactiver) depuis le **nouvel** emplacement de l'exe.
+**Au démarrage, Chronos repointe seul un raccourci existant vers l'exe courant**
+(`AutostartService.ConvergerVersExeCourant`, avant que la case « Lancer au démarrage » ne soit lue) si la cible du raccourci a disparu
+du disque (exe déplacé ou supprimé) ou si elle est d'une version plus ancienne que l'exe courant. Il ne le fait pas :
+
+- si l'exe courant est un build de développement (un dossier `bin\` dans son chemin) ou une copie lancée depuis le
+  dossier temporaire (`%TEMP%`) ;
+- si la cible est d'une version égale ou plus récente : une version plus ancienne relancée ne reprend pas
+  l'autostart ;
+- si l'une des deux versions est illisible (le raccourci est conservé).
+
+Il ne crée jamais le raccourci : absent, il reste absent. Un repointage, un raccourci conservé pour l'une de ces
+raisons ou un échec est écrit au journal d'incidents.
+
+> **Recours manuel** : la case « Lancer au démarrage » n'est cochée que si le raccourci vise l'exe courant. Depuis
+> un exe que Chronos ne repointe pas (dossier `bin\`, dossier temporaire, version plus ancienne), cocher la case
+> réécrit le raccourci vers cet exe.
+>
+> **Limite connue (PKG-R2)** : le diagnostic n'affiche pas la cible du raccourci ; pour la connaître, ouvrir
+> `shell:startup` et lire les propriétés de `Chronos.lnk`.
 
 ---
 
@@ -105,12 +127,13 @@ Vérifications **automatisables** (rappel — faites lors du build de release) :
 
 1. `publish/` ne contient **que** `Chronos.exe` (+ `.pdb`) — **zéro** `.dll` à côté.
 2. Taille de `Chronos.exe` < 120 Mo (mesuré ~77 Mo).
-3. **Smoke sans lancer l'overlay** : `Chronos-v<X.Y.Z>.exe --hook SessionStart` avec une entrée
-   standard vide ⇒ code 0, aucune écriture, md5 de `~/.claude/settings.json` identique avant/après.
-   L'agent ne lance jamais l'overlay : lancé depuis une session Claude Code, il verrait la vue
-   virtualisée d'AppData (autres réglages, autre `treated.json`). Le smoke `--hook` ne prouve ni le
-   verrou mono-instance ni le journal d'historique (ce mode sort avant le Host) : ils se constatent au
-   premier lancement par l'utilisateur (32-CONSTAT).
+3. **Smoke `--hook`** : `Chronos-v<X.Y.Z>.exe --hook SessionStart` avec une entrée standard vide ⇒
+   code 0, aucune écriture, md5 de `~/.claude/settings.json` identique avant/après. Depuis la 3.5.0,
+   l'agent ne lance JAMAIS l'exe, même en mode `--hook` : le smoke est joué par l'utilisateur au constat
+   (43-CONSTAT), depuis une invite de commandes ouverte par l'Explorateur. Lancé depuis une session
+   Claude Code, l'exe verrait la vue virtualisée d'AppData (autres réglages, autre `treated.json`). Le
+   smoke `--hook` ne prouve ni le verrou mono-instance ni le journal d'historique (ce mode sort avant le
+   Host) : ils se constatent au premier lancement par l'utilisateur.
 4. Non-régression : `dotnet test Chronos.sln -c Debug` → suite complète verte (0 échec), deux
    exécutions.
 
@@ -140,8 +163,8 @@ reste multi-instances.
 barre de statut) : le log de démarrage est écrit APRÈS la réconciliation.
 
 Garder l'ancien exe sur le disque tant que des sessions ouvertes avant la réconciliation tournent :
-elles l'appellent encore. Activer « Lancer au démarrage » DEPUIS le nouvel exe : le raccourci vise
-l'exe qui l'a créé.
+elles l'appellent encore. Un raccourci « Lancer au démarrage » existant est repointé vers le nouvel exe
+s'il est plus récent que sa cible (§5).
 
 ### Premier lancement de la 3.3.0
 
@@ -172,6 +195,11 @@ l'exe qui l'a créé.
 
 ### Premier lancement de la 3.5.0
 
+- **Avant** : quitter à la main TOUS les Chronos en marche (réglages → « Quitter Chronos »), anciennes versions
+  comprises (écart E1-ter des constats 32 et 35). Puis lancer `Chronos-v3.5.0.exe` par l'Explorateur, après avoir
+  comparé son empreinte SHA-256 (§2).
+- **Autostart** : un raccourci « Lancer au démarrage » existant est repointé vers la 3.5.0 au démarrage s'il visait
+  une version plus ancienne ou un exe disparu (§5) ; absent, il n'est pas créé.
 - **Barre de statut retirée** : la 3.5 ne fournit plus de barre de statut à Claude Code. Au premier lancement, la
   réconciliation sauvegarde `~/.claude/settings.json` (sous `%APPDATA%\Chronos\backups\`), puis retire la barre
   Chronos, quels que soient son chemin et sa version ; si l'ancienne barre de l'utilisateur est connue (réglages ≤ 3.4),

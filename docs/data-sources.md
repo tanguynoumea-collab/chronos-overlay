@@ -3,7 +3,7 @@
 > **Réécrit en 2026-10 (phase 37, purge R5) — méthodologie unique.** Ce document décrit la seule chaîne qui alimente le
 > cadran : d'où vient chaque chiffre, ce qui est exact et ce qui ne l'est pas. Les sources retirées sont nommées au §5,
 > une ligne chacune ; les §6 à §9 (widget de sessions, journal d'historique, agrégats de tokens, lecture par la fenêtre
-> Historique) sont inchangés.
+> Historique) sont inchangés ; complété le 2026-10-04 (phase 43 : limites DS3-01 / DS3-02 au §4) — état de l'exe 3.5.0.
 
 ```
  sonde d'en-têtes de rate-limit ─┐
