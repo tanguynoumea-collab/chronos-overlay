@@ -16,8 +16,8 @@ namespace Chronos.Tests;
 
 /// <summary>
 /// BRA-01 (plan 41-01) — preuves PAR RENDU de l'anneau 5 h de Braises : 20 braises en 5 groupes de 4 (rien à midi ni à
-/// 72°, là où une répartition uniforme en mettrait une), état « en attente » aux MÊMES angles que le nominal, anneau
-/// hebdo inchangé. Les couleurs littérales sont permises ICI (tests) : la garde de la phase 39 ne vise que les sources.
+/// 72°, là où une répartition uniforme en mettrait une), état « en attente » aux MÊMES angles que le nominal. Plan 43-05 :
+/// anneau hebdo en 14 braises, 7 groupes de 2 (un jour par groupe, une braise par demi-journée). Les couleurs littérales sont permises ICI (tests) : la garde de la phase 39 ne vise que les sources.
 /// </summary>
 [Collection("XAML WPF")]
 public class CadranBraisesTests
@@ -101,19 +101,60 @@ public class CadranBraisesTests
         Assert.Equal(0, Pixel(px, PointSur(72, 66)).A);
     }
 
-    [WpfFact]
-    public void Anneau_hebdo_sans_groupe_reste_uniforme()
-    {
-        var hebdo = new EmberRingControl
-        {
-            Radius = 44, Count = 12, PipRadius = 3.6, Fraction = 1.0,
-            QuotaBrush = B(Rouge), AshBrush = B(Cendre), WaitBrush = B(Attente),
-        };
-        Assert.Equal(1, hebdo.GroupSize);
-        Assert.Equal(0.0, hebdo.GroupPitch);
+    // --- Plan 43-05 (écart du constat) : anneau hebdo en 14 braises, 7 groupes de 2 (un jour par groupe) ---
 
-        var px = Rendre(hebdo);
-        Assert.True(Pixel(px, PointSur(30, 44)).A > 0, "braise hebdo absente à 30°");
+    private static double AngleHebdo(int i) => BraisesGeometrie.Angle(i, 14, 2, 15.6);
+
+    private static EmberRingControl AnneauHebdo(double fraction) => new()
+    {
+        Radius = 44, Count = 14, PipRadius = 3.6, GroupSize = 2, GroupPitch = 15.6,
+        Fraction = fraction, HasData = true,
+        QuotaBrush = B(Rouge), AshBrush = B(Cendre), WaitBrush = B(Attente),
+    };
+
+    [WpfFact]
+    public void Anneau_hebdo_sept_groupes_de_deux_rien_a_midi_ni_entre_deux_jours()
+    {
+        var px = Rendre(AnneauHebdo(1.0));
+
+        Assert.True(Proche(Pixel(px, PointSur(AngleHebdo(0), 44)), Rouge), "braise hebdo 0 non rouge");
+        Assert.True(Proche(Pixel(px, PointSur(AngleHebdo(1), 44)), Rouge), "braise hebdo 1 non rouge");
+        Assert.Equal(0, Pixel(px, PointSur(0, 44)).A);              // midi : milieu d'un vide
+        Assert.Equal(0, Pixel(px, PointSur(360.0 / 7, 44)).A);      // frontière entre le jour 1 et le jour 2
+    }
+
+    [WpfTheory]
+    [InlineData(128.0, 11)]   // 5 j 8 h restants (constat du 2026-10-04) → 11 braises
+    [InlineData(24.0, 2)]
+    [InlineData(0.0, 0)]
+    public void Anneau_hebdo_allume_une_braise_par_demi_journee_restante(double heures, int allumees)
+    {
+        var px = Rendre(AnneauHebdo(heures / 168.0));
+
+        for (int i = 0; i < 14; i++)
+        {
+            var p = Pixel(px, PointSur(AngleHebdo(i), 44));
+            if (i < allumees - 1) Assert.True(Proche(p, Rouge), $"braise {i} non allumée");
+            else if (i == allumees - 1) Assert.True(p.A is > 0 and < 255 && p.R > p.G, $"braise {i} : demi-lueur attendue");   // dernière = demi-lueur
+            else Assert.True(Proche(p, Cendre), $"braise {i} non cendre");
+        }
+    }
+
+    [WpfFact]
+    public void Vue_l_anneau_hebdo_est_en_quatorze_braises_groupees_par_deux_et_le_groupe_tient_dans_son_secteur()
+    {
+        var (vue, _) = Monter(new CadranPreviewViewModel());
+        var anneaux = ((Grid)vue.Content).Children.OfType<EmberRingControl>().ToList();
+        Assert.Equal(2, anneaux.Count);
+
+        var hebdo = anneaux[1];
+        Assert.Equal(44.0, hebdo.Radius, 6);
+        Assert.Equal(14, hebdo.Count);
+        Assert.Equal(2, hebdo.GroupSize);
+        Assert.True(hebdo.GroupPitch > 0, "GroupPitch nul : repli uniforme silencieux");
+        // Le groupe doit tenir dans son secteur, sinon BraisesGeometrie retombe en uniforme sans rien dire.
+        Assert.True((hebdo.GroupSize - 1) * hebdo.GroupPitch < 360.0 * hebdo.GroupSize / hebdo.Count);
+        Assert.NotEqual(360.0 / 14, BraisesGeometrie.Angle(1, hebdo.Count, hebdo.GroupSize, hebdo.GroupPitch), 3);
     }
 
     [WpfFact]
