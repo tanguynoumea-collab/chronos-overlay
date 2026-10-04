@@ -466,7 +466,7 @@ visuelle selon les critères §9 du plan de design.
 Plans:
 - [x] 43-01-PLAN.md — DS3-02 (TDD) : racine des transcripts inaccessible → « Indisponible », racine absente documentée ; limites DS3-01/DS3-02 au §4 de data-sources
 - [x] 43-02-PLAN.md — Version 3.5.0 (4 propriétés du csproj) ; README, docs/publish.md (§2, §5 autostart, §6, §7, SHA-256, exe-vX.Y.Z) et data-sources de la 3.5, sous garde
-- [ ] 43-03-PLAN.md — Porte Debug + Release, `dotnet publish`, copie `Chronos-v3.5.0.exe`, FileVersion lue sans lancer, SHA-256 ; commit de release sans tag ni push
+- [x] 43-03-PLAN.md — Porte Debug + Release, `dotnet publish`, copie `Chronos-v3.5.0.exe`, FileVersion lue sans lancer, SHA-256 ; commit de release sans tag ni push
 - [ ] 43-04-PLAN.md — `43-CONSTAT.md` (protocole à cocher, sonde WMI hors arbre) puis point de contrôle humain ; résultats, écarts et verdict consignés
 **UI hint**: yes
 
@@ -494,7 +494,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 8/8 | Complete    | 2026-10-03 |
 | 41. Braises | v1.9 | 2/2 | Complete    | 2026-10-03 |
 | 42. Un geste sur toute la silhouette | v1.9 | 4/4 | Complete    | 2026-10-03 |
-| 43. Release 3.5.0 et constat | v1.9 | 2/4 | In Progress|  |
+| 43. Release 3.5.0 et constat | v1.9 | 3/4 | In Progress|  |
 
 ### Couverture des exigences
 
