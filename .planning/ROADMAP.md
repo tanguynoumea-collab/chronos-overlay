@@ -351,7 +351,7 @@ efface le dernier relevé exact, documenté en data-sources §4 (DS2-03).
   4. `docs/data-sources.md` §4 dit que la déconnexion efface le dernier relevé exact ; gardes existantes intactes ; suite
      complète verte, build Debug et Release 0 avertissement.
 **Depends on:** Phase 42
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 42.4-01-PLAN.md — DS2-01 : autorité de jeton sans course (copie locale, génération autour de Save, remise à zéro paresseuse) + filet journalisé de la boucle de rafraîchissement
