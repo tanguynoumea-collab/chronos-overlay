@@ -130,4 +130,9 @@ public sealed record ChronosSettings
 
     /// <summary>Dernière section ouverte dans les réglages (rouverte telle quelle). Défaut <see cref="SectionReglages.Donnees"/>.</summary>
     public SectionReglages ReglagesSection { get; init; } = SectionReglages.Donnees;
+
+    /// <summary>Instant de la dernière QUARANTAINE de settings.json (42.2-02, MAT-3) : posé par l'écriture qui suit la mise de
+    /// côté d'un fichier illisible, conservé par les écritures suivantes. Tant qu'il est non nul, la réconciliation ne retire aucun
+    /// hook Chronos (plan 07) ; effacé par un choix explicite sur le widget de sessions. Valeur fautive → null (SOC-01).</summary>
+    public DateTimeOffset? QuarantaineReglagesDepuis { get; init; }
 }
