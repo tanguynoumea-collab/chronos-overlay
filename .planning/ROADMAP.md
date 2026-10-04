@@ -332,6 +332,34 @@ l'échelle 1). **Contrat :** `.zeus/DESIGN_PLAN_CYCLE2.md` §2.
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 42.2: Corrections du dev-council (INSERTED)
+
+**Goal:** Corriger, avant la release 3.5.0, les lots A à E retenus par l'utilisateur au triage du dev-council
+(`.zeus/reports/dev-council-2026-10-03.md`, checkpoint 2 du 2026-10-04) : une lecture ratée n'écrase plus jamais un
+fichier (MAT-3, DATA-5, FIAB-3, DATA-7, DATA-3, TEST-4, MAT-4, MAT-5), filet global d'exception (FIAB-1), `Save` qui ne
+plante plus l'UI (FIAB-2), `chronos.log` qui garde la trace d'arrêt (FIAB-4) ; `~/.claude/settings.json` jamais réécrit
+s'il est vide/illisible, une seule voie d'écriture avec sauvegarde (DATA-4/FIAB-8, MAT-1) ; pas de double comptage des
+mois gelés (DATA-1, DATA-2), `session_id` validé (SEC-2) ; raccourci d'autostart repointé vers l'exe courant (PKG-1) ;
+diagnostic à 8 hooks (MAINT-5), Alt+F4 qui termine le processus (FIAB-9), retrait du pont Node `scripts/` (PKG-7/PERT-1),
+code mort (PERT-2..5, MAINT-11).
+**Requirements**: DAT-02, DAT-03, SOC-01, HIS-10 (renforcées — robustesse et intégrité des données)
+**Success Criteria** (what must be TRUE):
+  1. Pour chaque magasin (réglages Chronos, archives, traités, agrégats, index, `~/.claude/settings.json`), une lecture
+     « illisible » (E/S ratée, JSON invalide, fichier vide inattendu) ne déclenche aucune réécriture du fichier ; testé par
+     magasin ; l'illisible est journalisé et visible au diagnostic.
+  2. Une exception non gérée (UI, domaine, tâche) est journalisée dans `chronos.log` ; `Save` des réglages ne lève plus sur
+     le thread UI ; la position du widget est persistée en fin de déplacement.
+  3. Relire un transcript dont les messages tombent dans un mois gelé ne modifie pas ce mois si les messages y sont déjà
+     comptés ; les curseurs n'avancent pas si l'index n'a pas été écrit ; un `session_id` hors motif est refusé.
+  4. Au démarrage, un raccourci d'autostart existant pointe vers l'exe courant ; `IsEnabled` vérifie la cible.
+  5. Diagnostic : 8 hooks listés ; Alt+F4 sur le cadran termine le processus ; `scripts/` sans pont statusLine ; code mort
+     listé retiré ; suite verte, build 0 avertissement.
+**Depends on:** Phase 42
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 42.2 to break down)
+
 ### Phase 42.1: Corrections de la revue visuelle 1 (INSERTED)
 
 **Goal:** Corriger les 4 écarts bloquants de la DESIGN-REVIEW 1 du cycle 2 (`.zeus/reports/cycle2/design-review-1.md`) et
@@ -354,7 +382,8 @@ M1, M2, M3, M9, M10, M11, M15.
 **Plans:** 4/4 plans complete
 
 Plans:
-- [x] TBD (run /gsd:plan-phase 42.1 to break down) (completed 2026-10-03)
+- [x] TBD (run /gsd:plan-phase 42.1 to break down)
+ (completed 2026-10-03)
 
 ### Phase 43: Release 3.5.0 et constat
 **Goal**: `Chronos-v3.5.0.exe` est publié et documenté ; le retrait de la barre est constaté dans `~/.claude/settings.json`

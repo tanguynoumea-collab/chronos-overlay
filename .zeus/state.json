@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "DEV-COUNCIL",
-  "phase_status": "checkpoint_2_triage_en_attente",
+  "phase": "GSD",
+  "phase_status": "retour_dev_council_1",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -28,7 +28,9 @@
       "2026-10-03 : +20 % mesure sur le rendu actuel (Fusible et Volets ~190 px de large) ; fenetre adaptee par cadran",
       "2026-10-03 : Braises 5 h = repere de reset fixe + separations horaires + heure du reset en mode heure",
       "2026-10-03 : CHECKPOINT 1 — plan de design cycle 2 valide tel quel (« Je valide »)",
-      "2026-10-03 : exigences v1.9 validees (25), liste de purge R5 VALIDEE (checkpoint DAT-01), recherche GSD passee, roadmap phases 36-43 approuvee"
+      "2026-10-03 : exigences v1.9 validees (25), liste de purge R5 VALIDEE (checkpoint DAT-01), recherche GSD passee, roadmap phases 36-43 approuvee",
+      "2026-10-04 : CHECKPOINT 2 (triage) — lots A (lecture ratee), B (settings.json Claude), C+D (tokens, autostart), E (petits defauts) CRITIQUES avant 3.5.0 ; le reste en roadmap",
+      "2026-10-04 : Chronos est DISTRIBUE — reprendre les releases GitHub a partir de la 3.5.0 avec empreinte SHA-256 et tags propres ; signature de code en roadmap"
     ]
   },
   "iterations": {
@@ -40,7 +42,7 @@
   "checkpoints": {
     "plan_design_valide": true,
     "liste_purge_validee": true,
-    "triage_findings": false,
+    "triage_findings": true,
     "go_publication": false,
     "confirmation_roadmap": false
   },
@@ -72,7 +74,11 @@
       "DR1 M14 : corps de police encore ecrits en dur dans Arcs/Braises/MainWindow",
       "DR2 R2-M1 : libelles 5 H / 7 J et cordon/bande epuises de Fusible et Maree faibles sur fond gris-bleu moyen (~1,6-1,7:1)",
       "DR2 R2-M2 : cadran rectangulaire accroche en bas flotte 14 px au-dessus du bord (bande de pastilles) — a juger sur ecran reel",
-      "DR2 R2-M3 : cadrage de l'apercu des reglages suppose fenetre = cadran + bande (fragilite)"
+      "DR2 R2-M3 : cadrage de l'apercu des reglages suppose fenetre = cadran + bande (fragilite)",
+      "DEV-COUNCIL reportes : ARCH-1 (MainViewModel-dieu), ARCH-3/MAINT-4 (dependances optionnelles telescopiques), MAINT-2 (SessionMonitor.Inspecter), MAINT-1, ARCH-2/TEST-2 (composition root testable), ARCH-4..8, ARCH-10, MAINT-3, MAINT-6..10",
+      "DEV-COUNCIL outillage : .editorconfig + dotnet format (ARCH-11/MAINT-12), analyseurs Roslyn (ARCH-13), trous de tests TEST-1/5/6/7",
+      "DEV-COUNCIL packaging : signature de code (PKG-5/SEC-1), migration .NET 8 -> .NET 10 avant le 10/11/2026 (PKG-3), build epingle global.json (PKG-4), dossier d'installation hors depot (PKG-6, MAT-2)",
+      "DEV-COUNCIL divers : FIAB-5, FIAB-7 (enumeration recursive sur thread UI), DATA-6, DATA-8..10, DATA-12, SEC-5..9, MAT-6, PERT-6..14, ARCH-9, galeries hors exe livre (ARCH-14/PERT-9)"
     ]
   },
   "artefacts": {
@@ -125,7 +131,8 @@
     "2026-10-03 — DESIGN-REVIEW 1/3 : 4 bloquants (B1 pastilles sur cadrans rectangulaires, B2 « indisponible » illisible, B3 epuise ≈ aucune donnee, B4 « ↻ HH:MM » invisible) + 15 mineurs. Amendement §11 du plan (corrections dans l'esprit du plan valide). -> retour GSD : phase 42.1.",
     "2026-10-03 — Phase 42.1 (corrections DR1) executee : 4 plans, B1-B4 + M1/M2/M3/M9/M10/M11/M15 ; porte 1949/1949, 0 avertissement. -> DESIGN-REVIEW iteration 2/3.",
     "2026-10-03 — DESIGN-REVIEW 2/3 CONFORME : B1-B4 corriges (verifie par ZEUS sur rendus), aucune regression bloquante, 3 nouveaux mineurs (roadmap). Clics reels / 4 coins / F11-Echap -> constat humain phase 43. -> DEV-COUNCIL.",
-    "2026-10-03 — DEV-COUNCIL iteration 1 : 8 roles + sceptique + matrice ; 0 bloquant, 8 majeurs distincts (MAT-3 cause racine lecture ratee => reecriture, DATA-1, DATA-5, FIAB-1, FIAB-2, ARCH-3, MAINT-2, PKG-1). Rapport .zeus/reports/dev-council-2026-10-03.md. CHECKPOINT 2 (triage) en attente."
+    "2026-10-03 — DEV-COUNCIL iteration 1 : 8 roles + sceptique + matrice ; 0 bloquant, 8 majeurs distincts (MAT-3 cause racine lecture ratee => reecriture, DATA-1, DATA-5, FIAB-1, FIAB-2, ARCH-3, MAINT-2, PKG-1). Rapport .zeus/reports/dev-council-2026-10-03.md. CHECKPOINT 2 (triage) en attente.",
+    "2026-10-04 — CHECKPOINT 2 VALIDE : lots A-E critiques ; Chronos distribue (releases GitHub + SHA-256). -> GSD phase 42.2 (corrections du dev-council), compteur dev_council 1/3."
   ],
   "cycles_precedents": [
     {
