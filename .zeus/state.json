@@ -169,6 +169,10 @@
     {
       "date": "2026-10-04",
       "evenement": "Re-vérif dev-senior n°3 : DS2-01/02/03 FERMÉS, 0 critique/majeur ; verdict publiable après phase 43 : OUI. Checkpoint 3 (go publication) présenté."
+    },
+    {
+      "date": "2026-10-04",
+      "evenement": "Go utilisateur phase 43 (checkpoint 3 partiel : publication GitHub encore soumise à accord). 43-01 DS3-02, 43-02 version+docs, 43-03 Chronos-v3.5.0.exe (SHA-256 3577e72a…8071, commit release e56fe57, sans tag ni push). 43-04 : sonde t0 + 43-CONSTAT.md (56036f3) ; en attente du constat utilisateur."
     }
   ],
   "cycles_precedents": [
