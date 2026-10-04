@@ -10,6 +10,10 @@ namespace Chronos.Services;
 /// d'écrire un déclencheur dans un Channel(1, DropWrite) — comme <see cref="RequestRefresh"/>. Une boucle consommateur UNIQUE lit le channel et appelle
 /// IUsageProvider.GetAsync un à la fois (jamais de lecture concurrente), puis émet SnapshotChanged.
 /// Le marshaling vers le thread UI est fait côté ViewModel (plan 04-02), pas ici.
+///
+/// P-03 (42.3, audit externe DS-ARCH-03) : le dernier snapshot publié est exposé (<see cref="DernierSnapshot"/>,
+/// <see cref="AttendrePremierAsync"/>). Le diagnostic le LIT via <see cref="DernierSnapshotPublie"/> au lieu de rappeler la
+/// chaîne : le consommateur de la chaîne reste UNIQUE (jamais de seconde sonde, jamais de last-exact.json disputé).
 /// </summary>
 public sealed class RefreshOrchestrator : BackgroundService
 {
@@ -25,6 +29,25 @@ public sealed class RefreshOrchestrator : BackgroundService
     /// <summary>Émis (thread pool) après chaque GetAsync avec le snapshot produit. Le VM (04-02)
     /// s'abonne ICI et marshalle via IUiDispatcher — décision verrouillée « le service expose l'event ».</summary>
     public event EventHandler<UsageSnapshot>? SnapshotChanged;
+
+    // P-03 — dernier snapshot publié (écrit par le consommateur unique, lu par le diagnostic depuis n'importe quel thread).
+    private UsageSnapshot? _dernier;
+    // Résolu au PREMIER snapshot publié ; continuations asynchrones : un lecteur en attente ne s'exécute jamais dans la boucle.
+    private readonly TaskCompletionSource<UsageSnapshot> _premier = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Dernier snapshot publié par la boucle (le même objet que celui passé à <see cref="SnapshotChanged"/>),
+    /// ou <c>null</c> tant que la charge initiale n'a rien produit. Lecture seule : n'appelle jamais la chaîne.</summary>
+    public UsageSnapshot? DernierSnapshot => Volatile.Read(ref _dernier);
+
+    /// <summary>Rend le dernier snapshot publié ; s'il n'y en a pas encore, attend le premier au plus <paramref name="delai"/>.
+    /// Délai écoulé = <c>null</c> (« pas encore de relevé publié »), jamais une exception ni un chiffre inventé.
+    /// N'appelle JAMAIS la chaîne.</summary>
+    public async Task<UsageSnapshot?> AttendrePremierAsync(TimeSpan delai, CancellationToken ct = default)
+    {
+        if (DernierSnapshot is { } deja) return deja;
+        try { return await _premier.Task.WaitAsync(delai, ct).ConfigureAwait(false); }
+        catch (TimeoutException) { return null; }
+    }
 
     public RefreshOrchestrator(IUsageProvider provider, RefreshOptions options)
         => (_provider, _options) = (provider, options);
@@ -54,6 +77,8 @@ public sealed class RefreshOrchestrator : BackgroundService
                 if (_options.Debounce > TimeSpan.Zero)
                     await Task.Delay(_options.Debounce, stoppingToken).ConfigureAwait(false); // regroupe les déclencheurs rapprochés
                 var snap = await _provider.GetAsync(stoppingToken).ConfigureAwait(false);
+                Volatile.Write(ref _dernier, snap);   // P-03 : publié AVANT l'event — un abonné qui relit DernierSnapshot voit ce snapshot
+                _premier.TrySetResult(snap);
                 SnapshotChanged?.Invoke(this, snap);                    // thread pool → VM marshalle
             }
         }

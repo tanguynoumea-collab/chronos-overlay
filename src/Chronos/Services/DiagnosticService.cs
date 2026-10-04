@@ -29,7 +29,8 @@ public sealed class DiagnosticService
 
     private readonly ChronosPaths _paths;
     private readonly SettingsService _settings;
-    private readonly IUsageProvider _composite;
+    // P-03 (42.3) : en production, l'adaptateur lecture seule DernierSnapshotPublie — le snapshot que le cadran affiche.
+    private readonly IUsageProvider _snapshotAffiche;
     private readonly IClock _clock;
     private readonly IAuthStatus? _authStatus;
     private readonly IEtatServeur? _etatServeur;
@@ -40,6 +41,9 @@ public sealed class DiagnosticService
     private readonly ClaudeSettingsReconciler? _reglagesClaude;
     private readonly DateTimeOffset _demarrage;
 
+    /// <param name="composite">Fournit le snapshot EFFECTIVEMENT AFFICHÉ. En production, l'adaptateur lecture seule
+    /// <see cref="DernierSnapshotPublie"/> adossé à l'orchestrateur (P-03, 42.3) : le diagnostic ne relance jamais la chaîne
+    /// d'usage, il n'est pas un second consommateur. Nom du paramètre conservé : les sites de construction restent intacts.</param>
     /// <param name="authStatus">État d'authentification réel (autorité de jeton). OPTIONNEL et en
     /// dernière position à dessein : les 8 sites de construction existants (1 en production, 7 en
     /// tests) compilent sans retouche, et la DI passe le vrai service.</param>
@@ -92,7 +96,7 @@ public sealed class DiagnosticService
     {
         _paths = paths;
         _settings = settings;
-        _composite = composite;
+        _snapshotAffiche = composite;
         _clock = clock;
         _authStatus = authStatus;
         _etatServeur = etatServeur;
@@ -112,7 +116,8 @@ public sealed class DiagnosticService
     {
         try
         {
-            var report = await BuildReportAsync(ct);
+            // DS-PERF-03 : aucune reprise sur un contexte capturé — la suite (processus, disque) ne revient jamais au Dispatcher.
+            var report = await BuildReportAsync(ct).ConfigureAwait(false);
             var dir = Path.GetDirectoryName(_paths.SettingsFile)!;
             Directory.CreateDirectory(dir);
             var chemin = Path.Combine(dir, JournalIncidents.NomFichier);
@@ -143,16 +148,15 @@ public sealed class DiagnosticService
         var derniereQuarantaine = _settings.DerniereQuarantaine;
         var ecritureRefusee = _settings.DerniereEcritureRefusee;
 
-        // ORDRE CRITIQUE — interroger la chaîne AVANT de rendre la moindre section.
-        // C'est cet appel qui déclenche la première sonde et peuple l'état serveur. Le laisser à sa
-        // place naturelle, dans la section « Ce qui est affiché maintenant », faisait décrire au rapport
-        // un état antérieur à sa propre exécution : la section « sonde » annonçait « pas encore sondé »
-        // et « aucun en-tête reconnu » trois lignes au-dessus des chiffres que cette même sonde venait
-        // de fournir (constaté en production le 2026-09-12). L'ordre des SECTIONS ne change pas ; seul
-        // l'instant de l'appel change.
+        // ORDRE CRITIQUE — lire le snapshot AVANT de rendre la moindre section.
+        // P-03 (42.3) : cet appel ne déclenche plus la chaîne ; il lit le snapshot PUBLIÉ par l'orchestrateur (adaptateur
+        // DernierSnapshotPublie), en attendant au besoin la fin de la charge initiale. C'est ce qui garantit que l'état
+        // serveur (canal latéral de la sonde) a été peuplé par LA charge de l'orchestrateur avant que les sections le
+        // décrivent : sans cela, la section « sonde » annonçait « pas encore sondé » trois lignes au-dessus des chiffres
+        // de cette même sonde (constaté en production le 2026-09-12). L'ordre des SECTIONS ne change pas.
         UsageSnapshot? affiche = null;
         string? echecLecture = null;
-        try { affiche = await _composite.GetAsync(ct); }
+        try { affiche = await _snapshotAffiche.GetAsync(ct).ConfigureAwait(false); }
         catch (Exception ex) { echecLecture = ex.Message; }
         long msChaine = chrono.ElapsedMilliseconds;
 
@@ -164,7 +168,7 @@ public sealed class DiagnosticService
 
         // 1) DAT-04 — LA CHAÎNE DE DONNÉES, dans son ordre réel. Rien ici n'appelle le réseau ni ne cherche sur disque :
         // la section lit l'état déjà connu (canal latéral de la sonde, autorité de jeton, état des magasins), peuplé par
-        // le SEUL appel au composite fait en tête de méthode. Les lignes de la sonde et du secours sont celles des
+        // la charge de l'orchestrateur dont le snapshot est lu en tête de méthode. Les lignes de la sonde et du secours sont celles des
         // anciennes sections « Source exacte », mot pour mot (des tests les assertent).
         sb.AppendLine("[Chaîne de données]");
         sb.AppendLine("  Chaîne : sonde d'en-têtes → secours OAuth du login Chronos (meilleure source PAR FENÊTRE) → journal → dernier exact → cadran");
@@ -316,10 +320,10 @@ public sealed class DiagnosticService
         // 3c) ACC-03 — ce que le journal d'historique sait de lui-même, par la MÊME lecture que la fenêtre (D-35-10).
         SectionJournalHistorique(sb, processus?.Count);
 
-        // 4) Résultat effectivement affiché (via le composite réel)
+        // 4) Résultat effectivement affiché (le snapshot publié par l'orchestrateur)
         sb.AppendLine("[Ce qui est affiché maintenant]");
-        // Consomme le snapshot obtenu EN TÊTE de la méthode — ne relance pas la chaîne, sans quoi la
-        // sonde serait comptée deux fois et le rapport coûterait deux micro-requêtes au lieu d'une.
+        // Consomme le snapshot lu EN TÊTE de la méthode — le diagnostic ne relance jamais la chaîne (P-03) : aucune
+        // micro-requête de sonde n'est due au rapport. Rien de publié encore = « (échec de lecture : pas encore de relevé publié…) ».
         if (affiche is { } snap)
         {
             sb.AppendLine("  5 h   : " + Describe(snap.FiveHour));
@@ -996,7 +1000,7 @@ public sealed class DiagnosticService
     };
 
     // HDR-03/HDR-04 — le statut serveur et le dépassement sont lus ICI, sur le snapshot DÉJÀ obtenu, et
-    // non dans la section de la sonde : un second appel au composite déclencherait une seconde sonde, donc
+    // non dans la section de la sonde : un appel à la chaîne déclencherait une seconde sonde, donc
     // DOUBLERAIT la dépense de quota à chaque ouverture du diagnostic. Les cinq branches de libellé
     // préexistantes sont conservées mot pour mot (des tests les assertent littéralement) ; les deux
     // suffixes ne s'ajoutent que lorsque le serveur a réellement dit quelque chose.

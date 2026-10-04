@@ -171,8 +171,10 @@ public partial class App : Application
 
             // Log automatique au démarrage (observabilité) : écrit %APPDATA%/Chronos/chronos.log avec l'état réel
             // (token/OAuth/sources, bilan de la réconciliation). APRÈS la réconciliation, pour que le bilan y figure.
-            // Fire-and-forget, ne bloque pas et ne peut pas casser le lancement.
-            _ = _host.Services.GetRequiredService<DiagnosticService>().LogStartupAsync();
+            // Fire-and-forget, ne bloque pas et ne peut pas casser le lancement. DS-PERF-03 (42.3) : lancé sur le POOL
+            // (Task.Run), jamais sur le thread UI — processus, lectures disque et écriture du journal ne touchent pas le Dispatcher.
+            var diag = _host.Services.GetRequiredService<DiagnosticService>();
+            _ = Task.Run(() => diag.LogStartupAsync());
 
             // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la réconciliation
             // ci-dessus : mode OVERLAY uniquement (le mode --hook sort bien plus haut),
@@ -551,11 +553,12 @@ public partial class App : Application
         services.AddSingleton<RefreshOrchestrator>();
         services.AddHostedService(sp => sp.GetRequiredService<RefreshOrchestrator>());
 
-        // Diagnostic auto-explicatif (menu « Diagnostic… ») : consomme le composite réel.
+        // Diagnostic auto-explicatif (menu « Diagnostic… ») : lit le snapshot PUBLIÉ par l'orchestrateur (P-03, 42.3),
+        // jamais la tête de chaîne — aucune sonde supplémentaire, aucun last-exact.json disputé.
         services.AddSingleton(sp => new DiagnosticService(
             sp.GetRequiredService<ChronosPaths>(),
             sp.GetRequiredService<SettingsService>(),
-            sp.GetRequiredService<IUsageProvider>(),
+            new DernierSnapshotPublie(sp.GetRequiredService<RefreshOrchestrator>()),   // P-03 : jamais un second consommateur de la chaîne
             sp.GetRequiredService<IClock>(),
             sp.GetRequiredService<IAuthStatus>(),     // TOK-02 : le rapport dit l'état RÉEL
             sp.GetRequiredService<IEtatServeur>(),    // HDR-03/HDR-04 : le rapport nomme ce que la sonde reçoit
