@@ -421,8 +421,9 @@ public partial class App : Application
         // DEL-01/DEL-02 : les transcripts ne repondent plus qu'a deux questions bornees (activite
         // depuis T ? tokens depuis T ?) — ils ne sont PLUS un IUsageProvider et sont donc HORS de la
         // chaine composite. Plus aucune dependance a SettingsService : ni plafond, ni ancre hebdo.
-        // Phase 19 — MEMOISATION : une passe reelle coute 2,7 a 3,2 s et lit 536 Mo sur cette machine.
-        // Le journal rendu est PUR et interrogeable N fois, donc le reutiliser pendant sa duree de
+        // Phase 19 — MEMOISATION : une passe complete lit 727 fichiers / 882 Mo sur cette machine (mesure
+        // 2026-10-04). Depuis 42.3 seule la premiere passe est complete : les suivantes ne relisent que les
+        // fichiers modifies (cache par fichier du provider). Le journal rendu est PUR et interrogeable N fois, donc le reutiliser pendant sa duree de
         // validite est gratuit et sans perte. Le decorateur est ENREGISTRE ici et pas seulement ecrit :
         // un decorateur que le graphe n'instancie jamais ne memoise rien (precedent 17-03).
         services.AddSingleton<ITranscriptActivitySource>(sp => new SourceActiviteMemoisee(

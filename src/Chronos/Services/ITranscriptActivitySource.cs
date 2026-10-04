@@ -30,6 +30,10 @@ public sealed class TranscriptActivityLog
     // mais aucune méthode d'ici n'en dépend : le bornage est un balayage complet, donc robuste.
     private readonly IReadOnlyList<(DateTimeOffset Ts, long Tokens)> _entries;
 
+    /// <summary>Preuve de caractérisation (42.3-04) : la passe incrémentale rend la MÊME séquence d'entrées
+    /// qu'une passe complète. Interne : les appelants de production passent par <see cref="Since"/>.</summary>
+    internal IReadOnlyList<(DateTimeOffset Ts, long Tokens)> Entrees => _entries;
+
     /// <summary>Instant de la passe disque. Borne haute INCLUSIVE des requêtes.</summary>
     public DateTimeOffset Now { get; }
 

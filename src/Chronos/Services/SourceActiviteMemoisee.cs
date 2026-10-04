@@ -6,6 +6,11 @@ namespace Chronos.Services;
 /// tick serait 536 Mo par minute d'E/S permanente sur un overlay. Le journal rendu par la phase 16 est
 /// PUR et interrogeable N fois : le réutiliser est donc gratuit et sans perte.
 ///
+/// Depuis la phase 42.3, la passe réelle n'est plus intégrale : seule la première l'est (727 fichiers /
+/// 882 Mo mesurés le 2026-10-04), les suivantes ne relisent que les fichiers modifiés (cache par fichier de
+/// <see cref="TranscriptActivityProvider"/>). Cette mémoïsation reste utile (deux demandeurs d'un même tick
+/// ne paient qu'une passe), mais sa durée de validité n'a PAS bougé pour autant : voir ci-dessous.
+///
 /// La durée de validité est AUSSI la tolérance de certification : un journal dont le <c>Now</c> a 45 s ne
 /// dit rien de ces 45 s, donc un « aucune activité » qu'il fonde n'est valable qu'à 45 s près. C'est
 /// pourquoi elle est courte et pourquoi elle ne doit PAS être allongée par confort de performance.

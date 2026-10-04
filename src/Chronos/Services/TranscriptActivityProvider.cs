@@ -23,6 +23,8 @@ namespace Chronos.Services;
 ///
 /// Une SEULE passe disque : elle matérialise le journal, les bornages sont ensuite calculés EN
 /// MÉMOIRE par <see cref="TranscriptActivityLog"/> (Pattern 2). Type NEUTRE : aucun type WPF.
+/// Depuis la phase 42.3 (P-07 étape 1), cette passe est incrémentale : seuls les fichiers dont la taille ou
+/// la date de modification a changé sont rouverts, les autres sont rejoués depuis un cache par fichier.
 ///
 /// Depuis la phase 32 (CPT-01), la somme des usages passe par <see cref="DedupUsage"/> : une ligne
 /// <c>assistant</c> par bloc de contenu, même <c>message.id</c>, <c>output_tokens</c> partiel croissant —
@@ -39,8 +41,45 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     /// </summary>
     private static readonly TimeSpan HorizonSpan = TimeSpan.FromDays(8);
 
+    /// <summary>
+    /// Précaution « fichier chaud » (42.3) : un fichier modifié il y a moins de ce délai (mesuré sur l'horloge
+    /// INJECTÉE) est toujours relu en entier, même à taille et date identiques à son entrée de cache. Filet
+    /// contre la granularité de la mtime, les écritures rapprochées et le décalage d'horloge du système de
+    /// fichiers. Une mtime dans le futur (écart négatif) est aussi traitée comme chaude.
+    /// </summary>
+    private static readonly TimeSpan DelaiFichierChaud = TimeSpan.FromMinutes(2);
+
+    // Une ligne assistant BRUTE, telle que lue sur le disque — horodatage futur compris : le filtre
+    // « futur écarté » s'applique AU REJEU, car un message futur au moment de la lecture peut être passé
+    // au tick suivant sans que le fichier ait changé.
+    private sealed record LigneAssistant(string? MessageId, string? RequestId, DateTimeOffset When,
+                                         long In, long Out, long CacheW, long CacheR);
+
+    // Taille et mtime lues AVANT l'ouverture : un fichier qui grossit pendant la lecture aura une taille
+    // différente au tick suivant et sera relu.
+    private sealed record EntreeCache(long Taille, DateTime MtimeUtc, IReadOnlyList<LigneAssistant> Lignes);
+
     private readonly ChronosPaths _paths;
     private readonly IClock _clock;
+
+    // P-07 étape 1 / DS-PERF-01 : cache par fichier (chemin) -> (taille, mtime, lignes assistant brutes).
+    // LIMITE assumée : une réécriture du fichier à taille ET mtime identiques passerait inaperçue — c'est
+    // impossible pour un JSONL append-only (toute écriture change la taille) ; filet supplémentaire, un
+    // fichier modifié il y a moins de DelaiFichierChaud est toujours relu en entier.
+    private readonly Dictionary<string, EntreeCache> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    // Le provider est déjà appelé sous le verrou de SourceActiviteMemoisee, mais le cache ne doit pas
+    // dépendre de son décorateur pour rester cohérent.
+    private readonly SemaphoreSlim _verrou = new(1, 1);
+
+    /// <summary>Preuve (tests) : nombre de fichiers rouverts et relus en entier par la dernière passe.</summary>
+    internal int FichiersRelusDernierePasse { get; private set; }
+
+    /// <summary>Preuve (tests) : nombre de fichiers repris du cache, sans ouverture, par la dernière passe.</summary>
+    internal int FichiersReutilisesDernierePasse { get; private set; }
+
+    /// <summary>Preuve (tests) : nombre de fichiers détenus par le cache après la dernière passe.</summary>
+    internal int FichiersEnCache => _cache.Count;
 
     public TranscriptActivityProvider(ChronosPaths paths, IClock clock)
     {
@@ -49,55 +88,132 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     }
 
     /// <summary>
-    /// Passe disque unique : matérialise (instant, tokens) pour chaque réponse assistant récente,
-    /// puis rend un journal pur interrogeable N fois. Ne lève jamais sur une source défaillante.
+    /// Passe disque : matérialise (instant, tokens) pour chaque réponse assistant récente, puis rend un
+    /// journal pur interrogeable N fois. Ne lève jamais sur une source défaillante.
+    ///
+    /// Depuis 42.3 la passe est INCRÉMENTALE : seuls les fichiers dont (taille, mtime) a changé — ou encore
+    /// « chauds » — sont relus ; les autres sont repris du cache. Le journal est ensuite reconstruit en
+    /// REJOUANT toutes les lignes, fichier par fichier dans l'ordre d'énumération, ligne par ligne dans
+    /// l'ordre du fichier, dans un <see cref="DedupUsage"/> neuf : il est donc identique, par construction,
+    /// à celui d'une passe complète.
     /// </summary>
     public async Task<TranscriptActivityLog> ReadAsync(CancellationToken ct = default)
     {
-        var now = _clock.UtcNow;
-
-        // UN dictionnaire pour TOUTE la passe (D-32-03) : 491 ids sur 8 jours vivent dans 2 a 3 fichiers
-        // (reprise / fork de session), une dedup par fichier les compterait encore plusieurs fois.
-        var dedup = new DedupUsage();
-
-        foreach (var file in EnumerateJsonl(_paths.ProjectsRoot, now))
+        await _verrou.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            FileStream? fs = null;
-            // FileShare.ReadWrite : Claude Code ecrit le transcript en parallele.
-            try { fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); }
-            catch (IOException) { continue; }
-            await using (fs)
-            using (var reader = new StreamReader(fs))
+            var now = _clock.UtcNow;
+            int relus = 0, reutilises = 0;
+
+            // UN dictionnaire NEUF pour TOUTE la passe (D-32-03) : 491 ids sur 8 jours vivent dans 2 a 3
+            // fichiers (reprise / fork de session), une dedup par fichier les compterait encore plusieurs fois.
+            // Il n'est alimente qu'au rejeu ci-dessous, une fois le cache mis a jour.
+            var dedup = new DedupUsage();
+
+            // Lignes de chaque fichier énuméré, dans l'ordre d'énumération (celui d'une passe complète).
+            var parFichier = new List<IReadOnlyList<LigneAssistant>>();
+            var vus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var file in EnumerateJsonl(_paths.ProjectsRoot, now))
             {
-                string? line;
-                while ((line = await reader.ReadLineAsync(ct)) is not null)
+                long taille;
+                DateTime mtime;
+                try
                 {
-                    if (line.Length == 0) continue;
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(line);        // ligne partielle/corrompue -> JsonException
-                        var o = doc.RootElement;
-                        if (!IsAssistant(o)) continue;                    // type==assistant ET message.role==assistant
-                        if (!o.TryGetProperty("timestamp", out var ts)) continue;
-                        if (!DateTimeOffset.TryParse(ts.GetString(), CultureInfo.InvariantCulture,
-                                DateTimeStyles.RoundtripKind, out var when)) continue;
+                    var info = new FileInfo(file);
+                    taille = info.Length;                                 // fichier disparu -> FileNotFoundException (IOException)
+                    mtime = info.LastWriteTimeUtc;
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    _cache.Remove(file);
+                    continue;
+                }
 
-                        if (when > now) continue;                         // Pitfall 3 : timestamps futurs (horloge decalee) ecartes
+                if (_cache.TryGetValue(file, out var entree)
+                    && entree.Taille == taille && entree.MtimeUtc == mtime
+                    && now.UtcDateTime - mtime >= DelaiFichierChaud)
+                {
+                    vus.Add(file);
+                    parFichier.Add(entree.Lignes);
+                    reutilises++;
+                    continue;
+                }
 
-                        // CPT-01 : une ligne par bloc de contenu, un message compte UNE fois (max par champ).
-                        DedupUsage.LireUsage(o, out var messageId, out var requestId,
-                                             out var input, out var output, out var cacheW, out var cacheR);
-                        dedup.Ajouter(messageId, requestId, when, input, output, cacheW, cacheR);
-                    }
-                    catch (JsonException) { /* ligne invalide ignoree (ROB-02) */ }
+                var lignes = await LireFichierAsync(file, ct).ConfigureAwait(false);
+                if (lignes is null)
+                {
+                    _cache.Remove(file);                                  // illisible : ignoré ET oublié
+                    continue;
+                }
+
+                _cache[file] = new EntreeCache(taille, mtime, lignes);
+                vus.Add(file);
+                parFichier.Add(lignes);
+                relus++;
+            }
+
+            // Fichiers supprimés ou sortis de l'horizon : ils quittent le cache.
+            foreach (var chemin in _cache.Keys.Where(k => !vus.Contains(k)).ToList())
+                _cache.Remove(chemin);
+
+            // Rejeu dans le dictionnaire NEUF de cette passe, fichier par fichier dans l'ordre d'enumeration.
+            foreach (var lignes in parFichier)
+            {
+                foreach (var l in lignes)
+                {
+                    if (l.When > now) continue;                           // Pitfall 3 : timestamps futurs ecartes, AU REJEU
+                    // CPT-01 : une ligne par bloc de contenu, un message compte UNE fois (max par champ).
+                    dedup.Ajouter(l.MessageId, l.RequestId, l.When, l.In, l.Out, l.CacheW, l.CacheR);
                 }
             }
+
+            FichiersRelusDernierePasse = relus;
+            FichiersReutilisesDernierePasse = reutilises;
+
+            var entries = dedup.Entrees().ToList();                        // materialisation dedoublonnee
+            entries.Sort((a, b) => a.Ts.CompareTo(b.Ts));                 // tri global (fichiers non tries entre eux)
+
+            return new TranscriptActivityLog(now, now - HorizonSpan, entries);
         }
+        finally { _verrou.Release(); }
+    }
 
-        var entries = dedup.Entrees().ToList();                            // materialisation dedoublonnee
-        entries.Sort((a, b) => a.Ts.CompareTo(b.Ts));                     // tri global (fichiers non tries entre eux)
+    // Lecture intégrale et tolérante d'un fichier : TOUTES les lignes assistant, futures comprises.
+    // null si le fichier ne peut pas être ouvert (IOException) — l'appelant l'ignore et le retire du cache.
+    private static async Task<IReadOnlyList<LigneAssistant>?> LireFichierAsync(string file, CancellationToken ct)
+    {
+        FileStream? fs = null;
+        // FileShare.ReadWrite : Claude Code ecrit le transcript en parallele.
+        try { fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); }
+        catch (IOException) { return null; }
 
-        return new TranscriptActivityLog(now, now - HorizonSpan, entries);
+        var lignes = new List<LigneAssistant>();
+        await using (fs)
+        using (var reader = new StreamReader(fs))
+        {
+            string? line;
+            while ((line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
+            {
+                if (line.Length == 0) continue;
+                try
+                {
+                    using var doc = JsonDocument.Parse(line);            // ligne partielle/corrompue -> JsonException
+                    var o = doc.RootElement;
+                    if (!IsAssistant(o)) continue;                        // type==assistant ET message.role==assistant
+                    if (!o.TryGetProperty("timestamp", out var ts)) continue;
+                    if (!DateTimeOffset.TryParse(ts.GetString(), CultureInfo.InvariantCulture,
+                            DateTimeStyles.RoundtripKind, out var when)) continue;
+
+                    DedupUsage.LireUsage(o, out var messageId, out var requestId,
+                                         out var input, out var output, out var cacheW, out var cacheR);
+                    lignes.Add(new LigneAssistant(messageId, requestId, when, input, output, cacheW, cacheR));
+                }
+                catch (JsonException) { /* ligne invalide ignoree (ROB-02) */ }
+            }
+        }
+        lignes.TrimExcess();
+        return lignes;
     }
 
     // Enumere les *.jsonl sous root. Dossier absent / inaccessible -> sequence vide (jamais d'exception).
