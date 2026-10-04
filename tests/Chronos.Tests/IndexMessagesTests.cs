@@ -230,6 +230,56 @@ public sealed class IndexMessagesTests : IDisposable
         Assert.Equal(3, index.LignesIgnorees);
     }
 
+    // --- DATA-3 (phase 42.2) : un shard illisible n'est pas un shard vide ---
+
+    private static readonly DateTimeOffset Septembre = Utc("2026-09-01T00:00:00Z");
+
+    [Fact]
+    public void Un_shard_tenu_pendant_Charger_est_illisible_sans_lever()
+    {
+        EcrireShard("ids-2026-09.jsonl", LigneShard("msg_A", "2026-09-20T08:00:00.0000000+00:00", 1, 1, 1, 1));
+        var index = Index();
+
+        using (new FileStream(Path.Combine(_dossier, "ids-2026-09.jsonl"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            Assert.Equal(0, index.Charger());
+            Assert.Contains(Septembre, index.MoisIllisibles);
+            Assert.NotNull(index.DerniereErreurLecture);
+            Assert.Contains("2026-09", index.DerniereErreurLecture);
+            Assert.Null(index.DerniereErreur);   // l'erreur d'écriture n'est pas touchée par une lecture
+        }
+
+        // Charger suivant, shard libéré : relu, plus rien d'illisible.
+        Assert.Equal(1, index.Charger());
+        Assert.Empty(index.MoisIllisibles);
+        Assert.Null(index.DerniereErreurLecture);
+    }
+
+    [Fact]
+    public void Un_shard_non_vide_sans_aucune_ligne_valide_est_illisible()
+    {
+        EcrireShard("ids-2026-09.jsonl", "pas du JSON", "{ tronqué");
+        var index = Index();
+
+        Assert.Equal(0, index.Charger());
+        Assert.Contains(Septembre, index.MoisIllisibles);
+        Assert.NotNull(index.DerniereErreurLecture);
+        Assert.Equal(2, index.LignesIgnorees);
+    }
+
+    [Fact]
+    public void Un_shard_de_zero_octet_est_vide_legitime()
+    {
+        // OpenOrCreate puis écriture : un arrêt entre les deux laisse un shard de 0 octet qui n'a jamais rien porté.
+        Directory.CreateDirectory(_dossier);
+        File.WriteAllBytes(Path.Combine(_dossier, "ids-2026-09.jsonl"), Array.Empty<byte>());
+        var index = Index();
+
+        Assert.Equal(0, index.Charger());
+        Assert.Empty(index.MoisIllisibles);
+        Assert.Null(index.DerniereErreurLecture);
+    }
+
     [Fact]
     public void Purger_supprime_les_shards_au_dela_de_trois_mois_et_ignore_le_reste()
     {

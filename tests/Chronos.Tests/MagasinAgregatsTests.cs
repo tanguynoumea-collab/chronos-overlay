@@ -295,6 +295,146 @@ public class MagasinAgregatsTests : IDisposable
         Assert.Equal(anciennes[1], t1);
     }
 
+    // --- DATA-3 / MAT-4 b (phase 42.2) : « je n'ai pas pu lire » n'est pas « il n'y a rien » ---
+
+    private static readonly DateTimeOffset Juin = new(2026, 06, 01, 0, 0, 0, TimeSpan.Zero);
+
+    private string EcrireJuin()
+    {
+        Directory.CreateDirectory(_dir);
+        var chemin = Path.Combine(_dir, "tokens-2026-06.jsonl");
+        var anciennes = new[]
+        {
+            new TrancheTokens(Utc("2026-06-23T12:45:00Z"), "claude-opus-5", false, 10, 20, 30, 40, 2),
+            new TrancheTokens(Utc("2026-06-23T13:00:00Z"), "claude-opus-5", false, 11, 21, 31, 41, 3),
+        };
+        File.WriteAllText(chemin, string.Join("", anciennes.Select(t => LigneAgregat.Serialiser(t) + "\n")), new UTF8Encoding(false));
+        return chemin;
+    }
+
+    private static FileStream Tenir(string chemin) => new(chemin, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+    [Fact]
+    public void Un_mois_tenu_par_un_autre_processus_est_illisible_et_jamais_reecrit()
+    {
+        var chemin = EcrireJuin();
+        var octets = File.ReadAllBytes(chemin);
+        var magasin = Magasin();
+
+        using (Tenir(chemin))
+        {
+            Assert.Equal(-1, magasin.ChargerMois(Juin));
+            Assert.Contains(Juin, magasin.MoisIllisibles);
+            Assert.NotNull(magasin.DerniereErreurLecture);
+            Assert.Contains("2026-06", magasin.DerniereErreurLecture);
+            Assert.Null(magasin.DerniereErreur);   // l'erreur d'écriture n'est pas touchée par une lecture
+
+            Assert.False(magasin.Appliquer(Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 1, 1, 1, 1, true)));
+            Assert.DoesNotContain(Juin, magasin.MoisSales);
+            Assert.Empty(magasin.TranchesDuMois(Juin));
+        }
+
+        Assert.True(magasin.EcrireMoisSales());   // rien de sale : rien d'écrit
+        Assert.Equal(octets, File.ReadAllBytes(chemin));
+    }
+
+    [Fact]
+    public void Apres_liberation_le_mois_se_relit_et_l_erreur_de_lecture_s_efface()
+    {
+        var chemin = EcrireJuin();
+        var magasin = Magasin();
+        using (Tenir(chemin)) Assert.Equal(-1, magasin.ChargerMois(Juin));
+
+        Assert.Equal(2, magasin.ChargerMois(Juin));
+        Assert.Empty(magasin.MoisIllisibles);
+        Assert.Null(magasin.DerniereErreurLecture);
+
+        // Et un delta du mois s'applique désormais par-dessus les tranches relues.
+        Assert.True(magasin.Appliquer(Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 1, 1, 1, 1, true)));
+        Assert.Equal(3, magasin.TranchesDuMois(Juin).Count);
+    }
+
+    [Fact]
+    public void Appliquer_retente_la_lecture_d_un_mois_illisible_au_delta_suivant()
+    {
+        var chemin = EcrireJuin();
+        var magasin = Magasin();
+        var delta = Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 1, 1, 1, 1, true);
+        using (Tenir(chemin)) Assert.False(magasin.Appliquer(delta));
+
+        Assert.True(magasin.Appliquer(delta));
+        Assert.True(magasin.EcrireMoisSales());
+        Assert.Equal(3, Lignes(chemin).Length);   // les deux anciennes conservées
+        Assert.Null(magasin.DerniereErreurLecture);
+    }
+
+    [Fact]
+    public void MAT4b_une_ecriture_reussie_d_un_autre_mois_n_efface_pas_l_erreur_de_lecture()
+    {
+        var chemin = EcrireJuin();
+        var magasin = Magasin();
+
+        using (Tenir(chemin))
+        {
+            Assert.False(magasin.Appliquer(Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 1, 1, 1, 1, true)));
+            Assert.True(magasin.Appliquer(Delta(S1, "claude-opus-5", false, 1, 1, 1, 1, true)));
+            Assert.True(magasin.EcrireMoisSales());
+        }
+
+        Assert.Null(magasin.DerniereErreur);
+        Assert.NotNull(magasin.DerniereErreurLecture);
+        Assert.NotNull(((IEtatMagasin)magasin).DerniereErreurLecture);
+        Assert.Contains(Juin, magasin.MoisIllisibles);
+    }
+
+    [Fact]
+    public void Un_fichier_non_vide_sans_aucune_ligne_valide_est_illisible_et_jamais_reecrit()
+    {
+        Directory.CreateDirectory(_dir);
+        var chemin = Path.Combine(_dir, "tokens-2026-06.jsonl");
+        File.WriteAllText(chemin, "ceci n'est pas du JSON\n{ cassé\n", new UTF8Encoding(false));
+        var octets = File.ReadAllBytes(chemin);
+        var magasin = Magasin();
+
+        Assert.Equal(-1, magasin.ChargerMois(Juin));
+        Assert.Contains(Juin, magasin.MoisIllisibles);
+        Assert.NotNull(magasin.DerniereErreurLecture);
+
+        Assert.False(magasin.Appliquer(Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 1, 1, 1, 1, true)));
+        Assert.True(magasin.EcrireMoisSales());
+        Assert.Equal(octets, File.ReadAllBytes(chemin));
+    }
+
+    [Fact]
+    public void Un_fichier_de_zero_octet_est_un_mois_vide_legitime()
+    {
+        // Le magasin écrit lui-même un mois sans tranche comme un fichier vide (EcrireMoisSales) : 0 octet = « rien »,
+        // et le réécrire avec un delta ne fait rien perdre (il n'y avait rien).
+        Directory.CreateDirectory(_dir);
+        var chemin = Path.Combine(_dir, "tokens-2026-06.jsonl");
+        File.WriteAllBytes(chemin, Array.Empty<byte>());
+        var magasin = Magasin();
+
+        Assert.Equal(0, magasin.ChargerMois(Juin));
+        Assert.Empty(magasin.MoisIllisibles);
+        Assert.Null(magasin.DerniereErreurLecture);
+
+        Assert.True(magasin.Appliquer(Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 1, 1, 1, 1, true)));
+        Assert.True(magasin.EcrireMoisSales());
+        Assert.Single(Lignes(chemin));
+    }
+
+    [Fact]
+    public void Un_delta_nul_rend_vrai_sans_salir_ni_lire()
+    {
+        var chemin = EcrireJuin();
+        var magasin = Magasin();
+        using (Tenir(chemin))
+            Assert.True(magasin.Appliquer(Delta(Utc("2026-06-23T14:00:00Z"), "claude-opus-5", false, 0, 0, 0, 0, false)));
+        Assert.Empty(magasin.MoisSales);
+        Assert.Empty(magasin.MoisIllisibles);
+    }
+
     // --- Ce que le fichier ne porte JAMAIS ---
 
     [Fact]
