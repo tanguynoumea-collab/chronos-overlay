@@ -186,6 +186,26 @@ public class AutostartServiceTests : IDisposable
             Assert.DoesNotContain(interdit, File.ReadAllText(f), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Garde_le_demarrage_converge_l_autostart_apres_le_Host_et_avant_le_MainViewModel_dans_un_try()
+    {
+        var racine = CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racine), "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque : cette garde ne lirait rien.");
+        var app = File.ReadAllText(Path.Combine(racine, "App.xaml.cs"));
+
+        var build = app.IndexOf("_host = builder.Build();", StringComparison.Ordinal);
+        var appel = app.IndexOf("ConvergerVersExeCourant()", StringComparison.Ordinal);
+        var vm = app.IndexOf("GetRequiredService<MainViewModel>()", StringComparison.Ordinal);
+
+        Assert.True(build >= 0, "« _host = builder.Build(); » introuvable dans App.xaml.cs");
+        Assert.True(appel >= 0, "App.xaml.cs n'appelle pas ConvergerVersExeCourant() (PKG-1)");
+        Assert.True(vm >= 0, "« GetRequiredService<MainViewModel>() » introuvable dans App.xaml.cs");
+        Assert.True(build < appel, "la convergence de l'autostart doit suivre la construction du Host");
+        Assert.True(appel < vm, "la convergence de l'autostart doit précéder la résolution du MainViewModel (la case lit IsEnabled)");
+        Assert.Equal(appel, app.LastIndexOf("ConvergerVersExeCourant()", StringComparison.Ordinal));   // un seul appel
+        Assert.Contains("catch", app.Substring(appel, vm - appel), StringComparison.Ordinal);       // protégé : jamais bloquant
+    }
+
     private static string CheminSources()
         => typeof(AutostartServiceTests).Assembly
                .GetCustomAttributes<AssemblyMetadataAttribute>()
