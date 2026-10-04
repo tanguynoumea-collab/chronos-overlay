@@ -27,7 +27,10 @@ namespace Chronos.Services;
 /// Le repli « repartir d'un objet JSON vierge » des installateurs actuels est DESTRUCTIF : l'appelant écrit
 /// ensuite cet objet par-dessus le fichier, et tout le settings.json de l'utilisateur (permissions, env,
 /// model, hooks des autres outils) disparaît silencieusement. Un échec d'analyse doit produire
-/// « je n'écris rien », jamais « je repars d'une page blanche ». <c>null</c> = <b>NE RIEN ÉCRIRE</b>.</para>
+/// « je n'écris rien », jamais « je repars d'une page blanche ». <c>null</c> = <b>NE RIEN ÉCRIRE</b>.
+/// Seul un fichier ABSENT (<c>null</c> en entrée) vaut objet vide : un fichier EXISTANT mais vide ou blanc est
+/// INEXPLOITABLE (DATA-4) — c'est ce que voit un lecteur qui tombe pendant une réécriture tronquante, et le
+/// traiter comme « objet vide » faisait écrire un fichier ne contenant que les hooks de Chronos.</para>
 ///
 /// <para><b>(c) Limite assumée : les commentaires sont perdus à la réécriture.</b>
 /// <see cref="JsonCommentHandling.Skip"/> permet de LIRE un fichier commenté, mais System.Text.Json ne sait
@@ -127,13 +130,15 @@ public static class ClaudeSettingsJson
 
     /// <summary>
     /// Analyse tolérante (commentaires et virgule traînante acceptés). Renvoie un objet vide quand
-    /// <paramref name="json"/> est nul ou vide (fichier absent = départ légitime), et <c>null</c> quand le
-    /// contenu est INEXPLOITABLE (racine non-objet, clés dupliquées, JSON invalide) : l'appelant NE DOIT
-    /// alors RIEN ÉCRIRE. On ne substitue jamais une page blanche au fichier de l'utilisateur.
+    /// <paramref name="json"/> est <c>null</c> (fichier ABSENT = départ légitime), et <c>null</c> quand le
+    /// contenu est INEXPLOITABLE (chaîne vide ou blanche d'un fichier existant, racine non-objet, clés
+    /// dupliquées, JSON invalide) : l'appelant NE DOIT alors RIEN ÉCRIRE. On ne substitue jamais une page
+    /// blanche au fichier de l'utilisateur.
     /// </summary>
     public static JsonObject? ParseOrNull(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json)) return new JsonObject();
+        if (json is null) return new JsonObject();          // fichier ABSENT
+        if (string.IsNullOrWhiteSpace(json)) return null;   // fichier EXISTANT mais vide : inexploitable (DATA-4)
         try
         {
             if (JsonNode.Parse(json, nodeOptions: null, LectureTolerante) is not JsonObject o) return null;
