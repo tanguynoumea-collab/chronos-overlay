@@ -6,7 +6,11 @@ jour depuis), famille `Claude_pzs8sxrjxfjjc`.
 **Exe publié :** `Chronos-v3.5.0.exe` à la racine du dépôt (`%USERPROFILE%\Documents\PROGRAMMES\DEV\PROJET OVERLAY`) —
 **78 199 851 o**, SHA-256 **`3577e72a1a8eb71fa85edf88750da918d04d01154f718458382ca4a4482d8071`** (recalculé par la sonde t0 :
 identique à 43-03-SUMMARY et à `docs/publish.md` §4), FileVersion 3.5.0.0 / ProductVersion 3.5.0 / ProductName Chronos
-(release `e56fe57`, sans étiquette ni push). **Jamais lancé par l'agent, ni en overlay, ni avec `--hook`, ni avec `--sessions`.**
+(release `e56fe57`, sans étiquette ni push).
+**Exe reconstruit le 2026-10-04 après l'écart Braises hebdo (plan 43-05, anneau hebdo en 7 groupes de 2), même version 3.5.0 :**
+**78 200 845 o**, SHA-256 **`cca57384af57dcd66575a7cad571c8974faecb7e56b592210c8c62c98d36f6f3`**, FileVersion 3.5.0.0 / ProductVersion
+3.5.0 / ProductName Chronos ; empreinte précédente ~~`3577e72a1a8eb71fa85edf88750da918d04d01154f718458382ca4a4482d8071`~~
+(78 199 851 o), remplacée. **Jamais lancé par l'agent, ni en overlay, ni avec `--hook`, ni avec `--sessions`.**
 Anciens exe présents et intacts : `Chronos-v3.1.0.exe` (77 218 013 o), `Chronos-v3.2.0.exe` (77 377 466 o), `Chronos-v3.2.1.exe`
 (77 385 116 o), `Chronos-v3.2.2.exe` (77 557 997 o), `Chronos-v3.3.0.exe` (78 104 918 o), `Chronos-v3.3.1.exe` (78 111 106 o),
 `Chronos-v3.4.0.exe` (78 142 335 o) — 8 exe au total.
