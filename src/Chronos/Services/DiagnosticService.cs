@@ -152,7 +152,13 @@ public sealed class DiagnosticService
         var chrono = Stopwatch.StartNew();
         var s = _settings.Load();
         // SOC-01 — relevé AVANT tout await : aucune autre lecture ne peut s'intercaler et écraser ce rapport.
-        var lectureReglages = _settings.DerniereLecture;
+        // MAT-4 a (42.2-02) : la lecture de DÉMARRAGE prime sur la relecture fraîche (un fichier illisible au lancement
+        // reste dit illisible même s'il a été mis en quarantaine ou réparé depuis).
+        var lectureReglages = _settings.LectureDuDemarrage ?? _settings.DerniereLecture;
+        var lecturesNonAbouties = _settings.LecturesNonAbouties;
+        var derniereNonAboutie = _settings.DerniereLectureNonAboutie;
+        var derniereQuarantaine = _settings.DerniereQuarantaine;
+        var ecritureRefusee = _settings.DerniereEcritureRefusee;
 
         // ORDRE CRITIQUE — interroger la chaîne AVANT de rendre la moindre section.
         // C'est cet appel qui déclenche la première sonde et peuple l'état serveur. Le laisser à sa
@@ -267,6 +273,13 @@ public sealed class DiagnosticService
 
         sb.AppendLine("[Magasins persistants]");
         sb.AppendLine("  Réglages (settings.json) : " + LibelleLectureReglages(lectureReglages));
+        if (lecturesNonAbouties > 0)
+            sb.AppendLine("    lectures non abouties depuis le démarrage : " + lecturesNonAbouties
+                          + (derniereNonAboutie is null ? "" : " (dernière : " + LibelleLectureReglages(derniereNonAboutie) + ")"));
+        if (derniereQuarantaine is not null)
+            sb.AppendLine("    QUARANTAINE : l'ancien settings.json illisible est conservé sous " + System.IO.Path.GetFileName(derniereQuarantaine));
+        if (ecritureRefusee is not null)
+            sb.AppendLine("    ÉCRITURE BLOQUÉE : " + ecritureRefusee);
         sb.AppendLine("  Vue AppData : " + DetecteurVueAppData.Libelle(
             DetecteurVueAppData.Detecter(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData))));
         sb.AppendLine("  " + LigneMagasin(NomsMagasins.DernierExact, _paths.LastExactFile, "fichier"));
@@ -593,11 +606,14 @@ public sealed class DiagnosticService
     private static string LibelleLectureReglages(LectureReglages lecture) => lecture.Issue switch
     {
         IssueLectureReglages.Absent => "absent — défauts",
-        IssueLectureReglages.Illisible => "illisible — défauts entiers",
+        IssueLectureReglages.Illisible => "illisible — original mis en quarantaine à la première écriture, défauts" + Cause(lecture),
+        IssueLectureReglages.Inaccessible => "inaccessible (E/S) — défauts en mémoire, aucune écriture tant qu'elle dure" + Cause(lecture),
         IssueLectureReglages.LuAvecRetombees => lecture.Retombees.Count + " valeur(s) retombée(s) sur leur défaut — "
                                                 + string.Join(", ", lecture.Retombees.OrderBy(n => n, StringComparer.Ordinal)),
         _ => "lus, aucune valeur retombée",
     };
+
+    private static string Cause(LectureReglages lecture) => string.IsNullOrEmpty(lecture.Cause) ? "" : " : " + lecture.Cause;
 
     // Libellé français de l'état d'authentification. Chaque branche dit à l'utilisateur s'il a
     // quelque chose à FAIRE : « hors ligne » est informatif, « déconnecté » est actionnable —

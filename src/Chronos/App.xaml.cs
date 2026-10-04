@@ -318,7 +318,7 @@ public partial class App : Application
         // Placement/persistance Phase 6 (FEN-03/04/05/07) : settings.json chargé UNE fois au démarrage
         // (coin + device = vérité), adaptateur de placement, contrat neutre pour le VM (menu 06-04).
         services.AddSingleton<SettingsService>();
-        services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());   // ChronosSettings (une lecture)
+        services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().ChargerPourDemarrage());   // ChronosSettings : LA lecture de démarrage (MAT-4, MAT-5)
         services.AddSingleton<OverlayController>();
         services.AddSingleton<IWindowController>(sp => sp.GetRequiredService<OverlayController>());
 
