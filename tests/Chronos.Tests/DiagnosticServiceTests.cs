@@ -1490,6 +1490,73 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("o)", ligne);
         Assert.DoesNotContain("aucune écriture", ligne);
     }
+
+    // ------------------------------------------------------------------ 42.2-03 (MAT-3 / MAT-4) : magasins du widget de sessions
+    // Une lecture non aboutie et une quarantaine se VOIENT au diagnostic, sous [Magasins persistants], pour archived.json et
+    // treated.json — les mêmes instances que le widget en production.
+
+    private static IEtatMagasin MagasinSessions(string type, string chemin) => type == "archive"
+        ? new ArchiveStore(chemin, new FakeClock(DateTimeOffset.UtcNow))
+        : new TreatedStore(chemin, new FakeClock(DateTimeOffset.UtcNow));
+
+    private static void Lire(IEtatMagasin m)
+    {
+        if (m is ArchiveStore a) a.Load(); else ((TreatedStore)m).Load();
+    }
+
+    private static bool Ecrire(IEtatMagasin m) =>
+        m is ArchiveStore a ? a.Add("X") : ((TreatedStore)m).Set("X", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+    [Theory]
+    [InlineData("archive", "archived.json", "sessions archivées")]
+    [InlineData("traites", "treated.json", "sessions traitées")]
+    public async Task Une_lecture_non_aboutie_d_un_magasin_de_sessions_se_voit_au_diagnostic(string type, string fichier, string nom)
+    {
+        var paths = TempPaths();
+        var chemin = Path.Combine(Path.GetDirectoryName(paths.SettingsFile)!, fichier);
+        File.WriteAllText(chemin, "{\"a\": 1");
+        var magasin = MagasinSessions(type, chemin);
+        Lire(magasin);
+
+        var report = await DiagAvecMagasins(paths, new FakeClock(DateTimeOffset.UtcNow), new[] { magasin }).BuildReportAsync();
+
+        var lignes = Lignes(report);
+        var i = lignes.FindIndex(l => l.TrimStart().StartsWith(nom + " : ", StringComparison.Ordinal));
+        Assert.True(i >= 0, report);
+        Assert.Contains("LECTURE NON ABOUTIE", lignes[i + 1]);
+        Assert.Contains("illisible", lignes[i + 1]);
+    }
+
+    [Theory]
+    [InlineData("archive", "archived.json", "sessions archivées", "archived.illisible-")]
+    [InlineData("traites", "treated.json", "sessions traitées", "treated.illisible-")]
+    public async Task Une_quarantaine_d_un_magasin_de_sessions_se_voit_au_diagnostic(string type, string fichier, string nom, string prefixe)
+    {
+        var paths = TempPaths();
+        var chemin = Path.Combine(Path.GetDirectoryName(paths.SettingsFile)!, fichier);
+        File.WriteAllText(chemin, "{\"a\": 1");
+        var magasin = MagasinSessions(type, chemin);
+        Assert.True(Ecrire(magasin));
+
+        var report = await DiagAvecMagasins(paths, new FakeClock(DateTimeOffset.UtcNow), new[] { magasin }).BuildReportAsync();
+
+        Assert.Contains(nom + " : ", report);
+        var q = Lignes(report).Single(l => l.Contains("QUARANTAINE : original illisible conservé sous", StringComparison.Ordinal));
+        Assert.Contains(prefixe, q);
+        Assert.Contains(".json", q);
+    }
+
+    [Fact]
+    public async Task Sans_magasins_de_sessions_injectes_aucune_ligne_n_est_devinee()
+    {
+        var paths = TempPaths();
+
+        var report = await DiagAvecMagasins(paths, new FakeClock(DateTimeOffset.UtcNow), magasins: null).BuildReportAsync();
+
+        Assert.DoesNotContain("sessions archivées : ", report);
+        Assert.DoesNotContain("sessions traitées : ", report);
+    }
+
     // ------------------------------------------------------------------ JRN-04 / CPT-03 (phase 32, 32-05) : journal muet, processus, verrou
     // L'âge de la dernière écriture du journal devient un chiffre de première classe : le rapport CRIE quand le journal se tait
     // alors que Chronos tourne (D-32-21 : mesuré depuis max(démarrage, dernière écriture), sinon l'alerte s'allumerait à chaque
