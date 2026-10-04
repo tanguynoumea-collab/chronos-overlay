@@ -298,7 +298,7 @@ public class MagasinsSessionsLectureTests
         Assert.Equal(new[] { "B" }, store.Load().Keys);
     }
 
-    // ---- TRT-04 (repris d'ArchiveStorePurgeTests, retiré avec PurgerPrefixe — PERT-2) ----
+    // ---- TRT-04 (repris d'ArchiveStorePurgeTests, retiré avec la purge par préfixe — PERT-2) ----
 
     /// <summary>TRT-04 — ce qui est archivé NE REVIENT JAMAIS : huit jours plus tard, l'entrée est toujours là.</summary>
     [Fact]

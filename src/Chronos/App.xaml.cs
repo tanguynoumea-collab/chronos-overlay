@@ -538,7 +538,10 @@ public partial class App : Application
             moniteurSessions: sp.GetRequiredService<SessionMonitor>(),
             // CPT-02 — les TROIS magasins persistants RÉELS (mêmes instances que la chaîne) : âge de la dernière écriture,
             // dernière erreur, « journal muet depuis N min » dans [Magasins persistants] ; le troisième est celui des agrégats (TOK-01).
-            magasins: new IEtatMagasin[] { sp.GetRequiredService<LastExactStore>(), sp.GetRequiredService<JournalReleves>(), sp.GetRequiredService<MagasinAgregats>() },
+            // MAT-3 / MAT-4 (42.2-03) — plus les deux magasins du widget de sessions (mêmes instances que le widget) : lecture non
+            // aboutie et quarantaine de l'original illisible visibles au diagnostic.
+            magasins: new IEtatMagasin[] { sp.GetRequiredService<LastExactStore>(), sp.GetRequiredService<JournalReleves>(), sp.GetRequiredService<MagasinAgregats>(),
+                                           sp.GetRequiredService<ArchiveStore>(), sp.GetRequiredService<TreatedStore>() },
             // TOK-02 — l'état de la reconstruction (même instance que le service hébergé) : N / M fichiers, phase, dernier fichier, périmètre.
             reconstruction: sp.GetRequiredService<IEtatReconstruction>(),
             // Décision 5 (phase 35) : heures de la section « Journal d'historique » dans le fuseau injecté (celui de la fenêtre

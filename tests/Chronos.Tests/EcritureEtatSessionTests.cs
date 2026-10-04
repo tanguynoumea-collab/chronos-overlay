@@ -118,7 +118,7 @@ public class EcritureEtatSessionTests
         Assert.True(suppression.Reussi);
         Assert.False(File.Exists(fic));
 
-        // Rien à faire n'est pas un échec (précédent ArchiveStore.PurgerPrefixe).
+        // Rien à faire n'est pas un échec.
         var deuxieme = EcritureEtatSession.Appliquer(dossier, Ordre("SessionEnd", Sid, baseMs));
         Assert.True(deuxieme.Reussi);
         Assert.Null(deuxieme.Cause);

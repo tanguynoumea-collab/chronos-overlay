@@ -69,8 +69,8 @@ public class IsolationProfilTests
     /// <summary>
     /// 42.2-03 — les magasins du widget (archived.json, treated.json) se rabattent sur %APPDATA%\Chronos quand on ne leur
     /// donne pas de chemin, et peuvent désormais y RENOMMER un fichier illisible (quarantaine) ou y JOURNALISER un incident.
-    /// Interdit en test : <c>new ArchiveStore()</c> / <c>new TreatedStore()</c> sans chemin (ou avec <c>null</c>), et tout
-    /// <c>new SessionMonitor(…)</c> sans archive (son défaut est <c>archive ?? new ArchiveStore()</c>).
+    /// Interdit en test : un <c>ArchiveStore</c> / <c>TreatedStore</c> construit sans chemin (ou avec <c>null</c>), et tout
+    /// <c>new SessionMonitor(…)</c> sans archive (son défaut est un ArchiveStore sur le chemin par défaut).
     /// </summary>
     [Fact]
     public void Aucun_test_ne_construit_un_magasin_de_sessions_sur_le_vrai_profil()

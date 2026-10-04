@@ -58,7 +58,7 @@ public static class EcritureEtatSession
 {
     public static ResultatEcritureEtat Appliquer(string dossier, SessionHookResult resultat)
     {
-        // Rien à faire n'est pas un échec (précédent ArchiveStore.PurgerPrefixe).
+        // Rien à faire n'est pas un échec.
         if (resultat.Ignore || string.IsNullOrEmpty(resultat.SessionId)) return ResultatEcritureEtat.Reussie;
 
         try

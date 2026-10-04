@@ -293,6 +293,12 @@ public sealed class DiagnosticService
         if (AlerteJournalMuet(_magasins?.FirstOrDefault(m => m.Nom == NomsMagasins.JournalReleves)) is { } alerte)
             sb.AppendLine("    " + alerte);
 
+        // MAT-3 / MAT-4 (42.2-03) — les magasins du widget de sessions (archived.json, treated.json), s'ils sont injectés :
+        // les MÊMES instances que le widget. Jamais de chemin deviné : sans injection, aucune ligne.
+        foreach (var nomSessions in new[] { NomsMagasins.SessionsArchivees, NomsMagasins.SessionsTraitees })
+            if (_magasins?.FirstOrDefault(m => m.Nom == nomSessions) is { } etatSessions)
+                sb.AppendLine("  " + LigneMagasin(nomSessions, etatSessions.Chemin, "fichier"));
+
         // CPT-03 — combien de Chronos tournent, et qui tient le verrou mono-instance. Le relevé lit la table des processus de
         // la machine : sous try/catch, un relevé impossible se DIT, il ne fait jamais échouer le rapport.
         try
@@ -774,6 +780,13 @@ public sealed class DiagnosticService
                 ? $"{nom} : {chemin} — dernière écriture {age} ({nature} absent sur cette vue)"   // écrit ici, invisible là : l'écart des deux vues
                 : $"{nom} : {chemin} — aucune écriture ({nature} absent)";
 
+        // MAT-4 (42.2-03) — une LECTURE non aboutie se dit, distincte d'un échec d'écriture : elle ne s'efface que par une
+        // lecture réussie. MAT-3 — l'original illisible conservé avant réécriture est nommé (seuls les magasins qui
+        // réécrivent leur propre fichier en ont ; agrégats et index sont des données dérivées, sans quarantaine).
+        if (etat?.DerniereErreurLecture is { } lecture)
+            texte += Environment.NewLine + "    LECTURE NON ABOUTIE : " + lecture;
+        if (etat?.DerniereQuarantaine is { } q)
+            texte += Environment.NewLine + "    QUARANTAINE : original illisible conservé sous " + Path.GetFileName(q);
         if (etat?.DerniereErreur is { } err)
             texte += Environment.NewLine + "    ÉCHEC de la dernière écriture : " + err;
 

@@ -6,8 +6,8 @@ namespace Chronos.Services;
 
 /// <summary>
 /// Ce qu'un balayage a RÉELLEMENT retiré, et ce qu'il a laissé. Trois OBSERVATIONS, jamais des intentions :
-/// une suppression qui échoue ne figure pas dans les retirés (précédent <see cref="ArchiveStore.PurgerPrefixe"/>,
-/// où annoncer ce qu'on a repéré plutôt que ce qu'on a fait aurait menti sur le seul canal disponible).
+/// une suppression qui échoue ne figure pas dans les retirés : annoncer ce qu'on a repéré plutôt que ce qu'on a fait
+/// mentirait sur le seul canal disponible.
 /// </summary>
 public sealed record BilanBalayage(int EtatsRetires, int TemporairesRetires, int EtatsConserves);
 
@@ -20,8 +20,7 @@ public sealed record BilanBalayage(int EtatsRetires, int TemporairesRetires, int
 /// plus de sept jours, âge médian 37 jours, 32 se déclarant encore au travail ; plus 12 fichiers temporaires
 /// abandonnés, dont cinq pour une même session.</para>
 ///
-/// <para>DEUX GESTES DISTINCTS, comme purger et expirer le sont dans
-/// <see cref="ArchiveStore.PurgerPrefixe"/> :
+/// <para>DEUX GESTES DISTINCTS, comme purger un préfixe et expirer une entrée ne sont pas le même geste :
 /// retirer des DÉBRIS (des fichiers temporaires qui ne sont l'état de personne — ils n'ont jamais atteint
 /// leur destination) n'est pas la même chose que balayer un ÉTAT (qui, lui, a été vrai).</para>
 ///
