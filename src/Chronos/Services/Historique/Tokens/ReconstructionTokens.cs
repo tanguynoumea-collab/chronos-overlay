@@ -52,7 +52,7 @@ public sealed record BilanPasse(int FichiersTotal, int FichiersOuverts, int Racc
 /// message est ignoré et compté (<see cref="MessagesIgnoresMoisGeles"/>) ; absent sans fichier ⇒ première reconstruction,
 /// acceptée. Compromis assumé : une PREMIÈRE reconstruction d'un mois sorti de la rétention des shards, interrompue entre
 /// l'écriture de ses agrégats et celle de tous ses curseurs, laisse au démarrage suivant un mois tenu pour déjà compté — les
-/// messages non encore lus en sont ignorés. Sous-comptage possible plutôt que double comptage.</para>
+/// messages non encore lus en sont ignorés. Sous-comptage possible plutôt que comptage en deux exemplaires.</para>
 ///
 /// <para>Lecture seule stricte de la racine des projets ; écriture uniquement sous <c>HistoriqueDir</c>, par les briques
 /// (le service n'écrit rien lui-même). Type NEUTRE (aucun WPF). Progression en ENTIERS (garde TOK-05) : les champs d'état
