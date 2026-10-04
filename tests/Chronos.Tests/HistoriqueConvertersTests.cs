@@ -8,9 +8,9 @@ using Xunit;
 namespace Chronos.Tests;
 
 /// <summary>
-/// HIS-02 / HIS-07 (plan 34-04) — les trois convertisseurs XAML qui posent les annotations <c>TextBlock</c> des vues
+/// HIS-02 / HIS-07 (plan 34-04) — les convertisseurs XAML qui posent les annotations <c>TextBlock</c> des vues
 /// Semaine et Jour sur l'axe du temps des pistes, sans une ligne de C# dans les vues : instant → x borné à la piste,
-/// intervalle → largeur positive (finissant à « maintenant » si la fin manque), fraction → largeur (barre F2). Tous
+/// intervalle → largeur positive (finissant à « maintenant » si la fin manque), infobulle bornée à sa piste. Tous
 /// tolèrent <c>UnsetValue</c>, <c>null</c> et les types inattendus en rendant 0 : un binding pas encore résolu ne fait
 /// jamais lever la vue. Faits purs, sans STA.
 /// </summary>
@@ -76,16 +76,5 @@ public class HistoriqueConvertersTests
         Assert.Equal(300.0, Convertir(c, 300.0, DependencyProperty.UnsetValue, DependencyProperty.UnsetValue));
         Assert.Equal(300.0, Convertir(c, 300.0, 120.0, double.NaN));
         Assert.Throws<NotSupportedException>(() => { c.ConvertBack(0.0, new[] { typeof(double) }, null, CultureInfo.InvariantCulture); });
-    }
-
-    [Fact]
-    public void FractionVersLargeur_multiplie_et_borne()
-    {
-        var c = new FractionVersLargeurConverter();
-        Assert.Equal(150.0, Convertir(c, 0.5, 300.0));
-        Assert.Equal(300.0, Convertir(c, 1.3, 300.0));
-        Assert.Equal(0.0, Convertir(c, -1.0, 300.0));
-        Assert.Equal(0.0, Convertir(c, double.NaN, 300.0));
-        Assert.Equal(0.0, Convertir(c, DependencyProperty.UnsetValue, 300.0));
     }
 }

@@ -4,20 +4,15 @@ using System.Windows.Media;
 namespace Chronos.Rendering;
 
 /// <summary>
-/// Rampe utilization → couleur. 3 stops verrouillés :
-///   0.00 → vert  #7BB13C   0.55 → ambre #EFA23A   1.00 → rouge #D8503A
+/// Rampe utilization → couleur. 3 stops : 0.00 → vert, 0.55 → ambre, 1.00 → rouge, couleurs fournies par le thème
+/// actif (<c>ChronosTheme.ArcColor</c>, seule rampe vivante — aucune rampe figée sur le thème par défaut).
 /// Interpolation LINÉAIRE par canal sur chaque segment. Fonction PURE (testable).
 /// </summary>
 public static class RampColor
 {
     private const double AmberStop = 0.55;
-    private static readonly Color Green = Color.FromRgb(0x7B, 0xB1, 0x3C);
-    private static readonly Color Amber = Color.FromRgb(0xEF, 0xA2, 0x3A);
-    private static readonly Color Red   = Color.FromRgb(0xD8, 0x50, 0x3A);
 
-    public static Color Interpolate(double u) => Interpolate(u, Green, Amber, Red);
-
-    /// <summary>Rampe à stops PERSONNALISÉS (theming) : même interpolation, couleurs fournies par le thème.</summary>
+    /// <summary>Rampe à stops fournis par le thème : vert → ambre (0,55) → rouge.</summary>
     public static Color Interpolate(double u, Color green, Color amber, Color red)
     {
         u = Math.Clamp(u, 0.0, 1.0);

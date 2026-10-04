@@ -55,24 +55,6 @@ public sealed class LargeurIntervalleConverter : IMultiValueConverter
 }
 
 /// <summary>
-/// <c>[double fraction 0..1, double largeur]</c> → <c>clamp(fraction) × largeur</c> : la barre de progression du bandeau F2
-/// (<c>FractionBandeauF2</c>). <c>NaN</c>, négatif, <c>UnsetValue</c> ou largeur nulle → 0.
-/// </summary>
-public sealed class FractionVersLargeurConverter : IMultiValueConverter
-{
-    public object? Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (values is not { Length: >= 2 } || values[0] is not double fraction || values[1] is not double largeur
-            || double.IsNaN(fraction) || double.IsNaN(largeur) || largeur <= 0)
-            return 0.0;
-        return Math.Clamp(fraction, 0.0, 1.0) * largeur;
-    }
-
-    public object[]? ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture)
-        => throw new NotSupportedException("Une largeur ne redevient pas une fraction par binding.");
-}
-
-/// <summary>
 /// 35-04 (D-35-17) — <c>[double x, double largeurInfobulle, double largeurCanvas]</c> → <c>clamp(x, 0, max(0, W − w))</c> :
 /// l'infobulle du réticule reste posée sur le relevé survolé, sauf au bord droit où elle recule juste assez pour rester DANS sa
 /// piste (jamais à gauche de la piste). Tolérant comme les autres : <c>x</c> invalide (<c>UnsetValue</c>, <c>null</c>, <c>NaN</c>) → 0 ;
