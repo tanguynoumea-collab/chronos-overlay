@@ -320,7 +320,7 @@ public class SessionsTests
     }
 
     private static string[] SauvegardesDe(string backups)
-        => Directory.Exists(backups) ? Directory.GetFiles(backups, "claude-settings-*.json") : Array.Empty<string>();
+        => Directory.Exists(backups) ? Directory.GetFiles(backups, "claude-settings-2*.json") : Array.Empty<string>();
 
     [Fact]
     public void Install_sur_fichier_non_conforme_sauvegarde_le_texte_lu_puis_pose_les_hooks()

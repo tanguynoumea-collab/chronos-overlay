@@ -243,4 +243,156 @@ public class JournalIncidentsTests
         if (n == 0) throw new ArgumentException("fond");
         Profond(n - 1);
     }
+
+    // ---------------------------------------------------------------- 42.2-11 : FIAB-R3, dédoublonnage, plafond, lecture bornée
+
+    private static readonly DateTimeOffset T0 = new(2026, 10, 4, 12, 0, 0, TimeSpan.FromHours(11));
+
+    /// <summary>FIAB-R3 : trois occurrences identiques s'écrivent, les suivantes se taisent, puis une ligne « répété N fois »
+    /// toutes les 10 minutes au plus (horloge injectée par l'instant passé).</summary>
+    [Fact]
+    public void Le_limiteur_ecrit_trois_fois_puis_resume_toutes_les_dix_minutes()
+    {
+        var l = new LimiteurIncidents();
+
+        for (int i = 0; i < 3; i++)
+            Assert.Equal(DecisionIncident.Ecrire, l.Evaluer("k", T0.AddSeconds(i)).Decision);
+        for (int i = 3; i < 100; i++)
+            Assert.Equal(DecisionIncident.Taire, l.Evaluer("k", T0.AddSeconds(i)).Decision);   // 97 tues, < 10 min
+
+        var resume = l.Evaluer("k", T0.AddSeconds(3).Add(LimiteurIncidents.IntervalleResume));
+        Assert.Equal(DecisionIncident.Resume, resume.Decision);
+        Assert.Equal(98, resume.Repetitions);   // les 97 tues + celle-ci
+
+        Assert.Equal(DecisionIncident.Taire, l.Evaluer("k", T0.AddMinutes(14)).Decision);
+        var second = l.Evaluer("k", T0.AddSeconds(3).Add(LimiteurIncidents.IntervalleResume * 2));
+        Assert.Equal(DecisionIncident.Resume, second.Decision);
+        Assert.Equal(2, second.Repetitions);
+    }
+
+    [Fact]
+    public void Le_limiteur_compte_chaque_cle_separement()
+    {
+        var l = new LimiteurIncidents();
+        for (int i = 0; i < 3; i++) l.Evaluer("a", T0);
+
+        Assert.Equal(DecisionIncident.Taire, l.Evaluer("a", T0).Decision);
+        Assert.Equal(DecisionIncident.Ecrire, l.Evaluer("b", T0).Decision);
+    }
+
+    /// <summary>FIAB-R3 : au plus 200 lignes par processus ; la 201e est l'avis de plafond, puis plus rien.</summary>
+    [Fact]
+    public void Le_limiteur_plafonne_a_deux_cents_lignes_puis_un_avis_unique()
+    {
+        var l = new LimiteurIncidents();
+        for (int i = 0; i < LimiteurIncidents.PlafondLignes; i++)
+            Assert.Equal(DecisionIncident.Ecrire, l.Evaluer("cle-" + i, T0).Decision);
+
+        Assert.Equal(200, LimiteurIncidents.PlafondLignes);
+        Assert.Equal(DecisionIncident.Plafond, l.Evaluer("encore", T0).Decision);
+        Assert.Equal(DecisionIncident.Taire, l.Evaluer("et-encore", T0.AddHours(1)).Decision);
+    }
+
+    /// <summary>FIAB-R3 de bout en bout : une exception récurrente (tick 1 s) n'écrit plus une ligne par seconde.</summary>
+    [Fact]
+    public void Signaler_en_rafale_n_ecrit_que_trois_lignes_puis_un_resume()
+    {
+        var dossier = Path.Combine(Path.GetTempPath(), "ChronosTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            for (int i = 0; i < 60; i++)
+                JournalIncidents.Signaler(dossier, "exception non gérée (UI) : InvalidOperationException: boum", T0.AddSeconds(i));
+            var lignes = File.ReadAllLines(Path.Combine(dossier, JournalIncidents.NomFichier));
+            Assert.Equal(3, lignes.Length);
+
+            JournalIncidents.Signaler(dossier, "exception non gérée (UI) : InvalidOperationException: boum", T0.AddMinutes(11));
+            lignes = File.ReadAllLines(Path.Combine(dossier, JournalIncidents.NomFichier));
+            Assert.Equal(4, lignes.Length);
+            Assert.Contains("répété 58 fois", lignes[3]);
+            Assert.StartsWith(JournalIncidents.Marqueur, lignes[3]);
+        }
+        finally { try { Directory.Delete(dossier, recursive: true); } catch { } }
+    }
+
+    /// <summary>FIAB-R3 : la clé d'une exception est (origine, type, message, PREMIER cadre) — deux levées au même endroit
+    /// se reconnaissent même si la suite de la pile diffère.</summary>
+    [Fact]
+    public void La_cle_d_une_exception_ignore_les_cadres_profonds()
+    {
+        static Exception Lever()
+        {
+            try { throw new InvalidOperationException("boum"); }
+            catch (Exception e) { return e; }
+        }
+        Exception ParA() => Lever();
+        Exception ParB() => Lever();
+
+        var a = FiletExceptions.Cle("UI", ParA());
+        var b = FiletExceptions.Cle("UI", ParB());
+
+        Assert.Equal(a, b);
+        Assert.Contains("InvalidOperationException", a);
+        Assert.NotEqual(a, FiletExceptions.Cle("domaine", ParA()));
+    }
+
+    /// <summary>FIAB-R3 : au démarrage, seule la FIN du journal (≤ 1 Mo) est relue pour en extraire les incidents.</summary>
+    [Fact]
+    public void LireFin_ne_relit_que_le_dernier_mega_octet()
+    {
+        var dossier = Path.Combine(Path.GetTempPath(), "ChronosTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dossier);
+        try
+        {
+            var chemin = Path.Combine(dossier, JournalIncidents.NomFichier);
+            var remplissage = new string('x', 99) + "\n";
+            using (var w = new StreamWriter(chemin))
+            {
+                w.Write(JournalIncidents.Ligne(T0, "incident du début") + "\n");
+                for (int i = 0; i < 20_000; i++) w.Write(remplissage);   // ≈ 2 Mo
+                w.Write(JournalIncidents.Ligne(T0, "incident de la fin") + "\n");
+            }
+
+            var fin = JournalIncidents.LireFin(chemin);
+
+            Assert.NotNull(fin);
+            Assert.True(fin!.Length <= JournalIncidents.LectureMaxOctets);
+            var incidents = JournalIncidents.Extraire(fin);
+            Assert.Single(incidents);
+            Assert.Contains("incident de la fin", incidents[0]);
+            Assert.Equal(1024 * 1024, JournalIncidents.LectureMaxOctets);
+        }
+        finally { try { Directory.Delete(dossier, recursive: true); } catch { } }
+    }
+
+    [Fact]
+    public void LireFin_d_un_petit_journal_le_rend_entier_et_d_un_absent_rend_null()
+    {
+        var dossier = Path.Combine(Path.GetTempPath(), "ChronosTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dossier);
+        try
+        {
+            var chemin = Path.Combine(dossier, JournalIncidents.NomFichier);
+            Assert.Null(JournalIncidents.LireFin(chemin));
+            File.WriteAllText(chemin, "a\nb\n");
+            Assert.Equal("a\nb\n", JournalIncidents.LireFin(chemin));
+        }
+        finally { try { Directory.Delete(dossier, recursive: true); } catch { } }
+    }
+
+    /// <summary>FIAB-R3 (garde de source) : le journal de démarrage ne relit plus chronos.log en entier, et le filet Dispatcher
+    /// passe une clé de dédoublonnage.</summary>
+    [Fact]
+    public void Garde_le_demarrage_lit_la_fin_du_journal_et_le_filet_passe_une_cle()
+    {
+        var src = Path.GetFullPath(Path.Combine(Dossier(), "..", "..", "src", "Chronos"));
+        var diag = File.ReadAllText(Path.Combine(src, "Services", "DiagnosticService.cs"));
+        var app = File.ReadAllText(Path.Combine(src, "App.xaml.cs"));
+
+        Assert.Contains("JournalIncidents.LireFin(", diag);
+        Assert.DoesNotContain("File.ReadAllText(chemin) : null", diag);
+        Assert.Contains("FiletExceptions.Cle(", app);
+    }
+
+    private static string Dossier([System.Runtime.CompilerServices.CallerFilePath] string ceFichier = "")
+        => Path.GetDirectoryName(ceFichier)!;
 }

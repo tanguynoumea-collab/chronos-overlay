@@ -336,4 +336,37 @@ public class MagasinsSessionsLectureTests
         Assert.NotEmpty(parametres);
         Assert.Contains(parametres, p => p.ParameterType == typeof(IClock));
     }
+
+    // ---------------------------------------------------------------- 42.2-11 : FIAB-R5, socle après quarantaine
+
+    /// <summary>FIAB-R5 : un fichier lu avec succès puis devenu illisible → après la quarantaine, l'écriture repart du DERNIER
+    /// ensemble lu (les sessions déjà archivées / traitées ne réapparaissent pas), pas d'un ensemble vide.</summary>
+    [Theory]
+    [MemberData(nameof(Magasins))]
+    public void Apres_quarantaine_le_socle_est_le_dernier_ensemble_lu(string type)
+    {
+        var s = Nouveau(type);
+        Assert.True(s.Ecrire("A"));
+        Assert.True(s.Ecrire("B"));
+        Assert.Equal(new[] { "A", "B" }, s.Lire().OrderBy(x => x));
+
+        File.WriteAllBytes(s.Chemin, Tronque);   // corrompu entre deux gestes
+        Assert.True(s.Ecrire("C"));
+
+        Assert.Single(s.Quarantaines());
+        Assert.Equal(new[] { "A", "B", "C" }, s.Lire().OrderBy(x => x));
+    }
+
+    /// <summary>FIAB-R5 : sans aucune lecture réussie dans ce processus, le socle reste vide (rien d'inventé).</summary>
+    [Theory]
+    [MemberData(nameof(Magasins))]
+    public void Sans_lecture_reussie_le_socle_apres_quarantaine_reste_vide(string type)
+    {
+        var s = Nouveau(type);
+        File.WriteAllBytes(s.Chemin, Tronque);
+
+        Assert.True(s.Ecrire("X"));
+
+        Assert.Equal(new[] { "X" }, s.Lire());
+    }
 }

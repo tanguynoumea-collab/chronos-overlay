@@ -694,4 +694,86 @@ public sealed class ReconstructionTokensTests : IDisposable
         Assert.False(File.Exists(CheminCurseurs(paths)), "les curseurs ne doivent pas dépasser l'index persisté");
         Assert.True(bilan.FichiersOuverts > 0);
     }
+
+    // --- FIAB-R4 (42.2-11) : pour un mois GELÉ, les agrégats s'écrivent AVANT que ses ids ne soient persistés ---
+
+    // Le multi-blocs décalé au jour voulu, sous un AUTRE id de message (un second message distinct du même mois).
+    private static void TranscriptDuJourAutreId(string racine, string nom, string jour)
+    {
+        var transcript = Path.Combine(racine, "proj", nom);
+        Directory.CreateDirectory(Path.GetDirectoryName(transcript)!);
+        File.WriteAllText(transcript, File.ReadAllText(Fixture("multi-blocs", "session-a.jsonl"), Utf8SansBom)
+                                          .Replace("2026-07-08T", jour + "T")
+                                          .Replace("msg_01EXEMPLEMULTIBLOCS", "msg_01AUTREIDMULTIBLOCS"), Utf8SansBom);
+        File.SetLastWriteTimeUtc(transcript, (Now - TimeSpan.FromMinutes(30)).UtcDateTime);
+    }
+
+    // Un DOSSIER au nom du temporaire d'écriture de juillet : l'écriture des agrégats de ce mois échoue (le fichier existant,
+    // lui, reste lisible — le mois se charge normalement).
+    private static string BloquerEcritureJuillet(ChronosPaths paths)
+    {
+        var tmp = Path.Combine(paths.HistoriqueDir, "tokens-2026-07.jsonl") + ".tmp-" + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Directory.CreateDirectory(tmp);
+        return tmp;
+    }
+
+    private byte[] ReferenceJuilletDeuxMessages()
+    {
+        var (reference, racineRef) = Contexte("ref-gele-deux", peupler: false);
+        TranscriptDuJour(racineRef, "juillet-a.jsonl", "2026-07-22");
+        TranscriptDuJourAutreId(racineRef, "juillet-b.jsonl", "2026-07-23");
+        Assert.True(Service(reference).ExecuterUnePasse(CancellationToken.None).Complete);
+        return File.ReadAllBytes(Path.Combine(reference.HistoriqueDir, "tokens-2026-07.jsonl"));
+    }
+
+    /// <summary>FIAB-R4 : index d'un mois gelé + échec d'écriture de ses agrégats → les ids de ce mois ne sont PAS persistés ;
+    /// au redémarrage, le transcript est relu et le delta appliqué UNE fois (avant : ids écrits, delta perdu pour toujours).</summary>
+    [Fact]
+    public void Un_mois_gele_dont_les_agregats_echouent_ne_persiste_pas_ses_ids_et_le_redemarrage_applique_le_delta_une_fois()
+    {
+        var attendu = ReferenceJuilletDeuxMessages();
+        var (paths, racine) = Contexte("gele-agregats-echec", peupler: false);
+        TranscriptDuJour(racine, "juillet-a.jsonl", "2026-07-22");
+        Assert.True(Service(paths).ExecuterUnePasse(CancellationToken.None).Complete);   // juillet : agrégé + shard présent
+        var shard = Path.Combine(paths.HistoriqueDir, "ids-2026-07.jsonl");
+        Assert.True(File.Exists(shard));
+
+        TranscriptDuJourAutreId(racine, "juillet-b.jsonl", "2026-07-23");
+        var tmp = BloquerEcritureJuillet(paths);
+        var enPanne = Service(paths);   // nouveau démarrage : juillet est GELÉ (hors août/septembre, fichier présent)
+        enPanne.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.Equal(PhaseReconstruction.EnEchec, enPanne.Phase);
+        Assert.StartsWith("agrégats", enPanne.DerniereErreur);
+        Assert.DoesNotContain("AUTREID", File.ReadAllText(shard));   // ids du mois gelé NON persistés
+
+        Directory.Delete(tmp);
+        var reprise = Service(paths);   // redémarrage : la mémoire est perdue, le disque doit suffire
+        Assert.True(reprise.ExecuterUnePasse(CancellationToken.None).Complete);
+
+        Assert.Equal(attendu, File.ReadAllBytes(Path.Combine(paths.HistoriqueDir, "tokens-2026-07.jsonl")));
+        Assert.Contains("AUTREID", File.ReadAllText(shard));
+    }
+
+    /// <summary>FIAB-R4 : même panne, mais la reprise a lieu dans le MÊME processus (passe suivante) : le delta est appliqué une
+    /// seule fois — ni perdu, ni doublé.</summary>
+    [Fact]
+    public void Un_mois_gele_dont_les_agregats_echouent_est_rattrape_une_seule_fois_par_la_passe_suivante()
+    {
+        var attendu = ReferenceJuilletDeuxMessages();
+        var (paths, racine) = Contexte("gele-agregats-echec-meme", peupler: false);
+        TranscriptDuJour(racine, "juillet-a.jsonl", "2026-07-22");
+        Assert.True(Service(paths).ExecuterUnePasse(CancellationToken.None).Complete);
+
+        TranscriptDuJourAutreId(racine, "juillet-b.jsonl", "2026-07-23");
+        var tmp = BloquerEcritureJuillet(paths);
+        var service = Service(paths);
+        service.ExecuterUnePasse(CancellationToken.None);
+        Assert.Equal(PhaseReconstruction.EnEchec, service.Phase);
+
+        Directory.Delete(tmp);
+        Assert.True(service.ExecuterUnePasse(CancellationToken.None).Complete);
+
+        Assert.Equal(attendu, File.ReadAllBytes(Path.Combine(paths.HistoriqueDir, "tokens-2026-07.jsonl")));
+    }
 }

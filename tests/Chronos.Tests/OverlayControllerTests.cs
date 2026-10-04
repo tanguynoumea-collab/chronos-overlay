@@ -213,4 +213,68 @@ public class OverlayControllerTests
             fenetre.Close();
         }
     }
+
+    // ---- FIAB-R2 (42.2-11) : la restauration n'écrit le mode arrière-plan QUE sur une lecture de démarrage fiable ----
+
+    /// <summary>FIAB-R2 : réglages INACCESSIBLES au démarrage (défauts, donc Background=false) puis lisibles → la restauration
+    /// applique le premier plan mais n'écrit RIEN : la préférence « arrière-plan » de l'utilisateur n'est pas écrasée.</summary>
+    [WpfFact]
+    public void Lecture_de_demarrage_inaccessible_la_restauration_n_ecrit_pas_settings()
+    {
+        var (settings, fichier) = TempSettingsAvecFichier();
+        Assert.True(settings.Save(new ChronosSettings() with { Background = true }));
+        var avant = File.ReadAllText(fichier);
+
+        ChronosSettings demarrage;
+        using (new FileStream(fichier, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            demarrage = settings.ChargerPourDemarrage();
+        Assert.Equal(IssueLectureReglages.Inaccessible, settings.LectureDuDemarrage!.Issue);
+        Assert.False(demarrage.Background);   // défauts
+
+        var guard = new TopmostGuard((_, _, _, _, _, _, _) => true);
+        var controller = new OverlayController(guard, settings, (_, _, _, _, _, _, _) => true);
+        var fenetre = new Window { Width = 190, Height = 66, ShowActivated = false, WindowStyle = WindowStyle.None, Topmost = false };
+        try
+        {
+            controller.Attach(fenetre);
+            controller.RestorePlacement(demarrage);
+
+            Assert.True(fenetre.Topmost);                         // le mode est APPLIQUÉ
+            Assert.Equal(avant, File.ReadAllText(fichier));       // mais rien n'est persisté
+            Assert.True(settings.Load().Background);
+        }
+        finally
+        {
+            guard.Dispose();
+            fenetre.Close();
+        }
+    }
+
+    /// <summary>FIAB-R2 : lecture de démarrage fiable → la restauration applique le mode lu (arrière-plan) et le fichier le porte.</summary>
+    [WpfFact]
+    public void Lecture_de_demarrage_fiable_la_restauration_applique_l_arriere_plan()
+    {
+        var (settings, fichier) = TempSettingsAvecFichier();
+        Assert.True(settings.Save(new ChronosSettings() with { Background = true }));
+        var demarrage = settings.ChargerPourDemarrage();
+        Assert.True(settings.LectureDuDemarrage!.EstFiable);
+
+        var guard = new TopmostGuard((_, _, _, _, _, _, _) => true);
+        var controller = new OverlayController(guard, settings, (_, _, _, _, _, _, _) => true);
+        var fenetre = new Window { Width = 190, Height = 66, ShowActivated = false, WindowStyle = WindowStyle.None, Topmost = true };
+        try
+        {
+            controller.Attach(fenetre);
+            controller.RestorePlacement(demarrage);
+
+            Assert.False(fenetre.Topmost);
+            Assert.True(settings.Load().Background);
+            Assert.True(File.Exists(fichier));
+        }
+        finally
+        {
+            guard.Dispose();
+            fenetre.Close();
+        }
+    }
 }

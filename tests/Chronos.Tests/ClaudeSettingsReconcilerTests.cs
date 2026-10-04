@@ -300,7 +300,7 @@ public class ClaudeSettingsReconcilerTests
             Assert.True(reconciler.Reconcile(hooksWanted: true));
             Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(File.ReadAllText(settings), ClaudeSettingsJson.HookMarker));
 
-            var sauvegardes = Directory.GetFiles(backups, "claude-settings-*.json");
+            var sauvegardes = Directory.GetFiles(backups, "claude-settings-2*.json");
             Assert.Single(sauvegardes);
             Assert.Equal(original, File.ReadAllBytes(sauvegardes[0]));
 
@@ -308,7 +308,7 @@ public class ClaudeSettingsReconcilerTests
             var apres1 = File.ReadAllBytes(settings);
             Assert.False(reconciler.Reconcile(hooksWanted: true));
             Assert.Equal(apres1, File.ReadAllBytes(settings));
-            Assert.Single(Directory.GetFiles(backups, "claude-settings-*.json"));
+            Assert.Single(Directory.GetFiles(backups, "claude-settings-2*.json"));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -332,7 +332,7 @@ public class ClaudeSettingsReconcilerTests
 
             Assert.False(resultat);
             Assert.Equal(avant, File.ReadAllBytes(settings));
-            Assert.True(!Directory.Exists(backups) || Directory.GetFiles(backups, "claude-settings-*.json").Length == 0);
+            Assert.True(!Directory.Exists(backups) || Directory.GetFiles(backups, "claude-settings-2*.json").Length == 0);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -373,7 +373,7 @@ public class ClaudeSettingsReconcilerTests
                 Assert.True(reconciler.Reconcile(hooksWanted: true));
             }
 
-            Assert.True(Directory.GetFiles(backups, "claude-settings-*.json").Length <= 5);
+            Assert.True(Directory.GetFiles(backups, "claude-settings-2*.json").Length <= 5);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -507,7 +507,7 @@ public class ClaudeSettingsReconcilerTests
             Assert.True(reconciler.Reconcile(hooksWanted: false));
             Assert.Null(Racine(File.ReadAllText(settingsTemp))["statusLine"]);
 
-            var sauvegardes = Directory.GetFiles(backupsTemp, "claude-settings-*.json");
+            var sauvegardes = Directory.GetFiles(backupsTemp, "claude-settings-2*.json");
             Assert.Single(sauvegardes);
             Assert.Equal(original, File.ReadAllBytes(sauvegardes[0]));   // l'état d'AVANT l'écriture
 
@@ -521,7 +521,7 @@ public class ClaudeSettingsReconcilerTests
             var apres1 = File.ReadAllBytes(settingsTemp);
             Assert.False(reconciler.Reconcile(hooksWanted: false));
             Assert.Equal(apres1, File.ReadAllBytes(settingsTemp));
-            Assert.Single(Directory.GetFiles(backupsTemp, "claude-settings-*.json"));
+            Assert.Single(Directory.GetFiles(backupsTemp, "claude-settings-2*.json"));
             Assert.False(reconciler.DernierBilan!.Ecrit);
             Assert.Equal(IssueBarreStatut.Absente, reconciler.DernierBilan!.Barre);
             Assert.Null(reconciler.DernierBilan!.Sauvegarde);
@@ -548,7 +548,7 @@ public class ClaudeSettingsReconcilerTests
             Assert.False(reconciler.Reconcile(hooksWanted: true, commandeHeritee: "bash ~/old.sh"));
 
             Assert.Equal(avant, File.ReadAllBytes(settingsTemp));
-            Assert.True(!Directory.Exists(backupsTemp) || Directory.GetFiles(backupsTemp, "claude-settings-*.json").Length == 0);
+            Assert.True(!Directory.Exists(backupsTemp) || Directory.GetFiles(backupsTemp, "claude-settings-2*.json").Length == 0);
             var bilan = reconciler.DernierBilan!;
             Assert.False(bilan.Ecrit);
             Assert.Null(bilan.Barre);
@@ -603,7 +603,7 @@ public class ClaudeSettingsReconcilerTests
             Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(ecrit, ClaudeSettingsJson.HookMarker));
             Assert.All(CommandesDe(Racine(ecrit)).Where(c => c.Contains("--hook")),
                 c => Assert.Contains("C:/Apps/Chronos.exe", c));
-            Assert.Single(Directory.GetFiles(backupsTemp, "claude-settings-*.json"));
+            Assert.Single(Directory.GetFiles(backupsTemp, "claude-settings-2*.json"));
             Assert.Equal(IssueBarreStatut.Retiree, reconciler.DernierBilan!.Barre);
         }
         finally { Directory.Delete(dir, recursive: true); }
