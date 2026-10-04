@@ -40,13 +40,6 @@ public sealed record SessionHookResult(string? SessionId, bool Delete, string? S
 /// </summary>
 public static class SessionHookProcessor
 {
-    private static readonly JsonSerializerOptions Tolerant = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     /// <summary>Les types du bus de notifications qui ne disent RIEN de ce que fait la session.
     /// Relevé du 2026-09-12 : le bus en compte douze, et Chronos les réduisait TOUS à un seul état —
     /// une authentification réussie et une reprise de quota fabriquaient donc une attente.

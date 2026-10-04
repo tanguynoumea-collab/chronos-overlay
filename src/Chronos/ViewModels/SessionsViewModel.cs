@@ -132,7 +132,6 @@ public sealed partial class SessionsViewModel : ObservableObject
     // Couleurs d'ÉTAT dérivées du THÈME courant (cohérence avec le cadran). Recalculées par SetTheme ;
     // valeurs de départ = thème par défaut. Les trois attentes → rampe ambre, « Réflexion » → rampe verte,
     // gris défensif (l'état indéterminé n'a pas de ligne : le moniteur le masque).
-    private ChronosTheme _theme = ThemeCatalog.Default;
     private Brush _amber = FrozenC(ThemeCatalog.Default.RampAmber);   // « En attente » et « En attente ? »
     private Brush _green = FrozenC(ThemeCatalog.Default.RampGreen);   // « Réflexion »
     private Brush _gray = FrozenC(ThemeCatalog.Default.TexteSecondaire); // défensif : jamais à l'écran
@@ -141,7 +140,6 @@ public sealed partial class SessionsViewModel : ObservableObject
     /// Les fonds/textes des templates suivent via les DynamicResource posés par SessionsWindow.ApplyThemeBrushes.</summary>
     public void SetTheme(ChronosTheme theme)
     {
-        _theme = theme;
         _amber = FrozenC(theme.RampAmber);
         _green = FrozenC(theme.RampGreen);
         _gray = FrozenC(theme.TexteSecondaire);

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using Chronos.Models;
 
@@ -21,7 +22,7 @@ namespace Chronos.Services;
 ///   <item>l'exception de transport ne porte AUCUNE collection d'en-têtes — contrôler le succès par
 ///         exception détruirait donc l'information qui fait tout l'intérêt de cette source. Le
 ///         contrôle du code de statut n'est JAMAIS le chemin de contrôle : les en-têtes sont lus
-///         AVANT toute décision, et l'on n'aiguille ensuite que sur <c>(int)resp.StatusCode</c> ;</item>
+///         AVANT toute décision, et l'on n'aiguille ensuite que sur <c>resp.StatusCode</c> ;</item>
 ///   <item>les en-têtes non standard vivent sur la RÉPONSE, pas sur son contenu, et la recherche est
 ///         insensible à la casse — aucune normalisation de casse à écrire.</item>
 /// </list>
@@ -230,15 +231,14 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
         try
         {
             var resp = await EnvoyerAsync(jeton, ct);
-            var rejoue = false;
 
             // Le serveur peut révoquer un jeton AVANT son expiration locale (cas documenté
-            // claude-code#54443) : le renouvellement préventif ne suffit donc pas. UN SEUL rejeu — sans
-            // cette garde, on boucle jusqu'à déclencher une limitation sur le point de terminaison de jeton.
-            if ((int)resp.StatusCode == 401 && !rejoue)
+            // claude-code#54443) : le renouvellement préventif ne suffit donc pas. UN SEUL rejeu, garanti par
+            // la structure (un if, pas une boucle) — sans cette garde, on boucle jusqu'à déclencher une
+            // limitation sur le point de terminaison de jeton.
+            if (resp.StatusCode == HttpStatusCode.Unauthorized)
             {
                 resp.Dispose();
-                rejoue = true;
                 _autorite.InvaliderAccessToken();
                 var frais = await _autorite.GetAccessTokenAsync(ct);
                 if (frais is null)
@@ -259,9 +259,9 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
                 NomsEnTetesRecus = noms;
                 var exploitables = EnTetesExploitables(snap);
 
-                var code = (int)resp.StatusCode;
+                var code = resp.StatusCode;
 
-                if (code is 401 or 403)
+                if (code is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 {
                     // Jeton FRAIS et pourtant refusé (ou portée insuffisante) : ce n'est pas un problème
                     // de fraîcheur, c'est un refus de compte. Seule une reconnexion répare. Et un 401 ne
@@ -272,7 +272,7 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
                     return ServirCacheOu(UsageSnapshot.Empty, now);
                 }
 
-                if (code == 429)
+                if (code == HttpStatusCode.TooManyRequests)
                 {
                     _prochainAppelAutorise = now + Recul429(resp, now);
 
@@ -303,7 +303,7 @@ public sealed class RateLimitHeaderUsageProvider : IUsageProvider, IEtatServeur
                     return ServirCacheOu(UsageSnapshot.Empty, now);
                 }
 
-                if (code is 400 or 404)
+                if (code is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
                 {
                     // Panne de CONFIGURATION nommée (identifiant de modèle périmé), jamais confondue avec
                     // « pas de données ». L'authentification étant évaluée AVANT le corps, un modèle

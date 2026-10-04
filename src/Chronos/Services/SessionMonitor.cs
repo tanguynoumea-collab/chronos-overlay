@@ -86,13 +86,6 @@ public sealed class SessionMonitor
     /// jamais sur un chemin déduit dans leur coin.</summary>
     public IReadOnlyList<string> Dossiers => _dossiers;
 
-    private static readonly JsonSerializerOptions Tolerant = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     /// <summary>
     /// Ce que le widget AFFICHE. Simple PROJECTION d'<see cref="Inspecter"/> : il n'existe qu'une
     /// implémentation des filtres dans ce fichier, donc aucun consommateur — widget ou rapport — ne peut

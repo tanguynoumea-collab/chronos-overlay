@@ -90,7 +90,7 @@ public sealed class TranscriptSessionSource : ISessionSource
         // rajeuni par des métadonnées ne doit plus voler un emplacement à une session réellement récente.
         // Un fichier sans rien d'exploitable (Classify → null) ne consomme AUCUN emplacement.
         return candidats
-            .Select(fi => (Fichier: fi, Session: Classify(fi, now)))
+            .Select(fi => (Fichier: fi, Session: Classify(fi)))
             .Where(x => x.Session is not null && now - x.Session.UpdatedAt <= HorizonsSessions.Abandon)   // même borne que le moniteur : n'écarte qu'au-delà
             .Select(x => AvecSesSousAgents(x.Fichier, x.Session!))                                         // SUB-01 : après le parent
             .OrderByDescending(s => s.UpdatedAt)
@@ -162,7 +162,7 @@ public sealed class TranscriptSessionSource : ISessionSource
         catch { return null; }
     }
 
-    private static SessionSnapshot? Classify(FileInfo fi, System.DateTimeOffset now)
+    private static SessionSnapshot? Classify(FileInfo fi)
     {
         try
         {
