@@ -494,7 +494,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 8/8 | Complete    | 2026-10-03 |
 | 41. Braises | v1.9 | 2/2 | Complete    | 2026-10-03 |
 | 42. Un geste sur toute la silhouette | v1.9 | 4/4 | Complete    | 2026-10-03 |
-| 43. Release 3.5.0 et constat | v1.9 | 4/5 | In Progress|  |
+| 43. Release 3.5.0 et constat | v1.9 | 5/6 | In Progress|  |
 
 ### Couverture des exigences
 
