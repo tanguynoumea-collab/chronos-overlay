@@ -38,7 +38,7 @@ src/Chronos/bin/Release/net8.0-windows/win-x64/publish/Chronos.exe
 ```
 
 Un **unique** `Chronos.exe` (+ éventuellement `Chronos.pdb`, à ne pas distribuer). Taille
-mesurée ~77 Mo (3.1.0, 3.2.0, 3.2.1) ; garde-fou < 120 Mo.
+mesurée ~77 Mo (3.1.0, 3.2.0, 3.2.1), 78 199 851 o (3.5.0) ; garde-fou < 120 Mo.
 
 Copier ensuite la sortie à la racine du dépôt principal sous le nom versionné `Chronos-v<X.Y.Z>.exe`
 (`Chronos-v3.5.0.exe` pour cette release ; ignoré par `.gitignore` : `/Chronos-v*.exe`). La version vient des
@@ -86,6 +86,14 @@ mirrorées dans `Properties/PublishProfiles/win-x64.pubxml`.
 - **Premier run** : un léger délai d'extraction et/ou une alerte **SmartScreen** est possible au
   tout premier lancement d'un exe non signé — c'est **normal**. Signer l'exe (optionnel) réduit
   ces alertes.
+
+**Empreintes publiées**
+
+| exe | taille (o) | SHA-256 |
+|-----|-----------:|---------|
+| `Chronos-v3.5.0.exe` | 78 199 851 | `3577e72a1a8eb71fa85edf88750da918d04d01154f718458382ca4a4482d8071` |
+
+Vérifier avant le premier lancement : `Get-FileHash .\Chronos-v3.5.0.exe -Algorithm SHA256`.
 
 ---
 
