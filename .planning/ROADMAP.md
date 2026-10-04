@@ -332,6 +332,16 @@ l'échelle 1). **Contrat :** `.zeus/DESIGN_PLAN_CYCLE2.md` §2.
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 42.4: Corrections de la re-vérification externe (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 42
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 42.4 to break down)
+
 ### Phase 42.3: Corrections de l'audit externe (INSERTED)
 
 **Goal:** Corriger, avant la release 3.5.0, les points retenus par l'utilisateur dans l'audit externe dev-senior
