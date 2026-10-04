@@ -9,13 +9,20 @@ namespace Chronos.Services.Historique;
 /// l'ordre du fichier, et le NOMBRE de lignes sautées — un compteur exposé, jamais un silence (motif
 /// <c>BilanBalayage</c> : on annonce ce qu'on a fait, pas ce qu'on aurait voulu).
 /// </summary>
+/// <param name="Inaccessible">42.2-05 (TEST-4, DATA-13) — le fichier EXISTE mais n'a pas pu être lu en entier : ouverture
+/// refusée au-delà des reprises (verrou tenu, droits) ou E/S cassée en cours de lecture. Le contenu rendu est alors partiel
+/// (éventuellement vide) : « je n'ai pas pu lire » n'est jamais « il n'y a rien ».</param>
 public sealed record LectureFichier(
     IReadOnlyList<ReleveJournal> Releves,
     IReadOnlyList<EvenementJournal> Evenements,
-    int LignesIgnorees)
+    int LignesIgnorees,
+    bool Inaccessible = false)
 {
-    /// <summary>Lecture d'un fichier absent ou inaccessible : rien, et rien à compter.</summary>
+    /// <summary>Lecture d'un fichier ABSENT : rien, et rien à compter.</summary>
     public static readonly LectureFichier Vide = new(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0);
+
+    /// <summary>Lecture d'un fichier présent mais INACCESSIBLE : rien de lu, et c'est signalé.</summary>
+    public static readonly LectureFichier Illisible = new(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0, Inaccessible: true);
 }
 
 /// <summary>
@@ -28,16 +35,20 @@ public sealed record LectureFichier(
 /// écriture) est une ligne perdue, pas un fichier perdu.</para>
 ///
 /// <para>Ne lève JAMAIS : fichier absent → <see cref="LectureFichier.Vide"/> ; verrou tenu par un écrivain
-/// (<c>FileShare.None</c> pendant quelques microsecondes) → quelques reprises courtes, puis vide. Type NEUTRE.
+/// (<c>FileShare.None</c> pendant quelques microsecondes) → quelques reprises courtes, puis
+/// <see cref="LectureFichier.Illisible"/> — inaccessible, SIGNALÉ, jamais confondu avec vide (42.2-05). Type NEUTRE.
 /// <see cref="Lire"/> (JRN-05) lit une PLAGE : les seuls mois UTC qui la chevauchent, triés et filtrés.</para>
 /// </summary>
 public static class LecteurJournal
 {
     // Un écrivain tient le fichier le temps d'une relecture de queue et d'une écriture (< 1 ms) : céder la
-    // main quelques fois suffit. Au-delà, on rend vide plutôt que d'attendre — le lecteur n'est jamais bloquant.
+    // main quelques fois suffit. Au-delà, on rend « illisible » plutôt que d'attendre — le lecteur n'est jamais bloquant.
     private const int EssaisOuverture = 20;
 
-    /// <summary>Lit un fichier de journal. Fichier absent ou inaccessible → lecture vide, sans lever.</summary>
+    /// <summary>
+    /// Lit un fichier de journal. Ne lève JAMAIS : absent → <see cref="LectureFichier.Vide"/> ; inaccessible →
+    /// <see cref="LectureFichier.Illisible"/>, signalé ; E/S cassée en cours de lecture → ce qui a été lu, marqué inaccessible.
+    /// </summary>
     public static LectureFichier LireFichier(string chemin)
     {
         if (!File.Exists(chemin)) return LectureFichier.Vide;
@@ -52,19 +63,20 @@ public static class LecteurJournal
             catch (FileNotFoundException) { return LectureFichier.Vide; }
             catch (DirectoryNotFoundException) { return LectureFichier.Vide; }
             catch (IOException) when (essai < EssaisOuverture) { if (essai <= 12) Thread.Yield(); else Thread.Sleep(1); }
-            catch (IOException) { return LectureFichier.Vide; }
-            catch (UnauthorizedAccessException) { return LectureFichier.Vide; }
+            catch (IOException) { return LectureFichier.Illisible; }
+            catch (UnauthorizedAccessException) { return LectureFichier.Illisible; }
         }
 
         var releves = new List<ReleveJournal>();
         var evenements = new List<EvenementJournal>();
         var ignorees = 0;
+        var interrompue = false;
 
         using (flux)
         using (var lecteur = new StreamReader(flux, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), detectEncodingFromByteOrderMarks: true))
         {
             string? ligne;
-            while ((ligne = LireLigne(lecteur)) is not null)
+            while ((ligne = LireLigne(lecteur, ref interrompue)) is not null)
             {
                 ligne = ligne.TrimEnd('\r');   // un fichier repassé par un éditeur Windows ne devient pas illisible
                 if (ligne.Length == 0) continue;   // ni lue, ni comptée
@@ -81,15 +93,16 @@ public static class LecteurJournal
             }
         }
 
-        return new LectureFichier(releves, evenements, ignorees);
+        return new LectureFichier(releves, evenements, ignorees, Inaccessible: interrompue);
     }
 
     // Une E/S qui casse en cours de lecture (fichier supprimé sous nous, disque retiré) termine la lecture
-    // sur ce qui a été lu : le journal ne fait jamais tomber son lecteur.
-    private static string? LireLigne(StreamReader lecteur)
+    // sur ce qui a été lu : le journal ne fait jamais tomber son lecteur, mais la lecture est dite INTERROMPUE.
+    private static string? LireLigne(StreamReader lecteur, ref bool interrompue)
     {
         try { return lecteur.ReadLine(); }
-        catch (IOException) { return null; }
+        catch (IOException) { interrompue = true; return null; }
+        catch (UnauthorizedAccessException) { interrompue = true; return null; }
     }
 
     // --- JRN-05 : lecture par plage ---
@@ -103,16 +116,20 @@ public static class LecteurJournal
     /// relevés et événements filtrés et triés par <c>t</c> (tri stable), la somme des lignes ignorées, et
     /// <see cref="LectureJournal.JournalOuvertLe"/> (première ligne valide du plus ancien fichier du dossier, quelle que
     /// soit la plage). Dossier absent → lecture vide. Ne lève jamais : une E/S qui casse rend ce qui a été lu.
+    /// <see cref="LectureJournal.LectureIncomplete"/> est posé dès qu'un fichier mensuel est inaccessible, qu'une E/S casse,
+    /// ou que le chemin du dossier est occupé par un FICHIER (« dossier poison ») : on ne présente pas une ignorance comme un fait.
     /// </summary>
     public static LectureJournal Lire(string dossier, DateTimeOffset de, DateTimeOffset a)
     {
         var plage = new Plage(de, a);
         if (string.IsNullOrEmpty(dossier) || !Directory.Exists(dossier))
-            return new LectureJournal(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0, null, plage);
+            return new LectureJournal(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0, null, plage,
+                LectureIncomplete: !string.IsNullOrEmpty(dossier) && File.Exists(dossier));   // poison : un fichier à la place du dossier
 
         var releves = new List<ReleveJournal>();
         var evenements = new List<EvenementJournal>();
         var ignorees = 0;
+        var incomplete = false;
 
         try
         {
@@ -122,17 +139,19 @@ public static class LecteurJournal
                 releves.AddRange(lecture.Releves.Where(r => plage.Contient(r.T)));
                 evenements.AddRange(lecture.Evenements.Where(e => plage.Contient(e.T)));
                 ignorees += lecture.LignesIgnorees;
+                incomplete |= lecture.Inaccessible;
             }
         }
-        catch (IOException) { /* lecture partielle : le journal ne fait jamais tomber son lecteur */ }
-        catch (UnauthorizedAccessException) { }
+        catch (IOException) { incomplete = true; /* lecture partielle, SIGNALÉE : le journal ne fait jamais tomber son lecteur */ }
+        catch (UnauthorizedAccessException) { incomplete = true; }
 
         return new LectureJournal(
             releves.OrderBy(r => r.T).ToList(),       // OrderBy est STABLE : deux sources au même t gardent l'ordre du fichier
             evenements.OrderBy(e => e.T).ToList(),
             ignorees,
             PremiereLigneValide(dossier),
-            plage);
+            plage,
+            incomplete);
     }
 
     // Le premier jour (UTC) du mois de `de`, puis chaque mois jusqu'à celui de `a − 1 tick` inclus : la borne `a`

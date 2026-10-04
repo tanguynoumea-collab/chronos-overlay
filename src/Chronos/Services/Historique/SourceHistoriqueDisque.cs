@@ -12,8 +12,9 @@ namespace Chronos.Services.Historique;
 /// <para>Le dossier est <c>ChronosPaths.HistoriqueDir</c>, jamais construit ici ; la cadence est
 /// <c>RateLimitHeaderUsageProvider.CadenceNominale</c> (seuil de trou = deux cadences). Cette classe ne calcule AUCUNE borne :
 /// elle lit la plage qu'on lui donne (les bornes viennent du VM). Elle ne lève JAMAIS et ne crée JAMAIS le dossier : un dossier
-/// absent est une lecture vide ; une exception inattendue (E/S qui casse en cours de route) rend des données VIDES — la cause
-/// est perdue ici, le VM affichera « aucun relevé » et le diagnostic reste l'outil de panne. Type NEUTRE (aucun WPF).</para>
+/// absent est une lecture vide ; un mois de journal inaccessible (verrou, droits, dossier « poison ») rend une lecture partielle
+/// marquée <c>LectureIncomplete</c> ; une exception inattendue rend des données vides AVEC <c>LectureIncomplete = true</c> — la
+/// lecture est dite incomplète, et la vue l'écrit au lieu d'un faux « aucun relevé » (42.2-05, TEST-4 / DATA-13). Type NEUTRE.</para>
 /// </summary>
 public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) : ISourceHistorique
 {
@@ -46,15 +47,17 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             var cadence = RateLimitHeaderUsageProvider.CadenceNominale;
             var journal = LecteurJournal.Lire(_dossier, semaine.Debut, semaine.Fin);
             var analyse = AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, semaine), cadence);
-            var analysePrecedente = AnalyseReleves.Analyser(LecteurJournal.Lire(_dossier, precedente.Debut, precedente.Fin), InstantsHistorique.InstantDAnalyse(now, precedente), cadence);
+            var lecturePrecedente = LecteurJournal.Lire(_dossier, precedente.Debut, precedente.Fin);
+            var analysePrecedente = AnalyseReleves.Analyser(lecturePrecedente, InstantsHistorique.InstantDAnalyse(now, precedente), cadence);
             var agregats = LecteurAgregats.Lire(_dossier, semaine.Debut, semaine.Fin);
             var barres = RenduLocalTokens.ParHeure(agregats.Tranches, semaine, _tz, ChargerCouverture());
             var divergences = Divergences.Detecter(analyse.DeltasHebdo, barres);
-            return new DonneesSemaine(semaine, analyse, precedente, analysePrecedente, barres, agregats.Couverture, divergences, journal.JournalOuvertLe, now);
+            return new DonneesSemaine(semaine, analyse, precedente, analysePrecedente, barres, agregats.Couverture, divergences, journal.JournalOuvertLe, now,
+                LectureIncomplete: journal.LectureIncomplete || lecturePrecedente.LectureIncomplete);
         }
         catch (Exception)
         {
-            return SemaineVide(semaine, precedente, now);
+            return SemaineVide(semaine, precedente, now);   // repli : lecture dite incomplète, jamais « aucun relevé »
         }
     }
 
@@ -72,7 +75,8 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             var analyse = LectureVeille.RestreindreAuJour(AnalyseReleves.Analyser(journal, InstantsHistorique.InstantDAnalyse(now, jour), cadence), jour);
             var agregats = LecteurAgregats.Lire(_dossier, jour.Debut, jour.Fin);
             var colonnes = RenduLocalTokens.ParQuartDHeure(agregats.Tranches, jour, _tz, ChargerCouverture());
-            return new DonneesJour(jour, analyse, colonnes, agregats.Couverture, journal.JournalOuvertLe, now);
+            // La veille reconstruit une LectureJournal : le drapeau se lit sur la lecture LARGE, celle qui a ouvert les fichiers.
+            return new DonneesJour(jour, analyse, colonnes, agregats.Couverture, journal.JournalOuvertLe, now, LectureIncomplete: large.LectureIncomplete);
         }
         catch (Exception)
         {
@@ -97,18 +101,18 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
                         0, lecture.JournalOuvertLe, p),
                     InstantsHistorique.InstantDAnalyse(now, p), cadence))
                 .ToList();
-            return new DonneesQuatreSemaines(analyses, lecture.JournalOuvertLe, now);
+            return new DonneesQuatreSemaines(analyses, lecture.JournalOuvertLe, now, LectureIncomplete: lecture.LectureIncomplete);
         }
         catch (Exception)
         {
-            return new DonneesQuatreSemaines(semaines.Select(p => AnalyseVide(p, now)).ToList(), null, now);
+            return new DonneesQuatreSemaines(semaines.Select(p => AnalyseVide(p, now)).ToList(), null, now, LectureIncomplete: true);
         }
     }
 
     // Pitfall 11 : LecteurAgregats.Lire ne rend pas l'instance ; couverture.json se charge à part (tolérant : absent → tout hors couverture).
     private CouvertureTokens ChargerCouverture() => CouvertureTokens.Charger(Path.Combine(_dossier, CouvertureTokens.NomFichier));
 
-    // --- Données vides (jamais nulles) : une plage sans rien dit « aucun relevé », « hors couverture ». ---
+    // --- Replis des catch (jamais nuls) : données vides MARQUÉES « lecture incomplète » — une exception n'est pas une absence. ---
 
     private static AnalyseJournal AnalyseVide(Plage plage, DateTimeOffset now)
         => AnalyseReleves.Analyser(new LectureJournal(Array.Empty<ReleveJournal>(), Array.Empty<EvenementJournal>(), 0, null, plage), now, RateLimitHeaderUsageProvider.CadenceNominale);
@@ -120,7 +124,7 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             semaine, AnalyseVide(semaine, now), precedente, AnalyseVide(precedente, now),
             RenduLocalTokens.ParHeure(Array.Empty<TrancheTokens>(), semaine, _tz, couverture),
             RenduLocalTokens.SousPlagesCouverture(semaine, couverture),
-            Array.Empty<Divergence>(), null, now);
+            Array.Empty<Divergence>(), null, now, LectureIncomplete: true);
     }
 
     private DonneesJour JourVide(Plage jour, DateTimeOffset now)
@@ -130,6 +134,6 @@ public sealed class SourceHistoriqueDisque(ChronosPaths paths, TimeZoneInfo tz) 
             jour, AnalyseVide(jour, now),
             RenduLocalTokens.ParQuartDHeure(Array.Empty<TrancheTokens>(), jour, _tz, couverture),
             RenduLocalTokens.SousPlagesCouverture(jour, couverture),
-            null, now);
+            null, now, LectureIncomplete: true);
     }
 }

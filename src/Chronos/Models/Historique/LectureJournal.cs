@@ -34,12 +34,16 @@ public sealed record Plage(DateTimeOffset Debut, DateTimeOffset Fin)
 /// <param name="LignesIgnorees">Lignes refusées par le lecteur tolérant, sur l'ensemble des fichiers ouverts.</param>
 /// <param name="JournalOuvertLe"><c>t</c> de la première ligne valide du plus ancien fichier ; <c>null</c> = journal vide ou absent.</param>
 /// <param name="Plage">La plage demandée.</param>
+/// <param name="LectureIncomplete">42.2-05 (TEST-4, DATA-13) — au moins un fichier mensuel de la plage était inaccessible
+/// (verrou tenu au-delà des reprises, droits), ou la lecture a été interrompue : les relevés rendus sont PARTIELS, et une
+/// plage sans relevé n'est alors pas une plage « sans relevé ».</param>
 public sealed record LectureJournal(
     IReadOnlyList<ReleveJournal> Releves,
     IReadOnlyList<EvenementJournal> Evenements,
     int LignesIgnorees,
     DateTimeOffset? JournalOuvertLe,
-    Plage Plage);
+    Plage Plage,
+    bool LectureIncomplete = false);
 
 /// <summary>Pourquoi le journal s'est tu (D-32-26). <see cref="Inconnue"/> est une cause, pas un silence.</summary>
 public enum CauseTrou

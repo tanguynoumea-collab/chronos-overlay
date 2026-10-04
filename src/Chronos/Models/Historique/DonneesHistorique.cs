@@ -86,6 +86,8 @@ public sealed record AnnotationHistorique(TypeAnnotation Type, DateTimeOffset De
 /// <param name="Divergences">Marches de % sans tokens Code sur des heures couvertes.</param>
 /// <param name="JournalOuvertLe">Première ligne valide du journal ; <c>null</c> = journal vide ou absent.</param>
 /// <param name="LueA">L'instant (horloge injectée) de la lecture : « maintenant » de l'analyse.</param>
+/// <param name="LectureIncomplete">42.2-05 — une partie du journal n'a pas pu être lue (fichier verrouillé, dossier inaccessible) :
+/// la vue le DIT au lieu de présenter des relevés manquants comme une absence de relevés.</param>
 public sealed record DonneesSemaine(
     Plage Plage,
     AnalyseJournal Analyse,
@@ -95,7 +97,8 @@ public sealed record DonneesSemaine(
     IReadOnlyList<SousPlageCouverture> CouvertureTokens,
     IReadOnlyList<Divergence> Divergences,
     DateTimeOffset? JournalOuvertLe,
-    DateTimeOffset LueA);
+    DateTimeOffset LueA,
+    bool LectureIncomplete = false);
 
 /// <summary>
 /// La vue Jour, prête à dessiner : le jour local, ses relevés au grain de 5 min, les colonnes de tokens par quart d'heure
@@ -107,13 +110,16 @@ public sealed record DonneesSemaine(
 /// <param name="CouvertureTokens">Sous-plages contiguës de couverture des transcripts.</param>
 /// <param name="JournalOuvertLe">Première ligne valide du journal ; <c>null</c> = journal vide ou absent.</param>
 /// <param name="LueA">L'instant (horloge injectée) de la lecture.</param>
+/// <param name="LectureIncomplete">42.2-05 — une partie du journal n'a pas pu être lue (fichier verrouillé, dossier inaccessible) :
+/// la vue le DIT au lieu de présenter des relevés manquants comme une absence de relevés.</param>
 public sealed record DonneesJour(
     Plage Plage,
     AnalyseJournal Analyse,
     IReadOnlyList<ColonneQuartDHeure> Colonnes,
     IReadOnlyList<SousPlageCouverture> CouvertureTokens,
     DateTimeOffset? JournalOuvertLe,
-    DateTimeOffset LueA);
+    DateTimeOffset LueA,
+    bool LectureIncomplete = false);
 
 /// <summary>
 /// HIS-05 — la vue 4 semaines, prête à dessiner (D-35-01 : UNE lecture du journal, quatre analyses). Aucune piste tokens en v1.8 :
@@ -124,7 +130,9 @@ public sealed record DonneesJour(
 /// <c>InstantDAnalyse(now, sa plage)</c> : une semaine révolue ne finit jamais par un faux trou ouvert.</param>
 /// <param name="JournalOuvertLe">Première ligne valide du journal ; <c>null</c> = journal vide ou absent (tout est « avant le journal »).</param>
 /// <param name="LueA">L'instant (horloge injectée) de la lecture.</param>
-public sealed record DonneesQuatreSemaines(IReadOnlyList<AnalyseJournal> Semaines, DateTimeOffset? JournalOuvertLe, DateTimeOffset LueA)
+/// <param name="LectureIncomplete">42.2-05 — une partie du journal n'a pas pu être lue (fichier verrouillé, dossier inaccessible) :
+/// la vue le DIT au lieu de présenter des relevés manquants comme une absence de relevés.</param>
+public sealed record DonneesQuatreSemaines(IReadOnlyList<AnalyseJournal> Semaines, DateTimeOffset? JournalOuvertLe, DateTimeOffset LueA, bool LectureIncomplete = false)
 {
     /// <summary>La semaine courante S (la dernière de l'ordre chronologique).</summary>
     public AnalyseJournal Courante => Semaines[^1];
