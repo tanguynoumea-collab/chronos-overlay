@@ -2029,4 +2029,61 @@ public class DiagnosticServiceTests : IDisposable
         Assert.Contains("[Réglages de Claude Code]", report);
         Assert.Contains("  Ce lancement : non câblé", report);
     }
+
+    // ---------------------------------------------------------------- 42.2-07 : marqueur de quarantaine et MAT-5
+
+    /// <summary>Arbitrage ZEUS : tant que le marqueur de quarantaine des réglages est posé, le rapport dit que les hooks sont
+    /// conservés. Source = le réglage lui-même (settings.json témoin temporaire), vraie même sans réconciliation.</summary>
+    [Fact]
+    public async Task Le_rapport_dit_hooks_conserves_apres_quarantaine_tant_que_le_marqueur_est_pose()
+    {
+        var paths = TempPaths();
+        Assert.StartsWith(Path.GetTempPath(), paths.SettingsFile);
+        var t = new DateTimeOffset(2026, 10, 4, 8, 30, 0, TimeSpan.Zero);
+        File.WriteAllText(paths.SettingsFile, "{\"QuarantaineReglagesDepuis\":\"2026-10-04T08:30:00+00:00\"}");
+        var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("  Hooks conservés après quarantaine des réglages (depuis " + t.ToLocalTime().ToString("yyyy-MM-dd HH:mm") + ")", report);
+    }
+
+    [Fact]
+    public async Task Sans_marqueur_le_rapport_ne_dit_pas_hooks_conserves()
+    {
+        var paths = TempPaths();
+        Assert.StartsWith(Path.GetTempPath(), paths.SettingsFile);
+        File.WriteAllText(paths.SettingsFile, "{\"ThemeKey\":\"Nuit\"}");
+        var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.DoesNotContain("Hooks conservés après quarantaine", report);
+        Assert.DoesNotContain("Hooks laissés tels quels", report);
+    }
+
+    /// <summary>MAT-5 : une réconciliation passée sans volonté connue (réglages Chronos illisibles au démarrage) est dite.</summary>
+    [Fact]
+    public async Task Le_rapport_dit_hooks_laisses_tels_quels_quand_les_reglages_etaient_illisibles()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Chronos_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "settings.json"), "{\"model\":\"opus\"}");
+            var reconciler = new ClaudeSettingsReconciler(
+                Path.Combine(dir, "settings.json"), Path.Combine(dir, "backups"), Path.Combine(dir, "Chronos.exe"));
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+            reconciler.Reconcile(null);
+
+            var paths = TempPaths();
+            var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                             new FakeClock(DateTimeOffset.UtcNow), reglagesClaude: reconciler);
+            var report = await diag.BuildReportAsync();
+
+            Assert.Contains("  Hooks laissés tels quels : réglages Chronos illisibles au démarrage", report);
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
+    }
 }

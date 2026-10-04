@@ -553,7 +553,7 @@ public class ClaudeSettingsReconcilerTests
             Assert.False(bilan.Ecrit);
             Assert.Null(bilan.Barre);
             Assert.Null(bilan.Sauvegarde);
-            Assert.Equal("illisible — rien écrit", bilan.Cause);
+            Assert.StartsWith("illisible — rien écrit", bilan.Cause);   // suivi de la cause rendue par la passerelle
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -637,6 +637,137 @@ public class ClaudeSettingsReconcilerTests
             var fichier = Path.Combine(dir, "settings.json");
             File.WriteAllText(fichier, "{\"" + CleHeritee + "\":\"bash ~/old.sh\"}");
             Assert.Equal("bash ~/old.sh", ClaudeSettingsReconciler.LireCommandeInterneHeritee(fichier));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    // --- MAT-5 : réglages Chronos illisibles au démarrage ⇒ hooks laissés tels quels ---
+
+    /// <summary>Exe d'une version précédente : ses groupes sont à Chronos (marqueur + nom) mais ne pointent pas l'exe courant.</summary>
+    private const string AutreExe = @"C:\DL\Chronos-v2.8.1.exe";
+
+    private static string HooksDAutreExeAvecBarre()
+    {
+        var racine = Racine(SessionHookInstaller.TransformForInstall("""{"model":"opus"}""", AutreExe)!);
+        racine["statusLine"] = new JsonObject { ["type"] = "command", ["command"] = "\"C:/DL/Chronos-v2.8.1.exe\" --statusline" };
+        return ClaudeSettingsJson.Serialize(racine);
+    }
+
+    [Fact]
+    public void Reconcile_sans_volonte_connue_retire_la_barre_et_laisse_les_hooks_tels_quels()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settings = Path.Combine(dir, "settings.json");
+            var backups = Path.Combine(dir, "backups");
+            File.WriteAllText(settings, HooksDAutreExeAvecBarre());
+            var commandesAvant = CommandesDe(Racine(File.ReadAllText(settings)));
+
+            var reconciler = new ClaudeSettingsReconciler(settings, backups, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            Assert.True(reconciler.Reconcile(hooksWanted: null));
+
+            var racine = Racine(File.ReadAllText(settings));
+            Assert.Null(racine["statusLine"]);
+            Assert.Equal(commandesAvant, CommandesDe(racine));   // mêmes commandes, même exe (l'ancien)
+            Assert.True(reconciler.DernierBilan!.HooksLaissesTelsQuels);
+            Assert.Equal(IssueBarreStatut.Retiree, reconciler.DernierBilan!.Barre);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>DATA-4 : un fichier EXISTANT mais vide est illisible, pas un objet vide ; il reste à 0 octet.</summary>
+    [Fact]
+    public void Un_fichier_vide_existant_est_illisible_et_reste_intact()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settings = Path.Combine(dir, "settings.json");
+            var backups = Path.Combine(dir, "backups");
+            File.WriteAllText(settings, "");
+
+            var reconciler = new ClaudeSettingsReconciler(settings, backups, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            Assert.False(reconciler.Reconcile(hooksWanted: true));
+
+            Assert.Equal(0, new FileInfo(settings).Length);
+            Assert.StartsWith("illisible — rien écrit", reconciler.DernierBilan!.Cause);
+            Assert.False(Directory.Exists(backups));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    // --- Marqueur de quarantaine des réglages (arbitrage ZEUS) : aucun hook RETIRÉ tant que l'utilisateur n'a pas choisi ---
+
+    [Fact]
+    public void Avec_le_marqueur_aucun_groupe_Chronos_n_est_retire_et_ils_sont_repointes()
+    {
+        var entree = SessionHookInstaller.TransformForInstall("""{"model":"opus"}""", AutreExe)!;
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: null,
+                                                           barre: out _, conserverHooks: true);
+
+        Assert.NotNull(apres);
+        Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(apres!, ClaudeSettingsJson.HookMarker));
+        Assert.All(CommandesDe(Racine(apres!)).Where(c => c.Contains("--hook")), c => Assert.Contains("C:/Apps/Chronos.exe", c));
+    }
+
+    [Fact]
+    public void Avec_le_marqueur_et_sans_groupe_Chronos_aucun_groupe_n_est_ajoute()
+    {
+        var apres = ClaudeSettingsReconciler.ReconcileJson("""{"model":"opus"}""", Exe, hooksWanted: false, commandeHeritee: null,
+                                                           barre: out var barre, conserverHooks: true);
+
+        Assert.Null(apres);   // conforme : rien à écrire
+        Assert.Equal(IssueBarreStatut.Absente, barre);
+    }
+
+    [Fact]
+    public void Avec_le_marqueur_et_hooks_voulus_l_installation_est_normale()
+    {
+        var apres = ClaudeSettingsReconciler.ReconcileJson("""{"model":"opus"}""", Exe, hooksWanted: true, commandeHeritee: null,
+                                                           barre: out _, conserverHooks: true);
+
+        Assert.NotNull(apres);
+        Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(apres!, ClaudeSettingsJson.HookMarker));
+    }
+
+    [Fact]
+    public void Sans_le_marqueur_hooks_non_voulus_retire_toujours_les_groupes_Chronos()
+    {
+        var entree = SessionHookInstaller.TransformForInstall("""{"model":"opus"}""", AutreExe)!;
+
+        var apres = ClaudeSettingsReconciler.ReconcileJson(entree, Exe, hooksWanted: false, commandeHeritee: null,
+                                                           barre: out _, conserverHooks: false);
+
+        Assert.Equal(0, CompteHooks(apres!, ClaudeSettingsJson.HookMarker));
+    }
+
+    [Fact]
+    public void Reconcile_avec_le_marqueur_conserve_les_hooks_et_le_bilan_porte_la_date()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settings = Path.Combine(dir, "settings.json");
+            var backups = Path.Combine(dir, "backups");
+            File.WriteAllText(settings, SessionHookInstaller.TransformForInstall("""{"model":"opus"}""", AutreExe)!);
+            var t = new DateTimeOffset(2026, 10, 4, 8, 30, 0, TimeSpan.Zero);
+
+            var reconciler = new ClaudeSettingsReconciler(settings, backups, Exe);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.SettingsPath);
+            Assert.StartsWith(Path.GetTempPath(), reconciler.BackupDir);
+
+            reconciler.Reconcile(false, conserverHooks: true, quarantaineDepuis: t);
+
+            Assert.Equal(t, reconciler.DernierBilan!.HooksConservesDepuis);
+            Assert.Equal(SessionHookInstaller.Events.Length, CompteHooks(File.ReadAllText(settings), ClaudeSettingsJson.HookMarker));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

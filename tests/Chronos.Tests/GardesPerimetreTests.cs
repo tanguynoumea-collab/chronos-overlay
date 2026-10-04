@@ -843,4 +843,57 @@ public class GardesPerimetreTests
                .GetCustomAttributes<AssemblyMetadataAttribute>()
                .FirstOrDefault(a => a.Key == "CheminSourcesChronos")?.Value
            ?? "";
+
+    /// <summary>
+    /// GARDE DE L'ÉCRIVAIN UNIQUE (MAT-1, FIAB-8, MAT-5 — 42.2-07). <c>~/.claude/settings.json</c> n'a qu'une voie d'écriture :
+    /// <see cref="Chronos.Services.PasserelleReglagesClaude"/>. L'installateur de hooks et le réconciliateur ne doivent plus
+    /// porter d'écriture disque propre (chacune serait une prudence de moins). Le démarrage consulte la lecture de démarrage des
+    /// réglages Chronos AVANT de réconcilier (une ignorance ne devient pas une écriture). Et aucun test ne construit un
+    /// installateur, un réconciliateur ou une passerelle sur les vrais chemins du profil. Contrôle de SOURCE.
+    /// </summary>
+    [Fact]
+    public void Une_seule_voie_d_ecriture_vers_les_reglages_de_Claude_Code()
+    {
+        var services = Path.Combine(CheminSources(), "Services");
+        foreach (var nom in new[] { "SessionHookInstaller.cs", "ClaudeSettingsReconciler.cs" })
+        {
+            var fichier = Path.Combine(services, nom);
+            Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier} (garde muette)");
+            var texte = File.ReadAllText(fichier);
+            foreach (var interdit in new[] { "File.Move(", "File.WriteAllText(", "File.Copy(", "WriteAtomic" })
+                Assert.DoesNotContain(interdit, texte, StringComparison.Ordinal);
+        }
+
+        var passerelle = Path.Combine(services, "PasserelleReglagesClaude.cs");
+        Assert.True(File.Exists(passerelle), "PasserelleReglagesClaude.cs introuvable");
+        Assert.Contains("File.Move(", File.ReadAllText(passerelle), StringComparison.Ordinal);
+
+        var app = File.ReadAllText(Path.Combine(CheminSources(), "App.xaml.cs"));
+        var iLecture = app.IndexOf("LectureDuDemarrage", StringComparison.Ordinal);
+        var iReconcile = app.IndexOf(".Reconcile(", StringComparison.Ordinal);
+        Assert.True(iLecture >= 0, "App.xaml.cs ne consulte pas LectureDuDemarrage (MAT-5)");
+        Assert.True(iReconcile >= 0, "La réconciliation a disparu d'App.xaml.cs (garde muette)");
+        Assert.True(iLecture < iReconcile, "LectureDuDemarrage doit être consultée AVANT .Reconcile( (MAT-5)");
+
+        // Motifs composés en morceaux : ce fichier-ci est lui-même dans le périmètre balayé.
+        var interditsTests = new[]
+        {
+            "new " + "SessionHookInstaller()",
+            "new " + "ClaudeSettingsReconciler()",
+            "PasserelleReglagesClaude" + ".ParDefaut()",
+        };
+        var racineTests = Path.GetFullPath(Path.Combine(CheminSources(), "..", "..", "tests", "Chronos.Tests"));
+        var sources = Directory.GetFiles(racineTests, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar)
+                     && !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+            .ToArray();
+        Assert.True(sources.Length > 50, "Trop peu de sources de test balayées (garde muette)");
+        foreach (var f in sources)
+        {
+            var texte = File.ReadAllText(f);
+            foreach (var interdit in interditsTests)
+                Assert.False(texte.Contains(interdit, StringComparison.Ordinal),
+                             $"{Path.GetFileName(f)} contient « {interdit} » : un test viserait le vrai ~/.claude");
+        }
+    }
 }

@@ -305,17 +305,160 @@ public class SessionsTests
         Assert.Equal("opus", root["model"]!.GetValue<string>());
     }
 
-    // PUR-01 — FRAÎCHEUR : un groupe Chronos d'une AUTRE version ne compte pas comme « installé ici ».
-    // Chemin injecté depuis Path.GetTempPath() : ce test ne peut pas atteindre le vrai ~/.claude.
-    [Fact]
-    public void IsInstalled_est_faux_quand_le_groupe_pointe_une_autre_version()
-    {
-        var fichier = Path.Combine(TempDir(), "settings.json");
-        File.WriteAllText(fichier, SessionHookInstaller.TransformForInstall(null, @"C:\DL\Chronos-v2.8.1.exe")!);
+    // --- MAT-1, DATA-4 : l'installateur passe par la passerelle unique (sauvegarde, vide existant refusé) ---
+    // Chemins TEMP uniquement (settings + sauvegardes) : ces tests ne peuvent pas atteindre le vrai ~/.claude.
 
-        var installer = new SessionHookInstaller(fichier);   // chemin TEMP, jamais le profil utilisateur
-        Assert.False(installer.IsInstalled(Exe));                              // pas CET exe
-        Assert.True(installer.IsInstalled(@"C:\DL\Chronos-v2.8.1.exe"));       // mais bien celui-là
+    private static (string dir, string settings, string backups, SessionHookInstaller installer) MontageInstallateur()
+    {
+        var dir = TempDir();
+        var settings = Path.Combine(dir, "settings.json");
+        var backups = Path.Combine(dir, "backups");
+        var installer = new SessionHookInstaller(new PasserelleReglagesClaude(settings, backups));
+        Assert.StartsWith(Path.GetTempPath(), installer.SettingsPath);
+        Assert.StartsWith(Path.GetTempPath(), backups);
+        return (dir, settings, backups, installer);
+    }
+
+    private static string[] SauvegardesDe(string backups)
+        => Directory.Exists(backups) ? Directory.GetFiles(backups, "claude-settings-*.json") : Array.Empty<string>();
+
+    [Fact]
+    public void Install_sur_fichier_non_conforme_sauvegarde_le_texte_lu_puis_pose_les_hooks()
+    {
+        var (dir, settings, backups, installer) = MontageInstallateur();
+        try
+        {
+            const string original = "{\n  \"permissions\": { \"deny\": [\"Bash(rm:*)\"] }\n}";
+            File.WriteAllText(settings, original);
+
+            var bilan = installer.Install(Exe);
+
+            Assert.True(bilan.Ecrit, bilan.Cause);
+            var sauvegarde = Assert.Single(SauvegardesDe(backups));
+            Assert.Equal(original, File.ReadAllText(sauvegarde));
+            Assert.Equal(sauvegarde, bilan.Sauvegarde);
+            var ecrit = File.ReadAllText(settings);
+            Assert.Contains("Bash(rm:*)", ecrit);   // les deny de l'utilisateur survivent
+            Assert.Equal(SessionHookInstaller.Events.Length, System.Text.RegularExpressions.Regex.Matches(ecrit, "--hook ").Count);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void Install_sur_fichier_deja_conforme_ne_reecrit_rien_et_ne_sauvegarde_pas()
+    {
+        var (dir, settings, backups, installer) = MontageInstallateur();
+        try
+        {
+            File.WriteAllText(settings, SessionHookInstaller.TransformForInstall(null, Exe)!);
+            var avant = File.ReadAllBytes(settings);
+            var mtime = File.GetLastWriteTimeUtc(settings);
+
+            var bilan = installer.Install(Exe);
+
+            Assert.False(bilan.Ecrit);
+            Assert.Equal("déjà conforme", bilan.Cause);
+            Assert.Equal(avant, File.ReadAllBytes(settings));
+            Assert.Equal(mtime, File.GetLastWriteTimeUtc(settings));
+            Assert.Empty(SauvegardesDe(backups));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>DATA-4 : un fichier EXISTANT mais vide (réécriture tronquante de Claude Code en cours) n'est jamais remplacé par un
+    /// fichier ne contenant que les hooks Chronos.</summary>
+    [Fact]
+    public void Install_sur_fichier_vide_existant_n_ecrit_rien()
+    {
+        var (dir, settings, backups, installer) = MontageInstallateur();
+        try
+        {
+            File.WriteAllText(settings, "");
+
+            var bilan = installer.Install(Exe);
+
+            Assert.False(bilan.Ecrit);
+            Assert.False(string.IsNullOrWhiteSpace(bilan.Cause));
+            Assert.NotEqual("déjà conforme", bilan.Cause);
+            Assert.Equal(0, new FileInfo(settings).Length);
+            Assert.Empty(SauvegardesDe(backups));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void Install_sur_fichier_absent_cree_le_fichier()
+    {
+        var (dir, settings, backups, installer) = MontageInstallateur();
+        try
+        {
+            var bilan = installer.Install(Exe);
+
+            Assert.True(bilan.Ecrit, bilan.Cause);
+            Assert.Null(bilan.Sauvegarde);
+            Assert.Equal(SessionHookInstaller.TransformForInstall(null, Exe), File.ReadAllText(settings));
+            Assert.Empty(SauvegardesDe(backups));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void Uninstall_sur_fichier_vide_n_ecrit_rien_et_sur_absent_ne_cree_rien()
+    {
+        var (dir, settings, backups, installer) = MontageInstallateur();
+        try
+        {
+            var absent = installer.Uninstall();
+            Assert.False(absent.Ecrit);
+            Assert.Equal("fichier absent", absent.Cause);
+            Assert.False(File.Exists(settings));
+
+            File.WriteAllText(settings, "  \n");
+            var vide = installer.Uninstall();
+            Assert.False(vide.Ecrit);
+            Assert.Equal("  \n", File.ReadAllText(settings));
+            Assert.Empty(SauvegardesDe(backups));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void Uninstall_sauvegarde_avant_de_retirer_les_hooks()
+    {
+        var (dir, settings, backups, installer) = MontageInstallateur();
+        try
+        {
+            var installe = SessionHookInstaller.TransformForInstall("""{"model":"opus"}""", @"C:\DL\Chronos-v2.8.1.exe")!;
+            File.WriteAllText(settings, installe);
+
+            var bilan = installer.Uninstall();
+
+            Assert.True(bilan.Ecrit, bilan.Cause);
+            Assert.Equal(installe, File.ReadAllText(Assert.Single(SauvegardesDe(backups))));
+            Assert.DoesNotContain("--hook", File.ReadAllText(settings));
+            Assert.Contains("opus", File.ReadAllText(settings));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>Le constructeur de compatibilité sur un chemin de test range ses sauvegardes À CÔTÉ de ce chemin, jamais dans le
+    /// dossier de sauvegarde du vrai profil.</summary>
+    [Fact]
+    public void Le_constructeur_par_chemin_sauvegarde_a_cote_du_fichier_de_test()
+    {
+        var dir = TempDir();
+        try
+        {
+            var settings = Path.Combine(dir, "settings.json");
+            File.WriteAllText(settings, """{"model":"opus"}""");
+            var installer = new SessionHookInstaller(settings);
+            Assert.StartsWith(Path.GetTempPath(), installer.SettingsPath);
+
+            Assert.True(installer.Install(Exe).Ecrit);
+
+            Assert.Single(SauvegardesDe(Path.Combine(dir, "chronos-backups")));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     // --- EVT-01 / EVT-02 : le câblage déclaratif, validé contre la liste blanche AVANT écriture ---
