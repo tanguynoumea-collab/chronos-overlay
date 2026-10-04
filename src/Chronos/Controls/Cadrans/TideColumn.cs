@@ -7,9 +7,10 @@ using Chronos.Rendering;
 namespace Chronos.Controls;
 
 /// <summary>
-/// CADRAN « marée » (piste 3), dans les DEUX sens (Orientation) : vertical (défaut historique) — la HAUTEUR
-/// de lumière restante part du haut et l'ombre monte par le bas ; horizontal — la lumière part de la GAUCHE
-/// et la ligne d'eau devient une onde verticale. L'étendue de lumière = temps restant (Fraction 0..1) ;
+/// CADRAN « marée » (piste 3), dans les DEUX sens (Orientation). Plan 43-06 : rempli = temps CONSOMMÉ.
+/// Vertical (défaut historique) — la lumière MONTE DU BAS (marée montante) ; horizontal — la lumière part de la
+/// GAUCHE et la ligne d'eau devient une onde verticale. L'étendue de lumière = temps consommé (Fraction 0..1),
+/// pleine au reset ;
 /// la LUMINANCE de la partie éclairée (QuotaBrush) = quota. Estimated (plancher « ≥ ») : ligne d'eau
 /// frangée + grain sur la partie éclairée, jamais sur l'étendue (le temps). Géométrie : <see cref="GeometrieCadrans"/> (Marée).
 /// Une instance par fenêtre.
@@ -73,7 +74,7 @@ public sealed class TideColumn : FrameworkElement
             return;
         }
 
-        dc.DrawRectangle(QuotaBrush, null, g.Lumiere);                  // lumière = temps restant
+        dc.DrawRectangle(QuotaBrush, null, g.Lumiere);                  // lumière = temps consommé
         if (Estimated)
         {
             var grain = new Pen(WithAlpha(TrackBrush, 0.7), 1.2); grain.Freeze();
@@ -84,7 +85,7 @@ public sealed class TideColumn : FrameworkElement
 
         if (!g.LigneVisible) return;
 
-        // Ligne d'eau = front de l'ombre : droite en vertical, ondulée en horizontal (pointillée si plancher).
+        // Ligne d'eau = front de la lumière : droite en vertical, ondulée en horizontal (pointillée si plancher).
         var wl = Estimated
             ? new Pen(WithAlpha(WaterlineBrush, 0.5), 1) { DashStyle = new DashStyle(new double[] { 3, 2 }, 0) }
             : new Pen(WithAlpha(WaterlineBrush, 0.85), 1.6);

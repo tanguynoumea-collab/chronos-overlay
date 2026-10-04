@@ -3,11 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:cad="clr-namespace:Chronos.Controls"
              xmlns:vues="clr-namespace:Chronos.Views">
-    <!-- Fusible, à l'échelle 1 (phase 40) — deux mèches : 5 h (épaisse) + 7 j. Position du front = temps ;
-         épaisseur + couleur = quota ; part écoulée = sillon creux ; estimé = cordon muet pointillé ; étincelle au front.
+    <!-- Fusible, à l'échelle 1 (phase 40) — deux mèches : 5 h (épaisse) + 7 j. Rempli = temps consommé
+         (FractionElapsed, plan 43-06), plein au reset ; position du front = maintenant ;
+         épaisseur + couleur = quota ; temps restant = sillon creux ; estimé = cordon muet pointillé ; étincelle au front.
          Deux gabarits choisis par la DP Orientation de la vue (code-behind) :
-         - horizontal 190 × 92 : mèches couchées, la combustion part de la gauche ;
-         - vertical 110 × 190 : mèches debout, la combustion descend du haut.
+         - horizontal 190 × 92 : mèches couchées, le cordon part de la gauche ;
+         - vertical 110 × 190 : mèches debout, le cordon monte du bas.
          Valeur par fenêtre : bascule % (défaut) ↔ temps (ShowPercent/ShowCountdown, clic sur le cadran).
          Positions = maquette .zeus/maquettes/cycle2-cadrans-themes.html (fusibleH / fusibleV). -->
     <UserControl.Resources>
@@ -30,7 +31,7 @@
                            TextAlignment="Right" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
             <cad:FuseBar Orientation="Horizontal" VerticalAlignment="Top" Margin="6,22,6,0" Height="20" CordThickness="10"
-                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         Fraction="{Binding FiveHour.FractionElapsed}"
                          QuotaBrush="{Binding FiveHour.ValueBrush}"
                          Estimated="{Binding FiveHour.EstPlancher}"
                          HasData="{Binding FiveHour.HasTime}"
@@ -45,7 +46,7 @@
                            TextAlignment="Right" Visibility="{Binding ShowCountdown, Converter={StaticResource BoolToVis}}"/>
             </Grid>
             <cad:FuseBar Orientation="Horizontal" VerticalAlignment="Top" Margin="6,67,6,0" Height="20" CordThickness="8"
-                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         Fraction="{Binding SevenDay.FractionElapsed}"
                          QuotaBrush="{Binding SevenDay.ValueBrush}"
                          Estimated="{Binding SevenDay.EstPlancher}"
                          HasData="{Binding SevenDay.HasTime}"
@@ -62,7 +63,7 @@
             <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        Width="50" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,3,0,0"/>
             <cad:FuseBar Orientation="Vertical" Width="20" Height="138" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,24,0,0" CordThickness="10"
-                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         Fraction="{Binding FiveHour.FractionElapsed}"
                          QuotaBrush="{Binding FiveHour.ValueBrush}"
                          Estimated="{Binding FiveHour.EstPlancher}"
                          HasData="{Binding FiveHour.HasTime}"
@@ -77,7 +78,7 @@
             <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        Width="50" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="55,3,0,0"/>
             <cad:FuseBar Orientation="Vertical" Width="20" Height="138" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="70,24,0,0" CordThickness="8"
-                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         Fraction="{Binding SevenDay.FractionElapsed}"
                          QuotaBrush="{Binding SevenDay.ValueBrush}"
                          Estimated="{Binding SevenDay.EstPlancher}"
                          HasData="{Binding SevenDay.HasTime}"

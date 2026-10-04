@@ -9,7 +9,8 @@ namespace Chronos.Controls;
 /// <summary>
 /// CADRAN « afficheur à volets » (piste 4) — piste de volets (repère périphérique du temps), dans les DEUX sens
 /// (Orientation) : horizontal (défaut historique) — volets en ligne, allumés depuis la gauche ; vertical — volets
-/// empilés, allumés depuis le haut. Le NOMBRE de volets allumés = fraction de fenêtre restante (Fraction 0..1).
+/// empilés, allumés depuis le BAS. Le NOMBRE de volets allumés = fraction de fenêtre CONSOMMÉE (Fraction 0..1) :
+/// tout éteint en début de fenêtre, tout allumé au reset (plan 43-06).
 /// Le chiffre EXACT du compte à rebours et la luminance de la plaque (quota) sont portés par le XAML autour ;
 /// ce contrôle ne dessine que la piste de volets. Volet allumé = OnBrush, éteint = OffBrush.
 /// Géométrie : <see cref="GeometrieCadrans"/> (Volets) (écart 2,5, maquette).
@@ -58,11 +59,12 @@ public sealed class FlapRow : FrameworkElement
         var volets = GeometrieCadrans.Volets(new Size(w, h), Orientation, Count);
         if (volets.Count == 0) return;
         int lit = GeometrieCadrans.VoletsAllumes(Fraction, Count);
+        int n = volets.Count;
 
         for (int i = 0; i < volets.Count; i++)
         {
             // EN ATTENTE : volets neutres (ni allumés ni éteints) → jamais une piste vide.
-            var brush = !HasData ? WaitBrush : (i < lit ? OnBrush : OffBrush);
+            var brush = !HasData ? WaitBrush : (GeometrieCadrans.VoletAllume(i, n, lit, Orientation) ? OnBrush : OffBrush);
             dc.DrawRoundedRectangle(brush, null, volets[i], 2, 2);
         }
     }

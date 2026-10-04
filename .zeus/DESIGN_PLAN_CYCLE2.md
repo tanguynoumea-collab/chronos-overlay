@@ -10,7 +10,12 @@ Décisions de l'utilisateur déjà prises (2026-10-03) : barre statusLine retir�
 mesuré sur le rendu actuel** ; Braises = repère de reset + séparations horaires + heure du reset.
 
 Règle directrice : **cohérence avant nouveauté**. La loi d'encodage reste la même (temps = géométrie, quota =
-couleur/luminance, gris = épuisé). L'orange reste réservé aux sessions qui attendent l'utilisateur. Toutes les tailles et
+couleur/luminance, gris = épuisé).
+*Amendé au constat du 2026-10-04 (décision utilisateur « Tous les cadrans », plan 43-06) : sur tous les cadrans, la
+partie remplie ou allumée = temps CONSOMMÉ de la fenêtre (5 h et hebdo, 8 variantes), pleine au reset, vide si le reset
+est inconnu. Le remplissage suit le sens de lecture : gauche → droite, bas → haut, horaire depuis midi. Braises
+s'allument depuis midi ; Fusible et Marée horizontaux partent de la gauche, verticaux du bas ; Volets idem. Couleur =
+quota, inchangée.* L'orange reste réservé aux sessions qui attendent l'utilisateur. Toutes les tailles et
 couleurs passent par `Resources/DesignTokens.xaml` ou par les pinceaux du thème.
 
 ---

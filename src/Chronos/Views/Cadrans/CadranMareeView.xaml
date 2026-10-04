@@ -3,10 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:cad="clr-namespace:Chronos.Controls"
              xmlns:vues="clr-namespace:Chronos.Views">
-    <!-- Marée, à l'échelle 1 (phase 40) — part de lumière = temps restant (l'ombre gagne vers le reset) ;
-         luminance = quota ; ligne d'eau nette (exact) vs pointillée (estimé).
+    <!-- Marée, à l'échelle 1 (phase 40) — part de lumière = temps consommé (FractionElapsed, plan 43-06 : la marée
+         monte vers le reset, pleine au reset) ; luminance = quota ; ligne d'eau nette (exact) vs pointillée (estimé).
          Deux gabarits choisis par la DP Orientation de la vue (code-behind) :
-         - vertical 132 × 160 : deux colonnes, la lumière part du haut, ligne d'eau droite ;
+         - vertical 132 × 160 : deux colonnes, la lumière monte du bas, ligne d'eau droite ;
          - horizontal 190 × 96 : deux bandes, la lumière part de la gauche, ligne d'eau ondulée.
          Valeur par fenêtre : bascule % (défaut) ↔ temps (clic sur le cadran).
          Positions = maquette .zeus/maquettes/cycle2-cadrans-themes.html (mareeV / mareeH). -->
@@ -22,7 +22,7 @@
             <Rectangle RadiusX="10" RadiusY="10" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
             <!-- 5 H -->
             <cad:TideColumn Orientation="Vertical" Width="42" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14,3,0,0"
-                            Fraction="{Binding FiveHour.FractionRemaining}"
+                            Fraction="{Binding FiveHour.FractionElapsed}"
                             QuotaBrush="{Binding FiveHour.ValueBrush}"
                             Estimated="{Binding FiveHour.EstPlancher}"
                             HasData="{Binding FiveHour.HasTime}"
@@ -38,7 +38,7 @@
             </Grid>
             <!-- 7 J -->
             <cad:TideColumn Orientation="Vertical" Width="42" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="76,3,0,0"
-                            Fraction="{Binding SevenDay.FractionRemaining}"
+                            Fraction="{Binding SevenDay.FractionElapsed}"
                             QuotaBrush="{Binding SevenDay.ValueBrush}"
                             Estimated="{Binding SevenDay.EstPlancher}"
                             HasData="{Binding SevenDay.HasTime}"
@@ -65,7 +65,7 @@
             <TextBlock Text="5 H" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,19,0,0"/>
             <cad:TideColumn Orientation="Horizontal" Width="102" Height="32" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="32,10,0,0"
-                            Fraction="{Binding FiveHour.FractionRemaining}"
+                            Fraction="{Binding FiveHour.FractionElapsed}"
                             QuotaBrush="{Binding FiveHour.ValueBrush}"
                             Estimated="{Binding FiveHour.EstPlancher}"
                             HasData="{Binding FiveHour.HasTime}"
@@ -80,7 +80,7 @@
             <TextBlock Text="7 J" Foreground="{DynamicResource TexteSecondaireClair}" FontSize="{DynamicResource CadranCorpsLibelle}" FontWeight="SemiBold"
                        HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,63,0,0"/>
             <cad:TideColumn Orientation="Horizontal" Width="102" Height="32" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="32,54,0,0"
-                            Fraction="{Binding SevenDay.FractionRemaining}"
+                            Fraction="{Binding SevenDay.FractionElapsed}"
                             QuotaBrush="{Binding SevenDay.ValueBrush}"
                             Estimated="{Binding SevenDay.EstPlancher}"
                             HasData="{Binding SevenDay.HasTime}"

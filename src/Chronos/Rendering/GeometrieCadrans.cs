@@ -11,10 +11,11 @@ namespace Chronos.Rendering;
 /// Les contrôles de <c>Controls/Cadrans</c> ne font que consommer ces fonctions ; tout se prouve en [Fact]
 /// sans fenêtre (Rect/Point/Size sont des structures), seule la ligne d'eau construit une Geometry gelée.
 ///
-/// Conventions de sens (maquette cycle 2) :
-/// - Fusible horizontal : le cordon restant est à DROITE du front ; vertical : il reste en BAS (brûle de haut en bas).
-/// - Marée horizontale : la lumière part de la GAUCHE ; verticale : depuis le HAUT.
-/// - Volets : allumés de l'indice 0 vers n − 1 (gauche → droite, haut → bas).
+/// Conventions de sens — plan 43-06 (constat du 2026-10-04, décision utilisateur « Tous les cadrans ») :
+/// la fraction est le temps CONSOMMÉ de la fenêtre ; la partie remplie part du DÉBUT de lecture et atteint la fin au reset.
+/// - Fusible horizontal : le cordon part de la GAUCHE, le front avance vers la droite ; vertical : il part du BAS.
+/// - Marée horizontale : la lumière part de la GAUCHE ; verticale : depuis le BAS (marée montante).
+/// - Volets : horizontal, allumés depuis la gauche ; vertical, allumés depuis le BAS (<see cref="VoletAllume"/>).
 /// </summary>
 public static class GeometrieCadrans
 {
@@ -31,8 +32,8 @@ public static class GeometrieCadrans
     public const double PasGrain = 4;
 
     /// <summary>
-    /// Géométrie d'un Fusible : sillon, cordon restant, cordon d'attente (pleine longueur, 0,6 × épaisseur),
-    /// front (centre de l'étincelle), rayon de l'étincelle, et segment du trait brisé « plancher » (du front au bout).
+    /// Géométrie d'un Fusible : sillon, cordon consommé, cordon d'attente (pleine longueur, 0,6 × épaisseur),
+    /// front (centre de l'étincelle), rayon de l'étincelle, et segment du trait brisé « plancher » (du départ au front).
     /// </summary>
     public readonly record struct GeometrieFusible(
         Rect Sillon, Rect Cordon, Rect Attente, Point Front, double RayonEtincelle, Point DebutGrain, Point FinGrain);
@@ -44,8 +45,8 @@ public static class GeometrieCadrans
     private static double Normaliser(double fraction) => double.IsNaN(fraction) ? 0 : Math.Clamp(fraction, 0, 1);
 
     /// <summary>
-    /// Fusible dans <paramref name="taille"/> selon <paramref name="axe"/>. La fraction est la part RESTANTE :
-    /// le front se place à w − w·f (horizontal) ou h − h·f (vertical), le cordon s'étend du front jusqu'au bout.
+    /// Fusible dans <paramref name="taille"/> selon <paramref name="axe"/>. La fraction est la part CONSOMMÉE :
+    /// horizontal, le cordon va de 0 au front (w·f) ; vertical, du bas (h) au front (h − h·f). Plein au reset.
     /// </summary>
     public static GeometrieFusible Fusible(Size taille, Orientation axe, double fraction, double epaisseur)
     {
@@ -57,18 +58,18 @@ public static class GeometrieCadrans
         if (axe == Orientation.Horizontal)
         {
             double cy = h / 2;
-            double fx = w - w * f;
+            double fx = w * f;
             return new GeometrieFusible(
                 Sillon: new Rect(0, cy - demiSillon, w, SillonFusible),
-                Cordon: new Rect(fx, cy - th / 2, w - fx, th),
+                Cordon: new Rect(0, cy - th / 2, fx, th),
                 Attente: new Rect(0, cy - 0.3 * th, w, 0.6 * th),
                 Front: new Point(fx, cy),
                 RayonEtincelle: rayon,
-                DebutGrain: new Point(fx, cy),
-                FinGrain: new Point(w, cy));
+                DebutGrain: new Point(0, cy),
+                FinGrain: new Point(fx, cy));
         }
 
-        // Vertical : le cordon RESTE EN BAS, le front descend (brûle de haut en bas).
+        // Vertical : le cordon MONTE DU BAS, le front s'élève et atteint le haut au reset.
         double cx = w / 2;
         double fy = h - h * f;
         return new GeometrieFusible(
@@ -77,13 +78,14 @@ public static class GeometrieCadrans
             Attente: new Rect(cx - 0.3 * th, 0, 0.6 * th, h),
             Front: new Point(cx, fy),
             RayonEtincelle: rayon,
-            DebutGrain: new Point(cx, fy),
-            FinGrain: new Point(cx, h));
+            DebutGrain: new Point(cx, h),
+            FinGrain: new Point(cx, fy));
     }
 
     /// <summary>
-    /// Marée dans <paramref name="taille"/> : la lumière occupe la fraction f depuis la gauche (horizontal)
-    /// ou depuis le haut (vertical). La ligne d'eau n'est visible que strictement entre 0,1 % et 99,9 %.
+    /// Marée dans <paramref name="taille"/> : la lumière (temps consommé) occupe la fraction f depuis la gauche
+    /// (horizontal) ou depuis le bas (vertical, marée montante). La ligne d'eau n'est visible que strictement entre
+    /// 0,1 % et 99,9 %.
     /// </summary>
     public static GeometrieMaree Maree(Size taille, Orientation axe, double fraction)
     {
@@ -93,7 +95,7 @@ public static class GeometrieCadrans
         bool visible = f > 0.001 && f < 0.999;
         return axe == Orientation.Horizontal
             ? new GeometrieMaree(canal, new Rect(0, 0, w * f, h), w * f, visible)
-            : new GeometrieMaree(canal, new Rect(0, 0, w, h * f), h * f, visible);
+            : new GeometrieMaree(canal, new Rect(0, h - h * f, w, h * f), h - h * f, visible);
     }
 
     /// <summary>
@@ -157,8 +159,13 @@ public static class GeometrieCadrans
         return volets;
     }
 
-    /// <summary>Le volet d'indice <paramref name="i"/> (ordre de <see cref="Volets"/>) est-il allumé, <paramref name="lit"/> volets étant allumés ?</summary>
-    public static bool VoletAllume(int i, int n, int lit, Orientation axe) => i < lit;
+    /// <summary>
+    /// Le volet d'indice <paramref name="i"/> (ordre de <see cref="Volets"/> : gauche → droite, haut → bas) est-il allumé,
+    /// <paramref name="lit"/> volets sur <paramref name="n"/> l'étant ? Horizontal : depuis la gauche ; vertical : depuis
+    /// le BAS (le remplissage monte, comme la Marée et le Fusible verticaux).
+    /// </summary>
+    public static bool VoletAllume(int i, int n, int lit, Orientation axe)
+        => axe == Orientation.Vertical ? i >= n - lit : i < lit;
 
     /// <summary>Nombre de volets allumés : Round(f · n), milieu arrondi loin de zéro ; NaN / négatif → 0.</summary>
     public static int VoletsAllumes(double fraction, int n)

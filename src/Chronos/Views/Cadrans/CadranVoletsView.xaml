@@ -5,12 +5,12 @@
              xmlns:vues="clr-namespace:Chronos.Views">
     <!-- Piste 4 — Afficheur à volets (Solari). Signe propre : la PLAQUE CHIFFRÉE colorée par le quota + la RANGÉE DE VOLETS.
          Chiffre EXACT du compte à rebours = temps (le plus honnête) ; luminance de la plaque = quota ; volets = repère
-         périphérique ; plaque tramée = estimé (plancher).
+         périphérique du temps consommé (FractionElapsed, plan 43-06 : tous allumés au reset) ; plaque tramée = estimé.
          Phase 40 : échelle 1, deux gabarits choisis par la DP Orientation de la vue.
          - Horizontal (190 × 66, défaut) : deux lignes, tuile 26 · plaque 86 × 26 (corps 13) · 6 volets en ligne 62 × 14 ;
            marge interne 4 px : le 6e volet ne sort plus du congé r10 de la silhouette — M9.
          - Vertical (128 × 190) : deux colonnes, tuile 26 · plaque 56 × 40 (corps 14) · 6 volets empilés 16 × 104,
-           allumés depuis le haut. -->
+           allumés depuis le bas. -->
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <!-- §11 B3 : sur le gris épuisé, le texte de plaque passe à PlaqueTexteEpuise (≥ 4,5:1, calculé par le thème).
@@ -68,7 +68,7 @@
             </Border>
             <cad:FlapRow Orientation="Horizontal" Width="62" Height="14" Margin="124,10,0,0"
                          HorizontalAlignment="Left" VerticalAlignment="Top" Count="6"
-                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         Fraction="{Binding FiveHour.FractionElapsed}"
                          HasData="{Binding FiveHour.HasTime}"
                          OnBrush="{DynamicResource TextePrincipal}" OffBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
 
@@ -94,7 +94,7 @@
             </Border>
             <cad:FlapRow Orientation="Horizontal" Width="62" Height="14" Margin="124,42,0,0"
                          HorizontalAlignment="Left" VerticalAlignment="Top" Count="6"
-                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         Fraction="{Binding SevenDay.FractionElapsed}"
                          HasData="{Binding SevenDay.HasTime}"
                          OnBrush="{DynamicResource TextePrincipal}" OffBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
         </Grid>
@@ -127,7 +127,7 @@
             </Border>
             <cad:FlapRow Orientation="Vertical" Width="16" Height="104" Margin="24,80,0,0"
                          HorizontalAlignment="Left" VerticalAlignment="Top" Count="6"
-                         Fraction="{Binding FiveHour.FractionRemaining}"
+                         Fraction="{Binding FiveHour.FractionElapsed}"
                          HasData="{Binding FiveHour.HasTime}"
                          OnBrush="{DynamicResource TextePrincipal}" OffBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
 
@@ -153,7 +153,7 @@
             </Border>
             <cad:FlapRow Orientation="Vertical" Width="16" Height="104" Margin="88,80,0,0"
                          HorizontalAlignment="Left" VerticalAlignment="Top" Count="6"
-                         Fraction="{Binding SevenDay.FractionRemaining}"
+                         Fraction="{Binding SevenDay.FractionElapsed}"
                          HasData="{Binding SevenDay.HasTime}"
                          OnBrush="{DynamicResource TextePrincipal}" OffBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
         </Grid>

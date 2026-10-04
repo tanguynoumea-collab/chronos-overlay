@@ -14,7 +14,8 @@ Un petit cadran semi-transparent, toujours au premier plan, posé sur ton bureau
 ## Ce que montre le cadran
 
 Quelle que soit sa forme, le cadran dit la même chose pour les deux fenêtres (5 h glissante et hebdomadaire) : la
-**géométrie** dit le temps restant avant le reset, la **couleur** dit le % de quota consommé.
+**partie remplie** dit le temps déjà écoulé de la fenêtre (vide au début, pleine au reset), la **couleur** dit le %
+de quota consommé.
 
 ### Cinq cadrans, huit variantes
 
@@ -25,10 +26,11 @@ Réglages → **Apparence** → style du cadran :
   **Étendu** (carte « Mode étendu »), trois anneaux : hebdo, 5 h, timeline 24 h. **Au centre** : les deux pourcentages.
 - **Braises** — deux couronnes de braises : la fenêtre 5 h en 20 braises de 15 min, groupées par heure (5 groupes),
   avec une flèche de reset fixe à midi ; la fenêtre hebdomadaire en 14 braises, un groupe par jour (une braise par demi-journée).
-  Le nombre de braises allumées dit le temps restant. En mode temps, le centre ajoute l'heure locale du reset 5 h (« ↻ HH:MM »).
-- **Fusible** — une mèche qui brûle.
-- **Marée** — une bande que l'eau gagne.
-- **Volets** — une plaque chiffrée et une rangée de volets, comme un afficheur de gare.
+  Les braises s'allument depuis midi, dans le sens horaire, au fil du temps écoulé : l'anneau est plein au reset. En mode temps, le centre ajoute l'heure locale du reset 5 h (« ↻ HH:MM »).
+- **Fusible** — une mèche dont le cordon avance avec le temps écoulé (depuis la gauche, ou depuis le bas à la verticale).
+- **Marée** — une bande que l'eau gagne : la marée monte avec le temps écoulé (depuis la gauche, ou depuis le bas).
+- **Volets** — une plaque chiffrée et une rangée de volets, comme un afficheur de gare ; les volets s'allument avec le
+  temps écoulé (depuis la gauche, ou depuis le bas).
 
 Fusible, Marée et Volets se posent à l'horizontale ou à la verticale (carte **« Orientation »** : Horizontal ·
 Vertical), et chaque cadran retient la sienne (Marée est verticale par défaut, les deux autres horizontaux). Avec les

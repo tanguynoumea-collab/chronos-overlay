@@ -7,10 +7,10 @@ using Chronos.Rendering;
 namespace Chronos.Controls;
 
 /// <summary>
-/// CADRAN « fusible » (piste 2). Une mèche qui se consume, dans les DEUX sens (Orientation) :
-/// horizontal (défaut historique) — le cordon restant est à DROITE du front ; vertical — il reste en BAS
-/// (la mèche brûle de haut en bas). La LONGUEUR du cordon restant = temps restant (Fraction 0..1) ;
-/// l'ÉPAISSEUR (CordThickness) + la couleur (QuotaBrush) = quota. La part écoulée reste un sillon creux
+/// CADRAN « fusible » (piste 2), dans les DEUX sens (Orientation). Plan 43-06 : rempli = temps CONSOMMÉ.
+/// Horizontal (défaut historique) — le cordon part de la GAUCHE et le front avance vers la droite ; vertical — le
+/// cordon monte du BAS. La LONGUEUR du cordon = temps consommé (Fraction 0..1), plein au reset ;
+/// l'ÉPAISSEUR (CordThickness) + la couleur (QuotaBrush) = quota. Le temps restant reste un sillon creux
 /// (piste sombre), donc le gris reste réservé au quota épuisé. Une étincelle (NotchBrush) marque le front,
 /// le « maintenant ». Estimated (plancher « ≥ ») : cordon MUET + trait pointillé (grain), jamais le mark
 /// du temps. Toute la géométrie vient de <see cref="GeometrieCadrans"/> (Fusible). Une instance par fenêtre (5 h / 7 j).
@@ -68,7 +68,7 @@ public sealed class FuseBar : FrameworkElement
         double th = CordThickness;
         var g = GeometrieCadrans.Fusible(new Size(w, h), Orientation, Fraction, th);
 
-        // Sillon creux (piste sombre) sur toute la longueur : la part écoulée reste vide, PAS cendre.
+        // Sillon creux (piste sombre) sur toute la longueur : le temps restant reste vide, PAS cendre.
         dc.DrawRoundedRectangle(TrackBrush, null, g.Sillon, 2.7, 2.7);
 
         // EN ATTENTE : pas de temps de reset → cordon neutre pleine longueur (fin), jamais un sillon vide.

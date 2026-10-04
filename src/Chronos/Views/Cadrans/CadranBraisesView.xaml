@@ -7,7 +7,8 @@
          5 h = 20 braises de 15 min en 5 groupes d'une heure (le vide entre groupes délimite les heures) ;
          flèche de reset fixe à midi, là où la fenêtre se termine. Hebdo = 14 braises en 7 groupes d'un jour, une braise par
          demi-journée (pas de 15,6° ≈ 12 px à R44 ; le vide entre groupes délimite les jours — constat du 2026-10-04).
-         Nombre de braises = temps restant ; couleur = quota ; estimé = braises en pointillé.
+         Rempli = temps consommé (FractionElapsed, plan 43-06) : les braises s'allument depuis midi, sens horaire ;
+         l'anneau est plein au reset, retour sur la flèche. Couleur = quota ; estimé = braises en pointillé.
          Centre : bascule % (défaut, 2 lignes) ↔ temps (3 lignes : compte à rebours 5 h, hebdo, puis « ↻ HH:MM » du
          reset 5 h) — ShowPercent/ShowCountdown, clic sur le cadran.
          Braises éteintes = piste (Piste5h), plus sombres : le gris épuisé s'en détache — §11 B3. -->
@@ -18,13 +19,13 @@
         <!-- Silhouette de geste (R7) : TOUTE la forme capte la souris. ZoneSilhouette (alpha 1) et non Transparent : sur une fenêtre layered, Windows laisse passer le clic là où l'alpha vaut 0. -->
         <Ellipse Width="148" Height="148" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
         <cad:EmberRingControl Radius="66" Count="20" PipRadius="4.0" GroupSize="4" GroupPitch="13.2"
-                              Fraction="{Binding FiveHour.FractionRemaining}"
+                              Fraction="{Binding FiveHour.FractionElapsed}"
                               QuotaBrush="{Binding FiveHour.ValueBrush}"
                               Estimated="{Binding FiveHour.EstPlancher}"
                               HasData="{Binding FiveHour.HasTime}"
                               AshBrush="{DynamicResource Piste5h}" WaitBrush="{DynamicResource CadranAttente}"/>
         <cad:EmberRingControl Radius="44" Count="14" PipRadius="3.6" GroupSize="2" GroupPitch="15.6"
-                              Fraction="{Binding SevenDay.FractionRemaining}"
+                              Fraction="{Binding SevenDay.FractionElapsed}"
                               QuotaBrush="{Binding SevenDay.ValueBrush}"
                               Estimated="{Binding SevenDay.EstPlancher}"
                               HasData="{Binding SevenDay.HasTime}"

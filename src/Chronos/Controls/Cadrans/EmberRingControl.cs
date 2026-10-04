@@ -7,8 +7,8 @@ namespace Chronos.Controls;
 
 /// <summary>
 /// CADRAN « anneau de braises » (piste 1). Une couronne de N pastilles discrètes sur un cercle.
-/// Le NOMBRE de braises allumées = temps restant (Fraction 0..1) ; la couleur = quota (QuotaBrush,
-/// thémé). La dernière braise allumée est à demi-lueur (incertitude native ±1 braise) ; Estimated
+/// Le NOMBRE de braises allumées = temps CONSOMMÉ (Fraction 0..1, plan 43-06) : elles s'allument depuis midi, sens
+/// horaire, et l'anneau est plein au reset, retour sur la flèche ; la couleur = quota (QuotaBrush, thémé). La dernière braise allumée est à demi-lueur (incertitude native ±1 braise) ; Estimated
 /// (plancher « ≥ ») rend les braises allumées en CONTOUR pointillé (grain) au lieu du plein.
 /// Groupes optionnels (GroupSize / GroupPitch, via BraisesGeometrie) : les braises d'un groupe sont espacées d'un pas
 /// fixe et le groupe est centré dans son secteur — la délimitation est le VIDE entre groupes, jamais un tiret.
