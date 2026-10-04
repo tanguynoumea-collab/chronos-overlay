@@ -24,8 +24,8 @@ Réglages → **Apparence** → style du cadran :
   timeline 24 h colorée par l'usage 5 h, avec un sous-tiret par heure et une marque à chaque reset 5 h. En mode
   **Étendu** (carte « Mode étendu »), trois anneaux : hebdo, 5 h, timeline 24 h. **Au centre** : les deux pourcentages.
 - **Braises** — deux couronnes de braises : la fenêtre 5 h en 20 braises de 15 min, groupées par heure (5 groupes),
-  avec une flèche de reset fixe à midi ; la fenêtre hebdomadaire en 12 braises. Le nombre de braises allumées dit le
-  temps restant. En mode temps, le centre ajoute l'heure locale du reset 5 h (« ↻ HH:MM »).
+  avec une flèche de reset fixe à midi ; la fenêtre hebdomadaire en 14 braises, un groupe par jour (une braise par demi-journée).
+  Le nombre de braises allumées dit le temps restant. En mode temps, le centre ajoute l'heure locale du reset 5 h (« ↻ HH:MM »).
 - **Fusible** — une mèche qui brûle.
 - **Marée** — une bande que l'eau gagne.
 - **Volets** — une plaque chiffrée et une rangée de volets, comme un afficheur de gare.

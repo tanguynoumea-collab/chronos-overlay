@@ -93,6 +93,8 @@ et par le sens de fonte (le cordon fond vers le bas, la lumière remonte vers le
 - **Heure du reset** en mode temps : troisième ligne au centre « ↻ 14:20 » (10,5, `TexteSecondaire`), donnée par
   `resets_at`, qui vient du serveur et est donc exacte. En mode pourcentages, le centre ne change pas.
 - L'anneau hebdo (12 braises pour 7 jours) ne change pas. Ce défaut est noté pour la roadmap.
+  *Amendé au constat du 2026-10-04 : 7 groupes de 2 (14 braises, un groupe par jour, une braise par demi-journée),
+  décision utilisateur — plan 43-05.*
 
 ## 4. Historique : Pistes seul et plein écran (R4)
 
