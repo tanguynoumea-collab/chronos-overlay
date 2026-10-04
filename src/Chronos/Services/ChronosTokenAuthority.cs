@@ -47,6 +47,16 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
     private DateTimeOffset _prochainEssai; // fenêtre de recul (échecs temporaires)
     private TimeSpan _recul = ReculInitial;
 
+    // P-01 (DS-ARCH-01) — GÉNÉRATION : incrémentée par ReinitialiserApresLogin (login OU déconnexion).
+    // Un rafraîchissement lancé sous une génération périmée ne touche plus à rien à son retour : sans
+    // elle, un rafraîchissement EN VOL pendant « Se déconnecter » recréait oauth.dat.
+    private int _generation;
+
+    // P-01 — refresh token que l'autorité SAIT être dans le coffre : posé au chargement et après un Save
+    // RÉUSSI, inchangé si Save échoue (invariant 4). Avant de réécrire, le coffre est relu et comparé :
+    // un autre écrivain (le login) a pu y déposer de nouveaux jetons, qu'il ne faut jamais écraser.
+    private string? _refreshAttenduAuCoffre;
+
     /// <summary>État courant. Lisible à tout instant, y compris avant la première transition.</summary>
     public EtatAuthentification Etat { get; private set; } = EtatAuthentification.NonConnecte;
 
@@ -73,7 +83,11 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
         try
         {
             var now = _horloge.UtcNow;
-            _jetons ??= _coffre.Load();
+            if (_jetons is null)
+            {
+                _jetons = _coffre.Load();
+                _refreshAttenduAuCoffre = _jetons?.RefreshToken;
+            }
 
             // Coffre vide : l'utilisateur ne s'est jamais connecté. Rien à rafraîchir — ce n'est PAS
             // une panne, et cela ne doit allumer aucune pastille de déconnexion.
@@ -98,15 +112,47 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
             // de l'exe : il ne freinait rien du tout au redémarrage, ce qui entretenait le 429.
             if (now < _prochainEssai) return null;
 
+            var generation = Volatile.Read(ref _generation);
             var res = await _client.RefreshAsync(_jetons.RefreshToken, ct);
+
+            // P-01 : déconnexion ou login survenus PENDANT l'appel. Ne toucher à AUCUN état —
+            // ReinitialiserApresLogin a déjà tout remis à zéro, le prochain appel relira le coffre.
+            if (generation != Volatile.Read(ref _generation)) return null;
+
             switch (res.Issue)
             {
                 case IssueRafraichissement.Succes:
+                    // P-01 (a) : coffre effacé (déconnexion) sans réarmement encore reçu — NE PAS le
+                    // recréer. Les jetons neufs sont abandonnés : l'utilisateur a demandé à sortir.
+                    if (!_coffre.Exists)
+                    {
+                        _jetons = null;
+                        _refreshAttenduAuCoffre = null;
+                        Publier(EtatAuthentification.NonConnecte);
+                        return null;
+                    }
+
+                    // P-01 (b) : un autre écrivain (le login) a réécrit le coffre depuis notre chargement.
+                    // Ses jetons priment : ne pas écraser, oublier la copie mémoire (relue au prochain appel).
+                    // Coffre présent mais illisible (null) : on écrit les jetons neufs, l'ancien refresh est mort.
+                    var auCoffre = _coffre.Load();
+                    if (auCoffre is not null && auCoffre.RefreshToken != _refreshAttenduAuCoffre)
+                    {
+                        _jetons = null;
+                        _refreshAttenduAuCoffre = null;
+                        return null;
+                    }
+
                     _jetons = res.Jetons!;
                     // ROTATION : persister AVANT de rendre le jeton. Un Save en échec ne doit PAS faire
                     // croire à un échec de refresh : les jetons neufs restent en mémoire, la session
                     // courante continue — l'ancien refresh token est de toute façon déjà mort côté serveur.
-                    try { _coffre.Save(_jetons); } catch { /* dégradation : session courante préservée */ }
+                    try
+                    {
+                        _coffre.Save(_jetons);
+                        _refreshAttenduAuCoffre = _jetons.RefreshToken;
+                    }
+                    catch { /* dégradation : session courante préservée */ }
                     _forcerRafraichissement = false;
                     _recul = ReculInitial;
                     _prochainEssai = default;
@@ -136,11 +182,15 @@ public sealed class ChronosTokenAuthority : IAuthStatus, IDisposable
     /// ne suffit donc pas.</summary>
     public void InvaliderAccessToken() => _forcerRafraichissement = true;
 
-    /// <summary>TOK-03 — après un login réussi : relâche le verrou « Deconnecte » ET le recul, et
-    /// oublie les jetons mémorisés pour relire le coffre que le login vient de réécrire. Sans cet
-    /// appel, le jeton tout neuf ne serait pas utilisé et la pastille survivrait à sa réparation.</summary>
+    /// <summary>TOK-03 / P-01 — après un login réussi ET après une déconnexion : relâche le verrou
+    /// « Deconnecte » ET le recul, et oublie les jetons mémorisés pour relire le coffre (réécrit par le
+    /// login, ou effacé par la déconnexion). Incrémente la génération : un rafraîchissement en vol à cet
+    /// instant n'écrira rien à son retour. Sans cet appel, le jeton tout neuf ne serait pas utilisé — ou
+    /// les jetons de l'ancien compte recréeraient le coffre au rafraîchissement suivant.</summary>
     public void ReinitialiserApresLogin()
     {
+        Interlocked.Increment(ref _generation);
+        _refreshAttenduAuCoffre = null;
         _jetons = null;
         _forcerRafraichissement = false;
         _refusDefinitif = false;

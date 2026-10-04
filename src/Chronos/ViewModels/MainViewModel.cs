@@ -839,14 +839,18 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>Se connecter à Claude (login OAuth intégré = source exacte universelle) ou se déconnecter.
-    /// Après un changement d'état, redéclenche l'orchestrateur pour rafraîchir aussitôt les chiffres.</summary>
+    /// P-01 : après une déconnexion OU un login réussi, réarme l'autorité de jeton — sa copie mémoire est
+    /// oubliée et le coffre relu. Sans ce réarmement, le rafraîchissement suivant recréait oauth.dat avec
+    /// les jetons de l'ancien compte (déconnexion annulée, nouveau login écrasé en silence). Un login
+    /// échoué ne réarme rien. Redéclenche ensuite l'orchestrateur pour rafraîchir aussitôt les chiffres.</summary>
     [RelayCommand]
     private async Task LoginClaude()
     {
         if (_oauthLogin.IsLoggedIn) _oauthLogin.Logout();
-        else await _oauthLogin.LoginAsync();
+        else if (!await _oauthLogin.LoginAsync()) { IsLoggedIn = _oauthLogin.IsLoggedIn; return; }
+        _authStatus.ReinitialiserApresLogin();   // la copie mémoire de l'autorité est oubliée, le coffre relu
         IsLoggedIn = _oauthLogin.IsLoggedIn;
-        _orchestrator.RequestRefresh(); // application immédiate (le provider relit le coffre à chaque GetAsync)
+        _orchestrator.RequestRefresh();          // application immédiate, sans attendre le tick de 60 s
     }
 
     /// <summary>

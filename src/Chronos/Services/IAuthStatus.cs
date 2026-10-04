@@ -5,8 +5,8 @@ namespace Chronos.Services;
 ///
 /// Motif IDENTIQUE à <see cref="RefreshOrchestrator.SnapshotChanged"/> : le service expose l'événement,
 /// l'abonné marshalle lui-même via IUiDispatcher (frontière de thread unique, RAF-04). L'état d'auth
-/// n'est délibérément PAS un champ d'UsageSnapshot : ce dernier traverse deux composites imbriqués dont
-/// Best() choisit PAR FENÊTRE, et il n'existe aucune règle sensée pour fusionner deux états d'auth issus
+/// n'est délibérément PAS un champ d'UsageSnapshot : ce dernier traverse le composite (UN seul en production :
+/// sonde → secours OAuth) dont Best() choisit PAR FENÊTRE, et il n'existe aucune règle sensée pour fusionner deux états d'auth issus
 /// de branches différentes.
 /// </summary>
 public interface IAuthStatus
@@ -18,8 +18,9 @@ public interface IAuthStatus
     /// L'abonné marshalle lui-même vers le thread UI.</summary>
     event EventHandler<EtatAuthentification>? EtatChange;
 
-    /// <summary>TOK-03 — après un login réussi : relâche le verrou « Deconnecte » ET le recul, et oublie
-    /// les jetons mémorisés pour relire le coffre fraîchement écrit. Sans cet appel, le jeton tout neuf
-    /// ne serait pas utilisé et la pastille survivrait à sa propre réparation.</summary>
+    /// <summary>TOK-03 / P-01 — après un login réussi ET après une déconnexion : relâche le verrou
+    /// « Deconnecte » ET le recul, et oublie les jetons mémorisés pour relire le coffre (fraîchement écrit
+    /// par le login, ou effacé par la déconnexion). Sans cet appel, le jeton tout neuf ne serait pas
+    /// utilisé — ou le rafraîchissement suivant recréerait le coffre avec les jetons de l'ancien compte.</summary>
     void ReinitialiserApresLogin();
 }
