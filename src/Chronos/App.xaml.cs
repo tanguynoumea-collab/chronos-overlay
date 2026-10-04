@@ -79,6 +79,11 @@ public partial class App : Application
 
         base.OnStartup(e);
 
+        // FIAB-1 (42.2) — filet global AVANT tout le reste de l'overlay (verrou, Host, fenêtre) : sous .NET 8, une exception UI
+        // non gérée termine le processus sans boîte ni ligne de journal, et le cadran disparaît sans trace. Mode OVERLAY
+        // uniquement : le mode --hook et les galeries sont sortis plus haut.
+        InstallerFiletGlobal();
+
         // CPT-03 — UNE SEULE INSTANCE de l'overlay par session Windows. Posé ici, APRÈS les court-circuits du tri des arguments
         // (ArgumentInconnu, --hook, --cadrans, --sessions, --historique ; multi-instances par construction : Claude Code
         // lance jusqu'à 5 hooks en parallèle) et AVANT le Host :
@@ -96,61 +101,111 @@ public partial class App : Application
         }
         _verrou = verrou;
 
-        var builder = Host.CreateApplicationBuilder();
-        ConfigureServices(builder.Services);
-        _host = builder.Build();
-
-        // DAT-03 — l'ancienne barre de l'utilisateur (clé héritée des réglages ≤ 3.4), lue BRUTE avant tout Save : la clé, devenue
-        // inconnue en 3.5, disparaîtrait au premier Save(Load() with …) déclenché par le placement/DPI. Elle sert à restaurer
-        // la barre d'origine à la place de la barre Chronos retirée plus bas. Toute panne ⇒ null (simple retrait).
-        var commandeHeritee = ClaudeSettingsReconciler.LireCommandeInterneHeritee(
-            _host.Services.GetRequiredService<ChronosPaths>().SettingsFile);
-
-        // Ordre de démarrage (Pitfall 3) : résoudre le VM AVANT StartAsync pour forcer son abonnement
-        // à RefreshOrchestrator.SnapshotChanged. Sinon la charge initiale (émise pendant StartAsync)
-        // partirait avant tout abonné → overlay vide jusqu'au prochain tick périodique (~60 s).
-        _ = _host.Services.GetRequiredService<MainViewModel>();
-
-        await _host.StartAsync();                    // charge initiale → atteint le VM (Post mis en file via BeginInvoke)
-
-        // Restauration AVANT Show (FEN-07) : on fournit l'état persisté à la fenêtre ; SourceInitialized
-        // appliquera RestorePlacement (coin + device = vérité) avant le premier rendu → pas de flash.
-        var settings = _host.Services.GetRequiredService<ChronosSettings>();
-        var window = _host.Services.GetRequiredService<MainWindow>();
-        window.ApplyRestoredState(settings);
-        MainWindow = window;                         // Application.MainWindow AVANT Show → les dialogues
-                                                     // se centrent sur l'overlay (Owner), FEN-07
-        window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
-
-        // PUR-01/02/03, DAT-03 — réconcilier ~/.claude/settings.json : la barre de statut Chronos est RETIRÉE (sauvegarde
-        // d'abord ; la barre d'origine est restaurée si elle est connue ; une barre tierce reste intacte), et les hooks sont
-        // repointés vers l'exe courant dans la même écriture. Le bilan du passage est écrit dans chronos.log par le journal de
-        // démarrage, lancé JUSTE APRÈS. Mode OVERLAY UNIQUEMENT : le mode --hook sort bien plus haut (en tête d'OnStartup, via
-        // ArgumentsDemarrage.Trier) et ne doit JAMAIS atteindre ce point — 5 processus --hook concurrents en lire-modifier-écrire
-        // perdraient les purges. Best-effort et silencieux : ne peut pas empêcher le démarrage.
+        // FIAB-1 (42.2) — la suite du démarrage est PROTÉGÉE : OnStartup est un async void, une exception ici (construction
+        // du Host, StartAsync, résolution de la fenêtre, Show/RestorePlacement, widget) tuerait le processus sans explication.
+        // Un échec est journalisé (incident reporté au lancement suivant), DIT à l'utilisateur, puis l'application s'arrête
+        // proprement : Shutdown → OnExit, qui arrête le Host s'il existe et libère le mutex d'instance unique.
         try
         {
-            _host.Services.GetRequiredService<ClaudeSettingsReconciler>()
-                 .Reconcile(settings.SessionsWidgetEnabled, commandeHeritee);
+            var builder = Host.CreateApplicationBuilder();
+            ConfigureServices(builder.Services);
+            _host = builder.Build();
+
+            // DAT-03 — l'ancienne barre de l'utilisateur (clé héritée des réglages ≤ 3.4), lue BRUTE avant tout Save : la clé, devenue
+            // inconnue en 3.5, disparaîtrait au premier Save(Load() with …) déclenché par le placement/DPI. Elle sert à restaurer
+            // la barre d'origine à la place de la barre Chronos retirée plus bas. Toute panne ⇒ null (simple retrait).
+            var commandeHeritee = ClaudeSettingsReconciler.LireCommandeInterneHeritee(
+                _host.Services.GetRequiredService<ChronosPaths>().SettingsFile);
+
+            // Ordre de démarrage (Pitfall 3) : résoudre le VM AVANT StartAsync pour forcer son abonnement
+            // à RefreshOrchestrator.SnapshotChanged. Sinon la charge initiale (émise pendant StartAsync)
+            // partirait avant tout abonné → overlay vide jusqu'au prochain tick périodique (~60 s).
+            _ = _host.Services.GetRequiredService<MainViewModel>();
+
+            await _host.StartAsync();                    // charge initiale → atteint le VM (Post mis en file via BeginInvoke)
+
+            // Restauration AVANT Show (FEN-07) : on fournit l'état persisté à la fenêtre ; SourceInitialized
+            // appliquera RestorePlacement (coin + device = vérité) avant le premier rendu → pas de flash.
+            var settings = _host.Services.GetRequiredService<ChronosSettings>();
+            var window = _host.Services.GetRequiredService<MainWindow>();
+            window.ApplyRestoredState(settings);
+            MainWindow = window;                         // Application.MainWindow AVANT Show → les dialogues
+                                                         // se centrent sur l'overlay (Owner), FEN-07
+            window.Show();                               // ShowActivated=False (XAML) → pas de vol de focus
+
+            // PUR-01/02/03, DAT-03 — réconcilier ~/.claude/settings.json : la barre de statut Chronos est RETIRÉE (sauvegarde
+            // d'abord ; la barre d'origine est restaurée si elle est connue ; une barre tierce reste intacte), et les hooks sont
+            // repointés vers l'exe courant dans la même écriture. Le bilan du passage est écrit dans chronos.log par le journal de
+            // démarrage, lancé JUSTE APRÈS. Mode OVERLAY UNIQUEMENT : le mode --hook sort bien plus haut (en tête d'OnStartup, via
+            // ArgumentsDemarrage.Trier) et ne doit JAMAIS atteindre ce point — 5 processus --hook concurrents en lire-modifier-écrire
+            // perdraient les purges. Best-effort et silencieux : ne peut pas empêcher le démarrage.
+            try
+            {
+                _host.Services.GetRequiredService<ClaudeSettingsReconciler>()
+                     .Reconcile(settings.SessionsWidgetEnabled, commandeHeritee);
+            }
+            catch { }
+
+            // Log automatique au démarrage (observabilité) : écrit %APPDATA%/Chronos/chronos.log avec l'état réel
+            // (token/OAuth/sources, bilan de la réconciliation). APRÈS la réconciliation, pour que le bilan y figure.
+            // Fire-and-forget, ne bloque pas et ne peut pas casser le lancement.
+            _ = _host.Services.GetRequiredService<DiagnosticService>().LogStartupAsync();
+
+            // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la réconciliation
+            // ci-dessus : mode OVERLAY uniquement (le mode --hook sort bien plus haut),
+            // best-effort et silencieux, il ne peut pas empêcher le démarrage. Mesuré le 2026-09-12 : 54 états,
+            // dont 48 de plus de sept jours, plus 12 fichiers temporaires abandonnés.
+            //
+            // Expirer, c'est ne plus savoir : ce qui est balayé disparaît, rien n'est déclaré terminé ni traité.
+            try { _host.Services.GetRequiredService<BalayageMagasinSessions>().Balayer(); }
+            catch { }
+
+            // Widget de sessions : réafficher le panneau s'il était activé.
+            _host.Services.GetRequiredService<ISessionsController>().ShowIfEnabled();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("démarrage", ex));
+            MessageBox.Show("Chronos n'a pas pu démarrer : " + ex.Message + "\n\nDétail dans %APPDATA%\\Chronos\\chronos.log.",
+                            "Chronos", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
+    }
 
-        // Log automatique au démarrage (observabilité) : écrit %APPDATA%/Chronos/chronos.log avec l'état réel
-        // (token/OAuth/sources, bilan de la réconciliation). APRÈS la réconciliation, pour que le bilan y figure.
-        // Fire-and-forget, ne bloque pas et ne peut pas casser le lancement.
-        _ = _host.Services.GetRequiredService<DiagnosticService>().LogStartupAsync();
+    /// <summary>
+    /// FIAB-1 (42.2) — dossier du journal d'incidents (%APPDATA%\Chronos, via ChronosPaths) pour les filets, qui ne peuvent pas
+    /// compter sur le Host (pas encore construit, ou déjà libéré). Null si indisponible : Signaler rend alors false sans lever.
+    /// </summary>
+    private static string? DossierJournal
+    {
+        get
+        {
+            try { return System.IO.Path.GetDirectoryName(ChronosPaths.Default().SettingsFile); }
+            catch { return null; }
+        }
+    }
 
-        // CYC-01 — le magasin d'états de session est balayé une fois par lancement. Même régime que la réconciliation
-        // ci-dessus : mode OVERLAY uniquement (le mode --hook sort bien plus haut),
-        // best-effort et silencieux, il ne peut pas empêcher le démarrage. Mesuré le 2026-09-12 : 54 états,
-        // dont 48 de plus de sept jours, plus 12 fichiers temporaires abandonnés.
-        //
-        // Expirer, c'est ne plus savoir : ce qui est balayé disparaît, rien n'est déclaré terminé ni traité.
-        try { _host.Services.GetRequiredService<BalayageMagasinSessions>().Balayer(); }
-        catch { }
-
-        // Widget de sessions : réafficher le panneau s'il était activé.
-        _host.Services.GetRequiredService<ISessionsController>().ShowIfEnabled();
+    /// <summary>
+    /// FIAB-1 (42.2) — les trois filets globaux, tous vers le journal d'incidents de chronos.log :
+    /// Dispatcher (thread UI : handlers, timers, commandes, WndProc) — marqué traité sauf exception FATALE, pour que le cadran
+    /// survive à un défaut ponctuel au lieu de disparaître ; domaine (tout autre thread — on ne peut que journaliser, le
+    /// processus meurt) ; tâches non observées (marquées observées : simple trace, jamais une terminaison).
+    /// </summary>
+    private void InstallerFiletGlobal()
+    {
+        DispatcherUnhandledException += (_, a) =>
+        {
+            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("UI", a.Exception));
+            a.Handled = !FiletExceptions.EstFatale(a.Exception);
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, a) =>
+            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire(a.IsTerminating ? "domaine, fatale" : "domaine",
+                a.ExceptionObject as Exception ?? new Exception(a.ExceptionObject?.ToString())));
+        TaskScheduler.UnobservedTaskException += (_, a) =>
+        {
+            JournalIncidents.Signaler(DossierJournal, FiletExceptions.Decrire("tâche non observée", a.Exception));
+            a.SetObserved();
+        };
     }
 
     // Exécuté en mode --hook : lit le JSON stdin de Claude Code et applique l'ordre au fichier d'état de la

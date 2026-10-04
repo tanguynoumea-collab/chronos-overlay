@@ -64,19 +64,14 @@ public static class ArretHote
     }
 
     /// <summary>
-    /// Best-effort : une ligne datée dans <c>chronos.log</c> (sous <paramref name="dossier"/>) quand l'arrêt a dépassé son
-    /// délai. Ne lève jamais. Le dossier est CRÉÉ s'il manque : depuis la 3.5, plus aucune surveillance de fichier ne le crée
-    /// au démarrage, chaque écrivain sous <c>%APPDATA%\Chronos</c> crée donc le sien.
+    /// Best-effort : une ligne du JOURNAL D'INCIDENTS (<see cref="JournalIncidents"/>, dans <c>chronos.log</c> sous
+    /// <paramref name="dossier"/>) quand l'arrêt a dépassé son délai. Ne lève jamais. Le dossier est créé s'il manque.
+    /// FIAB-4 (42.2) : la ligne porte le marqueur « [incident] », donc le journal de démarrage SUIVANT la reporte en tête au
+    /// lieu de l'effacer — c'est au relancement qu'on la cherche.
     /// </summary>
     public static void SignalerDepassement(string? dossier, string? cause)
     {
         if (dossier is null) return;
-        try
-        {
-            Directory.CreateDirectory(dossier);
-            File.AppendAllText(Path.Combine(dossier, "chronos.log"),
-                $"{Environment.NewLine}[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] arrêt dépassé : {cause} — sortie forcée{Environment.NewLine}");
-        }
-        catch { /* le diagnostic ne doit jamais empêcher la sortie */ }
+        JournalIncidents.Signaler(dossier, $"arrêt dépassé : {cause} — sortie forcée");   // ne lève jamais : la sortie n'est pas empêchée
     }
 }

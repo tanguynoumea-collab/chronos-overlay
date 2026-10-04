@@ -104,7 +104,9 @@ public sealed class DiagnosticService
     }
 
     /// <summary>Écrit le rapport dans %APPDATA%/Chronos/chronos.log AU DÉMARRAGE, SANS l'ouvrir
-    /// (log automatique et silencieux). Toute erreur est absorbée : ne doit jamais empêcher le lancement.</summary>
+    /// (log automatique et silencieux). Toute erreur est absorbée : ne doit jamais empêcher le lancement.
+    /// FIAB-4 (42.2) : le fichier est réécrit, mais les lignes [incident] de l'ancien journal (arrêt dépassé, exception non
+    /// gérée, démarrage raté) sont REPORTÉES en tête (<see cref="JournalIncidents.ComposerJournalDemarrage"/>).</summary>
     public async Task LogStartupAsync(CancellationToken ct = default)
     {
         try
@@ -112,7 +114,13 @@ public sealed class DiagnosticService
             var report = await BuildReportAsync(ct);
             var dir = Path.GetDirectoryName(_paths.SettingsFile)!;
             Directory.CreateDirectory(dir);
-            File.WriteAllText(Path.Combine(dir, "chronos.log"), "(log automatique au démarrage)\n" + report);
+            var chemin = Path.Combine(dir, JournalIncidents.NomFichier);
+            // Relu JUSTE AVANT la réécriture (et non avant le rapport, qui prend du temps) : réduit la fenêtre où un incident
+            // signalé entre-temps serait perdu. Best-effort : un ancien journal illisible = aucun report, jamais un échec.
+            string? ancien;
+            try { ancien = File.Exists(chemin) ? File.ReadAllText(chemin) : null; }
+            catch { ancien = null; }
+            File.WriteAllText(chemin, JournalIncidents.ComposerJournalDemarrage(ancien, report));
         }
         catch { /* le log ne doit jamais casser le démarrage */ }
     }
@@ -579,7 +587,8 @@ public sealed class DiagnosticService
         return silence > JournalReleves.SeuilMuet ? "ALERTE — journal muet depuis " + (int)silence.TotalMinutes + " min" : null;
     }
 
-    /// <summary>SOC-01 — une ligne par démarrage (chronos.log est réécrit à chaque lancement) : jamais de bruit à chaque Load.
+    /// <summary>SOC-01 — une ligne par démarrage (chronos.log est réécrit à chaque lancement, les lignes [incident] des
+    /// lancements précédents étant reportées en tête) : jamais de bruit à chaque Load.
     /// Sous [Magasins persistants], seule section qui parle des réglages depuis la phase 37.</summary>
     private static string LibelleLectureReglages(LectureReglages lecture) => lecture.Issue switch
     {
