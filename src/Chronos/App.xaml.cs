@@ -111,6 +111,20 @@ public partial class App : Application
             ConfigureServices(builder.Services);
             _host = builder.Build();
 
+            // PKG-1 (42.2) — les exe publiés sont versionnés et coexistent : un raccourci shell:startup créé par une version
+            // précédente vise l'ANCIEN exe, qui reprendrait la main au prochain redémarrage (verrou d'instance, hooks repointés).
+            // Un raccourci EXISTANT est repointé vers l'exe courant (jamais créé s'il est absent). AVANT la résolution du
+            // MainViewModel, qui lit IsEnabled : la case « Lancer au démarrage » reflète l'état corrigé.
+            try
+            {
+                var bilanAutostart = _host.Services.GetRequiredService<IAutostartService>().ConvergerVersExeCourant();
+                if (bilanAutostart == BilanAutostart.Repointe)
+                    JournalIncidents.Signaler(DossierJournal, "autostart : raccourci shell:startup repointé vers l'exe courant (" + Environment.ProcessPath + ")");
+                else if (bilanAutostart == BilanAutostart.Echec)
+                    JournalIncidents.Signaler(DossierJournal, "autostart : raccourci shell:startup non repointé — l'ancienne version pourrait démarrer au prochain redémarrage");
+            }
+            catch { /* l'autostart ne doit jamais empêcher le démarrage */ }
+
             // DAT-03 — l'ancienne barre de l'utilisateur (clé héritée des réglages ≤ 3.4), lue BRUTE avant tout Save : la clé, devenue
             // inconnue en 3.5, disparaîtrait au premier Save(Load() with …) déclenché par le placement/DPI. Elle sert à restaurer
             // la barre d'origine à la place de la barre Chronos retirée plus bas. Toute panne ⇒ null (simple retrait).
