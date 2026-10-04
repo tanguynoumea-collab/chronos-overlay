@@ -202,6 +202,36 @@ public class GardesPerimetreTests
     }
 
     /// <summary>
+    /// GARDE DE CÂBLAGE (P-03, 42.3 — audit externe DS-ARCH-03 / DS-PERF-03). Le diagnostic ne doit jamais être un SECOND
+    /// consommateur de la chaîne d'usage : il reçoit l'adaptateur lecture seule <c>DernierSnapshotPublie</c> adossé à
+    /// l'orchestrateur, pas la tête de chaîne (<c>IUsageProvider</c>) — sinon double sonde possible et last-exact.json disputé.
+    /// Et le rapport de démarrage part sur le pool (<c>Task.Run</c>) : ses lectures disque et son écriture ne reprennent plus
+    /// sur le Dispatcher. Contrôle de SOURCE : <c>OnStartup</c> monte WPF.
+    /// </summary>
+    [Fact]
+    public void Le_diagnostic_lit_le_snapshot_publie_et_le_rapport_de_demarrage_part_sur_le_pool()
+    {
+        var fichier = Path.Combine(CheminSources(), "App.xaml.cs");
+        Assert.True(File.Exists(fichier), $"Fichier introuvable : {fichier}");
+        var texte = File.ReadAllText(fichier);
+
+        var debut = texte.IndexOf("new DiagnosticService(", StringComparison.Ordinal);
+        Assert.True(debut >= 0, "Enregistrement du DiagnosticService introuvable dans App.xaml.cs");
+        var fin = texte.IndexOf("));", debut, StringComparison.Ordinal);
+        Assert.True(fin > debut, "Fin de l'enregistrement du DiagnosticService introuvable");
+        var enregistrement = texte[debut..fin];
+
+        Assert.Contains("new DernierSnapshotPublie(", enregistrement, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetRequiredService<IUsageProvider>()", enregistrement, StringComparison.Ordinal);
+
+        Assert.Matches(@"Task\.Run\(\(\) => [^;]*LogStartupAsync\(\)\)", texte);
+
+        var diag = File.ReadAllText(Path.Combine(CheminSources(), "Services", "DiagnosticService.cs"));
+        Assert.Contains("BuildReportAsync", diag, StringComparison.Ordinal);   // anti-mutisme
+        Assert.DoesNotContain("_composite.GetAsync", diag, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// GARDE DE CÂBLAGE (CYC-02, phase 23). <c>EcritureEtatSession</c> peut être parfaitement testée et
     /// n'être jamais appelée : le hook continuerait alors de déplacer un fichier temporaire par-dessus la
     /// cible, de perdre une écriture sur deux sous lecteur concurrent, et de le taire. Contrôle de SOURCE :

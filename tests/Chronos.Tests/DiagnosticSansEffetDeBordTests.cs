@@ -110,4 +110,63 @@ public class DiagnosticSansEffetDeBordTests
         Assert.Equal(ecritureAvant, store.DerniereEcriture);
         Assert.False(store.Load().ContainsKey("s"));
     }
+
+    // --- P-03 (42.3, audit externe DS-ARCH-03) — le diagnostic n'est pas un second consommateur de la chaîne ---
+    //
+    // Le rapport décrit le snapshot PUBLIÉ par l'orchestrateur (adaptateur DernierSnapshotPublie) : il ne déclenche aucun
+    // GetAsync supplémentaire — donc ni seconde sonde, ni last-exact.json disputé. Si rien n'est encore publié, il le dit.
+
+    [Fact]
+    public async Task Le_diagnostic_ne_declenche_aucun_GetAsync_de_la_chaine()
+    {
+        var provider = new FakeUsageProvider();
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
+        try
+        {
+            await orch.StartAsync(CancellationToken.None);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (orch.DernierSnapshot is null && sw.ElapsedMilliseconds < 2000) await Task.Delay(15);
+            Assert.NotNull(orch.DernierSnapshot);
+            var n = provider.GetCount;
+
+            var paths = TempPaths();
+            var diag = new DiagnosticService(paths, new SettingsService(paths), new DernierSnapshotPublie(orch), new FakeClock(T),
+                                             reglagesClaude: null);
+
+            var rapport1 = await diag.BuildReportAsync();
+            var rapport2 = await diag.BuildReportAsync();
+            await diag.LogStartupAsync();
+
+            Assert.Equal(n, provider.GetCount);   // zéro GetAsync dû au diagnostic
+            foreach (var rapport in new[] { rapport1, rapport2 })
+            {
+                Assert.Contains("[Ce qui est affiché maintenant]", rapport);
+                Assert.Contains("  5 h   : ", rapport);
+                Assert.Contains("  Hebdo : ", rapport);
+                Assert.DoesNotContain("pas encore de relevé publié", rapport);
+            }
+            // Le journal de démarrage est écrit à côté des réglages TEMPORAIRES, jamais dans %APPDATA%.
+            Assert.True(File.Exists(Path.Combine(Path.GetDirectoryName(paths.SettingsFile)!, JournalIncidents.NomFichier)));
+        }
+        finally { await orch.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task Sans_releve_publie_le_rapport_le_dit_sans_inventer_de_chiffre()
+    {
+        var provider = new FakeUsageProvider();
+        // Orchestrateur NON démarré : rien ne sera publié ; délai court pour ne pas faire attendre le test.
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
+        var paths = TempPaths();
+        var diag = new DiagnosticService(paths, new SettingsService(paths),
+                                         new DernierSnapshotPublie(orch, TimeSpan.FromMilliseconds(100)), new FakeClock(T),
+                                         reglagesClaude: null);
+
+        var rapport = await diag.BuildReportAsync();
+
+        Assert.Contains("pas encore de relevé publié", rapport);
+        Assert.DoesNotContain("  5 h   : ", rapport);
+        Assert.DoesNotContain("  Hebdo : ", rapport);
+        Assert.Equal(0, provider.GetCount);
+    }
 }

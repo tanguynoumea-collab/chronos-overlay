@@ -90,4 +90,39 @@ public class RefreshOrchestratorTests
         }
         finally { await orch.StopAsync(CancellationToken.None); }
     }
+
+    // --- P-03 (42.3) : l'orchestrateur expose son DERNIER snapshot publié — le diagnostic le lit, il ne relance pas la chaîne ---
+
+    [Fact]
+    public async Task DernierSnapshot_est_le_snapshot_emis_par_SnapshotChanged()
+    {
+        var provider = new FakeUsageProvider();
+        var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
+        var orch = new RefreshOrchestrator(provider, options);
+        Chronos.Models.UsageSnapshot? emis = null;
+        orch.SnapshotChanged += (_, s) => Volatile.Write(ref emis, s);
+        Assert.Null(orch.DernierSnapshot);   // avant toute charge : rien de publié
+        try
+        {
+            await orch.StartAsync(CancellationToken.None);
+            var ok = await WaitUntilAsync(() => Volatile.Read(ref emis) is not null, 2000);
+            Assert.True(ok, "la charge initiale doit émettre un snapshot");
+            Assert.Same(Volatile.Read(ref emis), orch.DernierSnapshot);
+
+            var attendu = await orch.AttendrePremierAsync(TimeSpan.FromSeconds(2), CancellationToken.None);
+            Assert.Same(orch.DernierSnapshot, attendu);
+        }
+        finally { await orch.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task AttendrePremierAsync_rend_null_sans_lever_si_rien_n_est_publie()
+    {
+        var provider = new FakeUsageProvider();
+        var orch = new RefreshOrchestrator(provider, new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero));
+        // Orchestrateur NON démarré : aucun relevé ne sera jamais publié.
+        var s = await orch.AttendrePremierAsync(TimeSpan.FromMilliseconds(100), CancellationToken.None);
+        Assert.Null(s);
+        Assert.Equal(0, provider.GetCount);
+    }
 }
