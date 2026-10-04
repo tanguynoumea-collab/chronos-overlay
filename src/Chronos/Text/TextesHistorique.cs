@@ -47,6 +47,10 @@ public static class TextesHistorique
     public const string PiedDivergence = "cadre violet : marches de % sans tokens Code = consommé ailleurs (Cowork, claude.ai)";
     public const string AucunReleveSemaine = "aucun relevé sur cette semaine de forfait";
     public const string AucunReleveJour = "aucun relevé sur ce jour";
+    /// <summary>42.2-05 — une partie du journal n'a pas pu être lue : préfixe d'une ligne de fraîcheur PARTIELLE.</summary>
+    public const string LectureIncomplete = "lecture incomplète : un fichier du journal était inaccessible";
+    /// <summary>42.2-05 — rien n'a pu être lu : remplace un faux « aucun relevé » (verrouillé n'est pas vide).</summary>
+    public const string LectureImpossible = "journal momentanément inaccessible — relevés non lus, ce n'est pas une absence de relevés";
     public const string GrainHeure = "heure";
     public const string GrainQuartDHeure = "quart d'heure";
     public const string HistoriqueIndisponible = "historique indisponible";
@@ -126,6 +130,18 @@ public static class TextesHistorique
                     + " · " + Pluriel(a.Trous.Count, "interruption");
         if (a.JournalOuvertLe is { } j) texte += " · " + JournalOuvertLe(j, tz);
         return texte;
+    }
+
+    /// <summary>
+    /// 42.2-05 (TEST-4, DATA-13) — habille une ligne de fraîcheur de l'état de la lecture. Lecture complète → la ligne, intacte.
+    /// Lecture incomplète : un « aucun relevé » (semaine ou jour) devient <see cref="LectureImpossible"/> — on ne présente pas une
+    /// ignorance comme un fait — et toute autre ligne est préfixée par <see cref="LectureIncomplete"/> (ses comptes sont partiels).
+    /// </summary>
+    public static string AvecEtatLecture(string ligne, bool lectureIncomplete)
+    {
+        if (!lectureIncomplete) return ligne;
+        if (ligne is AucunReleveSemaine or AucunReleveJour || string.IsNullOrEmpty(ligne)) return LectureImpossible;
+        return LectureIncomplete + " · " + ligne;
     }
 
     /// <summary>« 288 relevés attendus · 262 présents · 1 interruption (jeton invalide, 14:00 → 16:00) » — les attendus viennent de la

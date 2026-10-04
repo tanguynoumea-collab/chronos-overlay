@@ -584,9 +584,10 @@ public sealed partial class HistoriqueViewModel : ObservableObject
     {
         TexteFraicheur = VueActive switch
         {
-            VueHistorique.Jour => DonneesJour is { } j ? TextesHistorique.LigneFraicheurJour(j.Plage, j.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, _tz) : "",
-            VueHistorique.QuatreSemaines => DonneesQuatreSemaines is { } q ? TextesHistorique.LigneFraicheurSemaine(q.Courante, now, _tz) : "",
-            _ => DonneesSemaine is { } s ? TextesHistorique.LigneFraicheurSemaine(s.Analyse, now, _tz) : "",
+            // 42.2-05 : une lecture incomplète (journal verrouillé) le DIT — jamais un faux « aucun relevé ».
+            VueHistorique.Jour => DonneesJour is { } j ? TextesHistorique.AvecEtatLecture(TextesHistorique.LigneFraicheurJour(j.Plage, j.Analyse, RateLimitHeaderUsageProvider.CadenceNominale, _tz), j.LectureIncomplete) : "",
+            VueHistorique.QuatreSemaines => DonneesQuatreSemaines is { } q ? TextesHistorique.AvecEtatLecture(TextesHistorique.LigneFraicheurSemaine(q.Courante, now, _tz), q.LectureIncomplete) : "",
+            _ => DonneesSemaine is { } s ? TextesHistorique.AvecEtatLecture(TextesHistorique.LigneFraicheurSemaine(s.Analyse, now, _tz), s.LectureIncomplete) : "",
         };
 
         if (_journal is null)
