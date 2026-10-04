@@ -280,6 +280,50 @@ public sealed class IndexMessagesTests : IDisposable
         Assert.Null(index.DerniereErreurLecture);
     }
 
+    // --- DATA-1 (phase 42.2) : un mois hors fenêtre se charge à la demande ---
+
+    private static readonly DateTimeOffset Juin = Utc("2026-06-01T00:00:00Z");
+
+    [Fact]
+    public void AssurerMoisCharge_charge_un_shard_present_une_seule_fois()
+    {
+        EcrireShard("ids-2026-06.jsonl", LigneShard("msg_C", "2026-06-20T08:00:00.0000000+00:00", 3, 3, 3, 3));
+        var index = Index();
+        index.Charger();
+        Assert.False(index.EstCharge(Juin));
+        Assert.True(index.EstCharge(Septembre));   // mois ouvert, chargé par Charger
+
+        Assert.Equal(ChargementShard.Charge, index.AssurerMoisCharge(Juin));
+        Assert.True(index.EstCharge(Juin));
+        Assert.Null(index.Ajouter(M("msg_C", Utc("2026-06-20T08:00:00Z"), 3, 3, 3, 3)));   // connu : plus recompté
+        Assert.Equal(ChargementShard.DejaCharge, index.AssurerMoisCharge(Juin));
+    }
+
+    [Fact]
+    public void AssurerMoisCharge_rend_Absent_sans_shard_et_marque_le_mois()
+    {
+        var index = Index();
+        index.Charger();
+
+        Assert.Equal(ChargementShard.Absent, index.AssurerMoisCharge(Juin));
+        Assert.True(index.EstCharge(Juin));
+        Assert.Equal(ChargementShard.DejaCharge, index.AssurerMoisCharge(Juin));
+    }
+
+    [Fact]
+    public void AssurerMoisCharge_rend_Illisible_sur_un_shard_tenu_sans_marquer_le_mois()
+    {
+        EcrireShard("ids-2026-06.jsonl", LigneShard("msg_C", "2026-06-20T08:00:00.0000000+00:00", 3, 3, 3, 3));
+        var index = Index();
+        index.Charger();
+
+        using (new FileStream(Path.Combine(_dossier, "ids-2026-06.jsonl"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            Assert.Equal(ChargementShard.Illisible, index.AssurerMoisCharge(Juin));
+
+        Assert.False(index.EstCharge(Juin));
+        Assert.Equal(ChargementShard.Charge, index.AssurerMoisCharge(Juin));   // libéré : chargé
+    }
+
     [Fact]
     public void Purger_supprime_les_shards_au_dela_de_trois_mois_et_ignore_le_reste()
     {

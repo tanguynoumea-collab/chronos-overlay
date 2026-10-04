@@ -22,6 +22,7 @@ public sealed class FakeEtatReconstruction : IEtatReconstruction
     public TimeSpan? DureeMurDernierePasse { get; set; }
     public TimeSpan? DureeCpuProcessusDernierePasse { get; set; }
     public DateTimeOffset? DerniereReconstructionTerminee { get; set; }
+    public int MessagesIgnoresMoisGeles { get; set; }
 
     public event EventHandler? Changement;
 

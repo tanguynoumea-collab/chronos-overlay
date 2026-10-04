@@ -1685,6 +1685,22 @@ public class DiagnosticServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Les_messages_de_mois_geles_ignores_se_disent_au_diagnostic_seulement_s_il_y_en_a()
+    {
+        var paths = TempPaths();
+        var clock = new FakeClock(DateTimeOffset.UtcNow);
+        var etat = new FakeEtatReconstruction { Phase = PhaseReconstruction.Incremental, FichiersTraites = 3, FichiersTotal = 3 };
+        var magasins = new IEtatMagasin[] { new MagasinAgregats(paths.HistoriqueDir, clock) };
+
+        var sansIgnores = SousSectionAgregats(await DiagAvecReconstruction(paths, clock, magasins, etat).BuildReportAsync());
+        Assert.DoesNotContain(sansIgnores, l => l.Contains("mois gelés", StringComparison.Ordinal));
+
+        etat.MessagesIgnoresMoisGeles = 7;
+        var avecIgnores = SousSectionAgregats(await DiagAvecReconstruction(paths, clock, magasins, etat).BuildReportAsync());
+        Assert.Contains(avecIgnores, l => l.Trim() == "Messages de mois gelés ignorés (déjà comptés) : 7");
+    }
+
+    [Fact]
     public async Task Sans_etat_de_reconstruction_la_ligne_des_agregats_dit_le_dossier_ou_le_fichier_du_mois()
     {
         var paths = TempPaths();

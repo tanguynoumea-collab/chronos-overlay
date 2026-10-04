@@ -570,6 +570,10 @@ public sealed class ReconstructionTokensTests : IDisposable
         var magasinSeme = new MagasinAgregats(paths.HistoriqueDir, new FakeClock(Now));
         Assert.True(magasinSeme.Appliquer(new DeltaTranche(juinSeme.Slot, "claude-opus-5", false, 1, 2, 3, 4, true)));
         Assert.True(magasinSeme.EcrireMoisSales());
+        // DATA-1 : un mois gelé déjà agrégé n'accepte de deltas que si son index d'ids est sur disque (sinon : déjà compté).
+        var indexSeme = new IndexMessages(paths.HistoriqueDir, new FakeClock(Now));
+        Assert.NotNull(indexSeme.Ajouter(new MessageLu("msg_juin_seme", Utc("2026-06-10T10:02:00Z"), "claude-opus-5", false, 1, 2, 3, 4)));
+        Assert.True(indexSeme.Flush());
         var cheminJuin = Path.Combine(paths.HistoriqueDir, "tokens-2026-06.jsonl");
         var octets = File.ReadAllBytes(cheminJuin);
 
@@ -601,5 +605,93 @@ public sealed class ReconstructionTokensTests : IDisposable
         Assert.True(service.ExecuterUnePasse(CancellationToken.None).Complete);
         Assert.Equal(2, Tranches(cheminJuin).Count);
         Assert.Equal(13, Tranches(cheminJuin)[1].In);
+    }
+
+    // --- DATA-1 / DATA-2 (phase 42.2) : un mois gelé n'est jamais doublé, un curseur ne dépasse jamais l'index persisté ---
+
+    // Le multi-blocs réel (13 / 297 / 35005 / 41741, trois messages) décalé au jour voulu, mtime récent.
+    private static void TranscriptDuJour(string racine, string nom, string jour)
+    {
+        var transcript = Path.Combine(racine, "proj", nom);
+        Directory.CreateDirectory(Path.GetDirectoryName(transcript)!);
+        File.WriteAllText(transcript, File.ReadAllText(Fixture("multi-blocs", "session-a.jsonl"), Utf8SansBom).Replace("2026-07-08T", jour + "T"), Utf8SansBom);
+        File.SetLastWriteTimeUtc(transcript, (Now - TimeSpan.FromHours(1)).UtcDateTime);
+    }
+
+    [Fact]
+    public void Relire_un_transcript_d_un_mois_gele_deja_agrege_ne_modifie_pas_ce_mois()
+    {
+        // Mars 2026 : hors des mois ouverts (août, septembre) ET antérieur à la rétention des shards (juin) — son shard
+        // d'ids disparaît à la purge du démarrage suivant ; seul le fichier d'agrégats en garde la trace.
+        var (paths, racine) = Contexte("gele-relu", peupler: false);
+        TranscriptDuJour(racine, "mars.jsonl", "2026-03-22");
+        var cheminMars = Path.Combine(paths.HistoriqueDir, "tokens-2026-03.jsonl");
+
+        var premiere = Service(paths);
+        Assert.True(premiere.ExecuterUnePasse(CancellationToken.None).Complete);
+        Assert.Equal(0, premiere.MessagesIgnoresMoisGeles);
+        var octets = File.ReadAllBytes(cheminMars);
+
+        File.Delete(CheminCurseurs(paths));   // curseurs perdus : tout sera relu de zéro
+        var seconde = Service(paths);         // nouveau démarrage
+        var bilan = seconde.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.True(bilan.Complete);
+        Assert.Equal(1, bilan.FichiersOuverts);
+        Assert.Equal(octets, File.ReadAllBytes(cheminMars));
+        Assert.True(seconde.MessagesIgnoresMoisGeles >= 1);
+        Assert.Null(seconde.DerniereErreur);
+    }
+
+    [Fact]
+    public void Un_mois_hors_fenetre_dont_le_shard_existe_est_charge_a_la_demande_et_la_relecture_reste_idempotente()
+    {
+        // Juillet 2026 : hors des mois ouverts, mais dans la rétention des shards (juin et après sont gardés).
+        var (paths, racine) = Contexte("paresseux", peupler: false);
+        TranscriptDuJour(racine, "juillet.jsonl", "2026-07-22");
+        var cheminJuillet = Path.Combine(paths.HistoriqueDir, "tokens-2026-07.jsonl");
+
+        Assert.True(Service(paths).ExecuterUnePasse(CancellationToken.None).Complete);
+        Assert.True(File.Exists(Path.Combine(paths.HistoriqueDir, "ids-2026-07.jsonl")));
+        var octets = File.ReadAllBytes(cheminJuillet);
+
+        File.Delete(CheminCurseurs(paths));
+        var seconde = Service(paths);
+        Assert.True(seconde.ExecuterUnePasse(CancellationToken.None).Complete);
+
+        Assert.Equal(octets, File.ReadAllBytes(cheminJuillet));
+        Assert.Equal(0, seconde.MessagesIgnoresMoisGeles);   // dédoublonné par l'index chargé à la demande, pas ignoré
+    }
+
+    [Fact]
+    public void La_premiere_reconstruction_d_un_mois_ancien_reste_possible()
+    {
+        var (paths, racine) = Contexte("premiere-ancienne", peupler: false);
+        TranscriptDuJour(racine, "mars.jsonl", "2026-03-22");
+        var service = Service(paths);
+
+        Assert.True(service.ExecuterUnePasse(CancellationToken.None).Complete);
+
+        Assert.Equal(new[] { new TrancheTokens(Utc("2026-03-22T11:15:00Z"), "claude-opus-4-1", false, 13, 297, 35005, 41741, 3) },
+                     Tranches(Path.Combine(paths.HistoriqueDir, "tokens-2026-03.jsonl")));
+        Assert.Equal(0, service.MessagesIgnoresMoisGeles);
+    }
+
+    [Fact]
+    public void Un_index_non_ecrit_bloque_les_agregats_et_les_curseurs()
+    {
+        // Un DOSSIER au nom du shard de septembre : l'écriture de l'index échoue.
+        var (paths, _) = Contexte("index-bloque");
+        Directory.CreateDirectory(CheminShardSeptembre(paths));
+        var service = Service(paths);
+
+        var bilan = service.ExecuterUnePasse(CancellationToken.None);
+
+        Assert.Equal(PhaseReconstruction.EnEchec, service.Phase);
+        Assert.NotNull(service.DerniereErreur);
+        Assert.StartsWith("index", service.DerniereErreur);
+        Assert.False(File.Exists(CheminTokens(paths)), "les agrégats ne doivent pas être écrits si l'index ne l'est pas");
+        Assert.False(File.Exists(CheminCurseurs(paths)), "les curseurs ne doivent pas dépasser l'index persisté");
+        Assert.True(bilan.FichiersOuverts > 0);
     }
 }
