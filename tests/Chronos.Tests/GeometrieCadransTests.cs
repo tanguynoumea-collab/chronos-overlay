@@ -8,8 +8,8 @@ using Xunit;
 namespace Chronos.Tests;
 
 /// <summary>
-/// Prouve la géométrie PURE par axe des cadrans rectangulaires (CAD-03) : Fusible (brûle de droite à gauche
-/// en horizontal, de haut en bas en vertical), Marée (lumière depuis la gauche / le haut, ligne d'eau ondulée),
+/// Prouve la géométrie PURE par axe des cadrans rectangulaires (CAD-03) : Fusible (cordon depuis la gauche
+/// en horizontal, depuis le bas en vertical), Marée (lumière depuis la gauche / le bas, ligne d'eau ondulée),
 /// Volets (6 volets séparés de 2,5). Rect/Point/Size sont des structures : tests [Fact] sans fenêtre.
 /// Seule la ligne d'eau construit une Geometry WPF : [WpfFact] (thread STA) par prudence.
 /// </summary>
@@ -32,21 +32,22 @@ public class GeometrieCadransTests
     // ---- Fusible ----
 
     [Fact]
-    public void Fusible_horizontal_le_cordon_restant_est_a_droite()
+    public void Fusible_horizontal_le_cordon_consomme_part_de_la_gauche()
     {
+        // Plan 43-06 : rempli = temps consommé ; le cordon part de la gauche, le front avance vers la droite.
         var g = GeometrieCadrans.Fusible(new Size(178, 20), Orientation.Horizontal, 0.25, 10);
         EgalRect(new Rect(0, 7.3, 178, 5.4), g.Sillon);
-        EgalRect(new Rect(133.5, 5, 44.5, 10), g.Cordon);
-        Assert.Equal(178, g.Cordon.Right, 6);
-        EgalPoint(new Point(133.5, 10), g.Front);
+        EgalRect(new Rect(0, 5, 44.5, 10), g.Cordon);
+        Assert.Equal(0, g.Cordon.Left, 6);
+        EgalPoint(new Point(44.5, 10), g.Front);
         Assert.Equal(6.5, g.RayonEtincelle, 6);
         EgalRect(new Rect(0, 7, 178, 6), g.Attente);
-        EgalPoint(new Point(133.5, 10), g.DebutGrain);
-        EgalPoint(new Point(178, 10), g.FinGrain);
+        EgalPoint(new Point(0, 10), g.DebutGrain);
+        EgalPoint(new Point(44.5, 10), g.FinGrain);
     }
 
     [Fact]
-    public void Fusible_vertical_brule_de_haut_en_bas()
+    public void Fusible_vertical_le_cordon_consomme_monte_du_bas()
     {
         var g = GeometrieCadrans.Fusible(new Size(20, 138), Orientation.Vertical, 0.25, 10);
         EgalRect(new Rect(7.3, 0, 5.4, 138), g.Sillon);
@@ -55,20 +56,20 @@ public class GeometrieCadransTests
         EgalPoint(new Point(10, 103.5), g.Front);
         Assert.Equal(6.5, g.RayonEtincelle, 6);
         EgalRect(new Rect(7, 0, 6, 138), g.Attente);
-        EgalPoint(new Point(10, 103.5), g.DebutGrain);
-        EgalPoint(new Point(10, 138), g.FinGrain);
+        EgalPoint(new Point(10, 138), g.DebutGrain);
+        EgalPoint(new Point(10, 103.5), g.FinGrain);
     }
 
     [Theory]
     [InlineData(Orientation.Horizontal)]
     [InlineData(Orientation.Vertical)]
-    public void Fusible_plein_le_front_est_au_depart_et_le_cordon_pleine_longueur(Orientation axe)
+    public void Fusible_plein_le_front_est_a_l_arrivee_et_le_cordon_pleine_longueur(Orientation axe)
     {
         var taille = axe == Orientation.Horizontal ? new Size(178, 20) : new Size(20, 138);
         var g = GeometrieCadrans.Fusible(taille, axe, 1, 10);
         if (axe == Orientation.Horizontal)
         {
-            Assert.Equal(0, g.Front.X, 6);
+            Assert.Equal(178, g.Front.X, 6);
             Assert.Equal(178, g.Cordon.Width, 6);
         }
         else
@@ -85,7 +86,7 @@ public class GeometrieCadransTests
     {
         var h = GeometrieCadrans.Fusible(new Size(178, 20), Orientation.Horizontal, fraction, 10);
         Assert.Equal(0, h.Cordon.Width, 6);
-        Assert.Equal(178, h.Front.X, 6);
+        Assert.Equal(0, h.Front.X, 6);
         var v = GeometrieCadrans.Fusible(new Size(20, 138), Orientation.Vertical, fraction, 10);
         Assert.Equal(0, v.Cordon.Height, 6);
         Assert.Equal(138, v.Front.Y, 6);
@@ -119,11 +120,11 @@ public class GeometrieCadransTests
     }
 
     [Fact]
-    public void Maree_verticale_la_lumiere_part_du_haut()
+    public void Maree_verticale_la_lumiere_monte_du_bas()
     {
         var g = GeometrieCadrans.Maree(new Size(42, 118), Orientation.Vertical, 0.5);
         EgalRect(new Rect(0, 0, 42, 118), g.Canal);
-        EgalRect(new Rect(0, 0, 42, 59), g.Lumiere);
+        EgalRect(new Rect(0, 59, 42, 59), g.Lumiere);
         Assert.Equal(59, g.PositionLigne, 6);
         Assert.True(g.LigneVisible);
     }

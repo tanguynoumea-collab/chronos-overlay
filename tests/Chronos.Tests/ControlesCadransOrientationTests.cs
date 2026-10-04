@@ -131,25 +131,25 @@ public class ControlesCadransOrientationTests
     // ------------------------------------------------------------------------------------------------
 
     [WpfFact]
-    public void Fusible_vertical_le_cordon_reste_en_bas_et_l_etincelle_au_front()
+    public void Fusible_vertical_le_cordon_monte_du_bas_et_l_etincelle_au_front()
     {
-        // 20 × 138, f = 0,25 : front à y = 138 − 34,5 = 103,5 ; cordon de 103,5 à 138 (en bas).
+        // 20 × 138, f = 0,25 consommé : front à y = 138 − 34,5 = 103,5 ; cordon de 103,5 à 138 (en bas).
         var img = Rendre(Fusible(Orientation.Vertical, 0.25), 20, 138);
 
         Assert.True(EstRouge(img.Couleur(10, 130)), $"cordon attendu en bas : {img.Couleur(10, 130)}");
-        Assert.False(EstRouge(img.Couleur(10, 40)), $"la part brûlée (haut) ne doit pas être rouge : {img.Couleur(10, 40)}");
+        Assert.False(EstRouge(img.Couleur(10, 40)), $"le temps restant (haut) ne doit pas être rouge : {img.Couleur(10, 40)}");
         Assert.True(EstClair(img.Couleur(10, 104)), $"étincelle claire attendue au front : {img.Couleur(10, 104)}");
     }
 
     [WpfFact]
-    public void Fusible_horizontal_le_cordon_reste_a_droite()
+    public void Fusible_horizontal_le_cordon_part_de_la_gauche()
     {
-        // 178 × 20, f = 0,25 : front à x = 133,5 ; cordon à droite.
+        // 178 × 20, f = 0,25 consommé : front à x = 44,5 ; cordon à gauche (plan 43-06).
         var img = Rendre(Fusible(Orientation.Horizontal, 0.25), 178, 20);
 
-        Assert.True(EstRouge(img.Couleur(170, 10)), $"cordon attendu à droite : {img.Couleur(170, 10)}");
-        Assert.False(EstRouge(img.Couleur(40, 10)), $"la part brûlée (gauche) ne doit pas être rouge : {img.Couleur(40, 10)}");
-        Assert.True(EstClair(img.Couleur(134, 10)), $"étincelle claire attendue au front : {img.Couleur(134, 10)}");
+        Assert.True(EstRouge(img.Couleur(20, 10)), $"cordon attendu à gauche : {img.Couleur(20, 10)}");
+        Assert.False(EstRouge(img.Couleur(150, 10)), $"le temps restant (droite) ne doit pas être rouge : {img.Couleur(150, 10)}");
+        Assert.True(EstClair(img.Couleur(44, 10)), $"étincelle claire attendue au front : {img.Couleur(44, 10)}");
     }
 
     // ------------------------------------------------------------------------------------------------
@@ -176,12 +176,13 @@ public class ControlesCadransOrientationTests
     }
 
     [WpfFact]
-    public void Maree_verticale_inchangee_lumiere_par_le_haut()
+    public void Maree_verticale_lumiere_par_le_bas()
     {
+        // Plan 43-06 : la lumière (temps consommé) monte du bas, comme une marée montante.
         var img = Rendre(Maree(Orientation.Vertical, 0.5), 42, 118);
 
-        Assert.True(EstRouge(img.Couleur(21, 20)), $"lumière attendue en haut : {img.Couleur(21, 20)}");
-        Assert.False(EstRouge(img.Couleur(21, 100)), $"l'ombre (bas) ne doit pas être rouge : {img.Couleur(21, 100)}");
+        Assert.True(EstRouge(img.Couleur(21, 100)), $"lumière attendue en bas : {img.Couleur(21, 100)}");
+        Assert.False(EstRouge(img.Couleur(21, 20)), $"l'ombre (haut) ne doit pas être rouge : {img.Couleur(21, 20)}");
     }
 
     // ------------------------------------------------------------------------------------------------
@@ -189,13 +190,13 @@ public class ControlesCadransOrientationTests
     // ------------------------------------------------------------------------------------------------
 
     [WpfFact]
-    public void Volets_verticaux_allumes_en_haut()
+    public void Volets_verticaux_allumes_depuis_le_bas()
     {
-        // 16 × 104, 6 volets : hauteur (104 − 5 × 2,5) / 6 = 15,25 ; écart 15,25..17,75 ; 3 allumés.
+        // 16 × 104, 6 volets : hauteur (104 − 5 × 2,5) / 6 = 15,25 ; écart 15,25..17,75 ; 3 allumés, depuis le bas (43-06).
         var img = Rendre(Volets(Orientation.Vertical, 0.5), 16, 104);
 
-        Assert.True(EstClair(img.Couleur(8, 7)), $"premier volet (haut) allumé : {img.Couleur(8, 7)}");
-        Assert.True(EstEteint(img.Couleur(8, 100)), $"dernier volet (bas) éteint : {img.Couleur(8, 100)}");
+        Assert.True(EstClair(img.Couleur(8, 100)), $"volet du bas allumé : {img.Couleur(8, 100)}");
+        Assert.True(EstEteint(img.Couleur(8, 7)), $"volet du haut éteint : {img.Couleur(8, 7)}");
         Assert.Equal(0, img.Couleur(8, 16).A);
     }
 
@@ -252,10 +253,10 @@ public class ControlesCadransOrientationTests
         // Pixel dans la zone quota à f = 0,5, hors du trait de grain central.
         (int X, int Y) p = (controle, o) switch
         {
-            ("Fusible", Orientation.Horizontal) => (150, 13),   // cordon 89..178 × 5..15
+            ("Fusible", Orientation.Horizontal) => (28, 13),    // cordon 0..89 × 5..15
             ("Fusible", _) => (13, 115),                        // cordon 5..15 × 69..138
             ("Maree", Orientation.Horizontal) => (25, 16),      // lumière 0..51
-            _ => (21, 30),                                      // lumière 0..59
+            _ => (21, 90),                                      // lumière 59..118
         };
 
         var plancher = Rendre(Controle(controle, o, hasData: true, estime: true), w, h).Couleur(p.X, p.Y);

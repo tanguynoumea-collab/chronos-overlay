@@ -157,6 +157,9 @@ public static class GeometrieCadrans
         return volets;
     }
 
+    /// <summary>Le volet d'indice <paramref name="i"/> (ordre de <see cref="Volets"/>) est-il allumé, <paramref name="lit"/> volets étant allumés ?</summary>
+    public static bool VoletAllume(int i, int n, int lit, Orientation axe) => i < lit;
+
     /// <summary>Nombre de volets allumés : Round(f · n), milieu arrondi loin de zéro ; NaN / négatif → 0.</summary>
     public static int VoletsAllumes(double fraction, int n)
         => (int)Math.Round(Normaliser(fraction) * Math.Max(1, n), MidpointRounding.AwayFromZero);
