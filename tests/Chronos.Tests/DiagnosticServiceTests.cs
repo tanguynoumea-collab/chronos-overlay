@@ -1809,7 +1809,84 @@ public class DiagnosticServiceTests : IDisposable
     {
         var report = await RapportAvecSettings("{\"ThemeKey\":\"nord\"");
 
-        Assert.Contains("Réglages (settings.json) : illisible — défauts entiers", report);
+        Assert.Contains("Réglages (settings.json) : illisible — original mis en quarantaine à la première écriture, défauts", report);
+    }
+
+    // 42.2-02 (MAT-4 a) — le diagnostic dit la lecture de DÉMARRAGE, les lectures non abouties, la quarantaine et le blocage.
+
+    private static (ChronosPaths paths, SettingsService settings, DiagnosticService diag) MontageReglages42(string? json)
+    {
+        var paths = TempPaths();
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(paths.SettingsFile)!);
+        if (json is not null) System.IO.File.WriteAllText(paths.SettingsFile, json);
+        var settings = new SettingsService(paths);
+        var diag = new DiagnosticService(paths, settings, new StubProvider(UsageSnapshot.Empty), new FakeClock(DateTimeOffset.UtcNow));
+        return (paths, settings, diag);
+    }
+
+    private static string LigneReglages(string report) =>
+        report.Split('\n').Single(l => l.Contains("Réglages (settings.json) :", StringComparison.Ordinal));
+
+    [Fact]
+    public async Task Rapport_dit_la_lecture_de_demarrage_et_non_la_relecture()
+    {
+        var (paths, settings, diag) = MontageReglages42("{\"ThemeKey\":\"nord\"");
+        settings.ChargerPourDemarrage();
+        System.IO.File.WriteAllText(paths.SettingsFile, "{\"ThemeKey\":\"nord\"}");   // réparé après le démarrage
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("illisible", LigneReglages(report));
+        Assert.Contains("lectures non abouties depuis le démarrage : 1", report);
+    }
+
+    [Fact]
+    public async Task Rapport_sans_lecture_de_demarrage_dit_la_relecture_fraiche()
+    {
+        var (_, _, diag) = MontageReglages42("{\"ThemeKey\":\"nord\"}");
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("lus, aucune valeur retombée", LigneReglages(report));
+        Assert.DoesNotContain("lectures non abouties", report);
+        Assert.DoesNotContain("QUARANTAINE", report);
+        Assert.DoesNotContain("ÉCRITURE BLOQUÉE", report);
+    }
+
+    [Fact]
+    public async Task Rapport_nomme_la_quarantaine_apres_un_Modifier_sur_fichier_illisible()
+    {
+        var (_, settings, diag) = MontageReglages42("{\"ThemeKey\":\"nord\"");
+        settings.Modifier(s => s with { ThemeKey = "rose" });
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("QUARANTAINE", report);
+        Assert.Matches(@"settings\.illisible-\d{8}-\d{6}(-\d+)?\.json", report);
+    }
+
+    [Fact]
+    public async Task Rapport_signale_l_ecriture_bloquee_et_sa_cause()
+    {
+        var (paths, settings, diag) = MontageReglages42("{\"ThemeKey\":\"nord\"");
+        using (new System.IO.FileStream(paths.SettingsFile, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+            settings.Modifier(s => s with { ThemeKey = "rose" });   // quarantaine impossible
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("ÉCRITURE BLOQUÉE : quarantaine impossible", report);
+    }
+
+    [Fact]
+    public async Task Rapport_libelle_une_lecture_inaccessible()
+    {
+        var (paths, settings, diag) = MontageReglages42("{\"ThemeKey\":\"nord\"}");
+        using (new System.IO.FileStream(paths.SettingsFile, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.None))
+            settings.ChargerPourDemarrage();
+
+        var report = await diag.BuildReportAsync();
+
+        Assert.Contains("inaccessible (E/S) — défauts en mémoire, aucune écriture tant qu'elle dure", LigneReglages(report));
     }
 
     [Fact]
