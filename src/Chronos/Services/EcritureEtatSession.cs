@@ -62,6 +62,7 @@ public static class EcritureEtatSession
         if (resultat.Ignore || string.IsNullOrEmpty(resultat.SessionId)) return ResultatEcritureEtat.Reussie;
 
         // SEC-2 — défense en profondeur : le processeur refuse déjà ces identifiants, mais un résultat peut être construit ailleurs.
+        // SEC-R1 (42.2-11) : motif ancré par « \z » (fin ABSOLUE) — « $ » laissait passer un saut de ligne final (« abc\n »).
         if (!SessionHookProcessor.IdentifiantSessionValide(resultat.SessionId))
             return ResultatEcritureEtat.Echouee("session_id refusé (hors motif) : rien n'est écrit ni supprimé");
 

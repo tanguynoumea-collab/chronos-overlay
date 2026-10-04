@@ -342,7 +342,9 @@ public sealed class DiagnosticService
         {
             if (File.Exists(claudeSettings))
             {
-                using var sd = JsonDocument.Parse(File.ReadAllText(claudeSettings));
+                // DIAG-R1 (42.2-11) : options tolérantes du réconciliateur (commentaires, virgules finales) — un settings.json
+                // édité à la main ne se lit plus « lecture impossible ».
+                using var sd = JsonDocument.Parse(File.ReadAllText(claudeSettings), ClaudeSettingsJson.LectureTolerante);
                 var present = new List<string>();
                 string? hookExe = null;
                 if (sd.RootElement.TryGetProperty("hooks", out var hks) && hks.ValueKind == JsonValueKind.Object)
@@ -358,7 +360,9 @@ public sealed class DiagnosticService
                             foreach (var h in hs.EnumerateArray())
                             {
                                 var cmd = h.TryGetProperty("command", out var cc) && cc.ValueKind == JsonValueKind.String ? cc.GetString() : null;
-                                if (cmd is null || !cmd.Contains("--hook")) continue;
+                                // DIAG-R1 (42.2-11) : même filtre d'APPARTENANCE que le réconciliateur — un hook tiers dont la
+                                // commande contient « --hook » n'est pas un hook Chronos.
+                                if (!ClaudeSettingsJson.IsChronosCommand(cmd, ClaudeSettingsJson.HookMarker)) continue;
                                 present.Add(ev);
                                 hookExe ??= cmd;
                             }

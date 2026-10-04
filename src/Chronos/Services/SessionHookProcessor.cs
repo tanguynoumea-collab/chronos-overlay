@@ -59,8 +59,9 @@ public static class SessionHookProcessor
     public const string SuffixeSousAgent = " (sous-agent)";
 
     // SEC-2 : le motif des identifiants de session acceptés (UUID de Claude Code, et toute forme courte des fixtures).
+    // SEC-R1 (42.2-11) : « \z » et non « $ » — en .NET, « $ » accepte un « \n » final (« abc\n » passait).
     private static readonly Regex MotifIdentifiantSession =
-        new("^[A-Za-z0-9_-]{1,128}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        new(@"^[A-Za-z0-9_-]{1,128}\z", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>SEC-2 — un <c>session_id</c> devient un NOM DE FICHIER (<c>{session_id}.json</c>) : seuls lettres ASCII, chiffres,
     /// « _ » et « - », 1 à 128 caractères. Ni séparateur, ni « .. », ni lecteur, ni espace : rien ne peut sortir du dossier.</summary>

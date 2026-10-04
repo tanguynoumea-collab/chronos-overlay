@@ -47,7 +47,8 @@ public static class ClaudeSettingsJson
 
     // Lecture volontairement permissive : un settings.json édité à la main peut contenir des
     // commentaires « // » et une virgule traînante — les deux lèvent avec les options par défaut.
-    private static readonly JsonDocumentOptions LectureTolerante = new()
+    // DIAG-R1 (42.2-11) : publiques pour que le diagnostic lise le fichier avec les MÊMES options que le réconciliateur.
+    public static readonly JsonDocumentOptions LectureTolerante = new()
     {
         CommentHandling = JsonCommentHandling.Skip,   // sinon « // » lève JsonReaderException
         AllowTrailingCommas = true,

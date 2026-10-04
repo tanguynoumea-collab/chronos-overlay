@@ -120,6 +120,8 @@ public partial class App : Application
                 var bilanAutostart = _host.Services.GetRequiredService<IAutostartService>().ConvergerVersExeCourant();
                 if (bilanAutostart == BilanAutostart.Repointe)
                     JournalIncidents.Signaler(DossierJournal, "autostart : raccourci shell:startup repointé vers l'exe courant (" + Environment.ProcessPath + ")");
+                else if (bilanAutostart == BilanAutostart.Ignore)   // PKG-R1 (42.2-11) : plus de « dernier lancé gagne »
+                    JournalIncidents.Signaler(DossierJournal, "autostart : raccourci conservé : l'exe courant (" + Environment.ProcessPath + ") est un build de développement, une copie temporaire ou n'est pas plus récent que la cible");
                 else if (bilanAutostart == BilanAutostart.Echec)
                     JournalIncidents.Signaler(DossierJournal, "autostart : raccourci shell:startup non repointé — l'ancienne version pourrait démarrer au prochain redémarrage");
             }

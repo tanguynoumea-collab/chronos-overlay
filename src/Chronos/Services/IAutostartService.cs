@@ -11,6 +11,9 @@ public enum BilanAutostart
     Repointe,
     /// <summary>Le raccourci vise un autre exe (ou est illisible) et n'a pas pu être réécrit.</summary>
     Echec,
+    /// <summary>PKG-R1 (42.2-11) : le raccourci vise un autre exe et est VOLONTAIREMENT conservé — l'exe courant est un build
+    /// de développement (<c>bin\</c>), une copie sous le dossier temporaire, ou n'est pas strictement plus récent que la cible.</summary>
+    Ignore,
 }
 
 /// <summary>Pilote le lancement au démarrage Windows via un raccourci shell:startup (DEP-02).</summary>
