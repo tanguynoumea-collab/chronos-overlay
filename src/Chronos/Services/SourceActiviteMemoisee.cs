@@ -13,7 +13,8 @@ namespace Chronos.Services;
 ///
 /// La durée de validité est AUSSI la tolérance de certification : un journal dont le <c>Now</c> a 45 s ne
 /// dit rien de ces 45 s, donc un « aucune activité » qu'il fonde n'est valable qu'à 45 s près. C'est
-/// pourquoi elle est courte et pourquoi elle ne doit PAS être allongée par confort de performance.
+/// pourquoi elle est courte et pourquoi elle ne doit PAS être allongée par confort de performance. Pour
+/// la même raison, une panne de la source ne rend jamais un journal périmé (DS2-02) : l'échec remonte.
 ///
 /// Verrou : le motif éprouvé de ChronosTokenAuthority (SemaphoreSlim(1,1) + double vérification). Deux
 /// passes concurrentes liraient 1 072 Mo simultanément ; le coût du verrou est nul en comparaison.
@@ -48,19 +49,16 @@ public sealed class SourceActiviteMemoisee : ITranscriptActivitySource
             // Double vérification : N demandeurs entrés ensemble ne produisent qu'UNE passe disque.
             if (EncoreValide(_journal, _horloge.UtcNow) && _journal is { } dejaFait) return dejaFait;
 
-            try
-            {
-                _journal = await _inner.ReadAsync(ct).ConfigureAwait(false);
-            }
-            catch when (_journal is not null)
-            {
-                // Une panne de la source ne doit pas effacer ce qu'on savait : le dernier journal connu
-                // reste servable, et sa propre péremption le retirera du jeu le moment venu.
-            }
-
-            // Ici _journal est forcément non-null : soit la passe vient de réussir, soit le filtre du
-            // catch ci-dessus n'a laissé passer l'exception que parce qu'un journal connu existait.
-            return _journal!;
+            // Hors de sa validité, le journal mémorisé n'est JAMAIS rendu, même si la relecture échoue : il
+            // ne dit rien de l'intervalle écoulé depuis sa passe disque, et le rendre laisserait la doctrine
+            // certifier « encore valide » un relevé alors que Claude Code a pu travailler (DS2-02). La
+            // validité (60 s, tolérance de certification) est servie par le chemin rapide et la double
+            // vérification ; au point d'échec, le journal est par construction hors validité — un catch
+            // filtré sur EncoreValide serait du code mort. L'exception remonte : la tête
+            // (LastExactUsageProvider) la convertit en journal nul, donc en « Indisponible » — jamais en
+            // « exact ».
+            _journal = await _inner.ReadAsync(ct).ConfigureAwait(false);
+            return _journal;
         }
         finally { _verrou.Release(); }
     }

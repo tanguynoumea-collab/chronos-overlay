@@ -89,7 +89,10 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
 
     /// <summary>
     /// Passe disque : matérialise (instant, tokens) pour chaque réponse assistant récente, puis rend un
-    /// journal pur interrogeable N fois. Ne lève jamais sur une source défaillante.
+    /// journal pur interrogeable N fois. Un fichier DISPARU entre l'énumération et la lecture est ignoré ;
+    /// un fichier PRÉSENT mais illisible (partage refusé, accès refusé) fait échouer la passe : un journal
+    /// amputé de son activité affirmerait « aucune activité » et ne doit rien certifier (DS2-02). L'appelant
+    /// (LastExactUsageProvider) convertit cet échec en « Indisponible ».
     ///
     /// Depuis 42.3 la passe est INCRÉMENTALE : seuls les fichiers dont (taille, mtime) a changé — ou encore
     /// « chauds » — sont relus ; les autres sont repris du cache. Le journal est ensuite reconstruit en
@@ -121,11 +124,13 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
                 try
                 {
                     var info = new FileInfo(file);
-                    taille = info.Length;                                 // fichier disparu -> FileNotFoundException (IOException)
+                    taille = info.Length;                                 // fichier disparu -> FileNotFoundException
                     mtime = info.LastWriteTimeUtc;
                 }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
                 {
+                    // Disparu entre l'énumération et la lecture : aucune activité à perdre -> ignoré ET oublié.
+                    // Toute autre IOException / UnauthorizedAccessException remonte (DS2-02).
                     _cache.Remove(file);
                     continue;
                 }
@@ -143,7 +148,7 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
                 var lignes = await LireFichierAsync(file, ct).ConfigureAwait(false);
                 if (lignes is null)
                 {
-                    _cache.Remove(file);                                  // illisible : ignoré ET oublié
+                    _cache.Remove(file);                                  // disparu : ignoré ET oublié
                     continue;
                 }
 
@@ -180,13 +185,16 @@ public sealed class TranscriptActivityProvider : ITranscriptActivitySource
     }
 
     // Lecture intégrale et tolérante d'un fichier : TOUTES les lignes assistant, futures comprises.
-    // null si le fichier ne peut pas être ouvert (IOException) — l'appelant l'ignore et le retire du cache.
+    // null si le fichier a DISPARU (FileNotFound / DirectoryNotFound) — l'appelant l'ignore et le retire du
+    // cache. Un fichier PRÉSENT mais illisible (partage refusé, accès refusé) laisse remonter l'exception :
+    // la passe échoue au lieu de rendre un journal amputé de l'activité de ce fichier — qui est, par
+    // construction, un fichier modifié ou chaud, les autres étant servis du cache sans ouverture (DS2-02).
     private static async Task<IReadOnlyList<LigneAssistant>?> LireFichierAsync(string file, CancellationToken ct)
     {
         FileStream? fs = null;
         // FileShare.ReadWrite : Claude Code ecrit le transcript en parallele.
         try { fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); }
-        catch (IOException) { return null; }
+        catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException) { return null; }
 
         var lignes = new List<LigneAssistant>();
         await using (fs)
