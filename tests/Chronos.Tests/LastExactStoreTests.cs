@@ -392,4 +392,99 @@ public class LastExactStoreTests : IDisposable
         Assert.Equal(Path.Combine(_dir, "historique"), paths.HistoriqueDir);
         Assert.StartsWith(_dir, paths.HistoriqueDir);
     }
+
+    // --- DS2-03 / D-03 (décision VERROUILLÉE « Les effacer ») : la déconnexion oublie le dernier relevé exact ---
+    // Après « Se déconnecter », le last-exact.json de l'ancien compte ne doit plus rester affiché « exact — encore
+    // valide » jusqu'au reset. Le magasin retient l'INSTANT de l'oubli et refuse toute fenêtre capturée avant.
+
+    [Fact]
+    public void L_oubli_supprime_le_fichier_et_plus_rien_n_est_relu()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        var store = new LastExactStore(_fichier);
+        store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now.AddMinutes(-1)),
+            Exact(WindowKind.SevenDay, 0.63, Now.AddDays(4), Now.AddMinutes(-1))));
+        Assert.True(File.Exists(_fichier));
+
+        store.OublierDernierReleve(Now);
+
+        Assert.False(File.Exists(_fichier));
+        Assert.Null(store.Load(Now));
+        Assert.False(store.UnExactADejaEteObtenu());
+        Assert.Null(store.DerniereEcriture);
+    }
+
+    [Fact]
+    public void Une_ecriture_capturee_avant_l_oubli_est_refusee()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        var store = new LastExactStore(_fichier);
+        store.OublierDernierReleve(Now);
+
+        // Relevé de l'ancien compte (cache d'un provider, sonde partie avant la déconnexion) : refusé sans bruit.
+        store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now.AddSeconds(-10)),
+            Exact(WindowKind.SevenDay, 0.63, Now.AddDays(4), Now.AddSeconds(-10))));
+
+        Assert.False(File.Exists(_fichier));
+    }
+
+    [Fact]
+    public void Une_ecriture_capturee_apres_l_oubli_est_acceptee()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        var store = new LastExactStore(_fichier);
+        store.OublierDernierReleve(Now);
+
+        store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.12, Now.AddHours(3), Now.AddSeconds(1)),
+            WindowState.Unavailable(WindowKind.SevenDay)));
+
+        Assert.True(File.Exists(_fichier));
+        Assert.Equal(0.12, store.Load(Now.AddSeconds(2))!.FiveHour!.Utilization);
+    }
+
+    [Fact]
+    public void Un_oubli_rate_ne_sert_quand_meme_plus_l_ancien_releve()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        var store = new LastExactStore(_fichier);
+        store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now.AddMinutes(-1)),
+            Exact(WindowKind.SevenDay, 0.63, Now.AddDays(4), Now.AddMinutes(-1))));
+
+        using (new FileStream(_fichier, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            store.OublierDernierReleve(Now);   // ne lève jamais
+
+            Assert.NotNull(store.DerniereErreur);
+            Assert.True(File.Exists(_fichier));   // l'effacement a bien raté…
+            Assert.Null(store.Load(Now));         // …mais l'ancien relevé n'est plus servi
+            Assert.False(store.UnExactADejaEteObtenu());
+        }
+
+        // Fichier relâché : toujours rien de servi, et (amendement orchestrateur) l'appel suivant RETENTE
+        // l'effacement — le fichier de l'ancien compte ne survit pas au prochain redémarrage.
+        Assert.Null(store.Load(Now));
+        Assert.False(File.Exists(_fichier));
+        Assert.False(store.UnExactADejaEteObtenu());
+    }
+
+    [Fact]
+    public void L_oubli_ne_touche_pas_l_historique()
+    {
+        var historique = Path.Combine(_dir, "historique", "releves-2026-09.jsonl");
+        Assert.StartsWith(Path.GetTempPath(), historique);
+        Directory.CreateDirectory(Path.GetDirectoryName(historique)!);
+        File.WriteAllText(historique, "{}\n");
+        var store = new LastExactStore(_fichier);
+        store.Save(Snap(
+            Exact(WindowKind.FiveHour, 0.42, Now.AddHours(3), Now.AddMinutes(-1)),
+            WindowState.Unavailable(WindowKind.SevenDay)));
+
+        store.OublierDernierReleve(Now);
+
+        Assert.True(File.Exists(historique));   // effacement VOLONTAIRE et ciblé : l'Historique n'est pas concerné
+    }
 }

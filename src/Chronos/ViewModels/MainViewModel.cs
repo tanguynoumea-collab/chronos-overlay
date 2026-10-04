@@ -40,6 +40,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IEtatServeur? _etatServeur;
     private readonly IEtatJournal? _journal;       // JRN-04 : ce que le journal des relevés dit de lui-même (optionnel)
     private readonly IEtatReconstruction? _reconstruction;   // TOK-02 : ce que la reconstruction des agrégats dit d'elle-même (optionnel, bandeau F2 en phase 34)
+    private readonly IOubliDernierReleve? _oubliReleve;   // DS2-03 / D-03 : efface le dernier relevé exact à la déconnexion (optionnel)
     private readonly IOuvreurHistorique? _ouvreurHistorique;   // ACC-02 : ouvre / ramène la fenêtre Historique (optionnel)
     private readonly DateTimeOffset _demarrage;    // JRN-04 / D-32-21 : référence basse de « muet » (instant de construction du VM)
 
@@ -448,7 +449,8 @@ public sealed partial class MainViewModel : ObservableObject
         IEtatReconstruction? reconstruction = null,
         IOuvreurHistorique? ouvreurHistorique = null,
         HistoriqueViewModel? historique = null,
-        IPressePapiers? pressePapiers = null)
+        IPressePapiers? pressePapiers = null,
+        IOubliDernierReleve? oubliReleve = null)
     {
         _ui = ui;
         _clock = clock;
@@ -460,6 +462,7 @@ public sealed partial class MainViewModel : ObservableObject
         _diagnostic = diagnostic;
         _oauthLogin = oauthLogin;
         _sessions = sessions;
+        _oubliReleve = oubliReleve;               // DS2-03 / D-03 : optionnel, en fin de liste (motif 32-05 / 33-05)
         _ouvreurHistorique = ouvreurHistorique;   // ACC-02 : optionnel, en fin de liste (motif 32-05 / 33-05)
         Historique = historique;                  // ACC-01 / D-35-08 : le singleton de la fenêtre, partagé avec la carte des réglages
         _settings = settings.Load();

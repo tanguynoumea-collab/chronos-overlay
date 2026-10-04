@@ -129,4 +129,38 @@ public class GardesReliquatsTests
         Assert.Contains("Cowork", section4, StringComparison.Ordinal);
         Assert.Contains("hypothèse : voir §4", texte, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// DS2-03 / D-03 — décision utilisateur du 2026-10-04 (« Les effacer ») : la déconnexion efface le dernier relevé exact,
+    /// et c'est ÉCRIT en §4 de data-sources.md, à côté de l'hypothèse « encore valide » qu'elle borne.
+    /// </summary>
+    [Fact]
+    public void La_deconnexion_qui_efface_le_dernier_releve_est_ecrite()
+    {
+        var docs = CheminDocs();
+        Assert.False(string.IsNullOrWhiteSpace(docs), "L'attribut AssemblyMetadata(\"CheminDocsChronos\") manque.");
+        var sources = Path.Combine(docs, "data-sources.md");
+        Assert.True(File.Exists(sources), $"data-sources.md introuvable : {sources}");
+        var texte = File.ReadAllText(sources);
+        var debut4 = texte.IndexOf("\n## 4.", StringComparison.Ordinal);
+        var debut5 = texte.IndexOf("\n## 5.", StringComparison.Ordinal);
+        Assert.True(debut4 >= 0 && debut5 > debut4, "Sections « ## 4. » / « ## 5. » introuvables dans data-sources.md");
+        Assert.Contains("La déconnexion efface le dernier relevé exact", texte[debut4..debut5], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// DS2-03 / D-03 — l'oubli vise la MÊME instance de magasin que la tête : un second LastExactStore n'aurait pas
+    /// l'instant d'oubli et laisserait la tête réécrire le relevé de l'ancien compte. Et la commande du menu l'appelle.
+    /// </summary>
+    [Fact]
+    public void L_oubli_du_dernier_releve_est_cable_sur_la_meme_instance_que_la_tete()
+    {
+        var racine = CheminSources();
+        Assert.False(string.IsNullOrWhiteSpace(racine), "L'attribut AssemblyMetadata(\"CheminSourcesChronos\") manque.");
+        var app = File.ReadAllText(Path.Combine(racine, "App.xaml.cs"));
+        Assert.Contains("AddSingleton<IOubliDernierReleve>(sp => sp.GetRequiredService<LastExactStore>())", app, StringComparison.Ordinal);
+        var vm = File.ReadAllText(Path.Combine(racine, "ViewModels", "MainViewModel.cs"));
+        Assert.Contains("IOubliDernierReleve? oubliReleve = null", vm, StringComparison.Ordinal);
+        Assert.Contains("_oubliReleve?.OublierDernierReleve(_clock.UtcNow)", vm, StringComparison.Ordinal);
+    }
 }

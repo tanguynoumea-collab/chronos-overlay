@@ -79,7 +79,7 @@ public class MainViewModelTests
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
         RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null,
         FakeEtatJournal? journal = null, FakeEtatReconstruction? reconstruction = null,
-        FakeOuvreurHistorique? ouvreur = null)
+        FakeOuvreurHistorique? ouvreur = null, FakeOubliDernierReleve? oubli = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
@@ -91,7 +91,8 @@ public class MainViewModelTests
         // est optionnel et en dernière position précisément pour que le compte de sites reste à 2.
         return new MainViewModel(orch, ui, clock, controller, autostart, settings, diag,
             login ?? new FakeOAuthLogin(), new FakeSessionsController(),
-            auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction, ouvreurHistorique: ouvreur);
+            auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction, ouvreurHistorique: ouvreur,
+            oubliReleve: oubli);
     }
 
     private static MainViewModel NewVmFull(
@@ -553,9 +554,9 @@ public class MainViewModelTests
     /// <summary>Monte un VM de test avec un FakeAuthStatus (et éventuellement un FakeOAuthLogin
     /// observable). Tous les fakes non observés sont neutres ; l'orchestrateur n'est PAS démarré.</summary>
     private static MainViewModel VmAuth(FakeUiDispatcher ui, FakeAuthStatus auth,
-                                        FakeOAuthLogin? login = null)
+                                        FakeOAuthLogin? login = null, FakeOubliDernierReleve? oubli = null)
         => Build(ui, new FakeClock(Now), new FakeUsageProvider(), new FakeWindowController(),
-                 new FakeAutostartService(), new SettingsService(TempPaths()), login: login, auth: auth);
+                 new FakeAutostartService(), new SettingsService(TempPaths()), login: login, auth: auth, oubli: oubli);
 
     [Fact]
     public void L_etat_d_authentification_initial_est_applique_DES_le_ctor()
@@ -671,7 +672,8 @@ public class MainViewModelTests
         await vm.LoginClaudeCommand.ExecuteAsync(null);
 
         Assert.Equal(1, login.LogoutCount);
-        Assert.Equal(1, auth.ReinitCount);    // l'autorité oublie ses jetons : le coffre effacé n'est pas recréé
+        // Séquence D-03 (amendement 42.4-03) : réarmement AVANT le Logout puis de nouveau APRÈS.
+        Assert.Equal(2, auth.ReinitCount);    // l'autorité oublie ses jetons : le coffre effacé n'est pas recréé
         Assert.False(vm.IsLoggedIn);
     }
 
@@ -685,12 +687,13 @@ public class MainViewModelTests
         await vm.LoginClaudeCommand.ExecuteAsync(null);
 
         Assert.Equal(1, login.LoginCount);
-        Assert.Equal(1, auth.ReinitCount);    // le coffre du nouveau login est relu, jamais écrasé par l'ancien
+        // Séquence D-03 (amendement 42.4-03) : réarmement AVANT le login puis de nouveau APRÈS.
+        Assert.Equal(2, auth.ReinitCount);    // le coffre du nouveau login est relu, jamais écrasé par l'ancien
         Assert.True(vm.IsLoggedIn);
     }
 
     [Fact]
-    public async Task LoginClaudeCommand_login_ECHOUE_ne_rearme_pas_l_autorite()
+    public async Task LoginClaudeCommand_login_ECHOUE_ne_fait_que_le_rearmement_d_avant_le_login()
     {
         var login = new FakeOAuthLogin { LoggedIn = false, LoginDoitReussir = false };
         var auth = new FakeAuthStatus();
@@ -699,8 +702,79 @@ public class MainViewModelTests
         await vm.LoginClaudeCommand.ExecuteAsync(null);
 
         Assert.Equal(1, login.LoginCount);
-        Assert.Equal(0, auth.ReinitCount);    // aucun jeton neuf : rien à relire
+        // D-03 (amendement 42.4-03) : la PREMIÈRE paire (oubli + réarmement) précède le login, donc reste faite ;
+        // la seconde, comme en 42.3, n'a lieu que sur un login réussi (aucun jeton neuf : rien à relire).
+        Assert.Equal(1, auth.ReinitCount);
         Assert.False(vm.IsLoggedIn);
+    }
+
+    // --- DS2-03 / D-03 (décision VERROUILLÉE « Les effacer ») : la commande du menu oublie le dernier relevé exact ---
+    // Séquence (amendement orchestrateur) : oubli ; réarmement ; Logout()|LoginAsync() ; réarmement ; oubli.
+    // Le premier oubli ferme la porte AVANT que le coffre ne change ; le second rattrape un relevé de l'ancien
+    // compte arrivé pendant le login (navigateur ouvert plusieurs secondes).
+
+    [Fact]
+    public async Task Se_deconnecter_oublie_le_dernier_releve_AVANT_le_logout()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = true };
+        var auth = new FakeAuthStatus();
+        var oubli = new FakeOubliDernierReleve();
+        var moments = new List<(int Logouts, int Reinits)>();
+        oubli.QuandAppele = () => moments.Add((login.LogoutCount, auth.ReinitCount));
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login, oubli: oubli);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, oubli.Appels);
+        Assert.Equal(Now, oubli.Dernier);              // horloge du VM
+        Assert.Equal((0, 0), moments[0]);              // premier oubli : avant le réarmement et avant le Logout
+        Assert.Equal((1, 2), moments[1]);              // second oubli : après le Logout et le second réarmement
+        Assert.Equal(1, login.LogoutCount);
+    }
+
+    [Fact]
+    public async Task Changer_de_compte_oublie_le_dernier_releve_AVANT_le_login()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = false };
+        var auth = new FakeAuthStatus();
+        var oubli = new FakeOubliDernierReleve();
+        var moments = new List<(int Logins, int Reinits)>();
+        oubli.QuandAppele = () => moments.Add((login.LoginCount, auth.ReinitCount));
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, auth, login: login, oubli: oubli);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, oubli.Appels);
+        Assert.Equal((0, 0), moments[0]);              // effacement AVANT le login du nouveau compte
+        Assert.Equal((1, 2), moments[1]);
+    }
+
+    [Fact]
+    public async Task Changer_de_compte_avec_login_ECHOUE_oublie_quand_meme_avant_le_login()
+    {
+        var login = new FakeOAuthLogin { LoggedIn = false, LoginDoitReussir = false };
+        var oubli = new FakeOubliDernierReleve();
+        var loginsAuMoment = -1;
+        oubli.QuandAppele = () => loginsAuMoment = login.LoginCount;
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, new FakeAuthStatus(), login: login, oubli: oubli);
+
+        await vm.LoginClaudeCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, oubli.Appels);                 // la première paire seulement (sortie anticipée de 42.3)
+        Assert.Equal(0, loginsAuMoment);
+    }
+
+    [Fact]
+    public async Task Reconnecter_depuis_la_pastille_n_oublie_rien()
+    {
+        // « Répare-moi » : même compte dans la quasi-totalité des cas — effacer masquerait un chiffre vrai.
+        var login = new FakeOAuthLogin { LoggedIn = true };
+        var oubli = new FakeOubliDernierReleve();
+        var vm = VmAuth(new FakeUiDispatcher { OnUiThread = true }, new FakeAuthStatus(), login: login, oubli: oubli);
+
+        await vm.ReconnecterCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, oubli.Appels);
     }
 
     [Fact]

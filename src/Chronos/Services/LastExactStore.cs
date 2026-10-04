@@ -36,7 +36,7 @@ namespace Chronos.Services;
 /// qui a fondé une phase : la copie copy-on-write du paquet MSIX, lue depuis une session, alors que le
 /// fichier réel était réécrit chaque minute. L'ÉCRITURE ne se tait plus ; la LECTURE reste tolérante.
 /// </summary>
-public sealed class LastExactStore : IEtatMagasin
+public sealed class LastExactStore : IEtatMagasin, IOubliDernierReleve
 {
     /// <summary>
     /// Version du schéma persisté. Une version inconnue est refusée EN BLOC plutôt que devinée :
@@ -75,6 +75,10 @@ public sealed class LastExactStore : IEtatMagasin
         }
         catch { DerniereEcriture = null; }
     }
+
+    // DS2-03 — provisoire (RED) : aucun comportement.
+    public void OublierDernierReleve(DateTimeOffset instant) { }
+    public bool AnterieurAOubli(WindowState w) => false;
 
     /// <summary>Fichier effectivement piloté (injecté, donc isolable en test).</summary>
     public string Path => _path;

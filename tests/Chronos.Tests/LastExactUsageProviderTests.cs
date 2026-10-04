@@ -412,4 +412,79 @@ public class LastExactUsageProviderTests : IDisposable
 
         Assert.True(snap.UnExactADejaEteObtenu);
     }
+
+    // --- DS2-03 / D-03 : après la déconnexion, un relevé de l'ancien compte n'est plus jamais exact ---
+    // Les caches RAM des providers (sonde : 300 s ; secours OAuth) servent encore l'exact de l'ancien compte
+    // quand le jeton devient null ; une sonde partie avant la déconnexion rapporte un CapturedAt antérieur.
+    // La tête les démote, et le magasin refuse de les réécrire.
+
+    [Fact]
+    public async Task Apres_l_oubli_un_releve_de_l_ancien_compte_servi_par_un_cache_n_est_plus_exact()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        _store.OublierDernierReleve(Now);
+        var inner = new FakeUsageProvider
+        {
+            Next = Snap(
+                Win(WindowKind.FiveHour, SourceReliability.Exact, 0.42, Now.AddHours(3), Now.AddMinutes(-1)),
+                Win(WindowKind.SevenDay, SourceReliability.Exact, 0.63, Now.AddDays(4), Now.AddMinutes(-1))),
+        };
+
+        var snap = await Deco(inner).GetAsync();
+
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+        Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
+        Assert.Null(snap.FiveHour.Utilization);
+        Assert.Null(snap.SevenDay.Utilization);
+        Assert.False(File.Exists(_fichier));
+    }
+
+    [Fact]
+    public async Task Un_rafraichissement_en_vol_avant_l_oubli_ne_reecrit_pas_le_fichier()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        using var gate = new ManualResetEventSlim(false);
+        var inner = new FakeUsageProvider
+        {
+            Gate = gate,
+            Next = Snap(
+                Win(WindowKind.FiveHour, SourceReliability.Exact, 0.42, Now.AddHours(3), Now.AddSeconds(-5)),
+                Win(WindowKind.SevenDay, SourceReliability.Exact, 0.63, Now.AddDays(4), Now.AddSeconds(-5))),
+        };
+        var deco = Deco(inner);
+
+        var enVol = Task.Run(() => deco.GetAsync());
+        var limite = DateTime.UtcNow.AddSeconds(10);
+        while (inner.GetCount < 1 && DateTime.UtcNow < limite) await Task.Delay(5);
+        Assert.Equal(1, inner.GetCount);
+
+        _store.OublierDernierReleve(Now);   // « Se déconnecter » pendant que la sonde est en vol
+        gate.Set();
+        var snap = await enVol;
+
+        Assert.False(File.Exists(_fichier));
+        Assert.Equal(SourceReliability.Unavailable, snap.FiveHour.Reliability);
+        Assert.Equal(SourceReliability.Unavailable, snap.SevenDay.Reliability);
+    }
+
+    [Fact]
+    public async Task Un_releve_du_nouveau_compte_apres_l_oubli_est_exact_et_persiste()
+    {
+        Assert.StartsWith(Path.GetTempPath(), _fichier);
+        _store.OublierDernierReleve(Now);
+        _clock.UtcNow = Now.AddSeconds(2);
+        var inner = new FakeUsageProvider
+        {
+            Next = Snap(
+                Win(WindowKind.FiveHour, SourceReliability.Exact, 0.05, Now.AddHours(3), Now.AddSeconds(1)),
+                Win(WindowKind.SevenDay, SourceReliability.Exact, 0.10, Now.AddDays(4), Now.AddSeconds(1))),
+        };
+
+        var snap = await Deco(inner).GetAsync();
+
+        Assert.Equal(SourceReliability.Exact, snap.FiveHour.Reliability);
+        Assert.Equal(ProvenanceReleve.Frais, snap.FiveHour.Provenance);
+        Assert.Equal(0.05, snap.FiveHour.Utilization);
+        Assert.True(File.Exists(_fichier));
+    }
 }
