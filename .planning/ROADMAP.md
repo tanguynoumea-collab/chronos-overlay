@@ -355,7 +355,7 @@ code mort (PERT-2..5, MAINT-11).
   5. Diagnostic : 8 hooks listés ; Alt+F4 sur le cadran termine le processus ; `scripts/` sans pont statusLine ; code mort
      listé retiré ; suite verte, build 0 avertissement.
 **Depends on:** Phase 42
-**Plans:** 8/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 42.2 to break down)
