@@ -22,13 +22,24 @@ public interface IEtatMagasin
 
     /// <summary>« Type : message » de la dernière écriture ratée ; null après un succès.</summary>
     string? DerniereErreur { get; }
+
+    /// <summary>MAT-4 (phase 42.2) — « Type : message » de la dernière LECTURE non aboutie (illisible ou inaccessible).
+    /// Ne s'efface QUE par une lecture réussie, jamais par une écriture : écrire par-dessus un fichier qu'on n'a pas su lire
+    /// ne prouve pas qu'on sait désormais le lire. null par défaut (magasin qui ne l'expose pas).</summary>
+    string? DerniereErreurLecture => null;
+
+    /// <summary>MAT-3 (phase 42.2) — chemin du dernier original illisible CONSERVÉ (renommé, jamais supprimé) par ce
+    /// processus avant réécriture. null : aucune quarantaine, ou magasin sans quarantaine (données dérivées).</summary>
+    string? DerniereQuarantaine => null;
 }
 
-/// <summary>Les trois emplacements nommés de la section « [Magasins persistants] » du diagnostic. Des constantes,
+/// <summary>Les emplacements nommés de la section « [Magasins persistants] » du diagnostic. Des constantes,
 /// pas une énumération : le journal (32-05) et les agrégats (phase 33) s'y rangent sans toucher à ce fichier.</summary>
 public static class NomsMagasins
 {
     public const string DernierExact = "dernier exact";
     public const string JournalReleves = "journal des relevés";
     public const string AgregatsTokens = "agrégats de tokens";
+    public const string SessionsArchivees = "sessions archivées";
+    public const string SessionsTraitees = "sessions traitées";
 }

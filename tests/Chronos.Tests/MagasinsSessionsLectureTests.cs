@@ -56,7 +56,8 @@ public class MagasinsSessionsLectureTests
 
     private static readonly byte[] Tronque = Encoding.UTF8.GetBytes("{\"a\": 17000000");
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Deux_ecritures_conservent_la_premiere(string type)
     {
         var s = Nouveau(type);
@@ -65,7 +66,8 @@ public class MagasinsSessionsLectureTests
         Assert.Equal(new[] { "A", "B" }, s.Lire().OrderBy(x => x));
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Fichier_tronque_la_lecture_seule_ne_renomme_rien_et_pose_l_erreur_de_lecture(string type)
     {
         var s = Nouveau(type);
@@ -77,7 +79,8 @@ public class MagasinsSessionsLectureTests
         Assert.Contains("illisible", s.Etat.DerniereErreurLecture);
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Fichier_tronque_l_ecriture_met_l_original_en_quarantaine_puis_ecrit(string type)
     {
         var s = Nouveau(type);
@@ -94,7 +97,8 @@ public class MagasinsSessionsLectureTests
         Assert.Contains("mis en quarantaine", s.Journal());
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Fichier_vide_est_mis_en_quarantaine_puis_ecrit(string type)
     {
         var s = Nouveau(type);
@@ -107,7 +111,8 @@ public class MagasinsSessionsLectureTests
         Assert.Equal(new[] { "X" }, s.Lire());
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Racine_non_objet_est_mise_en_quarantaine_puis_ecrite(string type)
     {
         var s = Nouveau(type);
@@ -120,7 +125,8 @@ public class MagasinsSessionsLectureTests
         Assert.Equal(new[] { "X" }, s.Lire());
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Quarantaine_impossible_rien_n_est_ecrit_et_le_blocage_est_signale(string type)
     {
         var s = Nouveau(type);
@@ -136,7 +142,8 @@ public class MagasinsSessionsLectureTests
         Assert.Contains("quarantaine impossible", s.Etat.DerniereErreur);
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Fichier_verrouille_ni_ecriture_ni_quarantaine_puis_le_geste_suivant_reussit(string type)
     {
         var s = Nouveau(type);
@@ -159,7 +166,8 @@ public class MagasinsSessionsLectureTests
         Assert.Null(s.Etat.DerniereErreur);
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Lecture_non_aboutie_rend_le_dernier_ensemble_lu(string type)
     {
         var s = Nouveau(type);
@@ -182,7 +190,8 @@ public class MagasinsSessionsLectureTests
         Assert.Empty(s.Lire());
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void L_erreur_de_lecture_ne_s_efface_que_par_une_lecture_reussie(string type)
     {
         var s = Nouveau(type);
@@ -197,7 +206,8 @@ public class MagasinsSessionsLectureTests
         Assert.Null(s.Etat.DerniereErreurLecture);
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Ecriture_impossible_rend_false_expose_l_erreur_et_ne_laisse_aucun_temporaire(string type)
     {
         var s = Nouveau(type);
@@ -213,7 +223,8 @@ public class MagasinsSessionsLectureTests
         Assert.Equal(new[] { "A" }, s.Lire());
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Fichier_absent_l_ecriture_cree_le_fichier(string type)
     {
         var s = Nouveau(type);
@@ -224,7 +235,8 @@ public class MagasinsSessionsLectureTests
         Assert.Null(s.Etat.DerniereErreur);
     }
 
-    [Theory, MemberData(nameof(Magasins))]
+    [Theory]
+    [MemberData(nameof(Magasins))]
     public void Une_meme_erreur_de_lecture_n_est_journalisee_qu_une_fois(string type)
     {
         var s = Nouveau(type);
@@ -284,5 +296,44 @@ public class MagasinsSessionsLectureTests
         Assert.True(store.Remove("A"));
 
         Assert.Equal(new[] { "B" }, store.Load().Keys);
+    }
+
+    // ---- TRT-04 (repris d'ArchiveStorePurgeTests, retiré avec PurgerPrefixe — PERT-2) ----
+
+    /// <summary>TRT-04 — ce qui est archivé NE REVIENT JAMAIS : huit jours plus tard, l'entrée est toujours là.</summary>
+    [Fact]
+    public void Archive_une_archive_ne_s_evapore_jamais_meme_apres_huit_jours()
+    {
+        var s = Nouveau("archive");
+        File.WriteAllText(s.Chemin, $$"""{"s":{{T.AddDays(-8).ToUnixTimeMilliseconds()}}}""");
+
+        Assert.Contains("s", new ArchiveStore(s.Chemin, new FakeClock(T)).Load());
+    }
+
+    /// <summary>L'horodatage écrit vient de l'horloge REÇUE, jamais de celle de la machine.</summary>
+    [Fact]
+    public void Archive_l_horodatage_vient_de_l_horloge_injectee()
+    {
+        var s = Nouveau("archive");
+
+        Assert.True(new ArchiveStore(s.Chemin, new FakeClock(T)).Add("s"));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(s.Chemin));
+        Assert.Equal(T.ToUnixTimeMilliseconds(), doc.RootElement.GetProperty("s").GetInt64());
+    }
+
+    /// <summary>Garde par réflexion : aucune durée ne siège dans le magasin d'archives, et son horloge est injectable.</summary>
+    [Fact]
+    public void Archive_le_magasin_ne_connait_aucune_duree_de_vie()
+    {
+        foreach (var t in new[] { typeof(ArchiveStore), typeof(MagasinMapSessions) })
+        {
+            var champs = t.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            Assert.DoesNotContain(champs, c => c.FieldType == typeof(TimeSpan));
+        }
+
+        var parametres = typeof(ArchiveStore).GetConstructors().SelectMany(c => c.GetParameters()).ToList();
+        Assert.NotEmpty(parametres);
+        Assert.Contains(parametres, p => p.ParameterType == typeof(IClock));
     }
 }

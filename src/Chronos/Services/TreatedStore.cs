@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 
 namespace Chronos.Services;
 
@@ -12,8 +11,8 @@ namespace Chronos.Services;
 /// sessions encore présentes.
 ///
 /// Les deux magasins jumeaux se distinguent désormais PAR LEUR CODE autant que par leur sémantique : ils
-/// ne partagent plus que l'écriture atomique tmp+move, la lecture tolérante via <see cref="JsonDocument"/>
-/// et les chemins %APPDATA%. Depuis TRT-04, aucune durée de vie n'est commune :
+/// ne partagent plus que la mécanique de fichier (<see cref="MagasinMapSessions"/> : lecture tri-état, quarantaine,
+/// écriture atomique) et les chemins %APPDATA%. Depuis TRT-04, aucune durée de vie n'est commune :
 ///   • archivé (<see cref="ArchiveStore"/>) = PERMANENT. Ce magasin-là ne borne plus RIEN et ne
 ///     réapparaît jamais (NET-04) ; son seul retrait est un geste, jamais une horloge ;
 ///   • traité (ce magasin) = RÉVERSIBLE via <see cref="Remove"/> (NET-03) : il dure tant que la session
@@ -37,96 +36,101 @@ namespace Chronos.Services;
 /// Les deux vivent dans <see cref="HorizonsSessions"/>, où une garde tient la chaîne. La réversibilité, elle, reste portée
 /// par NET-03 — jamais par une horloge.</para>
 ///
-/// Tolérance totale : fichier absent/corrompu → map vide, jamais d'exception. Aucun type WPF (couche neutre).
+/// <para>MAT-3 / DATA-7 (phase 42.2) — même règle que <see cref="ArchiveStore"/> (mécanique commune
+/// <see cref="MagasinMapSessions"/>) : illisible → original mis en QUARANTAINE (renommé, jamais supprimé) puis écriture ;
+/// quarantaine impossible ou E/S passagère → rien n'est écrit ; une lecture non aboutie rend le dernier ensemble lu.</para>
+///
+/// Ne lève jamais. Aucun type WPF (couche neutre).
 /// </summary>
-public sealed class TreatedStore
+public sealed class TreatedStore : IEtatMagasin
 {
-    private readonly string _path;
+    private readonly MagasinMapSessions _magasin;
     private readonly IClock _horloge;
+    private Dictionary<string, long> _dernierLu = new();
 
     public TreatedStore(string? path = null, IClock? clock = null)
     {
-        _path = path ?? Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "treated.json");
+        _magasin = new MagasinMapSessions(path ?? Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "Chronos", "treated.json"),
+            NomsMagasins.SessionsTraitees);
         _horloge = clock ?? new SystemClock();
     }
 
-    /// <summary>Map { session_id : treatedWaitingTs(ms) } des entrées encore retenues dans le fichier.</summary>
+    public string Nom => _magasin.Nom;
+    public string Chemin => _magasin.Chemin;
+    public System.DateTimeOffset? DerniereEcriture => _magasin.DerniereEcriture;
+    public string? DerniereErreur => _magasin.DerniereErreur;
+    public string? DerniereErreurLecture => _magasin.DerniereErreurLecture;
+    public string? DerniereQuarantaine => _magasin.DerniereQuarantaine;
+
+    /// <summary>Map { session_id : treatedWaitingTs(ms) } des entrées encore retenues dans le fichier. Lecture non aboutie →
+    /// le dernier ensemble lu avec succès (toujours filtré par la rétention). N'écrit ni ne renomme JAMAIS rien.</summary>
     public IReadOnlyDictionary<string, long> Load()
     {
-        var now = _horloge.UtcNow.ToUnixTimeMilliseconds();
-        var map = new Dictionary<string, long>();
-        try
+        lock (_magasin.Verrou)
         {
-            if (!File.Exists(_path)) return map;
-            using var doc = JsonDocument.Parse(File.ReadAllText(_path));
-            if (doc.RootElement.ValueKind != JsonValueKind.Object) return map;
-            foreach (var p in doc.RootElement.EnumerateObject())
-                if (p.Value.TryGetInt64(out var ts) && now - ts < HorizonsSessions.RetentionTraitees.TotalMilliseconds)
-                    map[p.Name] = ts;
+            var lu = _magasin.Lire();
+            if (lu.EstFiable)
+            {
+                _magasin.LectureReussie();
+                _dernierLu = lu.Map;
+            }
+            return Retenues(_dernierLu);
         }
-        catch { }
-        return map;
     }
 
     /// <summary>
     /// Marque une session comme traitée pour l'épisode d'attente <paramref name="treatedWaitingTs"/>
-    /// (idempotent) et laisse tomber les entrées hors rétention. Écriture atomique (tmp + move).
+    /// (idempotent) et laisse tomber les entrées hors rétention. Écriture atomique. Rend true si c'est écrit ; false si
+    /// rien n'a pu l'être (cause dans <see cref="DerniereErreur"/>).
     /// </summary>
-    public void Set(string sessionId, long treatedWaitingTs)
+    public bool Set(string sessionId, long treatedWaitingTs)
     {
-        if (string.IsNullOrEmpty(sessionId)) return;
-        var map = LoadMutable();
-        map[sessionId] = treatedWaitingTs;
-        WriteAtomic(map);
+        if (string.IsNullOrEmpty(sessionId)) return false;
+        lock (_magasin.Verrou)
+        {
+            var lu = _magasin.Lire();
+            if (!_magasin.PreparerEcriture(lu, out var socle)) return false;
+            var map = Retenues(socle);
+            map[sessionId] = treatedWaitingTs;
+            return Ecrire(map);
+        }
     }
 
     /// <summary>
     /// RETIRE une session du magasin (point RÉVERSIBLE, NET-03, absent d'<see cref="ArchiveStore"/>) et
-    /// laisse tomber les entrées hors rétention. Réécriture atomique de la MÊME façon que
-    /// <see cref="Set"/>. Tolérant.
+    /// laisse tomber les entrées hors rétention. Clé absente → true sans réécriture. Fichier illisible → quarantaine puis
+    /// écriture d'une map vide (l'entrée n'existe plus de toute façon). Rend false si rien n'a pu être écrit.
     /// </summary>
-    public void Remove(string sessionId)
+    public bool Remove(string sessionId)
     {
-        if (string.IsNullOrEmpty(sessionId)) return;
-        var map = LoadMutable();
-        if (!map.Remove(sessionId)) return; // rien à faire → évite une réécriture inutile
-        WriteAtomic(map);
+        if (string.IsNullOrEmpty(sessionId)) return false;
+        lock (_magasin.Verrou)
+        {
+            var lu = _magasin.Lire();
+            if (lu.EstFiable && !lu.Map.ContainsKey(sessionId)) return true;   // rien à faire → aucune réécriture
+            if (!_magasin.PreparerEcriture(lu, out var socle)) return false;
+            var map = Retenues(socle);
+            map.Remove(sessionId);
+            return Ecrire(map);
+        }
     }
 
-    // Recharge la map existante en laissant tomber les entrées hors rétention (comme ArchiveStore.Add).
-    // Tolérant.
-    private Dictionary<string, long> LoadMutable()
+    private bool Ecrire(Dictionary<string, long> map)
+    {
+        if (!_magasin.Ecrire(map)) return false;
+        _dernierLu = map;
+        return true;
+    }
+
+    // Les entrées encore dans la rétention de fichier (HorizonsSessions.RetentionTraitees), copie neuve.
+    private Dictionary<string, long> Retenues(Dictionary<string, long> map)
     {
         var now = _horloge.UtcNow.ToUnixTimeMilliseconds();
-        var map = new Dictionary<string, long>();
-        try
-        {
-            if (File.Exists(_path))
-            {
-                using var doc = JsonDocument.Parse(File.ReadAllText(_path));
-                if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                    foreach (var p in doc.RootElement.EnumerateObject())
-                        if (p.Value.TryGetInt64(out var ts) && now - ts < HorizonsSessions.RetentionTraitees.TotalMilliseconds)
-                            map[p.Name] = ts;
-            }
-        }
-        catch { }
-        return map;
-    }
-
-    // Écrit la map atomiquement (tmp propre au process + move avec overwrite). Ne lève jamais.
-    private void WriteAtomic(Dictionary<string, long> map)
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(_path)!;
-            Directory.CreateDirectory(dir);
-            var json = JsonSerializer.Serialize(map);
-            var tmp = _path + ".tmp-" + System.Environment.ProcessId;
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _path, overwrite: true);
-        }
-        catch { }
+        var retenues = new Dictionary<string, long>();
+        foreach (var (id, ts) in map)
+            if (now - ts < HorizonsSessions.RetentionTraitees.TotalMilliseconds)
+                retenues[id] = ts;
+        return retenues;
     }
 }
