@@ -89,7 +89,11 @@
       "Test lien symbolique ignore sans mode developpeur (LienSymboliqueFact)",
       "DEV-SENIOR : duplication des lecteurs de transcripts (3 lecteurs, regles divergentes) — refactor",
       "DEV-SENIOR : DayTimeline extrapole les reperes de reset 5 h (deja en roadmap : resets observes)",
-      "DEV-SENIOR : cycles d'espaces de noms (Services<->Text, Services->Theming->Rendering)"
+      "DEV-SENIOR : cycles d'espaces de noms (Services<->Text, Services->Theming->Rendering)",
+      "Login : écrire le coffre oauth.dat via le verrou de ChronosTokenAuthority (cas hérité : Save du login entre garde (b) et vérif avant écriture → écrasé) — 42.4-01-SUMMARY",
+      "Reconnexion par la pastille avec un AUTRE compte : ancien relevé affiché jusqu au premier relevé frais — 42.4-03-SUMMARY",
+      "Cache transcripts : étape 2 de P-07 (lecture par offset des fichiers chauds), libération du cache hors mode dégradé (DS2-04)",
+      "Gardes de câblage textuelles → test depuis le conteneur réel (DS2-05)"
     ]
   },
   "artefacts": {
@@ -153,6 +157,10 @@
     {
       "date": "2026-10-04",
       "evenement": "Phase 42.3 terminée (2179 verts, 0 avert.) ; re-vérification dev-senior n°2 : 3 bloquants levés sauf version (phase 43) ; nouveaux DS2-01 (mineur), DS2-02 (majeur), DS2-03 (décision produit). Attente décision utilisateur avant phase 43."
+    },
+    {
+      "date": "2026-10-04",
+      "evenement": "Décisions utilisateur : DS2-01+DS2-02 corrigés, DS2-03 effacement à la déconnexion. Phase 42.4 exécutée (3 plans), gate 2209/2210 verts 0 avert. Re-vérif dev-senior ciblée n°3 lancée."
     }
   ],
   "cycles_precedents": [
