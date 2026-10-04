@@ -90,6 +90,20 @@ public class AutostartServiceTests : IDisposable
 
     private string DossierStartup() => Path.Combine(_dossierTemp, "Startup");
 
+    /// <summary>PKG-R1 : version lue dans le NOM de l'exe factice (« Chronos-v3.4.0.exe » → 3.4.0) ; les fichiers factices sont
+    /// vides, sans ressource de version.</summary>
+    private static Version? VersionParNom(string chemin)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(Path.GetFileName(chemin), @"-v(\d+\.\d+\.\d+)\.exe$");
+        return m.Success ? Version.Parse(m.Groups[1].Value) : null;
+    }
+
+    /// <summary>Service de test : les exe factices vivent sous %TEMP% ; on désigne un AUTRE dossier comme « temporaire »
+    /// pour exercer la règle des versions (la règle %TEMP% a ses propres tests).</summary>
+    private AutostartService Service(string startup, string exe)
+        => new(startup, exePath: exe, lireVersion: VersionParNom,
+               dossierTemporaire: Path.Combine(_dossierTemp, "un-autre-temp"));
+
     private static bool MemeChemin(string? a, string b)
         => a is not null && string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 
@@ -116,7 +130,7 @@ public class AutostartServiceTests : IDisposable
 
         // La 3.4.0 avait créé le raccourci.
         new AutostartService(startup, exePath: ancien).Enable();
-        var service = new AutostartService(startup, exePath: courant);
+        var service = Service(startup, courant);
 
         Assert.False(service.IsEnabled());                         // périmé : la case se lit décochée
         Assert.True(MemeChemin(service.CibleDuRaccourci(), ancien));
@@ -154,7 +168,7 @@ public class AutostartServiceTests : IDisposable
         var octets = new byte[512];
         new Random(42).NextBytes(octets);
         File.WriteAllBytes(Path.Combine(startup, "Chronos.lnk"), octets);
-        var service = new AutostartService(startup, exePath: courant);
+        var service = Service(startup, courant);
 
         var bilan = service.ConvergerVersExeCourant();
 
@@ -211,4 +225,109 @@ public class AutostartServiceTests : IDisposable
                .GetCustomAttributes<AssemblyMetadataAttribute>()
                .FirstOrDefault(a => a.Key == "CheminSourcesChronos")?.Value
            ?? "";
+
+    // ------------------------------------------------------------------------------------------
+    // 42.2-11 (PKG-R1) : « dernier lancé gagne » abandonné — on ne repointe que vers PLUS RÉCENT ou vers une cible disparue
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Une_cible_plus_recente_est_conservee_Ignore()
+    {
+        var (ancien, courant) = ExesFactices();
+        var startup = DossierStartup();
+        new AutostartService(startup, exePath: courant).Enable();   // la 3.5.0 tient l'autostart
+        var service = Service(startup, ancien);                      // on relance une 3.4.0 restée sur le disque
+
+        Assert.Equal(BilanAutostart.Ignore, service.ConvergerVersExeCourant());
+        Assert.True(MemeChemin(service.CibleDuRaccourci(), courant));
+        Assert.False(service.IsEnabled());                           // inchangé : la cible n'est pas l'exe courant
+    }
+
+    [Fact]
+    public void Une_cible_de_meme_version_est_conservee_Ignore()
+    {
+        var startup = DossierStartup();
+        var copie = Path.Combine(_dossierTemp, "Telechargements", "Chronos-v3.5.0.exe");
+        var installe = Path.Combine(_dossierTemp, "Outils", "Chronos-v3.5.0.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(copie)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(installe)!);
+        File.WriteAllBytes(copie, Array.Empty<byte>());
+        File.WriteAllBytes(installe, Array.Empty<byte>());
+        new AutostartService(startup, exePath: installe).Enable();
+
+        Assert.Equal(BilanAutostart.Ignore, Service(startup, copie).ConvergerVersExeCourant());
+        Assert.True(MemeChemin(Service(startup, copie).CibleDuRaccourci(), installe));
+    }
+
+    [Fact]
+    public void Une_cible_absente_du_disque_est_repointee()
+    {
+        var (ancien, courant) = ExesFactices();
+        var startup = DossierStartup();
+        new AutostartService(startup, exePath: courant).Enable();
+        File.Delete(courant);                                        // l'exe visé a été supprimé
+        var service = Service(startup, ancien);
+
+        Assert.Equal(BilanAutostart.Repointe, service.ConvergerVersExeCourant());
+        Assert.True(MemeChemin(service.CibleDuRaccourci(), ancien));
+    }
+
+    [Fact]
+    public void Des_versions_illisibles_conservent_le_raccourci()
+    {
+        var (ancien, courant) = ExesFactices();
+        var startup = DossierStartup();
+        new AutostartService(startup, exePath: ancien).Enable();
+        var service = new AutostartService(startup, exePath: courant, lireVersion: _ => null,
+                                           dossierTemporaire: Path.Combine(_dossierTemp, "un-autre-temp"));
+
+        Assert.Equal(BilanAutostart.Ignore, service.ConvergerVersExeCourant());
+        Assert.True(MemeChemin(service.CibleDuRaccourci(), ancien));
+    }
+
+    [Fact]
+    public void Un_exe_sous_bin_est_un_build_de_developpement_Ignore()
+    {
+        var (ancien, _) = ExesFactices();
+        var startup = DossierStartup();
+        new AutostartService(startup, exePath: ancien).Enable();
+        var build = Path.Combine(_dossierTemp, "src", "Chronos", "bin", "Debug", "net8.0-windows", "Chronos-v9.9.9.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(build)!);
+        File.WriteAllBytes(build, Array.Empty<byte>());
+
+        Assert.Equal(BilanAutostart.Ignore, Service(startup, build).ConvergerVersExeCourant());
+        Assert.True(MemeChemin(Service(startup, build).CibleDuRaccourci(), ancien));
+    }
+
+    [Fact]
+    public void Un_exe_sous_le_dossier_temporaire_Ignore()
+    {
+        var (ancien, courant) = ExesFactices();
+        var startup = DossierStartup();
+        new AutostartService(startup, exePath: ancien).Enable();
+        // Ici le dossier temporaire est le VRAI emplacement des exe factices.
+        var service = new AutostartService(startup, exePath: courant, lireVersion: VersionParNom, dossierTemporaire: _dossierTemp);
+
+        Assert.Equal(BilanAutostart.Ignore, service.ConvergerVersExeCourant());
+        Assert.True(MemeChemin(service.CibleDuRaccourci(), ancien));
+    }
+
+    [Theory]
+    [InlineData(@"C:\Dev\Chronos\src\Chronos\bin\Release\net8.0-windows\win-x64\Chronos.exe", true)]
+    [InlineData(@"C:\Dev\Chronos\BIN\Chronos.exe", true)]
+    [InlineData(@"C:\Temp\Chronos.exe", true)]
+    [InlineData(@"C:\Temp\sous\Chronos.exe", true)]
+    [InlineData(@"C:\Outils\Chronos-v3.5.0.exe", false)]
+    [InlineData(@"C:\Outils\binaires\Chronos.exe", false)]
+    [InlineData(@"C:\TempX\Chronos.exe", false)]
+    public void Emplacement_jetable(string exe, bool attendu)
+        => Assert.Equal(attendu, AutostartService.EmplacementJetable(exe, @"C:\Temp\"));
+
+    [Fact]
+    public void Garde_le_demarrage_journalise_un_raccourci_conserve()
+    {
+        var app = File.ReadAllText(Path.Combine(CheminSources(), "App.xaml.cs"));
+        Assert.Contains("BilanAutostart.Ignore", app, StringComparison.Ordinal);
+        Assert.Contains("raccourci conservé", app, StringComparison.Ordinal);
+    }
 }

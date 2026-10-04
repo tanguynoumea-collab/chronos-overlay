@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.IO;
 using Chronos.Models;
 using Chronos.Models.Historique.Tokens;
@@ -2150,16 +2151,71 @@ public class DiagnosticServiceTests : IDisposable
     [Fact]
     public void Le_diagnostic_ne_tient_plus_sa_propre_liste_d_evenements()
     {
-        var dir = AppContext.BaseDirectory;
-        string? source = null;
-        while (dir is not null)
-        {
-            var c = Path.Combine(dir, "src", "Chronos", "Services", "DiagnosticService.cs");
-            if (File.Exists(c)) { source = File.ReadAllText(c); break; }
-            dir = Path.GetDirectoryName(dir);
-        }
-        Assert.NotNull(source);
+        // 42.2-11 : chemin résolu depuis CE fichier source ([CallerFilePath]), pas depuis le dossier de sortie —
+        // la suite tourne aussi hors de l'arbre du dépôt.
+        var chemin = SourceDiagnostic();
+        Assert.True(File.Exists(chemin), chemin);
+        var source = File.ReadAllText(chemin);
         Assert.DoesNotContain("new[] { \"Notification\", \"Stop\"", source);
         Assert.Contains("SessionHookInstaller.Events", source);
+    }
+
+    private static string SourceDiagnostic([CallerFilePath] string ceFichier = "")
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(ceFichier)!, "..", "..", "src", "Chronos", "Services", "DiagnosticService.cs"));
+
+    /// <summary>DIAG-R1 : un hook TIERS dont la commande contient « --hook » n'est pas compté comme hook Chronos (même filtre
+    /// d'appartenance que le réconciliateur : <c>ClaudeSettingsJson.IsChronosCommand</c>).</summary>
+    [Fact]
+    public async Task Un_hook_tiers_portant_hook_n_est_pas_compte()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Chronos_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "settings.json"), """
+                {"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"node C:/outils/garde.js --hook pre"}]}],
+                          "PostToolUse":[{"hooks":[{"type":"command","command":"\"C:/Outils/Chronos-v3.5.0.exe\" --hook PostToolUse"}]}]}}
+                """);
+            var reconciler = new ClaudeSettingsReconciler(
+                Path.Combine(dir, "settings.json"), Path.Combine(dir, "backups"), Path.Combine(dir, "Chronos.exe"));
+
+            var paths = TempPaths();
+            var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                             new FakeClock(DateTimeOffset.UtcNow), reglagesClaude: reconciler);
+            var report = await diag.BuildReportAsync();
+            var ligne = LigneHooksInstalles(report);
+
+            Assert.Equal("Hooks --hook installés : PostToolUse", ligne.Trim());
+            Assert.DoesNotContain("garde.js", report);
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
+    }
+
+    /// <summary>DIAG-R1 : un settings.json commenté (avec virgule finale) se lit — il ne donne plus « lecture impossible ».</summary>
+    [Fact]
+    public async Task Un_settings_commente_est_lu_par_le_diagnostic()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "Chronos_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "settings.json"), """
+                {
+                  // réglage édité à la main
+                  "hooks": {"Stop":[{"hooks":[{"type":"command","command":"C:/Outils/Chronos.exe --hook Stop"},]}]},
+                }
+                """);
+            var reconciler = new ClaudeSettingsReconciler(
+                Path.Combine(dir, "settings.json"), Path.Combine(dir, "backups"), Path.Combine(dir, "Chronos.exe"));
+
+            var paths = TempPaths();
+            var diag = new DiagnosticService(paths, new SettingsService(paths), new StubProvider(UsageSnapshot.Empty),
+                                             new FakeClock(DateTimeOffset.UtcNow), reglagesClaude: reconciler);
+            var report = await diag.BuildReportAsync();
+
+            Assert.DoesNotContain("lecture settings.json impossible", report);
+            Assert.Equal("Hooks --hook installés : Stop", LigneHooksInstalles(report).Trim());
+        }
+        finally { try { Directory.Delete(dir, recursive: true); } catch { /* nettoyage best-effort */ } }
     }
 }

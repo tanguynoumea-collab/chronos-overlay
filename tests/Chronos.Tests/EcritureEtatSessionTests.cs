@@ -475,6 +475,8 @@ public class EcritureEtatSessionTests
     [InlineData("a:b")]
     [InlineData("a/b")]
     [InlineData("a b")]
+    [InlineData("abc\n")]      // SEC-R1 : « $ » acceptait un saut de ligne final
+    [InlineData("abc\r\n")]
     public void Un_identifiant_de_session_hors_motif_est_refuse(string? sid)
         => Assert.False(SessionHookProcessor.IdentifiantSessionValide(sid));
 

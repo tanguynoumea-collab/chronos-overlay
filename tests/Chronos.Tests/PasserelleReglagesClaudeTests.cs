@@ -185,15 +185,14 @@ public class PasserelleReglagesClaudeTests
 
     /// <summary>FIAB-8 c : File.Move remplacerait le lien par un fichier ordinaire et la cible ne verrait jamais
     /// l'écriture. La création d'un lien exige le mode développeur ou des droits élevés : sans eux, le test
-    /// s'arrête proprement (retour anticipé documenté), il ne ment pas.</summary>
-    [Fact]
+    /// est SAUTÉ explicitement (SEC-R3, <see cref="LienSymboliqueFactAttribute"/>) — il ne compte plus comme réussi.</summary>
+    [LienSymboliqueFact]
     public void Lien_symbolique_refuse_et_cible_intacte()
     {
         using var m = new Montage();
         var cible = Path.Combine(m.Dossier, "vrai-settings.json");
         File.WriteAllText(cible, """{"a":1}""");
-        try { File.CreateSymbolicLink(m.Settings, cible); }
-        catch (Exception) { return; }   // lien non permis sur cette machine : rien à prouver ici
+        File.CreateSymbolicLink(m.Settings, cible);   // la sonde de l'attribut a établi que c'est permis
 
         var l = m.Passerelle.Lire();
         var e = m.Passerelle.Ecrire(l, """{"chronos":true}""", creerSiAbsent: false);
