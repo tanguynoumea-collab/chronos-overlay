@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Chronos.Services;
 
@@ -64,6 +65,15 @@ public static class SessionHookProcessor
     /// (PermissionRequest, Notification) ne le porte jamais : c'est une attente, pas un travail.</summary>
     public const string SuffixeSousAgent = " (sous-agent)";
 
+    // SEC-2 : le motif des identifiants de session acceptés (UUID de Claude Code, et toute forme courte des fixtures).
+    private static readonly Regex MotifIdentifiantSession =
+        new("^[A-Za-z0-9_-]{1,128}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>SEC-2 — un <c>session_id</c> devient un NOM DE FICHIER (<c>{session_id}.json</c>) : seuls lettres ASCII, chiffres,
+    /// « _ » et « - », 1 à 128 caractères. Ni séparateur, ni « .. », ni lecteur, ni espace : rien ne peut sortir du dossier.</summary>
+    public static bool IdentifiantSessionValide(string? sid)
+        => sid is not null && MotifIdentifiantSession.IsMatch(sid);
+
     public static SessionHookResult Process(string? eventName, string? stdinJson, long nowMs)
     {
         string sid = "", cwd = "", notifType = "", agentId = "", agentType = "";
@@ -90,7 +100,10 @@ public static class SessionHookProcessor
         }
         catch (JsonException) { /* stdin illisible → on retombe sur l'argument event */ }
 
-        if (string.IsNullOrEmpty(sid)) return SessionHookResult.Ignored; // sans session_id, rien à faire
+        // SEC-2 : sans session_id conforme, rien à faire. Le stdin d'un hook n'est pas une source de confiance : Path.Combine
+        // remplace le dossier par un chemin absolu et « ..\ » en sort — une valeur forgée supprimait n'importe quel *.json
+        // (curseurs.json de l'historique compris, ce qui déclenchait une relecture complète).
+        if (!IdentifiantSessionValide(sid)) return SessionHookResult.Ignored;
 
         var ev = (eventName ?? "").Trim();
 

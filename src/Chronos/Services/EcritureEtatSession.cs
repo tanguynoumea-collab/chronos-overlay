@@ -61,10 +61,18 @@ public static class EcritureEtatSession
         // Rien à faire n'est pas un échec.
         if (resultat.Ignore || string.IsNullOrEmpty(resultat.SessionId)) return ResultatEcritureEtat.Reussie;
 
+        // SEC-2 — défense en profondeur : le processeur refuse déjà ces identifiants, mais un résultat peut être construit ailleurs.
+        if (!SessionHookProcessor.IdentifiantSessionValide(resultat.SessionId))
+            return ResultatEcritureEtat.Echouee("session_id refusé (hors motif) : rien n'est écrit ni supprimé");
+
         try
         {
-            Directory.CreateDirectory(dossier);
             var fichier = Path.Combine(dossier, resultat.SessionId + ".json");
+            var racine = Path.GetFullPath(dossier).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!Path.GetFullPath(fichier).StartsWith(racine, System.StringComparison.OrdinalIgnoreCase))
+                return ResultatEcritureEtat.Echouee("chemin d'état hors du dossier des sessions : rien n'est écrit ni supprimé");
+
+            Directory.CreateDirectory(dossier);
 
             if (resultat.Delete)
             {
