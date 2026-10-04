@@ -5,8 +5,8 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "DEV-SENIOR",
-  "phase_status": "audit_externe_en_cours",
+  "phase": "GSD",
+  "phase_status": "retour_dev_senior_1",
   "cycle": {
     "numero": 2,
     "demarre_le": "2026-10-03",
@@ -31,13 +31,16 @@
       "2026-10-03 : exigences v1.9 validees (25), liste de purge R5 VALIDEE (checkpoint DAT-01), recherche GSD passee, roadmap phases 36-43 approuvee",
       "2026-10-04 : CHECKPOINT 2 (triage) — lots A (lecture ratee), B (settings.json Claude), C+D (tokens, autostart), E (petits defauts) CRITIQUES avant 3.5.0 ; le reste en roadmap",
       "2026-10-04 : Chronos est DISTRIBUE — reprendre les releases GitHub a partir de la 3.5.0 avec empreinte SHA-256 et tags propres ; signature de code en roadmap",
-      "2026-10-04 : AUDIT_POINTS.md valide (5 points : honnetete des chiffres, integrite des donnees, robustesse de l'overlay, reprenabilite, pret a distribuer)"
+      "2026-10-04 : AUDIT_POINTS.md valide (5 points : honnetete des chiffres, integrite des donnees, robustesse de l'overlay, reprenabilite, pret a distribuer)",
+      "2026-10-04 : point de controle dev-senior (cartographie ARCHITECTURE.md) confirme sans correction",
+      "2026-10-04 : « encore valide » GARDE comme exact ; hypothese documentee (pendant une panne de la sonde, Chronos suppose que Claude Code est le seul consommateur) dans AUDIT_POINTS.md et docs/data-sources.md",
+      "2026-10-04 : correctifs dev-senior avant release : deconnexion (P-01), diagnostic sans effet de bord, relecture des transcripts allegee en mode degrade, reliquats « ~ » / Save sans appelant / commentaires « trois composites » ; version 3.5.0 a la release (phase 43)"
     ]
   },
   "iterations": {
     "design_review": 2,
     "design_review_max": 3,
-    "dev_council": 1,
+    "dev_council": 2,
     "dev_council_max": 3
   },
   "checkpoints": {
@@ -83,7 +86,10 @@
       "42.2-11 FIAB-R4 residuel : fenetre etroite de sur-comptage d'un mois gele (agregats ecrits, ids non ecrits, arret) — preferer marqueur transactionnel",
       "FIAB-R6 : LectureIncomplete pour les agregats de tokens",
       "SEC-R4 : sauvegardes de settings.json en clair (meme ACL)",
-      "Test lien symbolique ignore sans mode developpeur (LienSymboliqueFact)"
+      "Test lien symbolique ignore sans mode developpeur (LienSymboliqueFact)",
+      "DEV-SENIOR : duplication des lecteurs de transcripts (3 lecteurs, regles divergentes) — refactor",
+      "DEV-SENIOR : DayTimeline extrapole les reperes de reset 5 h (deja en roadmap : resets observes)",
+      "DEV-SENIOR : cycles d'espaces de noms (Services<->Text, Services->Theming->Rendering)"
     ]
   },
   "artefacts": {
@@ -93,7 +99,8 @@
       ".zeus/reports/llm-council-2026-10-03.md",
       ".zeus/reports/cycle2/design-review-1.md",
       ".zeus/reports/cycle2/design-review-2.md",
-      ".zeus/reports/dev-council-2026-10-03.md"
+      ".zeus/reports/dev-council-2026-10-03.md",
+      ".zeus/reports/dev-senior-1.md"
     ],
     "dod": ".zeus/DOD.md",
     "audit_points": "AUDIT_POINTS.md",
@@ -140,7 +147,8 @@
     "2026-10-04 — CHECKPOINT 2 VALIDE : lots A-E critiques ; Chronos distribue (releases GitHub + SHA-256). -> GSD phase 42.2 (corrections du dev-council), compteur dev_council 1/3.",
     "2026-10-04 — Phase 42.2 (corrections dev-council, 10 plans) executee : quarantaine des fichiers Chronos, passerelle unique ~/.claude/settings.json, filet global, mois geles proteges, session_id valide, autostart repointe, diagnostic 8 hooks, Alt+F4, pont Node retire, code mort. Porte : 2113/2113, 0 avertissement. -> re-verification ciblee DEV-COUNCIL.",
     "2026-10-04 — Re-verification ciblee DEV-COUNCIL : 24 findings fermes, DATA-2 partiel (FIAB-R4), PKG-7 partiel (doc phase 43), 0 nouveau bloquant/majeur ; 7 mineurs nouveaux corriges dans 42.2-11 (decision ZEUS, release distribuee). AUDIT_POINTS.md cree avec l'utilisateur.",
-    "2026-10-04 — 42.2-11 (mineurs de la re-verification) fait ; porte 2151 verts / 1 ignore, 0 avertissement. DEV-COUNCIL clos (aucun critique ouvert). -> DEV-SENIOR (audit externe sur AUDIT_POINTS.md)."
+    "2026-10-04 — 42.2-11 (mineurs de la re-verification) fait ; porte 2151 verts / 1 ignore, 0 avertissement. DEV-COUNCIL clos (aucun critique ouvert). -> DEV-SENIOR (audit externe sur AUDIT_POINTS.md).",
+    "2026-10-04 — DEV-SENIOR (audit externe) : 3 bloquants annonces (deconnexion OAuth inoperante, « encore valide » sans signe, version 3.4.0), 8 majeurs. Decisions utilisateur : deconnexion corrigee, « encore valide » garde avec hypothese documentee, version a la release. -> GSD phase 42.3 (iteration 2/3)."
   ],
   "cycles_precedents": [
     {

@@ -332,6 +332,30 @@ l'échelle 1). **Contrat :** `.zeus/DESIGN_PLAN_CYCLE2.md` §2.
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 42.3: Corrections de l'audit externe (INSERTED)
+
+**Goal:** Corriger, avant la release 3.5.0, les points retenus par l'utilisateur dans l'audit externe dev-senior
+(`.zeus/reports/dev-senior-1.md`, décisions du 2026-10-04) : la déconnexion depuis les réglages efface aussi les jetons
+en mémoire (P-01) ; le diagnostic n'a plus d'effet de bord (ne marque plus de session traitée, ne relance plus la chaîne
+d'usage en parallèle de l'orchestrateur, rapport de démarrage hors thread UI) ; en mode dégradé, la relecture des
+transcripts n'est plus intégrale à chaque tick ; reliquats retirés (`PercentFormatter` « ~ », `SettingsService.Save` sans
+appelant, commentaires « trois composites ») ; hypothèse « encore valide » documentée (AUDIT_POINTS.md, data-sources §4).
+**Requirements**: DAT-02, DAT-04, DAT-05 (renforcées)
+**Success Criteria** (what must be TRUE):
+  1. Après « Se déconnecter », aucun rafraîchissement ne réécrit `oauth.dat` et un nouveau login n'est jamais écrasé par
+     les jetons de l'ancien compte (test sur coffre temporaire).
+  2. Générer le diagnostic ne modifie aucun fichier d'état (treated.json inchangé) et ne déclenche aucun appel de sonde
+     supplémentaire ; l'accès à treated.json est sérialisé ; le rapport de démarrage ne bloque pas le thread UI.
+  3. En mode dégradé (relevé vieilli), la passe sur les transcripts ne relit que ce qui a changé (ou est espacée), prouvé
+     par test sur un jeu de transcripts ; le résultat (plancher / encore valide) est identique.
+  4. Plus de « ~ » produit par `PercentFormatter`, plus de `Save` sans appelant, plus de « trois composites » ; AUDIT_POINTS.md
+     et `docs/data-sources.md` §4 énoncent l'hypothèse « encore valide » ; suite verte, build 0 avertissement.
+**Depends on:** Phase 42
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 42.3 to break down)
+
 ### Phase 42.2: Corrections du dev-council (INSERTED)
 
 **Goal:** Corriger, avant la release 3.5.0, les lots A à E retenus par l'utilisateur au triage du dev-council
@@ -358,7 +382,8 @@ code mort (PERT-2..5, MAINT-11).
 **Plans:** 10/10 plans complete
 
 Plans:
-- [x] TBD (run /gsd:plan-phase 42.2 to break down) (completed 2026-10-04)
+- [x] TBD (run /gsd:plan-phase 42.2 to break down)
+ (completed 2026-10-04)
 
 ### Phase 42.1: Corrections de la revue visuelle 1 (INSERTED)
 
