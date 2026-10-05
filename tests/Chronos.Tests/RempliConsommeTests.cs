@@ -178,22 +178,22 @@ public class RempliConsommeTests
     }
 
     [WpfFact]
-    public void Braises_25_pour_cent_consomme_allume_le_premier_quart_depuis_midi()
+    public void Braises_20_pour_cent_consomme_allume_le_premier_groupe_depuis_midi()
     {
-        // 20 braises : 5 allumées, de midi vers la droite (sens horaire) ; la dernière en demi-lueur.
+        // 25 braises (plan 43-08) : 5 allumées, de midi vers la droite (sens horaire) ; la dernière en demi-lueur.
         var r = new EmberRingControl
         {
-            Radius = 66, Count = 20, PipRadius = 4, GroupSize = 4, GroupPitch = 13.2, Fraction = 0.25,
+            Radius = 66, Count = 25, PipRadius = 4, GroupSize = 5, GroupPitch = 11.0, Fraction = 0.2,
             QuotaBrush = B(Rouge), AshBrush = B(Eteint),
         };
         var px = Rendre(r, 170, 170);
         (int X, int Y) Pos(int i)
         {
-            double a = BraisesGeometrie.Angle(i, 20, 4, 13.2) * System.Math.PI / 180.0;
+            double a = BraisesGeometrie.Angle(i, 25, 5, 11.0) * System.Math.PI / 180.0;
             return ((int)System.Math.Round(85 + 66 * System.Math.Sin(a)), (int)System.Math.Round(85 - 66 * System.Math.Cos(a)));
         }
-        var p0 = Pos(0); var p19 = Pos(19);
+        var p0 = Pos(0); var p24 = Pos(24);
         Assert.True(EstRouge(Px(px, 170, p0.X, p0.Y)), "la première braise (juste après midi) est allumée");
-        Assert.False(EstRouge(Px(px, 170, p19.X, p19.Y)), "la dernière braise (juste avant midi) reste en cendre");
+        Assert.False(EstRouge(Px(px, 170, p24.X, p24.Y)), "la dernière braise (juste avant midi) reste en cendre");
     }
 }

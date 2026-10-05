@@ -15,8 +15,10 @@ using Xunit;
 namespace Chronos.Tests;
 
 /// <summary>
-/// BRA-01 (plan 41-01) — preuves PAR RENDU de l'anneau 5 h de Braises : 20 braises en 5 groupes de 4 (rien à midi ni à
-/// 72°, là où une répartition uniforme en mettrait une), état « en attente » aux MÊMES angles que le nominal. Plan 43-05 :
+/// BRA-01 (plan 41-01) — preuves PAR RENDU de l'anneau 5 h de Braises. Plan 43-08 (constat du 2026-10-05) : 25 braises de
+/// 12 min en 5 groupes de 5, un groupe par heure (rien à midi ni à 72°, là où une répartition uniforme en mettrait une),
+/// état « en attente » aux MÊMES angles que le nominal. Le sens de remplissage (horaire depuis midi) est prouvé au rendu de
+/// la VUE, avec des positions calculées indépendamment de BraisesGeometrie. Plan 43-05 :
 /// anneau hebdo en 14 braises, 7 groupes de 2 (un jour par groupe, une braise par demi-journée). Les couleurs littérales sont permises ICI (tests) : la garde de la phase 39 ne vise que les sources.
 /// </summary>
 [Collection("XAML WPF")]
@@ -62,32 +64,32 @@ public class CadranBraisesTests
     private static bool Proche((byte A, byte R, byte G, byte B) p, Color c)
         => p.A == 255 && Math.Abs(p.R - c.R) <= 3 && Math.Abs(p.G - c.G) <= 3 && Math.Abs(p.B - c.B) <= 3;
 
-    private static double AngleCinqHeures(int i) => BraisesGeometrie.Angle(i, 20, 4, 13.2);
+    private static double AngleCinqHeures(int i) => BraisesGeometrie.Angle(i, 25, 5, 11.0);
 
     private static EmberRingControl AnneauCinqHeures(double fraction, bool hasData = true) => new()
     {
-        Radius = 66, Count = 20, PipRadius = 4, GroupSize = 4, GroupPitch = 13.2,
+        Radius = 66, Count = 25, PipRadius = 4, GroupSize = 5, GroupPitch = 11.0,
         Fraction = fraction, HasData = hasData,
         QuotaBrush = B(Rouge), AshBrush = B(Cendre), WaitBrush = B(Attente),
     };
 
     [WpfFact]
-    public void Plein_la_premiere_braise_est_a_16_2_degres_et_rien_a_midi_ni_a_72()
+    public void Plein_la_premiere_braise_est_a_14_degres_et_rien_a_midi_ni_a_72()
     {
         var px = Rendre(AnneauCinqHeures(1.0));
 
-        Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(0), 66)), Rouge), "braise 0 (16,2°) non rouge");
+        Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(0), 66)), Rouge), "braise 0 (14°) non rouge");
         Assert.Equal(0, Pixel(px, PointSur(0, 66)).A);    // midi : milieu d'un vide
         Assert.Equal(0, Pixel(px, PointSur(72, 66)).A);   // 72° : milieu du vide entre les groupes 1 et 2
     }
 
     [WpfFact]
-    public void A_moitie_dix_braises_allumees_puis_cendres()
+    public void A_moitie_treize_braises_allumees_puis_cendres()
     {
-        var px = Rendre(AnneauCinqHeures(0.5));
+        var px = Rendre(AnneauCinqHeures(0.5));   // 12,5 → 13 braises (arrondi au plus loin de zéro)
 
         Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(8), 66)), Rouge), "braise 8 non allumée");
-        Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(12), 66)), Cendre), "braise 12 non cendre");
+        Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(14), 66)), Cendre), "braise 14 non cendre");
         Assert.Equal(0, Pixel(px, PointSur(72, 66)).A);
     }
 
@@ -96,7 +98,7 @@ public class CadranBraisesTests
     {
         var px = Rendre(AnneauCinqHeures(1.0, hasData: false));
 
-        Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(0), 66)), Attente), "braise d'attente absente à 16,2°");
+        Assert.True(Proche(Pixel(px, PointSur(AngleCinqHeures(0), 66)), Attente), "braise d'attente absente à 14°");
         Assert.Equal(0, Pixel(px, PointSur(0, 66)).A);
         Assert.Equal(0, Pixel(px, PointSur(72, 66)).A);
     }
@@ -155,6 +157,117 @@ public class CadranBraisesTests
         // Le groupe doit tenir dans son secteur, sinon BraisesGeometrie retombe en uniforme sans rien dire.
         Assert.True((hebdo.GroupSize - 1) * hebdo.GroupPitch < 360.0 * hebdo.GroupSize / hebdo.Count);
         Assert.NotEqual(360.0 / 14, BraisesGeometrie.Angle(1, hebdo.Count, hebdo.GroupSize, hebdo.GroupPitch), 3);
+    }
+
+    [WpfFact]
+    public void Vue_l_anneau_5h_est_en_vingt_cinq_braises_groupees_par_cinq_et_le_groupe_tient_dans_son_secteur()
+    {
+        // Plan 43-08 (constat du 2026-10-05) : 5 groupes de 5 — un groupe par heure, une braise par 12 min.
+        var (vue, _) = Monter(new CadranPreviewViewModel());
+        var cinq = ((Grid)vue.Content).Children.OfType<EmberRingControl>().First();
+
+        Assert.Equal(66.0, cinq.Radius, 6);
+        Assert.Equal(25, cinq.Count);
+        Assert.Equal(5, cinq.GroupSize);
+        Assert.True(cinq.GroupPitch > 0, "GroupPitch nul : repli uniforme silencieux");
+        Assert.True((cinq.GroupSize - 1) * cinq.GroupPitch < 72.0, "le groupe déborde de son secteur de 72° : repli uniforme silencieux");
+        Assert.NotEqual(360.0 / 25, BraisesGeometrie.Angle(1, cinq.Count, cinq.GroupSize, cinq.GroupPitch), 3);
+    }
+
+    // --- Plan 43-08 : sens de remplissage prouvé au RENDU de la vue (positions indépendantes de BraisesGeometrie) ---
+
+    /// <summary>
+    /// Centre attendu de la braise <paramref name="k"/> du groupe <paramref name="g"/>, calculé SANS BraisesGeometrie :
+    /// groupe centré au milieu de son secteur, braises au pas <paramref name="pas"/>. Repère écran : x = 85 + r·sin, y = 85 − r·cos
+    /// (0° = midi, angles croissants = sens horaire : un angle de 0 à 180° est à DROITE de l'axe vertical).
+    /// </summary>
+    private static (int X, int Y) CentreBraise(int g, int k, int parGroupe, double secteur, double pas, double rayon)
+        => PointSur(g * secteur + secteur / 2 + (k - (parGroupe - 1) / 2.0) * pas, rayon);
+
+    /// <summary>Couleur NON prémultipliée du pixel (la demi-lueur garde ainsi la teinte du quota).</summary>
+    private static (byte A, Color C) Teinte(byte[] px, (int X, int Y) p)
+    {
+        var (a, r, g, b) = Pixel(px, p);
+        if (a == 0) return (0, Colors.Transparent);
+        byte U(byte v) => (byte)Math.Min(255, v * 255 / a);
+        return (a, Color.FromRgb(U(r), U(g), U(b)));
+    }
+
+    private static int Distance(Color x, Color y) => Math.Abs(x.R - y.R) + Math.Abs(x.G - y.G) + Math.Abs(x.B - y.B);
+
+    /// <summary>Monte la vue (thème par défaut), rend l'hôte et renvoie les pixels avec les deux anneaux effectifs.</summary>
+    private static (byte[] px, EmberRingControl cinq, EmberRingControl hebdo) RendreVue(CadranPreviewViewModel vm)
+    {
+        var (vue, hote) = Monter(vm);
+        var anneaux = ((Grid)vue.Content).Children.OfType<EmberRingControl>().ToList();
+        var bmp = new RenderTargetBitmap(Cote, Cote, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(hote);
+        var px = new byte[Cote * Cote * 4];
+        bmp.CopyPixels(px, Cote * 4, 0);
+        return (px, anneaux[0], anneaux[1]);
+    }
+
+    private static void AssertGroupe(byte[] px, EmberRingControl anneau, int g, int parGroupe, double secteur, bool allume, string libelle)
+    {
+        var quota = ((SolidColorBrush)anneau.QuotaBrush!).Color;
+        var cendre = ((SolidColorBrush)anneau.AshBrush!).Color;
+        Assert.True(Distance(quota, cendre) > 90, $"{libelle} : quota {quota} et cendre {cendre} trop proches pour trancher");
+        for (int k = 0; k < parGroupe; k++)
+        {
+            var p = CentreBraise(g, k, parGroupe, secteur, anneau.GroupPitch, anneau.Radius);
+            var (a, c) = Teinte(px, p);
+            Assert.True(a >= 100, $"{libelle} : groupe {g} braise {k} absente en {p} (alpha {a})");   // la silhouette de geste a un alpha de 1
+            bool cQuota = Distance(c, quota) < Distance(c, cendre);
+            Assert.True(cQuota == allume,
+                $"{libelle} : groupe {g} braise {k} en {p} attendue {(allume ? "allumée" : "éteinte")}, teinte {c} (quota {quota}, cendre {cendre})");
+        }
+    }
+
+    private static CadranPreviewViewModel VmSens(double consomme5h, double consommeHebdo) => new()
+    {
+        FivePlancher = false, SevenPlancher = false,   // braises pleines (pas de contour pointillé)
+        FiveQuotaPct = 48, SevenQuotaPct = 48,
+        FiveTimePct = 100 - consomme5h, SevenTimePct = 100 - consommeHebdo,
+    };
+
+    [WpfFact]
+    public void Rendu_vue_a_20_pour_cent_consomme_le_premier_groupe_apres_midi_est_allume_celui_avant_midi_eteint()
+    {
+        // 1 h consommée sur 5 : 5 braises — celles du PREMIER groupe après midi, côté DROIT du haut (secteur 0-72°).
+        var (px, cinq, _) = RendreVue(VmSens(20, 0));
+
+        for (int k = 0; k < 5; k++)
+        {
+            var p = CentreBraise(0, k, 5, 72, cinq.GroupPitch, 66);
+            Assert.True(p.X > 85 && p.Y < 85, $"braise {k} du 1er groupe attendue en haut à droite, trouvée en {p}");
+        }
+        AssertGroupe(px, cinq, 0, 5, 72, allume: true, "5 h à 20 %");
+        for (int g = 1; g < 5; g++) AssertGroupe(px, cinq, g, 5, 72, allume: false, "5 h à 20 %");
+
+        // Le groupe juste à GAUCHE de midi (288-360°) est éteint (vérifié ci-dessus) : pas de remplissage anti-horaire.
+        Assert.True(CentreBraise(4, 4, 5, 72, cinq.GroupPitch, 66).X < 85);
+    }
+
+    [WpfFact]
+    public void Rendu_vue_a_60_pour_cent_consomme_les_trois_premiers_groupes_horaires_sont_allumes()
+    {
+        var (px, cinq, _) = RendreVue(VmSens(60, 0));
+
+        for (int g = 0; g < 3; g++) AssertGroupe(px, cinq, g, 5, 72, allume: true, "5 h à 60 %");
+        for (int g = 3; g < 5; g++) AssertGroupe(px, cinq, g, 5, 72, allume: false, "5 h à 60 %");
+    }
+
+    [WpfFact]
+    public void Rendu_vue_hebdo_deux_jours_consommes_allument_les_deux_premiers_groupes_horaires()
+    {
+        // 2 jours sur 7 : 4 braises — les deux premiers jours après midi, côté droit ; le jour avant midi reste éteint.
+        var (px, _, hebdo) = RendreVue(VmSens(0, 200.0 / 7));
+        double secteur = 360.0 / 7;
+
+        for (int g = 0; g < 2; g++) AssertGroupe(px, hebdo, g, 2, secteur, allume: true, "hebdo à 2 j");
+        for (int g = 2; g < 7; g++) AssertGroupe(px, hebdo, g, 2, secteur, allume: false, "hebdo à 2 j");
+        Assert.True(CentreBraise(0, 0, 2, secteur, hebdo.GroupPitch, 44).X > 85);
+        Assert.True(CentreBraise(6, 1, 2, secteur, hebdo.GroupPitch, 44).X < 85);
     }
 
     [WpfFact]

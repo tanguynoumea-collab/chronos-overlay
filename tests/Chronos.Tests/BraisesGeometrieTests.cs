@@ -5,36 +5,54 @@ namespace Chronos.Tests;
 
 /// <summary>
 /// BRA-01 (plan 41-01) — position angulaire PURE d'une braise (degrés, 0 = midi, sens horaire). L'anneau 5 h de Braises
-/// compte 20 braises de 15 min en 5 groupes d'une heure : groupe centré dans son secteur de 72°, pas de 13,2° dans un
-/// groupe, vide de 32,4° entre groupes, midi au milieu d'un vide. Plan 43-05 (écart du constat) : l'anneau hebdo compte
+/// compte (plan 43-08) 25 braises de 12 min en 5 groupes d'une heure : groupe centré dans son secteur de 72°, pas de 11° dans
+/// un groupe, vide de 28° entre groupes, midi au milieu d'un vide. Plan 43-05 (écart du constat) : l'anneau hebdo compte
 /// 14 braises en 7 groupes de 2 — un groupe par jour, une braise par demi-journée, secteur de 360/7 ≈ 51,43°, pas de 15,6°.
 /// </summary>
 public class BraisesGeometrieTests
 {
+    // Plan 43-08 (constat du 2026-10-05) : 25 braises de 12 min en 5 groupes de 5, pas de 11° → largeur 44°, vide 28°.
+    private const double Pas5h = 11.0;
+    private static double CinqHeures(int i) => BraisesGeometrie.Angle(i, 25, 5, Pas5h);
+
     [Theory]
-    [InlineData(0, 16.2)]
-    [InlineData(1, 29.4)]
-    [InlineData(2, 42.6)]
-    [InlineData(3, 55.8)]
-    [InlineData(4, 88.2)]
-    [InlineData(19, 343.8)]
-    public void Vingt_braises_en_cinq_groupes_de_quatre(int i, double attendu)
-        => Assert.Equal(attendu, BraisesGeometrie.Angle(i, 20, 4, 13.2), 6);
+    [InlineData(0, 14.0)]
+    [InlineData(1, 25.0)]
+    [InlineData(2, 36.0)]
+    [InlineData(3, 47.0)]
+    [InlineData(4, 58.0)]
+    [InlineData(5, 86.0)]
+    [InlineData(24, 346.0)]
+    public void Vingt_cinq_braises_en_cinq_groupes_de_cinq(int i, double attendu)
+        => Assert.Equal(attendu, CinqHeures(i), 6);
 
     [Fact]
     public void Pas_dans_un_groupe_vide_entre_groupes_et_midi_au_milieu_du_vide()
     {
-        static double Ecart(int a, int b) => BraisesGeometrie.Angle(b, 20, 4, 13.2) - BraisesGeometrie.Angle(a, 20, 4, 13.2);
-
         for (int g = 0; g < 5; g++)
-            for (int k = 0; k < 3; k++)
-                Assert.Equal(13.2, Ecart(g * 4 + k, g * 4 + k + 1), 6);
+        {
+            // Groupe centré dans son secteur de 72°.
+            Assert.Equal(g * 72 + 36, (CinqHeures(5 * g) + CinqHeures(5 * g + 4)) / 2, 6);
+            for (int k = 0; k < 4; k++)
+                Assert.Equal(Pas5h, CinqHeures(5 * g + k + 1) - CinqHeures(5 * g + k), 6);
+        }
 
-        foreach (var fin in new[] { 3, 7, 11, 15 })
-            Assert.Equal(32.4, Ecart(fin, fin + 1), 6);
+        foreach (var fin in new[] { 4, 9, 14, 19 })
+        {
+            double vide = CinqHeures(fin + 1) - CinqHeures(fin);
+            Assert.True(vide >= 2 * Pas5h, $"vide {vide:F2}° < 2 × {Pas5h}°");
+        }
 
-        // Symétrie autour de midi : le vide 343,8° → 376,2° est centré sur 360°.
-        Assert.Equal(BraisesGeometrie.Angle(0, 20, 4, 13.2), 360 - BraisesGeometrie.Angle(19, 20, 4, 13.2), 6);
+        // Symétrie autour de midi : le vide 346° → 374° est centré sur 360°.
+        Assert.Equal(CinqHeures(0), 360 - CinqHeures(24), 6);
+    }
+
+    [Fact]
+    public void Les_braises_5h_sont_distinctes_au_rayon_66()
+    {
+        // Écart centre à centre (corde) > 2 × PipRadius (4) + 2 px : les braises ne se touchent pas.
+        double corde = 2 * 66 * Math.Sin(Pas5h / 2 * Math.PI / 180);
+        Assert.True(corde > 2 * 4.0 + 2, $"corde {corde:F2} px");
     }
 
     [Fact]
