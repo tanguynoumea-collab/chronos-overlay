@@ -81,8 +81,8 @@ public class CadransThemeBindingTests
                         // Plan 43-09 : extérieur = journée, 24 braises à angles explicites (tranches de 5 h) ; hebdo (plan 43-05) = 14 braises en 7 groupes de 2.
                         var (jour, hebdo) = (anneaux[0], anneaux[1]);
                         Assert.Equal((66.0, 24, 4.0), (jour.Radius, jour.Count, jour.PipRadius));
-                        Assert.Equal(24, jour.Angles?.Count);
-                        Assert.Equal(24, jour.Etats?.Count);
+                        Assert.Equal("JourneeAngles", System.Windows.Data.BindingOperations.GetBindingExpression(jour, EmberRingControl.AnglesProperty)?.ParentBinding.Path.Path);
+                        Assert.Equal("JourneeEtats", System.Windows.Data.BindingOperations.GetBindingExpression(jour, EmberRingControl.EtatsProperty)?.ParentBinding.Path.Path);
                         Assert.Equal((44.0, 14, 3.6, 2, 15.6), (hebdo.Radius, hebdo.Count, hebdo.PipRadius, hebdo.GroupSize, hebdo.GroupPitch));
 
                         // Plan 43-07 : flèche de reset retirée (constat du 2026-10-04) — plus aucun triangle ni filet.

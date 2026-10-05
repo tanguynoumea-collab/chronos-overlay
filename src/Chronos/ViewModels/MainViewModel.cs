@@ -779,13 +779,18 @@ public sealed partial class MainViewModel : ObservableObject
         // projet vit dans DoctrineFraicheur.LimiteAge, dérivée de la cadence de la sonde et non réglable.
         // Ce ViewModel se contente de RAPPORTER ce que la doctrine a déjà statué (FiveHour/SevenDay.EstDate).
 
-        // JOUR-01/02 : timeline 24 h. now est UTC → convertir en heure locale pour lire minuit/le jour local.
-        // Les angles se calent sur le resets_at 5 h courant (converti local) ; vides si inconnu.
-        var localNow = now.ToLocalTime();
+        // JOUR-01/02 : timeline 24 h. now est UTC → convertir dans le fuseau INJECTÉ (production : Local) pour lire
+        // minuit/le jour local. Les angles se calent sur le resets_at 5 h courant (converti) ; vides si inconnu.
+        var localNow = TimeZoneInfo.ConvertTime(now, _fuseau);
         DayFraction = Rendering.DayTimeline.Fraction(localNow);
-        var localReset5h = _last?.FiveHour.ResetsAt?.ToLocalTime();
+        DateTimeOffset? localReset5h = _last?.FiveHour.ResetsAt is { } r5 ? TimeZoneInfo.ConvertTime(r5, _fuseau) : null;
         DayResetAngles = Rendering.DayTimeline.ResetAngles(localNow, localReset5h);
         DaySubTickAngles = Rendering.DayTimeline.SubTickAngles(localNow, localReset5h);
+
+        // Plan 43-09 : anneau JOURNÉE de Braises — 24 braises groupées par tranches de 5 h (seul le reset courant vient du
+        // serveur, les autres limites sont projetées), heures passées allumées. Même instant, même fuseau que la timeline.
+        JourneeAngles = Rendering.BraisesJournee.Angles(localNow, localReset5h);
+        JourneeEtats = Rendering.BraisesJournee.Etats(localNow);
     }
 
     /// <summary>Démarre l'horloge UI 1 s (RAF-03). Créé côté UI UNIQUEMENT (jamais dans le ctor → Pitfall 4).</summary>

@@ -14,6 +14,9 @@ namespace Chronos.Controls;
 /// Groupes optionnels (GroupSize / GroupPitch, via BraisesGeometrie) : les braises d'un groupe sont espacées d'un pas
 /// fixe et le groupe est centré dans son secteur — la délimitation est le VIDE entre groupes, jamais un tiret.
 /// Sans groupe (défauts 1 / 0) : répartition uniforme historique. L'état « en attente » suit les mêmes angles.
+/// Plan 43-09 : <see cref="Angles"/> et <see cref="Etats"/> EXPLICITES (anneau journée de Braises, calculés par
+/// <see cref="BraisesJournee"/>) remplacent, quand ils sont fournis avec une entrée par braise, la géométrie de groupe et
+/// l'allumage par Fraction. Même dessin des braises (pleine, demi-lueur, contour pointillé si Estimated, cendre).
 /// FrameworkElement + OnRender (per-pip) car un Shape ne porte qu'un Stroke/Fill unique.
 /// </summary>
 public sealed class EmberRingControl : FrameworkElement
@@ -95,7 +98,7 @@ public sealed class EmberRingControl : FrameworkElement
         {
             for (int i = 0; i < n; i++)
             {
-                double aw = BraisesGeometrie.Angle(i, n, GroupSize, GroupPitch) * Math.PI / 180.0;   // mêmes angles que le nominal
+                double aw = AngleDe(i, n) * Math.PI / 180.0;   // mêmes angles que le nominal
                 var pw = new Point(center.X + Radius * Math.Sin(aw), center.Y - Radius * Math.Cos(aw));
                 dc.DrawEllipse(WaitBrush, null, pw, PipRadius * 0.7, PipRadius * 0.7);
             }
@@ -104,6 +107,7 @@ public sealed class EmberRingControl : FrameworkElement
 
         double frac = double.IsNaN(Fraction) ? 0.0 : Math.Clamp(Fraction, 0.0, 1.0);
         int lit = (int)Math.Round(frac * n, MidpointRounding.AwayFromZero);
+        var etats = Etats is { } e && e.Count == n ? e : null;   // allumage explicite (anneau journée), sinon Fraction
         var quota = QuotaBrush;
         var ash = AshBrush;
 
@@ -113,12 +117,17 @@ public sealed class EmberRingControl : FrameworkElement
 
         for (int i = 0; i < n; i++)
         {
-            double a = BraisesGeometrie.Angle(i, n, GroupSize, GroupPitch) * Math.PI / 180.0;   // 0 = 12 h, horaire
+            double a = AngleDe(i, n) * Math.PI / 180.0;   // 0 = haut, horaire
             var p = new Point(center.X + Radius * Math.Sin(a), center.Y - Radius * Math.Cos(a));
 
-            if (i < lit)
+            var etat = etats is not null ? etats[i]
+                     : i < lit - 1 ? EtatBraise.Pleine
+                     : i == lit - 1 ? EtatBraise.DemiLueur   // dernière braise allumée = demi-lueur (incertitude ±1 braise)
+                     : EtatBraise.Cendre;
+
+            if (etat != EtatBraise.Cendre)
             {
-                bool last = i == lit - 1;
+                bool last = etat == EtatBraise.DemiLueur;
                 if (Estimated)
                     dc.DrawEllipse(null, estPen, p, PipRadius, PipRadius);           // grain = braise en contour pointillé
                 else
@@ -130,6 +139,10 @@ public sealed class EmberRingControl : FrameworkElement
             }
         }
     }
+
+    /// <summary>Angle (degrés) de la braise i : explicite si <see cref="Angles"/> en fournit un par braise, sinon géométrie de groupe.</summary>
+    private double AngleDe(int i, int n)
+        => Angles is { } a && a.Count == n ? a[i] : BraisesGeometrie.Angle(i, n, GroupSize, GroupPitch);
 
     private static Brush? WithAlpha(Brush? b, double f)
     {

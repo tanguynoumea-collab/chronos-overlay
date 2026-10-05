@@ -120,6 +120,12 @@ du chiffre qui change, pas le chiffre. Le « ≥ » et non un « ~ » : l'incert
 **Les resets viennent toujours du serveur** (`resets_at` des en-têtes ou du secours). Aucune ancre manuelle n'entre dans le
 cadran ; l'ancre hebdomadaire déjà enregistrée par une ancienne version n'est plus que **lue en secours** par l'Historique.
 
+**Limite des cadrans : les tranches de 5 h sont projetées.** Seul le reset 5 h **courant** vient du serveur. Les autres
+limites de tranche de la journée sont projetées de 5 h en 5 h à partir de lui : les marques de la timeline 24 h des Anneaux
+(mode Normal, DS-ARCH-05) et les groupes de l'anneau journée de Braises (plan 43-09 : une braise par heure, groupées par
+tranches de 5 h). Ces limites projetées ne sont pas des resets annoncés : si la grille du serveur se décale, elles ne le
+savent qu'au relevé suivant. Sans reset 5 h connu, rien n'est projeté (Braises : 24 braises régulières, sans tranches).
+
 Toutes les conversions d'unité (pourcentage ↔ fraction, epoch ↔ instant) passent par `UsageNormalization`, point unique.
 
 ---

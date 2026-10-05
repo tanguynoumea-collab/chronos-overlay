@@ -98,6 +98,14 @@ et par le sens de fonte (le cordon fond vers le bas, la lumière remonte vers le
   lisible à R66. **La délimitation est le vide** : c'est la grammaire des braises, pas un tiret repris d'Arcs.
   *Amendé au constat du 2026-10-05 (décision utilisateur, plan 43-08) : 25 braises de 12 min en 5 groupes de 5 (un
   groupe par heure), pas de 11° (≈ 12,7 px à R66), vide de 28° entre groupes, pastilles de rayon 4,0 conservées.*
+  *Amendé le 2026-10-05 (décision utilisateur après explication, plan 43-09) : l'anneau extérieur devient la JOURNÉE
+  locale — 24 braises, une par heure, minuit en haut, sens horaire (repère de DayTimeline). Groupes = tranches de la
+  grille des resets 5 h ancrée sur le resets_at courant (les autres limites sont projetées) ; le vide seul délimite ;
+  chaque braise est rapprochée du centre de son groupe par 0,8 (12° entre braises, ≤ 6° de son heure, vide de 27° entre
+  deux groupes de 5). Heures passées pleines, heure en cours en demi-lueur, futur en cendre ; couleur = quota 5 h.
+  Reset inconnu : 24 braises régulières. Limite : un groupe d'une à trois braises près de minuit (60 % des ancres) laisse
+  un vide de 18° à 22,5°, sous 2 × 12° — incompatible avec « ≤ 6° de l'heure ». Le paragraphe « 20 braises de 15 min »
+  ci-dessus et le 25 / 5 du 43-08 ne décrivent plus l'anneau extérieur.*
 - **Flèche de braise fixe à midi**, à l'extérieur de l'anneau (triangle 10 × 7 et filet de 12 px), couleur
   `TickReset` du thème. C'est la ligne d'arrivée : le reset a lieu quand la dernière braise l'atteint.
 - **Heure du reset** en mode temps : troisième ligne au centre « ↻ 14:20 » (10,5, `TexteSecondaire`), donnée par

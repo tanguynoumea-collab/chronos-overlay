@@ -298,9 +298,10 @@ public class CadranBraisesTests
         var p6 = PointSur(AngleJournee1450(6), 66);
         var p12 = PointSur(AngleJournee1450(12), 66);
         var p18 = PointSur(AngleJournee1450(18), 66);
-        Assert.True(p6.X > 145 && Math.Abs(p6.Y - 85) < 10, $"braise 6 attendue à droite, en {p6}");
-        Assert.True(p12.Y > 145 && Math.Abs(p12.X - 85) < 10, $"braise 12 attendue en bas, en {p12}");
-        Assert.True(p18.X < 25 && Math.Abs(p18.Y - 85) < 10, $"braise 18 attendue à gauche, en {p18}");
+        // 6:30 → 100,5° (≈ 97,5°, à ≤ 6° de son heure) ; 12:30 → 187,5° ; 18:30 → 274,5°.
+        Assert.True(p6.X > 145 && Math.Abs(p6.Y - 85) < 15, $"braise 6 attendue à droite, en {p6}");
+        Assert.True(p12.Y > 145 && Math.Abs(p12.X - 85) < 15, $"braise 12 attendue en bas, en {p12}");
+        Assert.True(p18.X < 25 && Math.Abs(p18.Y - 85) < 15, $"braise 18 attendue à gauche, en {p18}");
         foreach (var (p, i) in new[] { (p6, 6), (p12, 12), (p18, 18) })
             Assert.True(Teinte(px, p).A >= 100, $"braise {i} absente en {p}");
 

@@ -42,6 +42,7 @@ public sealed partial class CadranPreviewViewModel : ObservableObject
     [ObservableProperty] private double _dayFraction;
     [ObservableProperty] private IReadOnlyList<double> _dayResetAngles = Array.Empty<double>();
     [ObservableProperty] private IReadOnlyList<double> _daySubTickAngles = Array.Empty<double>();
+    // Anneau journée de Braises (plan 43-09) : 24 angles en tranches de 5 h et 24 états (heures passées / en cours / futures).
     [ObservableProperty] private IReadOnlyList<double> _journeeAngles = Array.Empty<double>();
     [ObservableProperty] private IReadOnlyList<EtatBraise> _journeeEtats = Array.Empty<EtatBraise>();
 
@@ -77,6 +78,10 @@ public sealed partial class CadranPreviewViewModel : ObservableObject
         DayFraction = DayTimeline.Fraction(maintenant);
         DayResetAngles = DayTimeline.ResetAngles(maintenant, reset);
         DaySubTickAngles = DayTimeline.SubTickAngles(maintenant, reset);
+
+        // Plan 43-09 : anneau journée de Braises, même échantillon (heure d'horloge de « maintenant », reset déduit du curseur).
+        JourneeAngles = BraisesJournee.Angles(maintenant, reset);
+        JourneeEtats = BraisesJournee.Etats(maintenant);
 
         // BRA-02 — heure du reset 5 h : même échantillon déterministe, jamais l'horloge réelle ni une source Claude.
         // Comme en production, l'heure n'apparaît que si le reset est FUTUR (temps restant > 0) : exact ou rien.
