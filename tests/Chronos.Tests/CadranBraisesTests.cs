@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -18,7 +19,9 @@ namespace Chronos.Tests;
 /// BRA-01 (plan 41-01) — preuves PAR RENDU de l'anneau 5 h de Braises. Plan 43-08 (constat du 2026-10-05) : 25 braises de
 /// 12 min en 5 groupes de 5, un groupe par heure (rien à midi ni à 72°, là où une répartition uniforme en mettrait une),
 /// état « en attente » aux MÊMES angles que le nominal. Le sens de remplissage (horaire depuis midi) est prouvé au rendu de
-/// la VUE, avec des positions calculées indépendamment de BraisesGeometrie. Plan 43-05 :
+/// la VUE, avec des positions calculées indépendamment de BraisesGeometrie. Plan 43-09 (constat du 2026-10-05) : dans la VUE,
+/// l'anneau extérieur est devenu la JOURNÉE (24 braises, une par heure, minuit en haut, groupées par tranches de 5 h) ; les
+/// tests de contrôle en 25 / 5 / 11 restent la preuve générique du groupement de EmberRingControl. Plan 43-05 :
 /// anneau hebdo en 14 braises, 7 groupes de 2 (un jour par groupe, une braise par demi-journée). Les couleurs littérales sont permises ICI (tests) : la garde de la phase 39 ne vise que les sources.
 /// </summary>
 [Collection("XAML WPF")]
@@ -160,18 +163,20 @@ public class CadranBraisesTests
     }
 
     [WpfFact]
-    public void Vue_l_anneau_5h_est_en_vingt_cinq_braises_groupees_par_cinq_et_le_groupe_tient_dans_son_secteur()
+    public void Vue_l_anneau_exterieur_est_la_journee_en_24_braises_a_angles_explicites()
     {
-        // Plan 43-08 (constat du 2026-10-05) : 5 groupes de 5 — un groupe par heure, une braise par 12 min.
+        // Plan 43-09 (constat du 2026-10-05) : l'anneau extérieur est la journée locale, une braise par heure ; ses angles
+        // et son allumage viennent du VM (BraisesJournee), plus de FiveHour.FractionElapsed.
         var (vue, _) = Monter(new CadranPreviewViewModel());
-        var cinq = ((Grid)vue.Content).Children.OfType<EmberRingControl>().First();
+        var jour = ((Grid)vue.Content).Children.OfType<EmberRingControl>().First();
 
-        Assert.Equal(66.0, cinq.Radius, 6);
-        Assert.Equal(25, cinq.Count);
-        Assert.Equal(5, cinq.GroupSize);
-        Assert.True(cinq.GroupPitch > 0, "GroupPitch nul : repli uniforme silencieux");
-        Assert.True((cinq.GroupSize - 1) * cinq.GroupPitch < 72.0, "le groupe déborde de son secteur de 72° : repli uniforme silencieux");
-        Assert.NotEqual(360.0 / 25, BraisesGeometrie.Angle(1, cinq.Count, cinq.GroupSize, cinq.GroupPitch), 3);
+        Assert.Equal(66.0, jour.Radius, 6);
+        Assert.Equal(24, jour.Count);
+        Assert.NotNull(jour.Angles);
+        Assert.Equal(24, jour.Angles!.Count);
+        Assert.NotNull(jour.Etats);
+        Assert.Equal(24, jour.Etats!.Count);
+        Assert.Null(BindingOperations.GetBindingExpression(jour, EmberRingControl.FractionProperty));
     }
 
     // --- Plan 43-08 : sens de remplissage prouvé au RENDU de la vue (positions indépendantes de BraisesGeometrie) ---
@@ -230,31 +235,107 @@ public class CadranBraisesTests
         FiveTimePct = 100 - consomme5h, SevenTimePct = 100 - consommeHebdo,
     };
 
-    [WpfFact]
-    public void Rendu_vue_a_20_pour_cent_consomme_le_premier_groupe_apres_midi_est_allume_celui_avant_midi_eteint()
+    // --- Plan 43-09 : anneau JOURNÉE prouvé au rendu de la vue (positions indépendantes de BraisesJournee) ---
+
+    /// <summary>
+    /// Angle attendu de la braise <paramref name="i"/> pour la grille du reset 14:50, calculé SANS BraisesJournee : groupes
+    /// écrits à la main d'après la spécification ([00-04], [05-09], [10-14], [15-19], [20-23]), heure nominale (i + 0,5) × 15°,
+    /// rapprochée du centre de son groupe par 0,8. 0° = minuit en haut, sens horaire.
+    /// </summary>
+    private static double AngleJournee1450(int i)
     {
-        // 1 h consommée sur 5 : 5 braises — celles du PREMIER groupe après midi, côté DROIT du haut (secteur 0-72°).
-        var (px, cinq, _) = RendreVue(VmSens(20, 0));
+        int[][] groupes = { new[] { 0, 4 }, new[] { 5, 9 }, new[] { 10, 14 }, new[] { 15, 19 }, new[] { 20, 23 } };
+        var g = groupes.First(x => i >= x[0] && i <= x[1]);
+        double nominal = (i + 0.5) * 15.0;
+        double centre = ((g[0] + g[1]) / 2.0 + 0.5) * 15.0;
+        return centre + 0.8 * (nominal - centre);
+    }
 
-        for (int k = 0; k < 5; k++)
+    /// <summary>11:35 (offset explicite, jamais l'horloge réelle) ; reset 5 h à 14:50 = 11:35 + 65 % de 5 h.</summary>
+    private static CadranPreviewViewModel VmJournee1135() => new()
+    {
+        MaintenantEchantillon = new DateTimeOffset(2026, 10, 5, 11, 35, 0, TimeSpan.FromHours(2)),
+        FivePlancher = false, SevenPlancher = false, FiveQuotaPct = 48, SevenQuotaPct = 48,
+        FiveTimePct = 65, SevenTimePct = 50,
+    };
+
+    [WpfFact]
+    public void Rendu_vue_journee_a_11h35_braise_10_pleine_11_demi_lueur_12_cendre()
+    {
+        var (px, jour, _) = RendreVue(VmJournee1135());
+        var quota = ((SolidColorBrush)jour.QuotaBrush!).Color;
+        var cendre = ((SolidColorBrush)jour.AshBrush!).Color;
+        Assert.True(Distance(quota, cendre) > 90, $"quota {quota} et cendre {cendre} trop proches pour trancher");
+
+        var (a10, c10) = Teinte(px, PointSur(AngleJournee1450(10), 66));
+        Assert.True(a10 >= 250 && Distance(c10, quota) < Distance(c10, cendre), $"braise 10 : pleine attendue, alpha {a10}, teinte {c10}");
+
+        var (a11, c11) = Teinte(px, PointSur(AngleJournee1450(11), 66));
+        Assert.True(a11 is >= 60 and < 250, $"braise 11 : demi-lueur attendue, alpha {a11}");
+        Assert.True(Distance(c11, quota) < Distance(c11, cendre), $"braise 11 : teinte du quota attendue, {c11}");
+
+        var (a12, c12) = Teinte(px, PointSur(AngleJournee1450(12), 66));
+        Assert.True(a12 >= 100 && Distance(c12, cendre) < Distance(c12, quota), $"braise 12 : cendre attendue, alpha {a12}, teinte {c12}");
+
+        // Heures passées toutes pleines, futur tout en cendre.
+        for (int i = 0; i < 10; i++)
         {
-            var p = CentreBraise(0, k, 5, 72, cinq.GroupPitch, 66);
-            Assert.True(p.X > 85 && p.Y < 85, $"braise {k} du 1er groupe attendue en haut à droite, trouvée en {p}");
+            var (a, c) = Teinte(px, PointSur(AngleJournee1450(i), 66));
+            Assert.True(a >= 250 && Distance(c, quota) < Distance(c, cendre), $"braise {i} : pleine attendue");
         }
-        AssertGroupe(px, cinq, 0, 5, 72, allume: true, "5 h à 20 %");
-        for (int g = 1; g < 5; g++) AssertGroupe(px, cinq, g, 5, 72, allume: false, "5 h à 20 %");
-
-        // Le groupe juste à GAUCHE de midi (288-360°) est éteint (vérifié ci-dessus) : pas de remplissage anti-horaire.
-        Assert.True(CentreBraise(4, 4, 5, 72, cinq.GroupPitch, 66).X < 85);
+        for (int i = 13; i < 24; i++)
+        {
+            var (a, c) = Teinte(px, PointSur(AngleJournee1450(i), 66));
+            Assert.True(a >= 100 && Distance(c, cendre) < Distance(c, quota), $"braise {i} : cendre attendue");
+        }
     }
 
     [WpfFact]
-    public void Rendu_vue_a_60_pour_cent_consomme_les_trois_premiers_groupes_horaires_sont_allumes()
+    public void Rendu_vue_journee_minuit_en_haut_6h_a_droite_midi_en_bas_18h_a_gauche()
     {
-        var (px, cinq, _) = RendreVue(VmSens(60, 0));
+        var (px, _, _) = RendreVue(VmJournee1135());
 
-        for (int g = 0; g < 3; g++) AssertGroupe(px, cinq, g, 5, 72, allume: true, "5 h à 60 %");
-        for (int g = 3; g < 5; g++) AssertGroupe(px, cinq, g, 5, 72, allume: false, "5 h à 60 %");
+        var p6 = PointSur(AngleJournee1450(6), 66);
+        var p12 = PointSur(AngleJournee1450(12), 66);
+        var p18 = PointSur(AngleJournee1450(18), 66);
+        Assert.True(p6.X > 145 && Math.Abs(p6.Y - 85) < 10, $"braise 6 attendue à droite, en {p6}");
+        Assert.True(p12.Y > 145 && Math.Abs(p12.X - 85) < 10, $"braise 12 attendue en bas, en {p12}");
+        Assert.True(p18.X < 25 && Math.Abs(p18.Y - 85) < 10, $"braise 18 attendue à gauche, en {p18}");
+        foreach (var (p, i) in new[] { (p6, 6), (p12, 12), (p18, 18) })
+            Assert.True(Teinte(px, p).A >= 100, $"braise {i} absente en {p}");
+
+        // Le vide entre deux tranches : rien au milieu de 14:30 et 15:30 (frontière 14:50).
+        double milieu = (AngleJournee1450(14) + AngleJournee1450(15)) / 2;
+        Assert.True(Teinte(px, PointSur(milieu, 66)).A < 100, "le vide entre deux tranches doit rester vide");
+    }
+
+    [WpfFact]
+    public void Rendu_vue_journee_l_hebdo_ne_lie_toujours_que_le_temps_consomme()
+    {
+        var (_, _, hebdo) = RendreVue(VmJournee1135());
+        var b = BindingOperations.GetBindingExpression(hebdo, EmberRingControl.FractionProperty);
+        Assert.NotNull(b);
+        Assert.Equal("SevenDay.FractionElapsed", b!.ParentBinding.Path.Path);
+    }
+
+    [WpfFact]
+    public void Controle_angles_et_etats_explicites_pleine_demi_lueur_cendre()
+    {
+        var angles = Enumerable.Range(0, 24).Select(i => (i + 0.5) * 15.0).ToArray();
+        var etats = Enumerable.Range(0, 24)
+            .Select(i => i < 3 ? EtatBraise.Pleine : i == 3 ? EtatBraise.DemiLueur : EtatBraise.Cendre).ToArray();
+        var r = new EmberRingControl
+        {
+            Radius = 66, Count = 24, PipRadius = 4, Angles = angles, Etats = etats, Fraction = 1.0,
+            QuotaBrush = B(Rouge), AshBrush = B(Cendre), WaitBrush = B(Attente),
+        };
+        var px = Rendre(r);
+
+        Assert.True(Proche(Pixel(px, PointSur(angles[2], 66)), Rouge), "braise 2 pleine");
+        var demi = Pixel(px, PointSur(angles[3], 66));
+        Assert.True(demi.A is > 0 and < 255 && demi.R > demi.G, "braise 3 en demi-lueur");
+        Assert.True(Proche(Pixel(px, PointSur(angles[4], 66)), Cendre), "braise 4 en cendre malgré Fraction = 1");
+        Assert.Equal(0, Pixel(px, PointSur(0, 66)).A);   // minuit : entre la braise 23 et la braise 0
     }
 
     [WpfFact]

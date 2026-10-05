@@ -79,7 +79,7 @@ public class MainViewModelTests
         FakeOAuthLogin? login = null, FakeAuthStatus? auth = null,
         RefreshOrchestrator? orchestrator = null, FakeEtatServeur? etatServeur = null,
         FakeEtatJournal? journal = null, FakeEtatReconstruction? reconstruction = null,
-        FakeOuvreurHistorique? ouvreur = null, FakeOubliDernierReleve? oubli = null)
+        FakeOuvreurHistorique? ouvreur = null, FakeOubliDernierReleve? oubli = null, TimeZoneInfo? fuseau = null)
     {
         var options = new RefreshOptions(TimeSpan.FromMinutes(10), TimeSpan.Zero);
         // orchestrator injectable : permet d'OBSERVER RequestRefresh en démarrant réellement
@@ -92,7 +92,7 @@ public class MainViewModelTests
         return new MainViewModel(orch, ui, clock, controller, autostart, settings, diag,
             login ?? new FakeOAuthLogin(), new FakeSessionsController(),
             auth ?? new FakeAuthStatus(), etatServeur, journal, reconstruction: reconstruction, ouvreurHistorique: ouvreur,
-            oubliReleve: oubli);
+            oubliReleve: oubli, fuseau: fuseau);
     }
 
     private static MainViewModel NewVmFull(
@@ -543,6 +543,44 @@ public class MainViewModelTests
         });
         vm.Interpolate(clock.UtcNow);
         Assert.Empty(vm.DayResetAngles);
+    }
+
+    // --- Plan 43-09 : anneau JOURNÉE de Braises, calculé au tick dans le fuseau INJECTÉ ---
+
+    [Fact]
+    public void Journee_de_Braises_posee_par_Interpolate_dans_le_fuseau_injecte()
+    {
+        // Fuseau fixe +02:00 injecté : 09:35Z = 11:35 locale, reset 5 h à 12:50Z = 14:50 locale. Jamais l'horloge réelle.
+        var fuseau = TimeZoneInfo.CreateCustomTimeZone("Test+02", TimeSpan.FromHours(2), "Test+02", "Test+02");
+        var instant = new DateTimeOffset(2026, 10, 5, 9, 35, 0, TimeSpan.Zero);
+        var clock = new FakeClock(instant);
+        var vm = Build(new FakeUiDispatcher { OnUiThread = true }, clock, new FakeUsageProvider(), new FakeWindowController(),
+                       new FakeAutostartService(), new SettingsService(TempPaths()), fuseau: fuseau);
+
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = Readable(WindowKind.FiveHour, instant, remaining: TimeSpan.FromMinutes(195)),   // 12:50Z
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+            SourceCapturedAt = instant,
+        });
+        vm.Interpolate(instant);
+
+        var localNow = new DateTimeOffset(2026, 10, 5, 11, 35, 0, TimeSpan.FromHours(2));
+        var localReset = new DateTimeOffset(2026, 10, 5, 14, 50, 0, TimeSpan.FromHours(2));
+        Assert.Equal(Chronos.Rendering.BraisesJournee.Angles(localNow, localReset), vm.JourneeAngles);
+        Assert.Equal(Chronos.Rendering.BraisesJournee.Etats(localNow), vm.JourneeEtats);
+        Assert.Equal(Chronos.Rendering.EtatBraise.DemiLueur, vm.JourneeEtats[11]);
+        Assert.Equal(Chronos.Rendering.DayTimeline.Fraction(localNow), vm.DayFraction, 9);   // même fuseau pour la timeline 24 h
+
+        // Reset 5 h inconnu → aucune grille : 24 braises uniformes à 15°.
+        vm.ApplySnapshot(new UsageSnapshot
+        {
+            FiveHour = WindowState.Unavailable(WindowKind.FiveHour),
+            SevenDay = WindowState.Unavailable(WindowKind.SevenDay),
+            SourceCapturedAt = instant,
+        });
+        vm.Interpolate(instant);
+        Assert.Equal(Chronos.Rendering.BraisesJournee.Angles(localNow, null), vm.JourneeAngles);
     }
 
     // ================== TOK-02 / TOK-03 : la panne visible et réparable ==================

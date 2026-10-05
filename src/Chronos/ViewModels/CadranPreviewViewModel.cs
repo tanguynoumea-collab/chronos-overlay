@@ -42,6 +42,17 @@ public sealed partial class CadranPreviewViewModel : ObservableObject
     [ObservableProperty] private double _dayFraction;
     [ObservableProperty] private IReadOnlyList<double> _dayResetAngles = Array.Empty<double>();
     [ObservableProperty] private IReadOnlyList<double> _daySubTickAngles = Array.Empty<double>();
+    [ObservableProperty] private IReadOnlyList<double> _journeeAngles = Array.Empty<double>();
+    [ObservableProperty] private IReadOnlyList<EtatBraise> _journeeEtats = Array.Empty<EtatBraise>();
+
+    private DateTimeOffset _maintenantEchantillon = new(2026, 10, 3, 14, 0, 0, TimeSpan.Zero);
+
+    /// <summary>« Maintenant » d'échantillon (heure d'horloge lue telle quelle, jamais l'horloge réelle) ; réglable par les tests.</summary>
+    internal DateTimeOffset MaintenantEchantillon
+    {
+        get => _maintenantEchantillon;
+        set { _maintenantEchantillon = value; Apply(); }
+    }
 
     public CadranPreviewViewModel() => Apply();
 
@@ -61,7 +72,7 @@ public sealed partial class CadranPreviewViewModel : ObservableObject
 
         // Anneau du jour d'Anneaux : données d'échantillon DÉTERMINISTES (« maintenant » fixe, reset 5 h déduit du curseur
         // de temps restant) — jamais une source Claude, jamais l'horloge réelle.
-        var maintenant = new DateTimeOffset(2026, 10, 3, 14, 0, 0, TimeSpan.Zero);
+        var maintenant = _maintenantEchantillon;
         var reset = maintenant + TimeSpan.FromHours(5) * (Math.Clamp(FiveTimePct, 0, 100) / 100.0);
         DayFraction = DayTimeline.Fraction(maintenant);
         DayResetAngles = DayTimeline.ResetAngles(maintenant, reset);

@@ -30,7 +30,7 @@ public class RempliConsommeTests
 
     [Theory]
     [InlineData("CadranArcsView.xaml", 2)]
-    [InlineData("CadranBraisesView.xaml", 2)]
+    [InlineData("CadranBraisesView.xaml", 1)]   // plan 43-09 : l'anneau extérieur est la journée (voir plus bas), seul l'hebdo lie Fraction
     [InlineData("CadranFusibleView.xaml", 4)]
     [InlineData("CadranMareeView.xaml", 4)]
     [InlineData("CadranVoletsView.xaml", 4)]
@@ -43,6 +43,19 @@ public class RempliConsommeTests
         // Une garde qui ne trouverait aucune liaison serait muette : on exige le nombre exact (5 h + hebdo, par gabarit).
         Assert.Equal(attendues, liaisons.Count);
         Assert.All(liaisons, l => Assert.EndsWith(".FractionElapsed}\"", l));
+    }
+
+    [Fact]
+    public void Braises_l_anneau_journee_est_un_cas_documente_rempli_egale_heures_passees()
+    {
+        // Plan 43-09 (constat du 2026-10-05) : l'anneau extérieur de Braises n'est plus la fenêtre 5 h mais la JOURNÉE locale.
+        // Sa partie allumée = les heures PASSÉES du jour (angles et états calculés par BraisesJournee, liés au VM), jamais
+        // FiveHour.FractionElapsed ni FractionRemaining. La règle « rempli = consommé » reste vraie pour l'hebdo.
+        var xaml = File.ReadAllText(Path.Combine(GardesPerimetreTests.CheminSources(), "Views", "Cadrans", "CadranBraisesView.xaml"));
+        Assert.Contains("Angles=\"{Binding JourneeAngles}\"", xaml);
+        Assert.Contains("Etats=\"{Binding JourneeEtats}\"", xaml);
+        Assert.DoesNotContain("FiveHour.FractionElapsed", xaml);
+        Assert.Contains("Fraction=\"{Binding SevenDay.FractionElapsed}\"", xaml);
     }
 
     [Fact]
@@ -178,22 +191,23 @@ public class RempliConsommeTests
     }
 
     [WpfFact]
-    public void Braises_20_pour_cent_consomme_allume_le_premier_groupe_depuis_midi()
+    public void Braises_hebdo_2_jours_consommes_allume_le_premier_groupe_depuis_midi()
     {
-        // 25 braises (plan 43-08) : 5 allumées, de midi vers la droite (sens horaire) ; la dernière en demi-lueur.
+        // Anneau hebdo (14 braises, 7 groupes de 2) : 2/7 consommé → 4 braises, de midi vers la droite (sens horaire).
+        // Plan 43-09 : l'anneau extérieur (journée) n'obéit plus à Fraction — voir le cas documenté plus haut.
         var r = new EmberRingControl
         {
-            Radius = 66, Count = 25, PipRadius = 4, GroupSize = 5, GroupPitch = 11.0, Fraction = 0.2,
+            Radius = 44, Count = 14, PipRadius = 3.6, GroupSize = 2, GroupPitch = 15.6, Fraction = 2.0 / 7,
             QuotaBrush = B(Rouge), AshBrush = B(Eteint),
         };
         var px = Rendre(r, 170, 170);
         (int X, int Y) Pos(int i)
         {
-            double a = BraisesGeometrie.Angle(i, 25, 5, 11.0) * System.Math.PI / 180.0;
-            return ((int)System.Math.Round(85 + 66 * System.Math.Sin(a)), (int)System.Math.Round(85 - 66 * System.Math.Cos(a)));
+            double a = BraisesGeometrie.Angle(i, 14, 2, 15.6) * System.Math.PI / 180.0;
+            return ((int)System.Math.Round(85 + 44 * System.Math.Sin(a)), (int)System.Math.Round(85 - 44 * System.Math.Cos(a)));
         }
-        var p0 = Pos(0); var p24 = Pos(24);
+        var p0 = Pos(0); var p13 = Pos(13);
         Assert.True(EstRouge(Px(px, 170, p0.X, p0.Y)), "la première braise (juste après midi) est allumée");
-        Assert.False(EstRouge(Px(px, 170, p24.X, p24.Y)), "la dernière braise (juste avant midi) reste en cendre");
+        Assert.False(EstRouge(Px(px, 170, p13.X, p13.Y)), "la dernière braise (juste avant midi) reste en cendre");
     }
 }

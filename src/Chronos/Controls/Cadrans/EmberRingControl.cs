@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using Chronos.Rendering;
@@ -57,6 +58,19 @@ public sealed class EmberRingControl : FrameworkElement
     public static readonly DependencyProperty GroupPitchProperty =
         DependencyProperty.Register(nameof(GroupPitch), typeof(double), typeof(EmberRingControl),
             new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Plan 43-09 — angles EXPLICITES (degrés, 0 = haut, horaire), un par braise ; null = géométrie Count/GroupSize/GroupPitch.
+    public static readonly DependencyProperty AnglesProperty =
+        DependencyProperty.Register(nameof(Angles), typeof(IReadOnlyList<double>), typeof(EmberRingControl),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Plan 43-09 — allumage EXPLICITE, un état par braise ; null = allumage par Fraction (temps consommé).
+    public static readonly DependencyProperty EtatsProperty =
+        DependencyProperty.Register(nameof(Etats), typeof(IReadOnlyList<EtatBraise>), typeof(EmberRingControl),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public IReadOnlyList<double>? Angles { get => (IReadOnlyList<double>?)GetValue(AnglesProperty); set => SetValue(AnglesProperty, value); }
+    public IReadOnlyList<EtatBraise>? Etats { get => (IReadOnlyList<EtatBraise>?)GetValue(EtatsProperty); set => SetValue(EtatsProperty, value); }
 
     public double Fraction  { get => (double)GetValue(FractionProperty);  set => SetValue(FractionProperty, value); }
     public int    Count     { get => (int)GetValue(CountProperty);        set => SetValue(CountProperty, value); }

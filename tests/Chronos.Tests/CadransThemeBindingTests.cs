@@ -78,9 +78,11 @@ public class CadransThemeBindingTests
                             Assert.Same(T("CadranAttente"), a.WaitBrush);
                         }
 
-                        // Plan 43-08 : 5 h = 25 braises en 5 groupes de 5 (un groupe par heure) ; hebdo (plan 43-05) = 14 braises en 7 groupes de 2.
-                        var (cinq, hebdo) = (anneaux[0], anneaux[1]);
-                        Assert.Equal((66.0, 25, 4.0, 5, 11.0), (cinq.Radius, cinq.Count, cinq.PipRadius, cinq.GroupSize, cinq.GroupPitch));
+                        // Plan 43-09 : extérieur = journée, 24 braises à angles explicites (tranches de 5 h) ; hebdo (plan 43-05) = 14 braises en 7 groupes de 2.
+                        var (jour, hebdo) = (anneaux[0], anneaux[1]);
+                        Assert.Equal((66.0, 24, 4.0), (jour.Radius, jour.Count, jour.PipRadius));
+                        Assert.Equal(24, jour.Angles?.Count);
+                        Assert.Equal(24, jour.Etats?.Count);
                         Assert.Equal((44.0, 14, 3.6, 2, 15.6), (hebdo.Radius, hebdo.Count, hebdo.PipRadius, hebdo.GroupSize, hebdo.GroupPitch));
 
                         // Plan 43-07 : flèche de reset retirée (constat du 2026-10-04) — plus aucun triangle ni filet.

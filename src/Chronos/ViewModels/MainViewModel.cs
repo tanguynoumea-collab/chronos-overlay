@@ -80,6 +80,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private System.Collections.Generic.IReadOnlyList<double> _dayResetAngles = System.Array.Empty<double>();
     // Sous-tirets horaires alignés sur la grille des resets 5 h (subdivisent chaque intervalle de 5 h, mode normal).
     [ObservableProperty] private System.Collections.Generic.IReadOnlyList<double> _daySubTickAngles = System.Array.Empty<double>();
+    // Plan 43-09 — anneau JOURNÉE de Braises : 24 angles (tranches de 5 h) et 24 états (heures passées / en cours / futures).
+    [ObservableProperty] private System.Collections.Generic.IReadOnlyList<double> _journeeAngles = System.Array.Empty<double>();
+    [ObservableProperty] private System.Collections.Generic.IReadOnlyList<Rendering.EtatBraise> _journeeEtats = System.Array.Empty<Rendering.EtatBraise>();
 
     // État reflété dans les items « à cocher » du menu (FEN-05 / DEP-02).
     [ObservableProperty] private bool _isBackground;
@@ -452,8 +455,10 @@ public sealed partial class MainViewModel : ObservableObject
         IOuvreurHistorique? ouvreurHistorique = null,
         HistoriqueViewModel? historique = null,
         IPressePapiers? pressePapiers = null,
-        IOubliDernierReleve? oubliReleve = null)
+        IOubliDernierReleve? oubliReleve = null,
+        TimeZoneInfo? fuseau = null)
     {
+        _fuseau = fuseau ?? TimeZoneInfo.Local;
         _ui = ui;
         _clock = clock;
         _demarrage = clock.UtcNow;   // JRN-04 / D-32-21 : le démarrage du processus, pour ne pas crier sur l'écriture de la veille
@@ -762,6 +767,8 @@ public sealed partial class MainViewModel : ObservableObject
             return etiquette + " : " + string.Join(" · ", morceaux);
         }
     }
+
+    private readonly TimeZoneInfo _fuseau;   // plan 43-09 — fuseau INJECTÉ (production Local, tests fixes)
 
     /// <summary>PUR, aucun I/O (RAF-03) — appelé chaque seconde par le DispatcherTimer (StartClock).</summary>
     internal void Interpolate(DateTimeOffset now)
