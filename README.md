@@ -24,7 +24,7 @@ Réglages → **Apparence** → style du cadran :
 - **Anneaux** (défaut) — en mode **Normal** (défaut), deux anneaux : la fenêtre hebdomadaire à l'intérieur et une
   timeline 24 h colorée par l'usage 5 h, avec un sous-tiret par heure et une marque à chaque reset 5 h. En mode
   **Étendu** (carte « Mode étendu »), trois anneaux : hebdo, 5 h, timeline 24 h. **Au centre** : les deux pourcentages.
-- **Braises** — deux couronnes de braises : la fenêtre 5 h en 20 braises de 15 min, groupées par heure (5 groupes) ;
+- **Braises** — deux couronnes de braises : la fenêtre 5 h en 25 braises de 12 min, un groupe par heure (5 groupes de 5) ;
   la fenêtre hebdomadaire en 14 braises, un groupe par jour (une braise par demi-journée).
   Les braises s'allument depuis midi, dans le sens horaire, au fil du temps écoulé : l'anneau est plein au reset. En mode temps, le centre ajoute l'heure locale du reset 5 h (« ↻ HH:MM »).
 - **Fusible** — une mèche dont le cordon avance avec le temps écoulé (depuis la gauche, ou depuis le bas à la verticale).

@@ -96,6 +96,8 @@ et par le sens de fonte (le cordon fond vers le bas, la lumière remonte vers le
 - **20 braises de 15 min, en 5 groupes de 4.** Les groupes sont séparés par un vide plus large : chaque groupe dure
   72°, avec un pas de 13,2° entre braises d'un même groupe. Pastilles de rayon 4,0 (au lieu de 4,4) pour garder le vide
   lisible à R66. **La délimitation est le vide** : c'est la grammaire des braises, pas un tiret repris d'Arcs.
+  *Amendé au constat du 2026-10-05 (décision utilisateur, plan 43-08) : 25 braises de 12 min en 5 groupes de 5 (un
+  groupe par heure), pas de 11° (≈ 12,7 px à R66), vide de 28° entre groupes, pastilles de rayon 4,0 conservées.*
 - **Flèche de braise fixe à midi**, à l'extérieur de l'anneau (triangle 10 × 7 et filet de 12 px), couleur
   `TickReset` du thème. C'est la ligne d'arrivée : le reset a lieu quand la dernière braise l'atteint.
 - **Heure du reset** en mode temps : troisième ligne au centre « ↻ 14:20 » (10,5, `TexteSecondaire`), donnée par

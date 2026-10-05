@@ -4,7 +4,8 @@
              xmlns:cad="clr-namespace:Chronos.Controls"
              xmlns:vues="clr-namespace:Chronos.Views">
     <!-- Piste 1 — Anneau de braises. Deux couronnes discrètes : 5 h (externe) + hebdo (interne).
-         5 h = 20 braises de 15 min en 5 groupes d'une heure (le vide entre groupes délimite les heures).
+         5 h = 25 braises de 12 min en 5 groupes d'une heure, pas de 11° ≈ 12,7 px à R66 (le vide entre groupes délimite les
+         heures — constat du 2026-10-05, plan 43-08).
          Hebdo = 14 braises en 7 groupes d'un jour, une braise par demi-journée (pas de 15,6° ≈ 12 px à R44 ; le vide
          entre groupes délimite les jours — constat du 2026-10-04).
          Rempli = temps consommé (FractionElapsed, plan 43-06) : les braises s'allument depuis midi, sens horaire ;
@@ -19,7 +20,7 @@
     <Grid Width="{DynamicResource CadranLargeurBraises}" Height="{DynamicResource CadranHauteurBraises}">
         <!-- Silhouette de geste (R7) : TOUTE la forme capte la souris. ZoneSilhouette (alpha 1) et non Transparent : sur une fenêtre layered, Windows laisse passer le clic là où l'alpha vaut 0. -->
         <Ellipse Width="148" Height="148" vues:ZoneGeste.Silhouette="True" Fill="{DynamicResource ZoneSilhouette}"/>
-        <cad:EmberRingControl Radius="66" Count="20" PipRadius="4.0" GroupSize="4" GroupPitch="13.2"
+        <cad:EmberRingControl Radius="66" Count="25" PipRadius="4.0" GroupSize="5" GroupPitch="11"
                               Fraction="{Binding FiveHour.FractionElapsed}"
                               QuotaBrush="{Binding FiveHour.ValueBrush}"
                               Estimated="{Binding FiveHour.EstPlancher}"
