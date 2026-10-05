@@ -18,7 +18,11 @@ ProductVersion 3.5.0 / ProductName Chronos ; empreinte précédente ~~`cca57384a
 **Exe reconstruit le 2026-10-04 après le retrait de la flèche de Braises (plan 43-07, décision utilisateur), même version
 3.5.0 :** **78 200 218 o**, SHA-256 **`041f1f0780756a6896fdac70a41d74a44b02159679eac3e979d41a9f22815419`**, FileVersion 3.5.0.0 /
 ProductVersion 3.5.0 / ProductName Chronos ; empreinte précédente ~~`adea832ff2dcf63244db893ce4526e2a0c4c26e5e1ed9976716cc1ede21cb521`~~
-(78 200 158 o), remplacée. **Jamais lancé par l'agent, ni en overlay, ni avec `--hook`, ni avec `--sessions`.**
+(78 200 158 o), remplacée.
+**Exe reconstruit le 2026-10-05 après l'écart anneau 5 h de Braises (plan 43-08, 25 braises en 5 groupes de 5), même version
+3.5.0 :** **78 200 214 o**, SHA-256 **`4bab93a689cef51f6b5a0d2948812dcce3868990f3d19dd4668da4d31c6815e3`**, FileVersion 3.5.0.0 /
+ProductVersion 3.5.0 / ProductName Chronos ; empreinte précédente ~~`041f1f0780756a6896fdac70a41d74a44b02159679eac3e979d41a9f22815419`~~
+(78 200 218 o), remplacée. **Jamais lancé par l'agent, ni en overlay, ni avec `--hook`, ni avec `--sessions`.**
 Anciens exe présents et intacts : `Chronos-v3.1.0.exe` (77 218 013 o), `Chronos-v3.2.0.exe` (77 377 466 o), `Chronos-v3.2.1.exe`
 (77 385 116 o), `Chronos-v3.2.2.exe` (77 557 997 o), `Chronos-v3.3.0.exe` (78 104 918 o), `Chronos-v3.3.1.exe` (78 111 106 o),
 `Chronos-v3.4.0.exe` (78 142 335 o) — 8 exe au total.
