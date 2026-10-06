@@ -96,7 +96,10 @@
       "Gardes de câblage textuelles → test depuis le conteneur réel (DS2-05)",
       "DS3-03 signaux d état de l autorité hors verrou/génération",
       "DS3-04 relecture null du coffre après écriture",
-      "DS3-05 resets de l ancien compte sur arcs gris ≤ 5 min"
+      "DS3-05 resets de l ancien compte sur arcs gris ≤ 5 min",
+      "Diagnostic : « Dernière sonde : cadence bornée » cache la dernière requête réussie (E43-5)",
+      "Diagnostic : « Connecté : OUI — les chiffres exacts arrivent au prochain rafraîchissement » contradictoire (E43-6)",
+      "Braises journée : vides étroits (18-22,5°) quand la 1re limite du jour tombe entre 00:30 et 03:30"
     ]
   },
   "artefacts": {
@@ -173,6 +176,10 @@
     {
       "date": "2026-10-04",
       "evenement": "Go utilisateur phase 43 (checkpoint 3 partiel : publication GitHub encore soumise à accord). 43-01 DS3-02, 43-02 version+docs, 43-03 Chronos-v3.5.0.exe (SHA-256 3577e72a…8071, commit release e56fe57, sans tag ni push). 43-04 : sonde t0 + 43-CONSTAT.md (56036f3) ; en attente du constat utilisateur."
+    },
+    {
+      "date": "2026-10-06",
+      "evenement": "Constat utilisateur 3.5.0 validé (« je valide tout ») après 4 écarts corrigés en cours de constat (43-05..43-09). Phase 43 terminée. Exe final SHA-256 e9884209…20b3. Checkpoint 3 : attente du go publication GitHub."
     }
   ],
   "cycles_precedents": [
