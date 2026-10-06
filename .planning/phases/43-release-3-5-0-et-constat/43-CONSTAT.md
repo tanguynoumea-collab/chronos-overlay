@@ -334,6 +334,34 @@ Sonde **a** (WMI, mêmes règles et même preuve que t0), lancée au retour de l
 - **Raccourci Démarrage** : absent au temps 0 → reste absent (la 3.5 ne le crée jamais).
 - **V10** : écart date d'écriture − `lastFocusedAt` sur les fichiers d'état du paquet (lecture brève).
 
+## Résultats (consignés le 2026-10-06 après le point de contrôle)
+
+### Signal de reprise reçu
+
+Réponse de l'utilisateur au point de contrôle, le 2026-10-06, mot pour mot : **« Constats terminée je valide tout »**.
+Le bloc point par point n'a pas été renvoyé. Chaque point (a)…(k) est donc consigné « **validé par l'utilisateur (verdict
+global du 2026-10-06)** », noté **VG** dans les tableaux. Aucune observation détaillée n'a été inventée. Les cellules
+« relevé (agent) » viennent de la sonde a, du diagnostic que l'utilisateur a collé au début du constat, et du journal.
+
+**Diagnostic collé par l'utilisateur au début du constat (2026-10-04 15:29)** :
+- version 3.5.0 ;
+- 1 instance ;
+- barre statusLine retirée, avec la sauvegarde `claude-settings-20261004-132656.json` ;
+- 8 hooks vers `Chronos-v3.5.0.exe` ;
+- chiffres EXACTS.
+
+Deux libellés de ce diagnostic sont trompeurs (E43-5, E43-6 au §8).
+
+**Exe joué.** Le constat a commencé sur la première construction (`3577e72a…`). Il s'est terminé sur l'exe final
+reconstruit par 43-09 : **78 200 548 o**, SHA-256 **`e9884209a6bf61625aa574ada9dcca27b123b2282d692ef562e63fed99a220b3`**
+(recalculé sur le fichier le 2026-10-06, identique à 43-09-SUMMARY). L'overlay en marche à la sonde a a été créé le
+2026-10-05 à 14:40:57, après la copie de cet exe (14:03). C'est donc bien l'exe final qui tourne.
+
+**Sonde a** (2026-10-06 13:39:32, complétée par une sonde a2 à 13:40:24 pour la ligne du verrou et la cible de chaque
+hook). Les deux sondes ont été créées par WMI (`ReturnValue = 0`). Preuve de vue réelle, les deux fois : `parent:
+WmiPrvSE.exe` ; `APPDATA\Claude existe : False`. Scripts et sorties supprimés après la copie des valeurs ;
+`Documents\chronos-constat` est vide.
+
 ## 0. Temps 0 et réconciliation
 
 | contrôle | attendu | vu (utilisateur) | relevé (agent) | verdict |
@@ -351,134 +379,187 @@ Sonde **a** (WMI, mêmes règles et même preuve que t0), lancée au retour de l
 | `last-exact.json` (réel) | vivant | — | 324 o, mtime 15:13:35 (22 s avant la sonde) | ✅ |
 | Journal (réel) | vivant | — | `releves-2026-09.jsonl`, `releves-2026-10.jsonl` (245 287 o, 942 lignes, mtime 15:12:36) ; dernière ligne = relevé `t` 13:12:35Z ; aucun événement dans le fichier d'octobre (le `demarrage` 3.4.0 du 28/09 est dans celui de septembre) ; 12 autres fichiers dans `historique\` (tokens, ids, curseurs, couverture) | ✅ |
 | Dossier Démarrage (réel) | — | — | aucun `Chronos.lnk` ; aucun autre fichier | relevé |
-| `Chronos-v3.5.0.exe` | 78 199 851 o, SHA-256 `3577e72a…`, 3.5.0.0 | — | 78 199 851 o, FileVersion 3.5.0.0, SHA-256 `3577e72a1a8eb71fa85edf88750da918d04d01154f718458382ca4a4482d8071` | ✅ |
-| Dossier de sonde `Documents\chronos-constat` | existe, vide | — | existe, vide après suppression de `sonde-t0.*` | ✅ |
-| (a) 3.4.0 quittée à la main, aucun cadran (E1-ter) | aucun `Chronos*.exe` dans « Détails » avant le lancement | à relever | à relever | à relever |
-| (a) Empreinte comparée par l'utilisateur | `3577E72A…8071` | à relever | à relever | à relever |
-| (a) Smoke `--zzz` | code 0, aucune fenêtre | à relever | à relever | à relever |
-| (a) Smoke `--hook SessionStart < NUL` | code 0, aucune fenêtre, aucun processus résident ; `~/.claude/settings.json` non écrit (md5 de la sauvegarde = t0) | à relever | à relever | à relever |
-| (b) Lancement par l'Explorateur | cadran et widget ; T0 noté | à relever | à relever | à relever |
-| (b) Second double-clic (instance unique) | « Chronos tourne déjà… » ; un seul cadran ; aucun second processus résident | à relever | à relever | à relever |
-| (b) En-tête « v3.5 », carte barre absente | vu | à relever | à relever | à relever |
-| Processus après le constat (sonde a) | 1 seul `Chronos-v3.5.0.exe`, sans argument, parent `explorer.exe` ; 0 ancienne | — | à relever | à relever |
-| Rapport `chronos.log` (sonde a) | « Version : 3.5.0 » ; « Vue AppData : réelle » ; « Processus Chronos : 1 … 0 autre(s) » ; « Verrou … tenu par ce processus » ; « [Réglages de Claude Code] » | — | à relever | à relever |
-| Journal depuis T0 (sonde a) | `demarrage` 3.5.0 à T0 ; ≥ 2 `t` distincts à T0 + 10 min ; ≈ 1 / 5 min | — | à relever | à relever |
-| Raccourci Démarrage (sonde a) | toujours absent | — | à relever | à relever |
+| `Chronos-v3.5.0.exe` | 78 199 851 o, SHA-256 `3577e72a…`, 3.5.0.0 | — | 78 199 851 o, FileVersion 3.5.0.0, SHA-256 `3577e72a1a8eb71fa85edf88750da918d04d01154f718458382ca4a4482d8071` (au temps 0 ; exe final `e9884209…`, voir plus haut) | ✅ |
+| Dossier de sonde `Documents\chronos-constat` | existe, vide | — | existe, vide après suppression de `sonde-t0.*` ; vide de nouveau après `sonde-a.*` et `sonde-a2.*` | ✅ |
+| (a) 3.4.0 quittée à la main, aucun cadran (E1-ter) | aucun `Chronos*.exe` dans « Détails » avant le lancement | VG | journal : `arret` à 15:21:44, puis aucun relevé jusqu'au `demarrage` 3.5.0 de 15:26:55 ; diagnostic du 15:29 : 1 instance | ✅ |
+| (a) Empreinte comparée par l'utilisateur | `3577E72A…8071` | VG | (geste de l'utilisateur, sans trace) | ✅ |
+| (a) Smoke `--zzz` | code 0, aucune fenêtre | VG | (sans trace : sort avant le verrou et le journal) | ✅ |
+| (a) Smoke `--hook SessionStart < NUL` | code 0, aucune fenêtre, aucun processus résident ; `~/.claude/settings.json` non écrit (md5 de la sauvegarde = t0) | VG | sauvegarde de T0 de md5 **`6d7712d7…`** = t0 : le smoke n'a rien écrit | ✅ |
+| (b) Lancement par l'Explorateur | cadran et widget ; T0 noté | VG | T0 = **2026-10-04 15:26:55** (`demarrage` 3.5.0 dans le journal ; sauvegarde `…-20261004-132656.json` = 15:26:56 locale) | ✅ |
+| (b) Second double-clic (instance unique) | « Chronos tourne déjà… » ; un seul cadran ; aucun second processus résident | VG | aucun second `demarrage` dans les secondes qui suivent T0 ; diagnostic du 15:29 : 1 instance | ✅ |
+| (b) En-tête « v3.5 », carte barre absente | vu | VG | diagnostic du 15:29 : version 3.5.0 | ✅ |
+| Processus après le constat (sonde a) | 1 seul `Chronos-v3.5.0.exe`, sans argument, parent `explorer.exe` ; 0 ancienne | — | **1** : `Chronos-v3.5.0.exe` PID 79456, sans argument, parent 27872 `explorer.exe`, créé le 2026-10-05 14:40:57, dans le dépôt ; 0 ancienne, aucun `--hook` résident | ✅ |
+| Rapport `chronos.log` (sonde a) | « Version : 3.5.0 » ; « Vue AppData : réelle » ; « Processus Chronos : 1 … 0 autre(s) » ; « Verrou … tenu par ce processus » ; « [Réglages de Claude Code] » | — | 8 722 o, « Date : 2026-10-05 14:40:59 », « Version : 3.5.0 », « Exe courant : %USERPROFILE%\…\Chronos-v3.5.0.exe », « Vue AppData : réelle », « Processus Chronos : 1 (dont ce processus) - 0 autre(s) », « Instances Chronos : 1 », « Verrou mono-instance (Local\Chronos-overlay) : tenu par ce processus » ; « [Réglages de Claude Code] » : « Ce lancement : aucune barre Chronos (rien à retirer) », « Barre de statut actuelle : absente » | ✅ |
+| Journal depuis T0 (sonde a) | `demarrage` 3.5.0 à T0 ; ≥ 2 `t` distincts à T0 + 10 min ; ≈ 1 / 5 min | — | `releves-2026-10.jsonl` 360 431 o, 1 407 lignes, 0 invalide, mtime 13:35:01 (4,5 min avant la sonde) ; depuis t0 : **448** relevés, 448 `t` distincts, premier 10-04 15:18:35, dernier 10-06 13:34:59 ; intervalle min 5,00 min, médiane 5,00 min ; événements : `arret` 10-04 15:21:44 · `demarrage` 3.5.0 15:26:55 · `arret` 15:47:35 · `demarrage` 3.5.0 + `reprise` 16:19:45 · `arret` 16:21:00 · `demarrage` 3.5.0 + `reprise` 16:51:35 · `arret` 16:53:42 · `demarrage` 3.5.0 + `reprise` 17:19:34 · `arret` 10-05 08:36:53 · `demarrage` 3.5.0 + `reprise` 11:32:08 · `arret` 11:35:35 · `demarrage` 3.5.0 + `reprise` 14:40:58 ; tous les `demarrage` portent 3.5.0 | ✅ |
+| Raccourci Démarrage (sonde a) | toujours absent | — | `Chronos.lnk` absent ; dossier vide | ✅ |
 
 ## 1. Barre, sauvegarde, hooks (critère 3, transfert de 43-03)
 
 | contrôle | attendu | vu (utilisateur) | relevé (agent) | verdict |
 |---|---|---|---|---|
-| Barre de statut d'une NOUVELLE session Claude Code | plus de barre Chronos | à relever | — | à relever |
-| statusLine de `~/.claude/settings.json` (sonde a) | absente (rien à restaurer) | — | à relever | à relever |
-| Sauvegarde neuve (sonde a) | une seule, datée de T0, md5 `6d7712d75d5934d72be0643ecff47d48` (= t0) | — | à relever | à relever |
-| Hooks repointés (sonde a) | 8 groupes `--hook` vers `Chronos-v3.5.0.exe`, un par clé ; 0 `Chronos-v3.4.0.exe` ; 3 `gsd-` intacts | — | à relever | à relever |
-| Nouvelle session visible dans le widget | apparaît (hooks 3.5.0 actifs) | à relever | — | à relever |
-| Idempotence à la relance (i) (sonde a) | `~/.claude/settings.json` non réécrit ; aucune seconde sauvegarde | — | à relever | à relever |
+| Barre de statut d'une NOUVELLE session Claude Code | plus de barre Chronos | VG | — | ✅ |
+| statusLine de `~/.claude/settings.json` (sonde a) | absente (rien à restaurer) | — | **ABSENTE** ; `InnerStatusLineCommand` vide (rien à restaurer) ; `chronos.log` : « Barre de statut actuelle : absente » | ✅ |
+| Sauvegarde neuve (sonde a) | une seule, datée de T0, md5 `6d7712d75d5934d72be0643ecff47d48` (= t0) | — | **`claude-settings-20261004-132656.json`** (UTC = 15:26:56 locale), 3 384 o, md5 **`6d7712d75d5934d72be0643ecff47d48`** = t0. Créée au même instant : l'épingle `claude-settings-initial.json` (md5 `3c684224…`, copie de la plus ancienne sauvegarde du 26/09 ; FIAB-R1 de 42.2-11). Rétention à 5 sauvegardes horodatées : `…-20260926-163746`, `…-20260927-080710` et `…-20260927-203946` ont été évincées (comportement voulu, SEC-R4) | ✅ |
+| Hooks repointés (sonde a) | 8 groupes `--hook` vers `Chronos-v3.5.0.exe`, un par clé ; 0 `Chronos-v3.4.0.exe` ; 3 `gsd-` intacts | — | md5 `862ae97a15e71d4488cef3b25bf85afc`, 3 225 o ; occurrences : `Chronos-v3.5.0.exe` = **8**, aucune autre version ; **1** groupe Chronos par clé : SessionStart, PostToolUse, PreToolUse, UserPromptSubmit, Stop, SessionEnd, PermissionRequest, Notification, chacun `Chronos-v3.5.0.exe" --hook <sa clé>` ; **3** commandes `gsd-` (dans les seconds groupes de SessionStart, PostToolUse, PreToolUse) ; diagnostic du 15:29 : 8 hooks vers la 3.5.0 | ✅ |
+| Nouvelle session visible dans le widget | apparaît (hooks 3.5.0 actifs) | VG | — | ✅ |
+| Idempotence à la relance (i) (sonde a) | `~/.claude/settings.json` non réécrit ; aucune seconde sauvegarde | — | 6 relances de la 3.5.0 après T0 (10-04 16:19, 16:51, 17:19 ; 10-05 11:32, 14:40) et **aucune sauvegarde** entre 10-04 15:26:56 et 10-06 13:36:34. `chronos.log` de la relance du 10-05 : « aucune barre Chronos (rien à retirer) ». Deux sauvegardes du **2026-10-06 13:36:34** (3 225 o, md5 `862ae97a…`) et **13:36:35** (911 o, md5 `032c74ca…`) ne viennent pas d'un lancement (le processus date du 10-05 14:40:57). Elles ont la signature d'une désactivation puis réactivation du widget de sessions dans les Réglages : `SessionsController` → `Uninstall` puis `Install`, seul écrivain hors lancement ; `%APPDATA%\Chronos\settings.json` réécrit à 13:36:53. Cette cause est déduite, pas observée. Après coup, `settings.json` a le md5 `862ae97a…`, identique à celui d'avant la bascule (sauvegarde de 13:36:34) : 8 groupes et 3 `gsd-` reconstitués à l'identique | ✅ |
 
 ## 2. Variantes et gestes (critère 4 ; 42-UAT ; revue visuelle §9-1 et §9-2)
 
 | variante | coins 100 % : HG · HD · BG · BD | gestes : clic · double-clic · glisser · clic droit · clic dehors traverse | coins 150 % : HG · HD · BG · BD | remarques | verdict |
 |---|---|---|---|---|---|
-| Anneaux (Arcs ; Normal puis Étendu) | à relever | à relever | à relever | à relever | à relever |
-| Braises | à relever | à relever | à relever | à relever | à relever |
-| Fusible H | à relever | à relever | à relever | à relever | à relever |
-| Fusible V | à relever | à relever | à relever | à relever | à relever |
-| Marée V | à relever | à relever | à relever | à relever | à relever |
-| Marée H | à relever | à relever | à relever | à relever | à relever |
-| Volets H | à relever | à relever | à relever | à relever | à relever |
-| Volets V | à relever | à relever | à relever | à relever | à relever |
-| Pastilles d'Arcs (42-UAT test 2) | — | propre clic et info-bulle, sans bascule ; pastilles inertes captent la souris sans geste | — | à relever | à relever |
-| Second écran | un coin par variante | — | — | à relever | à relever |
+| Anneaux (Arcs ; Normal puis Étendu) | VG | VG | VG | rempli = temps consommé (E43-2, 43-06) | ✅ |
+| Braises | VG | VG | VG | conception finale 43-09 : anneau hebdo 14 braises en 7 groupes de 2 (E43-1), anneau extérieur = journée en tranches de 5 h (E43-4), pas de flèche (E43-3) ; rempli = consommé (E43-2) | ✅ |
+| Fusible H | VG | VG | VG | rempli = consommé, cordon depuis la gauche (E43-2) | ✅ |
+| Fusible V | VG | VG | VG | rempli = consommé, cordon depuis le bas (E43-2) | ✅ |
+| Marée V | VG | VG | VG | rempli = consommé, marée montante depuis le bas (E43-2) | ✅ |
+| Marée H | VG | VG | VG | rempli = consommé (E43-2) | ✅ |
+| Volets H | VG | VG | VG | rempli = consommé (E43-2) | ✅ |
+| Volets V | VG | VG | VG | rempli = consommé, allumés depuis le bas (E43-2) | ✅ |
+| Pastilles d'Arcs (42-UAT test 2) | — | VG | — | — | ✅ |
+| Second écran | un coin par variante | — | — | VG (présence d'un second écran non précisée) | ✅ |
 
-Délai du simple clic jugé par l'utilisateur (coût annoncé ≈ 0,5 s) : à relever.
+Délai du simple clic (coût annoncé ≈ 0,5 s) : VG, aucun écart signalé.
 
 ## 3. Braises et thèmes (revue visuelle §9-3 et §9-5)
 
 | contrôle | attendu | vu (utilisateur) | relevé (agent) | verdict |
 |---|---|---|---|---|
-| Braises : groupes | 20 braises en 5 groupes d'une heure séparés par un vide | à relever | — | à relever |
-| Braises : flèche | fixe à midi | à relever | — | à relever |
-| Braises : mode temps | « ↻ HH:MM » (reset de la fenêtre de 5 h) ; absent si inconnu ou dépassé | à relever | — | à relever |
-| Thèmes : rangement | 15 thèmes en 3 groupes Pâle · Classique · Vive | à relever | — | à relever |
-| Thèmes : lisibilité | mots du cadran et du widget lisibles sur les 15 | à relever | — | à relever |
-| Thèmes : gris épuisé | visible sur chaque thème (≥ 3:1), ou « non observé » | à relever | — | à relever |
-| Thèmes : cadrans alternatifs | Braises, Fusible, Marée, Volets suivent le thème | à relever | — | à relever |
+| Braises : groupes | 20 braises en 5 groupes d'une heure séparés par un vide | VG, sur la conception amendée : anneau extérieur = journée de 24 braises groupées par tranches de 5 h (43-09) ; anneau hebdo de 14 braises en 7 groupes de 2 (43-05) | `%APPDATA%\Chronos\settings.json` : `CadranStyle = Braises` à la sonde a ; exe final `e9884209…` en marche | ✅ après correction (E43-1, E43-4) |
+| Braises : flèche | fixe à midi | VG, sur la conception amendée : flèche retirée (43-07, décision de l'utilisateur) | — | ✅ après correction (E43-3) |
+| Braises : mode temps | « ↻ HH:MM » (reset de la fenêtre de 5 h) ; absent si inconnu ou dépassé | VG | — | ✅ |
+| Thèmes : rangement | 15 thèmes en 3 groupes Pâle · Classique · Vive | VG | — | ✅ |
+| Thèmes : lisibilité | mots du cadran et du widget lisibles sur les 15 | VG | — | ✅ |
+| Thèmes : gris épuisé | visible sur chaque thème (≥ 3:1), ou « non observé » | VG | — | ✅ |
+| Thèmes : cadrans alternatifs | Braises, Fusible, Marée, Volets suivent le thème | VG | thème remis à `aurore` (sonde a) | ✅ |
 
 ## 4. Historique et plein écran (reprise de VAL-05 / 35-07 ; 38-UAT ; revue visuelle §9-4)
 
 | id | geste | attendu | vu (utilisateur) | relevé (agent) | verdict |
 |---|---|---|---|---|---|
-| H01 | Réglages → Historique → « Ouvrir » | fenêtre sur « Semaine de forfait · <début> → <fin> » | à relever | à relever | à relever |
-| H02 | double-clic sur le cadran, fenêtre fermée | fenêtre ouverte ; aucune bascule | à relever | à relever | à relever |
-| H03 | double-clic, fenêtre ouverte derrière une autre | premier plan ; une seule entrée dans la barre des tâches | à relever | à relever | à relever |
-| H04 | simple clic | une bascule après ≈ 0,5 s (coût annoncé, jugé par l'utilisateur) | à relever | à relever | à relever |
-| H05 | glisser ; clic droit | accroche au coin ; Réglages | à relever | à relever | à relever |
-| H06 | vue Semaine | « Dernier relevé il y a N min · … » ; NIVEAU sur les relevés ; aucun trou inventé | à relever | à relever | à relever |
-| H07 | piste TOKENS CLAUDE CODE | barres ; « … ce n'est PAS un % du forfait » | à relever | à relever | à relever |
-| H08 | (retiré : un seul style, Pistes ; aucun sélecteur) | aucun sélecteur de style dans la fenêtre ni dans les Réglages | à relever | — | à relever |
-| H09 | segment « Jour » | « Jour · <aujourd'hui> … », « 288 relevés attendus · N présents · … », ligne « maintenant » | à relever | à relever | à relever |
-| H10 | segment « 4 semaines » | avant le 27 sept. « pas de relevés (avant le journal) » ; couverture par semaine ; « Rien n'est inventé avant l'ouverture du journal. » | à relever | à relever | à relever |
-| H11 | Diagnostic copié | `[Journal d'historique]` ; « Instances Chronos : 1 » ; « [Réglages de Claude Code] » | à relever | à relever | à relever |
-| H12 | Réglages → Historique | « hebdo / 5 h / tokens · journal du 27 sept. 2026 » ; « dernière écriture il y a N min » ; pas de pastille orange | à relever | à relever | à relever |
-| H13 | trou réel du point (h) | rectangle gris à bordure pointillée « Chronos arrêté » ; ligne interrompue | à relever | à relever | à relever |
-| H14 | libellés relus, verdict | libellés justes et lisibles ; verdict écrit | à relever | — | à relever |
-| P1 | « ⛶ Plein écran » | écran courant, barre des tâches comprise ; pistes proportionnelles ; textes ≈ ×1,35 ; aucun défilement ; « ⤢ Quitter le plein écran · Échap » | à relever | — | à relever |
-| P2 | Échap, puis Échap | sort du plein écran, puis ferme la fenêtre | à relever | — | à relever |
-| P3 | F11, puis F11 | entre puis sort ; position et taille restaurées | à relever | — | à relever |
-| P4 | 150 % ; second écran ; petit écran | même comportement ; rien de tronqué (< 1 280 px) | à relever | — | à relever |
+| H01 | Réglages → Historique → « Ouvrir » | fenêtre sur « Semaine de forfait · <début> → <fin> » | VG | — | ✅ |
+| H02 | double-clic sur le cadran, fenêtre fermée | fenêtre ouverte ; aucune bascule | VG | — | ✅ |
+| H03 | double-clic, fenêtre ouverte derrière une autre | premier plan ; une seule entrée dans la barre des tâches | VG | — | ✅ |
+| H04 | simple clic | une bascule après ≈ 0,5 s (coût annoncé, jugé par l'utilisateur) | VG | — | ✅ |
+| H05 | glisser ; clic droit | accroche au coin ; Réglages | VG | — | ✅ |
+| H06 | vue Semaine | « Dernier relevé il y a N min · … » ; NIVEAU sur les relevés ; aucun trou inventé | VG | journal : 448 relevés depuis t0 au pas de 5 min ; trous > 10 min uniquement entre un `arret` et un `demarrage` | ✅ |
+| H07 | piste TOKENS CLAUDE CODE | barres ; « … ce n'est PAS un % du forfait » | VG | — | ✅ |
+| H08 | (retiré : un seul style, Pistes ; aucun sélecteur) | aucun sélecteur de style dans la fenêtre ni dans les Réglages | VG | — | ✅ |
+| H09 | segment « Jour » | « Jour · <aujourd'hui> … », « 288 relevés attendus · N présents · … », ligne « maintenant » | VG | — | ✅ |
+| H10 | segment « 4 semaines » | avant le 27 sept. « pas de relevés (avant le journal) » ; couverture par semaine ; « Rien n'est inventé avant l'ouverture du journal. » | VG | — | ✅ |
+| H11 | Diagnostic copié | `[Journal d'historique]` ; « Instances Chronos : 1 » ; « [Réglages de Claude Code] » | VG ; diagnostic du 15:29 collé : 3.5.0, 1 instance, barre retirée + nom de sauvegarde, 8 hooks, chiffres EXACTS | `chronos.log` : « Instances Chronos : 1 », section « [Réglages de Claude Code] » | ✅ (libellés E43-5, E43-6) |
+| H12 | Réglages → Historique | « hebdo / 5 h / tokens · journal du 27 sept. 2026 » ; « dernière écriture il y a N min » ; pas de pastille orange | VG | journal écrit 4,5 min avant la sonde | ✅ |
+| H13 | trou réel du point (h) | rectangle gris à bordure pointillée « Chronos arrêté » ; ligne interrompue | VG | voir §7 : chaque trou du journal est encadré par un `arret` et un `demarrage` | ✅ |
+| H14 | libellés relus, verdict | libellés justes et lisibles ; verdict écrit | VG ; verdict « je valide tout » | — | ✅ |
+| P1 | « ⛶ Plein écran » | écran courant, barre des tâches comprise ; pistes proportionnelles ; textes ≈ ×1,35 ; aucun défilement ; « ⤢ Quitter le plein écran · Échap » | VG | — | ✅ |
+| P2 | Échap, puis Échap | sort du plein écran, puis ferme la fenêtre | VG | — | ✅ |
+| P3 | F11, puis F11 | entre puis sort ; position et taille restaurées | VG | — | ✅ |
+| P4 | 150 % ; second écran ; petit écran | même comportement ; rien de tronqué (< 1 280 px) | VG (présence d'un second écran ou d'un petit écran non précisée) | — | ✅ |
 
 ## 5. Widget de sessions — lignes du tableau de 32-08 (reprise de VAL-04)
 
 | id | situation (tableau de l'utilisateur) | geste | attendu | vu (utilisateur) | relevé (agent) | verdict |
 |---|---|---|---|---|---|---|
-| L1 | session qui réfléchit | S1, invite longue, regardée | « Réflexion » sous le titre | à relever | à relever | à relever |
-| L2 | finie, non lue, puis ouverte | S2 finie pendant que S1 est ouverte, puis clic S2 | « En attente » qui reste ; disparaît sans clic après le clic S2 | à relever | à relever | à relever |
-| L2b | finie, fenêtre Claude au second plan, puis alt-tab | S3, Explorateur devant | « En attente » qui reste ; disparaît après l'alt-tab | à relever | à relever | à relever |
-| L3 | finie et lue en direct | S1 regardée jusqu'à la fin | « En attente » ≤ ~5 s puis disparition sans clic | à relever | à relever | à relever |
-| L4 | lue, qui se remet à travailler | S2, invite longue | réapparaît « Réflexion », puis « En attente » | à relever | à relever | à relever |
-| Q | question posée, non regardée | S1 AskUserQuestion, S3 devant | S1 « En attente » au-dessus de S2 | à relever | à relever | à relever |
+| L1 | session qui réfléchit | S1, invite longue, regardée | « Réflexion » sous le titre | VG | hooks des 8 événements vers la 3.5.0 (§1) | ✅ |
+| L2 | finie, non lue, puis ouverte | S2 finie pendant que S1 est ouverte, puis clic S2 | « En attente » qui reste ; disparaît sans clic après le clic S2 | VG | — | ✅ |
+| L2b | finie, fenêtre Claude au second plan, puis alt-tab | S3, Explorateur devant | « En attente » qui reste ; disparaît après l'alt-tab | VG | — | ✅ |
+| L3 | finie et lue en direct | S1 regardée jusqu'à la fin | « En attente » ≤ ~5 s puis disparition sans clic | VG | — | ✅ |
+| L4 | lue, qui se remet à travailler | S2, invite longue | réapparaît « Réflexion », puis « En attente » | VG | — | ✅ |
+| Q | question posée, non regardée | S1 AskUserQuestion, S3 devant | S1 « En attente » au-dessus de S2 | VG | — | ✅ |
 
 ## 6. Vérifications déférées (V01…V12)
 
 | id | vérification (phase d'origine) | geste | attendu | vu (utilisateur) | relevé (agent) | verdict |
 |---|---|---|---|---|---|---|
-| V01 | galerie des 8 styles (28, 29) | `"<dépôt>\Chronos-v3.5.0.exe" --sessions` via Win+R | trois mots, titre long en ellipse, info-bulles | à relever | à relever | à relever |
-| V02 | 15 thèmes (28 ; 9 thèmes à l'origine) | Réglages → Apparence | mots lisibles | à relever | à relever | à relever |
-| V03 | section « Source app-bureau » (29) | rapport final | trouvée, racine du paquet, fichiers d'état | à relever | à relever | à relever |
-| V04 | causes de masquage et « Règle « lue » » (30) | rapport final | chaque masquée a une cause ; section présente | à relever | à relever | à relever |
-| V05 | borne de 160 DIP (29) | widget | titre coupé sans élargir | à relever | à relever | à relever |
-| V06 | info-bulle longue (29) | survol de S2 | lisible | à relever | à relever | à relever |
-| V07 | PermissionRequest pour AskUserQuestion ; question vue puis répondue (28, 30) | S1 | disparition avant la réponse ; « Réflexion » après | à relever | à relever | à relever |
-| V08 | question classée `blocked` par l'app (29) | S2 | « En attente » + motif si classée | à relever | à relever | à relever |
-| V09 | accueil ou Chat au premier plan (30) | S3 | limite écrite : disparition probable | à relever | à relever | à relever |
-| V10 | latence d'écriture de `lastFocusedAt` (27, 30) | relevé agent | écart date d'écriture − `lastFocusedAt` | — | à relever | à relever |
-| V11 | réserve de la phase 27 | tout le constat | aucune session lue restée « En attente » | à relever | à relever | à relever |
-| V12 | CLI homonyme `claude` (30) | console devant | reste « En attente » | à relever | à relever | à relever |
+| V01 | galerie des 8 styles (28, 29) | `"<dépôt>\Chronos-v3.5.0.exe" --sessions` via Win+R | trois mots, titre long en ellipse, info-bulles | VG | aucun processus `--sessions` résident à la sonde a | ✅ |
+| V02 | 15 thèmes (28 ; 9 thèmes à l'origine) | Réglages → Apparence | mots lisibles | VG | — | ✅ |
+| V03 | section « Source app-bureau » (29) | rapport final | trouvée, racine du paquet, fichiers d'état | VG | racine `Packages\Claude_*\LocalCache\Roaming\Claude\claude-code-sessions` présente et lisible (sonde a) | ✅ |
+| V04 | causes de masquage et « Règle « lue » » (30) | rapport final | chaque masquée a une cause ; section présente | VG | — | ✅ |
+| V05 | borne de 160 DIP (29) | widget | titre coupé sans élargir | VG | — | ✅ |
+| V06 | info-bulle longue (29) | survol de S2 | lisible | VG | — | ✅ |
+| V07 | PermissionRequest pour AskUserQuestion ; question vue puis répondue (28, 30) | S1 | disparition avant la réponse ; « Réflexion » après | VG | groupe `PermissionRequest` → 3.5.0 (§1) | ✅ |
+| V08 | question classée `blocked` par l'app (29) | S2 | « En attente » + motif si classée | VG | — | ✅ |
+| V09 | accueil ou Chat au premier plan (30) | S3 | limite écrite : disparition probable | VG | — | ✅ (limite écrite) |
+| V10 | latence d'écriture de `lastFocusedAt` (27, 30) | relevé agent | écart date d'écriture − `lastFocusedAt` | — | 8 fichiers `local_*` les plus récents (identifiants tronqués), lus en partage. Quand l'écriture suit un focus, l'écart vaut **1,0 s ; 1,0 s ; 1,2 s ; 3,6 s**. Deux fichiers montrent 62,7 s et 133,9 s : réécrits plus tard pour un autre champ (`lastActivityAt` avance après le tour). Deux fichiers anciens ont été réécrits le 10-06 06:41 avec un focus de septembre. Latence d'écriture du focus : **≈ 1 à 4 s** | ✅ relevé |
+| V11 | réserve de la phase 27 | tout le constat | aucune session lue restée « En attente » | VG | — | ✅ |
+| V12 | CLI homonyme `claude` (30) | console devant | reste « En attente » | VG (usage d'une console non précisé) | — | ✅ |
 
 ## 7. Arrêt, trou réel, déconnexion
 
 | contrôle | attendu | vu (utilisateur) | relevé (agent) | verdict |
 |---|---|---|---|---|
-| (h) Alt+F4 sur le cadran | le cadran et le widget disparaissent | à relever | — | à relever |
-| (h) Processus après Alt+F4 | plus de `Chronos-v3.5.0.exe` ; `arret` dans le journal à l'heure notée | à relever | à relever | à relever |
-| (i) Relance par l'Explorateur | `demarrage` 3.5.0 ; trou ≥ 15 min sans relevé entre `arret` et `demarrage` | à relever | à relever | à relever |
-| (i) Trou dans l'Historique | rectangle gris à bordure pointillée « Chronos arrêté », ligne interrompue, « 1 interruption (Chronos arrêté, …) » en vue Jour | à relever | à relever | à relever |
-| (i) Libellés d'honnêteté | justes et lisibles | à relever | — | à relever |
-| (j) « Se déconnecter » | « données indisponibles », aucun chiffre ni « ≥ » | à relever | — | à relever |
-| (j) Reconnexion, même compte | chiffres revenus en ≤ ~5 min | à relever | à relever | à relever |
+| (h) Alt+F4 sur le cadran | le cadran et le widget disparaissent | VG | — | ✅ |
+| (h) Processus après Alt+F4 | plus de `Chronos-v3.5.0.exe` ; `arret` dans le journal à l'heure notée | VG (heure non transmise) | chaque arrêt de la 3.5.0 a écrit un `arret` : 10-04 15:47:35, 16:21:00, 16:53:42 ; 10-05 08:36:53, 11:35:35. Le journal ne distingue pas Alt+F4 de « Quitter » (même événement). Aucun processus résiduel à la sonde a (1 seul Chronos) | ✅ |
+| (i) Relance par l'Explorateur | `demarrage` 3.5.0 ; trou ≥ 15 min sans relevé entre `arret` et `demarrage` | VG | 5 trous ≥ 15 min, chacun entre un `arret` et un `demarrage` 3.5.0 : 36,8 min (15:42 → 16:19), 31,8 min (16:19 → 16:51), 28,0 min (16:51 → 17:19), 180,6 min (10-05 08:31 → 11:32), 188,8 min (11:32 → 14:40) ; relances de parent `explorer.exe` (processus final) | ✅ |
+| (i) Trou dans l'Historique | rectangle gris à bordure pointillée « Chronos arrêté », ligne interrompue, « 1 interruption (Chronos arrêté, …) » en vue Jour | VG | voir la ligne précédente : les trous sont tous des arrêts propres, donc annotables « Chronos arrêté » | ✅ |
+| (i) Libellés d'honnêteté | justes et lisibles | VG | — | ✅ |
+| (j) « Se déconnecter » | « données indisponibles », aucun chiffre ni « ≥ » | VG | — | ✅ |
+| (j) Reconnexion, même compte | chiffres revenus en ≤ ~5 min | VG | journal continu au pas de 5 min depuis 10-05 14:40:58, dernier relevé 10-06 13:34:59 ; la déconnexion elle-même ne se lit pas dans le journal | ✅ |
 
 ## 8. Écarts
 
-à relever (après le point de contrôle). Aucun à ce stade. Au temps 0, E1-ter de `32-CONSTAT.md` / `35-CONSTAT.md` se réduit à
-UNE ancienne en marche (la 3.4.0, qui connaît le verrou) ; il est soldé si la sonde a ne voit qu'une 3.5.0.
+**Relevés PENDANT le constat et corrigés avant le verdict.** Chacun a été corrigé par un plan dédié, l'exe 3.5.0 a été
+reconstruit (même version), puis l'utilisateur a repris le constat sur l'exe reconstruit.
+
+| id | fait | correction | commits (RED · GREEN · release) | empreinte de l'exe après correction |
+|---|---|---|---|---|
+| E43-1 | Anneau hebdo de Braises : 12 braises uniformes, on n'y lit pas les jours | **43-05** : 14 braises en 7 groupes de 2 (un jour par groupe) | `8be6e4a` · `810d0ad` · `56e053f` | `cca57384af57dcd66575a7cad571c8974faecb7e56b592210c8c62c98d36f6f3` (78 200 845 o) |
+| E43-2 | Le rempli montrait le temps RESTANT sur Braises, Fusible, Marée et Volets, à rebours des Anneaux | **43-06** : rempli = temps CONSOMMÉ sur tous les cadrans (Fusible H depuis la gauche, verticaux depuis le bas) | `2964068` · `7bca918` · `df5b54c` | `adea832ff2dcf63244db893ce4526e2a0c4c26e5e1ed9976716cc1ede21cb521` (78 200 158 o) |
+| E43-3 | Flèche de reset de Braises jugée inutile par l'utilisateur | **43-07** : flèche retirée | `6bcd2a4` · `6c73bf5` · `bf799d1` | `041f1f0780756a6896fdac70a41d74a44b02159679eac3e979d41a9f22815419` (78 200 218 o) |
+| E43-4 | Anneau 5 h de Braises illisible (20 braises, 5 groupes) | **43-08** : 25 braises en 5 groupes de 5, sens horaire prouvé au rendu ; puis **43-09** : l'anneau extérieur devient la journée locale (24 braises, minuit en haut) groupée par tranches de la grille des resets 5 h | 43-08 : `e422ab6` · `3ba2ed3` · `d1080e1` ; 43-09 : `c25d6f7` · `b01c896` · `baccbb8` | 43-08 : `4bab93a6…` (78 200 214 o), remplacée ; **43-09 (final) : `e9884209a6bf61625aa574ada9dcca27b123b2282d692ef562e63fed99a220b3` (78 200 548 o)** |
+
+**Limite connue de E43-4 (43-09), acceptée par le verdict global.** Avec le rapprochement 0,8, les vides entre groupes
+sont plus étroits (18 à 22,5°, sous la cible de 24°) quand la première limite du jour tombe entre 00:30 et 03:30
+(modulo 5 h), soit 60 % des ancres. Le vide reste ≥ 1,5 × l'écart intra (12°) et les braises ne se touchent jamais.
+La limite est écrite dans `BraisesJournee.cs` et dans `.zeus/DESIGN_PLAN_CYCLE2.md` §3, et vérifiée par un test.
+
+**Écarts mineurs, ouverts, NON corrigés ici : proposition RETOUR ROADMAP.**
+
+| id | fait | preuve | proposition |
+|---|---|---|---|
+| E43-5 | Libellé de diagnostic « Dernière sonde : cadence bornée… » trompeur : il masque la dernière requête RÉUSSIE (on croit que la sonde n'a rien obtenu) | diagnostic collé par l'utilisateur le 2026-10-04 à 15:29, alors que les chiffres sont EXACTS | RETOUR ROADMAP : afficher la dernière requête réussie (heure, statut), puis la cadence |
+| E43-6 | Libellé « Connecté : OUI — les chiffres exacts arrivent au prochain rafraîchissement » contradictoire quand les chiffres sont déjà exacts | même diagnostic (chiffres EXACTS affichés au même moment) | RETOUR ROADMAP : conditionner la seconde moitié du libellé à l'absence de relevé exact |
+
+**E1-ter** (32-CONSTAT / 35-CONSTAT) : **soldé**. La 3.4.0 a été quittée à la main (`arret` à 15:21:44). La sonde a ne
+voit qu'un seul `Chronos-v3.5.0.exe`, qui tient le verrou, avec « 0 autre(s) ».
+
+**Constats de l'agent qui ne sont pas des écarts** :
+- rétention des sauvegardes à 5 + épingle `claude-settings-initial.json` (voulues, 42.2-11) ;
+- bascule du widget le 2026-10-06 à 13:36 : `settings.json` reconstitué à l'identique (§1) ;
+- le journal ne distingue pas Alt+F4 de « Quitter » : tous deux écrivent `arret`, ce qui est voulu.
 
 ## Verdict
 
-à rendre (après le point (k)) : verdict de l'utilisateur, puis synthèse par critère — VAL-06 critère 3 (barre retirée constatée
-par sonde hors arbre après un lancement par l'Explorateur) ; VAL-07 (constat joué, verdict écrit, écarts compris) ; reprise de
-VAL-04 (32-08 : instance unique après E1-ter, L1…Q, V01…V12, journal qui s'écrit) et de VAL-05 (35-07 : Historique sur vraies
-données, trou réel annoté) conclues ou non.
+**Verdict de l'utilisateur (2026-10-06), mot pour mot : « Constats terminée je valide tout ».**
+
+Il porte sur l'exe final `Chronos-v3.5.0.exe` (SHA-256 `e9884209…b220b3`, 78 200 548 o) et inclut les écarts E43-1 à
+E43-4 corrigés pendant le constat, ainsi que la limite connue de 43-09. Le bloc détaillé n'a pas été renvoyé : les
+points (a)…(k) sont validés globalement, sans observation ligne à ligne.
+
+Synthèse par critère :
+- **VAL-06 critère 3 — atteint.** Constaté par deux sondes WMI hors de l'arbre (parent `WmiPrvSE.exe`, `APPDATA\Claude`
+  absent) après un lancement par l'Explorateur (processus de parent `explorer.exe`) :
+  - statusLine Chronos **absente** de `~/.claude/settings.json`, rien à restaurer ;
+  - sauvegarde `claude-settings-20261004-132656.json` de md5 `6d7712d7…` = t0 ;
+  - **8** groupes `--hook` vers `Chronos-v3.5.0.exe`, un par clé, 0 ancien exe, 3 `gsd-` intacts ;
+  - idempotence sur 6 relances (aucune sauvegarde ni réécriture due à un lancement).
+- **VAL-07 — atteint.** Le protocole a été commité avant d'être joué (`56036f3`), puis joué par l'utilisateur sur sa
+  machine. Le verdict est écrit. Quatre écarts relevés pendant le constat ont été corrigés avant le verdict (43-05 à
+  43-09). Deux écarts mineurs de libellé (E43-5, E43-6) partent en RETOUR ROADMAP.
+- **Reprise de VAL-04 (32-08) — conclue.**
+  - Instance unique après E1-ter : 1 processus, verrou « tenu par ce processus », « 0 autre(s) ».
+  - L1…Q et V01…V12 validés (verdict global) ; V10 relevé à ≈ 1 à 4 s.
+  - Le journal s'écrit : 448 relevés au pas de 5 min depuis t0, un `demarrage` 3.5.0 à chaque lancement, un `arret`
+    à chaque arrêt.
+- **Reprise de VAL-05 (35-07) — conclue.**
+  - L'Historique sur les vraies données est validé (verdict global).
+  - Trous réels : chaque trou ≥ 15 min du journal (26 min à 3 h 09) est encadré par un `arret` et un `demarrage`, donc
+    annotable « Chronos arrêté ».
+
+Réserve d'honnêteté : les colonnes « vu (utilisateur) » portent un verdict global, pas des observations détaillées. Un
+point qu'un retour ultérieur contredirait rouvrirait un écart E43-n.
+
+Publication GitHub (push, étiquette `exe-v3.5.0`, release) : hors périmètre. Elle demande un accord explicite séparé.
 
 ## Signal de reprise global
 
