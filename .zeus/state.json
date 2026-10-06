@@ -5,7 +5,7 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "GSD",
+  "phase": "RETOUR_ROADMAP",
   "phase_status": "retour_dev_senior_1",
   "cycle": {
     "numero": 2,
@@ -99,7 +99,8 @@
       "DS3-05 resets de l ancien compte sur arcs gris ≤ 5 min",
       "Diagnostic : « Dernière sonde : cadence bornée » cache la dernière requête réussie (E43-5)",
       "Diagnostic : « Connecté : OUI — les chiffres exacts arrivent au prochain rafraîchissement » contradictoire (E43-6)",
-      "Braises journée : vides étroits (18-22,5°) quand la 1re limite du jour tombe entre 00:30 et 03:30"
+      "Braises journée : vides étroits (18-22,5°) quand la 1re limite du jour tombe entre 00:30 et 03:30",
+      "docs/publish.md annonce des tags exe-vX.Y.Z alors que les releases utilisent vX.Y.Z (v3.5.0) — aligner doc et garde"
     ]
   },
   "artefacts": {
@@ -180,6 +181,10 @@
     {
       "date": "2026-10-06",
       "evenement": "Constat utilisateur 3.5.0 validé (« je valide tout ») après 4 écarts corrigés en cours de constat (43-05..43-09). Phase 43 terminée. Exe final SHA-256 e9884209…20b3. Checkpoint 3 : attente du go publication GitHub."
+    },
+    {
+      "date": "2026-10-06",
+      "evenement": "PUBLICATION : go utilisateur explicite. main poussé (756 commits), tag v3.5.0, release GitHub https://github.com/tanguynoumea-collab/chronos-overlay/releases/tag/v3.5.0 (asset sha256 e9884209…20b3 vérifié). Phase suivante : RETOUR ROADMAP (checkpoint 4)."
     }
   ],
   "cycles_precedents": [
