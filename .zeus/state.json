@@ -5,7 +5,7 @@
   "version_cible": "3.5.0",
   "milestone_gsd": "v1.9",
   "route": "full",
-  "phase": "RETOUR_ROADMAP",
+  "phase": "TERMINE",
   "phase_status": "retour_dev_senior_1",
   "cycle": {
     "numero": 2,
@@ -56,52 +56,7 @@
       "FAUSSE ALERTE corrigee le 27/09 : last-exact.json reel est reecrit chaque minute (sonde WMI hors arbre) ; la copie figee au 13/09 est la vue virtualisee MSIX lue depuis les sessions. CPT-02 = observabilite (age d'ecriture, ecriture_ratee, vue AppData) + test du try/catch muet.",
       "Trois exe Chronos (3.1.0, 3.2.0, 3.2.1) en marche simultanement : triple sonde, ecrivains concurrents ; FileMode.Append non atomique sous Windows (mesure). (CPT-03, JRN-03)"
     ],
-    "pour_roadmap": [
-      "Heatmap jour x heure des rythmes (v1.9)",
-      "Export CSV de la plage affichee",
-      "Compaction du journal des releves au-dela de 8 semaines",
-      "Dimension projet dans les agregats de tokens",
-      "Projection conditionnelle 'a ce rythme' (seulement si visuellement distincte)",
-      "DayTimeline : grille 5 h theorique -> resets observes",
-      "WeeklyWindow : derive d'une heure au changement d'heure (test d'acceptation 25/10)",
-      "Diagnostic : libelle perime « menu clic droit → Se connecter a Claude » (le chemin est desormais Reglages → Donnees → Se connecter) — mineur, releve en revue des rendus 3.4.0",
-      "2026-10-01 (utilisateur) — VERSION SUIVANTE, detail dans .zeus/ROADMAP-PROCHAINE-VERSION.md (R1-R7, rien de code) : R1 Fusible/Maree/Volets en horizontal ET vertical, selectionnable ; R2 Fusible et Volets +20 % ; R3 Braises : delimitations des tranches 5 h ; R4 Historique : Pistes seul style + plein ecran general ; R5 purge des reliquats de recuperation des donnees + methodologie claire ; R6 themes en Pale / Classique / Vive + nouvelles palettes proposees ; R7 zones de clic et d'attrape recalculees par cadran",
-      "Cycle 2 (40-07) : SnapToNearestCorner / RestorePlacement (code existant, SetWindowPos sans SWP_NOZORDER) peuvent ramener brievement au premier plan une fenetre en mode arriere-plan — defaut ancien, hors perimetre",
-      "Cycle 2 (37) : message d'assertion de GardesDoctrineTests (l.56-58) parle encore de « trois composites »",
-      "Cycle 2 (39) : gris epuise ≈ gris neutre (contraste 1,01-1,8) — a juger en revue visuelle ; etiquette « THEME » au-dessus des titres de groupe peut-etre redondante",
-      "Cycle 2 (41) : anneau hebdo de Braises a 12 braises pour 7 jours",
-      "DR1 M4 : hierarchie des titres de groupe de themes (meme style que THEME)",
-      "DR1 M5/M8 : collisions d'annotations dans l'Historique (absence / maintenant)",
-      "DR1 M6 : 4 semaines en plein ecran, vide sous la couverture et legende etroite",
-      "DR1 M7 : legende des tokens cassee (carre orphelin)",
-      "DR1 M12 : filet de charniere de la plaque Volets barre les chiffres",
-      "DR1 M14 : corps de police encore ecrits en dur dans Arcs/Braises/MainWindow",
-      "DR2 R2-M1 : libelles 5 H / 7 J et cordon/bande epuises de Fusible et Maree faibles sur fond gris-bleu moyen (~1,6-1,7:1)",
-      "DR2 R2-M2 : cadran rectangulaire accroche en bas flotte 14 px au-dessus du bord (bande de pastilles) — a juger sur ecran reel",
-      "DR2 R2-M3 : cadrage de l'apercu des reglages suppose fenetre = cadran + bande (fragilite)",
-      "DEV-COUNCIL reportes : ARCH-1 (MainViewModel-dieu), ARCH-3/MAINT-4 (dependances optionnelles telescopiques), MAINT-2 (SessionMonitor.Inspecter), MAINT-1, ARCH-2/TEST-2 (composition root testable), ARCH-4..8, ARCH-10, MAINT-3, MAINT-6..10",
-      "DEV-COUNCIL outillage : .editorconfig + dotnet format (ARCH-11/MAINT-12), analyseurs Roslyn (ARCH-13), trous de tests TEST-1/5/6/7",
-      "DEV-COUNCIL packaging : signature de code (PKG-5/SEC-1), migration .NET 8 -> .NET 10 avant le 10/11/2026 (PKG-3), build epingle global.json (PKG-4), dossier d'installation hors depot (PKG-6, MAT-2)",
-      "DEV-COUNCIL divers : FIAB-5, FIAB-7 (enumeration recursive sur thread UI), DATA-6, DATA-8..10, DATA-12, SEC-5..9, MAT-6, PERT-6..14, ARCH-9, galeries hors exe livre (ARCH-14/PERT-9)",
-      "42.2-11 FIAB-R4 residuel : fenetre etroite de sur-comptage d'un mois gele (agregats ecrits, ids non ecrits, arret) — preferer marqueur transactionnel",
-      "FIAB-R6 : LectureIncomplete pour les agregats de tokens",
-      "SEC-R4 : sauvegardes de settings.json en clair (meme ACL)",
-      "Test lien symbolique ignore sans mode developpeur (LienSymboliqueFact)",
-      "DEV-SENIOR : duplication des lecteurs de transcripts (3 lecteurs, regles divergentes) — refactor",
-      "DEV-SENIOR : DayTimeline extrapole les reperes de reset 5 h (deja en roadmap : resets observes)",
-      "DEV-SENIOR : cycles d'espaces de noms (Services<->Text, Services->Theming->Rendering)",
-      "Login : écrire le coffre oauth.dat via le verrou de ChronosTokenAuthority (cas hérité : Save du login entre garde (b) et vérif avant écriture → écrasé) — 42.4-01-SUMMARY",
-      "Reconnexion par la pastille avec un AUTRE compte : ancien relevé affiché jusqu au premier relevé frais — 42.4-03-SUMMARY",
-      "Cache transcripts : étape 2 de P-07 (lecture par offset des fichiers chauds), libération du cache hors mode dégradé (DS2-04)",
-      "Gardes de câblage textuelles → test depuis le conteneur réel (DS2-05)",
-      "DS3-03 signaux d état de l autorité hors verrou/génération",
-      "DS3-04 relecture null du coffre après écriture",
-      "DS3-05 resets de l ancien compte sur arcs gris ≤ 5 min",
-      "Diagnostic : « Dernière sonde : cadence bornée » cache la dernière requête réussie (E43-5)",
-      "Diagnostic : « Connecté : OUI — les chiffres exacts arrivent au prochain rafraîchissement » contradictoire (E43-6)",
-      "Braises journée : vides étroits (18-22,5°) quand la 1re limite du jour tombe entre 00:30 et 03:30",
-      "docs/publish.md annonce des tags exe-vX.Y.Z alors que les releases utilisent vX.Y.Z (v3.5.0) — aligner doc et garde"
-    ]
+    "pour_roadmap": []
   },
   "artefacts": {
     "design_plan": ".zeus/DESIGN_PLAN.md (maquettes : https://www.figma.com/design/O8WVDejfdPcJv6314a7h6k)",
@@ -122,7 +77,8 @@
     "dod_cycle2": ".zeus/DOD-CYCLE2.md",
     "gate_cycle2": ".zeus/reports/cycle2/gate-2026-10-03.log",
     "dev_senior_2": ".zeus/reports/dev-senior-2.md",
-    "dev_senior_3": ".zeus/reports/dev-senior-3.md"
+    "dev_senior_3": ".zeus/reports/dev-senior-3.md",
+    "roadmap_suivante": ".zeus/ROADMAP-APRES-3.5.0.md"
   },
   "phases_sautees": [],
   "historique": [
@@ -185,6 +141,10 @@
     {
       "date": "2026-10-06",
       "evenement": "PUBLICATION : go utilisateur explicite. main poussé (756 commits), tag v3.5.0, release GitHub https://github.com/tanguynoumea-collab/chronos-overlay/releases/tag/v3.5.0 (asset sha256 e9884209…20b3 vérifié). Phase suivante : RETOUR ROADMAP (checkpoint 4)."
+    },
+    {
+      "date": "2026-10-06",
+      "evenement": "Checkpoint 4 : roadmap confirmée par l utilisateur, écrite dans .zeus/ROADMAP-APRES-3.5.0.md. Cycle ZEUS n°2 clos (3.5.0 publiée)."
     }
   ],
   "cycles_precedents": [
