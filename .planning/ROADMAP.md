@@ -124,7 +124,7 @@ observés).
  (completed 2026-10-03)
 - [x] **Phase 42: Un geste sur toute la silhouette** - Bascule, double-clic, glisser et clic droit marchent sur toute la silhouette des huit variantes, le clic traverse en dehors, et c'est prouvé par rendu
  (completed 2026-10-03)
-- [ ] **Phase 43: Release 3.5.0 et constat** - `Chronos-v3.5.0.exe` publié, la barre retirée constatée, et le constat avec l'utilisateur qui reprend VAL-04 et VAL-05 de v1.8
+- [x] **Phase 43: Release 3.5.0 et constat** - `Chronos-v3.5.0.exe` publié, la barre retirée constatée, et le constat avec l'utilisateur qui reprend VAL-04 et VAL-05 de v1.8 (completed 2026-10-06)
 
 ### Phase Details
 
@@ -494,7 +494,7 @@ parallèle de la 38 si les fichiers de réglages sont répartis sans recouvremen
 | 40. Cadrans à l'échelle 1 et orientations | v1.9 | 8/8 | Complete    | 2026-10-03 |
 | 41. Braises | v1.9 | 2/2 | Complete    | 2026-10-03 |
 | 42. Un geste sur toute la silhouette | v1.9 | 4/4 | Complete    | 2026-10-03 |
-| 43. Release 3.5.0 et constat | v1.9 | 8/9 | In Progress|  |
+| 43. Release 3.5.0 et constat | v1.9 | 8/9 | Complete    | 2026-10-06 |
 
 ### Couverture des exigences
 
